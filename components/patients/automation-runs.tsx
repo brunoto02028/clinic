@@ -116,7 +116,7 @@ export default function AutomationRuns({ patientId }: { patientId: string }) {
                   <Badge variant="outline" className="font-mono text-xs">{r.ruleCode}</Badge>
                   {r.result && <Badge variant="secondary">{r.result}</Badge>}
                   {r.status === "FAILED" && (
-                    <Badge variant="outline" className="border-red-200 text-red-700">FAILED</Badge>
+                    <Badge variant="outline" className="border-red-500/40 text-red-400">FAILED</Badge>
                   )}
                   <span className="text-xs text-muted-foreground">{fmt(r.createdAt)}</span>
                   <span className="text-xs text-muted-foreground">{ui.window}: {r.window}</span>
@@ -138,7 +138,7 @@ export default function AutomationRuns({ patientId }: { patientId: string }) {
                 )}
 
                 {r.error && (
-                  <p className="text-sm text-red-700 flex items-center gap-1">
+                  <p className="text-sm text-red-400 flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5" />{r.error}
                   </p>
                 )}

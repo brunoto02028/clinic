@@ -174,6 +174,17 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     icon: BellRing,
     tabs: [
       {
+        // The rules themselves — limits and wording, editable without a
+        // deploy (activity 072, T-6). The tenant owner's, not a therapist's.
+        key: "automation-rules",
+        label: "Automation rules",
+        labelPt: "Regras da automacao",
+        href: "/admin/automation",
+        matchRoutes: ["/admin/automation"],
+        clinicalOnly: true,
+        ownerOnly: true,
+      },
+      {
         // Messages an automation wrote, waiting for a human (activity 072).
         // Nothing leaves the building from here without a click.
         key: "outbox",
@@ -211,7 +222,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         matchRoutes: ["/admin/reminder-templates"],
       },
     ],
-    matchRoutes: ["/admin/alerts", "/admin/outbox", "/admin/notifications", "/admin/reminder-templates"],
+    matchRoutes: ["/admin/alerts", "/admin/outbox", "/admin/automation", "/admin/notifications", "/admin/reminder-templates"],
   },
   {
     key: "clinical",

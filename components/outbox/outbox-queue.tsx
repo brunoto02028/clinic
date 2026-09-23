@@ -147,10 +147,10 @@ export default function OutboxQueue() {
   return (
     <div className="p-6 space-y-6" data-testid="outbox-queue">
       <div className="flex items-start gap-3">
-        <Send className="h-6 w-6 text-slate-700 mt-0.5" />
+        <Send className="h-6 w-6 text-foreground mt-0.5" />
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900">{ui.title}</h2>
-          <p className="text-sm text-slate-500 mt-1">{ui.subtitle}</p>
+          <h2 className="text-2xl font-semibold text-foreground">{ui.title}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{ui.subtitle}</p>
         </div>
       </div>
 
@@ -164,28 +164,28 @@ export default function OutboxQueue() {
       </div>
 
       {actionError && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
           {actionError}
         </p>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : failed ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <CloudOff className="h-8 w-8 text-slate-400" />
-            <p className="text-slate-800">{ui.failed}</p>
-            <p className="text-sm text-slate-500">{ui.failedHint}</p>
+            <CloudOff className="h-8 w-8 text-muted-foreground" />
+            <p className="text-foreground">{ui.failed}</p>
+            <p className="text-sm text-muted-foreground">{ui.failedHint}</p>
             <Button variant="outline" size="sm" onClick={load}>{ui.retry}</Button>
           </CardContent>
         </Card>
       ) : rows && rows.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <Inbox className="h-8 w-8 text-slate-400" />
-            <p className="text-slate-800">{ui.empty}</p>
-            <p className="text-sm text-slate-500">{ui.emptyHint}</p>
+            <Inbox className="h-8 w-8 text-muted-foreground" />
+            <p className="text-foreground">{ui.empty}</p>
+            <p className="text-sm text-muted-foreground">{ui.emptyHint}</p>
           </CardContent>
         </Card>
       ) : (
@@ -197,23 +197,23 @@ export default function OutboxQueue() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline">{m.status}</Badge>
-                      <span className="text-xs text-slate-400 font-mono">{m.ruleCode}</span>
-                      <span className="text-xs text-slate-400">{fmt(m.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{m.ruleCode}</span>
+                      <span className="text-xs text-muted-foreground">{fmt(m.createdAt)}</span>
                     </div>
-                    <p className="font-medium text-slate-900">{m.subjectEn}</p>
+                    <p className="font-medium text-foreground">{m.subjectEn}</p>
                     {m.patient && (
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-muted-foreground">
                         {ui.to}: {m.patient.firstName} {m.patient.lastName}
                       </p>
                     )}
                     {m.holdReason && (
-                      <p className="text-sm text-amber-700 flex items-center gap-1">
+                      <p className="text-sm text-amber-400 flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" />
                         {ui.held} — {ui.holdReasons[m.holdReason] ?? m.holdReason}
                       </p>
                     )}
                     {m.providerError && (
-                      <p className="text-sm text-red-700 flex items-center gap-1">
+                      <p className="text-sm text-red-400 flex items-center gap-1">
                         <AlertTriangle className="h-3.5 w-3.5" />
                         {m.providerError}
                       </p>
@@ -234,11 +234,11 @@ export default function OutboxQueue() {
 
                 {openId === m.id && (
                   <div className="border-t pt-3 space-y-3">
-                    <p className="text-xs font-medium text-slate-500">{ui.whatGoesOut}</p>
+                    <p className="text-xs font-medium text-muted-foreground">{ui.whatGoesOut}</p>
                     {previewFailed ? (
-                      <p className="text-sm text-red-700">{ui.previewFailed}</p>
+                      <p className="text-sm text-red-400">{ui.previewFailed}</p>
                     ) : !preview ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     ) : (
                       <>
                         {/* The real thing, BPR layout and both languages — not a

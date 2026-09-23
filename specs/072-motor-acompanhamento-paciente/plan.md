@@ -104,7 +104,7 @@ paciente usa **Terapeuta / therapist**.
 | T-3 | `AutomationRule`: regras em banco, uma automação migrada | **concluído** |
 | T-4 | Fila de aprovação unificada (`OutboundMessage`) | em QA |
 | T-5 | `AutomationRun`: idempotência e log unificados | em QA |
-| T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | pendente |
+| T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | em QA |
 | T-7 | Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar | pendente |
 
 Ordem obrigatória: T-1 antes de tudo (é o que protege o que já existe). T-2 é independente.

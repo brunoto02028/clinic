@@ -70,10 +70,12 @@ export function evaluateCondition(condition: unknown, facts: Facts): boolean {
       // `ne`. Without this, `{ locale: { ne: "pt-BR" } }` fires for a rule
       // whose fact was never provided, because `undefined !== "pt-BR"`.
       //
-      // `hasOwn` rather than `=== undefined`: `facts["toString"]` inherits
-      // from Object.prototype and is not undefined, so a rule keyed on
-      // `toString` or `valueOf` would slip through the simpler check.
-      if (!Object.hasOwn(facts, key)) return false;
+      // Own property rather than `=== undefined`: `facts["toString"]`
+      // inherits from Object.prototype and is not undefined, so a rule keyed
+      // on `toString` or `valueOf` would slip through the simpler check.
+      // `hasOwnProperty.call` rather than `Object.hasOwn`, which this
+      // project's TypeScript target does not have.
+      if (!Object.prototype.hasOwnProperty.call(facts, key)) return false;
 
       for (const [op, bound] of Object.entries(expected)) {
         const ok =

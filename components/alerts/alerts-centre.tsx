@@ -153,10 +153,10 @@ export default function AlertsCentre() {
   return (
     <div className="p-6 space-y-6" data-testid="alerts-centre">
       <div className="flex items-start gap-3">
-        <Bell className="h-6 w-6 text-slate-700 mt-0.5" />
+        <Bell className="h-6 w-6 text-foreground mt-0.5" />
         <div>
-          <h2 className="text-2xl font-semibold text-slate-900">{ui.title}</h2>
-          <p className="text-sm text-slate-500 mt-1">{ui.subtitle}</p>
+          <h2 className="text-2xl font-semibold text-foreground">{ui.title}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{ui.subtitle}</p>
         </div>
       </div>
 
@@ -174,21 +174,21 @@ export default function AlertsCentre() {
       </div>
 
       {actionError && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
           {actionError}
         </p>
       )}
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : failed ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <CloudOff className="h-8 w-8 text-slate-400" />
-            <p className="text-slate-800">{ui.failed}</p>
-            <p className="text-sm text-slate-500">{ui.failedHint}</p>
+            <CloudOff className="h-8 w-8 text-muted-foreground" />
+            <p className="text-foreground">{ui.failed}</p>
+            <p className="text-sm text-muted-foreground">{ui.failedHint}</p>
             <Button variant="outline" size="sm" onClick={load}>
               {ui.retry}
             </Button>
@@ -198,8 +198,8 @@ export default function AlertsCentre() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-            <p className="text-slate-800">{ui.empty}</p>
-            <p className="text-sm text-slate-500">{ui.emptyHint}</p>
+            <p className="text-foreground">{ui.empty}</p>
+            <p className="text-sm text-muted-foreground">{ui.emptyHint}</p>
           </CardContent>
         </Card>
       ) : (
@@ -213,14 +213,14 @@ export default function AlertsCentre() {
                       <Badge variant="outline" className={PRIORITY_STYLE[a.priority]}>
                         {a.priority}
                       </Badge>
-                      <span className="text-xs text-slate-400 font-mono">{a.ruleCode}</span>
-                      <span className="text-xs text-slate-400">{fmt(a.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{a.ruleCode}</span>
+                      <span className="text-xs text-muted-foreground">{fmt(a.createdAt)}</span>
                     </div>
-                    <p className="font-medium text-slate-900">{a.title}</p>
+                    <p className="font-medium text-foreground">{a.title}</p>
                     {a.patient && (
                       <Link
                         href={`/dashboard/patients/${a.patient.id}`}
-                        className="text-sm text-slate-600 hover:text-slate-900 inline-flex items-center gap-1"
+                        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                       >
                         {a.patient.firstName} {a.patient.lastName}
                         <ArrowRight className="h-3 w-3" />
@@ -256,13 +256,13 @@ export default function AlertsCentre() {
                 {/* The figures the rule looked at, so the therapist can judge
                     without going to fetch the data themselves. */}
                 {a.details && Object.keys(a.details).length > 0 && (
-                  <div className="rounded-md bg-slate-50 px-3 py-2">
-                    <p className="text-xs font-medium text-slate-500 mb-1">{ui.why}</p>
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{ui.why}</p>
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       {Object.entries(a.details).map(([k, v]) => (
                         <div key={k} className="flex gap-2">
-                          <dt className="text-slate-500">{k}</dt>
-                          <dd className="text-slate-800">{String(v)}</dd>
+                          <dt className="text-muted-foreground">{k}</dt>
+                          <dd className="text-foreground">{String(v)}</dd>
                         </div>
                       ))}
                     </dl>
@@ -270,12 +270,12 @@ export default function AlertsCentre() {
                 )}
 
                 {a.ackAt && a.ackBy && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {ui.ackedBy} {a.ackBy.firstName} {a.ackBy.lastName} · {fmt(a.ackAt)}
                   </p>
                 )}
                 {a.resolvedAt && a.resolvedBy && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {ui.resolvedBy} {a.resolvedBy.firstName} {a.resolvedBy.lastName} ·{" "}
                     {fmt(a.resolvedAt)}
                   </p>
@@ -287,7 +287,7 @@ export default function AlertsCentre() {
       )}
 
       {rows && rows.some((a) => a.priority === "URGENT" && a.status === "OPEN") && (
-        <p className="flex items-center gap-2 text-sm text-red-700">
+        <p className="flex items-center gap-2 text-sm text-red-400">
           <AlertTriangle className="h-4 w-4" />
           {locale === "pt-BR"
             ? "Há alertas urgentes em aberto."

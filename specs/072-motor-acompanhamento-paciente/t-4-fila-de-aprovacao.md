@@ -39,7 +39,8 @@ por automação, em vez de digitada por humano.
 - `prisma/schema.prisma` (só adição)
 - `lib/automation/outbox.ts` (novo)
 - `app/api/outbox/route.ts`, `app/api/outbox/[id]/approve/route.ts`, `.../discard/route.ts` (novos)
-- `app/dashboard/outbox/page.tsx` (novo)
+- `app/admin/outbox/page.tsx` + `components/outbox/outbox-queue.tsx` (novos)
+- `lib/admin-sections.ts` (aba no menu), `lib/background-jobs.ts` (despachante)
 
 ## Critérios de aceite
 
