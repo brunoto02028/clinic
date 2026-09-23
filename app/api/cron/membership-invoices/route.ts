@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
           patientEmail: result.patientEmail,
           patientId: result.patientId,
           clinicId: result.clinicId,
+          patientInvoiceId: result.patientInvoiceId,
         });
 
         await (prisma as any).patientSubscription.update({
