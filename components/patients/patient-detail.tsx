@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AutomationRuns from "@/components/patients/automation-runs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -791,7 +792,16 @@ export default function PatientDetail({ patientId }: PatientDetailProps) {
               Clinical Analysis
             </TabsTrigger>
           )}
+          {/* What the automation did for this patient (activity 072, T-5). */}
+          <TabsTrigger value="automation" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Automation
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="automation">
+          <AutomationRuns patientId={patient.id} />
+        </TabsContent>
 
         {/* Appointments Tab */}
         <TabsContent value="appointments">

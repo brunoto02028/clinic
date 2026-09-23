@@ -476,6 +476,7 @@ model Clinic {
   alerts           Alert[]
   automationRules  AutomationRule[]
   outboundMessages OutboundMessage[]
+  automationRuns   AutomationRun[]
 
   @@index([slug])
   @@index([isActive])
@@ -836,6 +837,7 @@ model User {
   alertsResolved         Alert[]           @relation("AlertsResolved")
   queuedMessages         OutboundMessage[] @relation("PatientQueuedMessages")
   approvedQueuedMessages OutboundMessage[] @relation("ApprovedQueuedMessages")
+  automationRuns         AutomationRun[]   @relation("PatientAutomationRuns")
 
   @@index([clinicId])
   @@index([email])
@@ -7332,4 +7334,51 @@ model OutboundMessage {
   @@index([clinicId, status])
   @@index([patientId])
   @@map("outbound_messages")
+}
+
+enum RunStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+/// One record of a rule having run for a patient (activity 072, T-5).
+///
+/// Two jobs in one row. It stops the same evaluation happening twice, and it
+/// answers the question nobody could answer before: *why did this patient get
+/// this?* — which rule, when, on what figures.
+model AutomationRun {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// Null for a rule that is not about one patient (a clinic-wide sweep).
+  patientId String?
+  patient   User?   @relation("PatientAutomationRuns", fields: [patientId], references: [id], onDelete: Cascade)
+
+  ruleCode String
+  /// The window this run belongs to, as the rule counts time.
+  window   String
+
+  /// clinic:rule:patient:window:facts — the facts are in it on purpose. The
+  /// same situation twice is one run; a situation that got worse is a
+  /// different key, so an escalation is not mistaken for a repeat.
+  idempotencyKey String @unique
+
+  status   RunStatus @default(RUNNING)
+  /// What it did, in one word: ALERT_RAISED, MESSAGE_QUEUED, NOTHING…
+  result   String?
+  /// The figures the rule looked at, and what came of them.
+  details  Json?
+  error    String?   @db.Text
+  attempts Int       @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([ruleCode])
+  @@map("automation_runs")
 }

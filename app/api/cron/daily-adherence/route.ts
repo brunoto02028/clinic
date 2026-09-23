@@ -6,6 +6,7 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { logAudit } from "@/lib/system-logger";
 import { loadRules, evaluateCondition, actionText, interpolate } from "@/lib/automation/rules";
 import { createAlert } from "@/lib/alerts";
+import { runOnce } from "@/lib/automation/run";
 import { AlertPriority } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -94,23 +95,38 @@ export async function POST(req: NextRequest) {
       const facts = { missingItems: patient.missingItems.length };
 
       if (alertOn && evaluateCondition(alertRule!.condition, facts)) {
-        const { created } = await createAlert({
-          clinicId: clinic.id,
-          patientId: patient.patientId,
-          ruleCode: ALERT_RULE,
-          window: day,
-          title: interpolate(
-            actionText(alertRule!, "titleEn") ?? "Activities missed today",
-            facts
-          ),
-          priority:
-            (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
-          details: {
-            missingItems: facts.missingItems,
-            titles: patient.missingItems.map((i) => i.title),
-          },
-        });
-        if (created) alertsRaised++;
+        // runOnce keys on the facts as well as the window, so the same
+        // situation twice is one run while a worse one still gets through to
+        // escalate. It also leaves the record of why this patient was flagged.
+        const run = await runOnce(
+          { clinicId: clinic.id, ruleCode: ALERT_RULE, patientId: patient.patientId, window: day, facts },
+          async () => {
+            const { created, escalated } = await createAlert({
+              clinicId: clinic.id,
+              patientId: patient.patientId,
+              ruleCode: ALERT_RULE,
+              window: day,
+              title: interpolate(
+                actionText(alertRule!, "titleEn") ?? "Activities missed today",
+                facts
+              ),
+              priority:
+                (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
+              details: {
+                missingItems: facts.missingItems,
+                titles: patient.missingItems.map((i) => i.title),
+              },
+            });
+            return {
+              result: created ? "ALERT_RAISED" : escalated ? "ALERT_ESCALATED" : "ALERT_DEDUPED",
+              details: { missingItems: facts.missingItems, titles: patient.missingItems.map((i) => i.title) },
+            };
+          }
+        );
+        // `ran` matters as much as `result`: a skipped run reports the
+        // *previous* result, and counting that would claim an alert was raised
+        // every time the cron runs.
+        if (run.ran && run.result === "ALERT_RAISED") alertsRaised++;
       }
 
       if (!reminderOn || !evaluateCondition(reminderRule!.condition, facts)) continue;
