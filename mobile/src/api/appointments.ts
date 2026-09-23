@@ -20,7 +20,10 @@ export async function fetchAppointment(id: string): Promise<Appointment> {
   // Endpoint may return the object directly or wrapped; normalize and validate.
   const appt = res?.appointment ?? res;
   if (!appt || !appt.id) {
-    throw new Error("Agendamento não encontrado");
+    // English: the caller decides what the patient reads, and the screens
+    // pass this through `t()`. A Portuguese string thrown from the client
+    // reached an en-GB patient verbatim.
+    throw new Error("Appointment not found");
   }
   return appt as Appointment;
 }

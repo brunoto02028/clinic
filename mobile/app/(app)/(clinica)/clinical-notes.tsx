@@ -51,7 +51,10 @@ function ClinicalNotesScreen() {
               </View>
               <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No clinical notes", pt: "Nenhuma nota clínica" })}</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", lineHeight: 18 }}>
-                Suas notas clínicas aparecerão aqui{"\n"}após suas sessões de tratamento.
+                {tr(lang, {
+                  en: "Your clinical notes will appear here after your treatment sessions.",
+                  pt: "Suas notas clínicas aparecerão aqui após suas sessões de tratamento.",
+                })}
               </Text>
             </View>
           </Card>

@@ -2,6 +2,7 @@ import { View, Pressable, ScrollView } from "react-native";
 import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchScreening } from "@/api/screening";
+import { fetchAccess } from "@/api/access";
 import { fetchProfile } from "@/api/profile";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
@@ -93,7 +94,15 @@ const SECTIONS: { en: { title: string; items: string[] }; pt: { title: string; i
 
 export default function Consent() {
   const { data: screening, isLoading, isError, refetch } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
-  const accepted = screening?.consentGiven === true;
+  const { data: access } = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
+  // Two surfaces were answering "has this patient consented?" from two
+  // different columns: the web gates the portal on `User.consentAcceptedAt`,
+  // this screen read `screening.consentGiven`. A patient could be refused on
+  // the web and told "Terms accepted" here. The server's own answer wins; the
+  // screening stays as a fallback for the moment before access has loaded.
+  const accepted = access
+    ? access.onboarding.consentAccepted || screening?.consentGiven === true
+    : screening?.consentGiven === true;
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
   // English unless the patient chose Portuguese. The app has no i18n yet, so
   // this screen reads the same `preferredLocale` the profile screen writes.
@@ -116,10 +125,10 @@ export default function Consent() {
           <Text variant="title">{UI[lang].title}</Text>
         </View>
 
-        {/* O estado de aceite vem da triagem, onde `consentGiven` de fato mora.
-            Antes daqui saía a frase "Você aceitou os termos em 04/06/2026" —
-            uma data literal, exibida a qualquer paciente — e um selo de "Termos
-            aceitos" que renderizava sempre, aceito ou não. */}
+        {/* The acceptance state comes from the server's own answer, the same
+            one the web gates on. This used to print "Você aceitou os termos em
+            04/06/2026" — a literal date shown to every patient — and an
+            "accepted" badge that rendered whether or not they had. */}
         {/* Loading and failure are their own states. Falling through to the
             "not accepted" branch told a patient who had accepted that they
             had not, whenever the request was slow or failed. */}

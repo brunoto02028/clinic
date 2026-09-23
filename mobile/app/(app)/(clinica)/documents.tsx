@@ -70,7 +70,7 @@ function DocumentsScreen() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert("Permissao necessaria", "Permita o acesso para continuar.");
+      Alert.alert(tr(lang, { en: "Permission needed", pt: "Permissão necessária" }), "Permita o acesso para continuar.");
       return;
     }
 
@@ -89,7 +89,7 @@ function DocumentsScreen() {
       await uploadDocument(asset.uri, fileName, mimeType);
       qc.invalidateQueries({ queryKey: ["documents"] });
     } catch (e) {
-      Alert.alert("Erro", "Nao foi possivel fazer o upload.");
+      Alert.alert("Erro", tr(lang, { en: "We could not upload that.", pt: "Não foi possível fazer o upload." }));
     } finally {
       setUploading(false);
     }
@@ -142,7 +142,10 @@ function DocumentsScreen() {
               <Ionicons name="folder-open-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No documents", pt: "Nenhum documento" })}</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-                Faca upload de documentos ou tire fotos{"\n"}de receitas e laudos.
+                {tr(lang, {
+                  en: "Upload a document, or photograph a prescription or report.",
+                  pt: "Faça upload de documentos ou tire fotos de receitas e laudos.",
+                })}
               </Text>
             </View>
           </Card>

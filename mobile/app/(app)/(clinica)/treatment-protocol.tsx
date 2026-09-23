@@ -32,7 +32,7 @@ function TreatmentProtocolScreen() {
   const completeMut = useMutation({
     mutationFn: (itemId: string) => updateProtocolItem(itemId, { completed: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["protocols"] }),
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const protocols = data ?? [];
@@ -55,7 +55,10 @@ function TreatmentProtocolScreen() {
               <Ionicons name="list-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No treatment plan", pt: "Nenhum protocolo" })}</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-                Seu terapeuta criara um plano de tratamento{"\n"}personalizado apos a avaliacao.
+                {tr(lang, {
+                  en: "Your therapist will build a personalised treatment plan after your assessment.",
+                  pt: "Seu terapeuta criará um plano de tratamento personalizado após a avaliação.",
+                })}
               </Text>
             </View>
           </Card>
@@ -66,12 +69,60 @@ function TreatmentProtocolScreen() {
                 <Card variant="elevated">
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Ionicons name="clipboard-outline" size={18} color={t.colors.secondary} />
-                    <Text variant="label" style={{ fontWeight: "600", flex: 1 }}>
-                      Protocolo — {protocol.therapist.firstName} {protocol.therapist.lastName}
-                    </Text>
+                    {/* The plan's own title, not the word "Protocolo" and a
+                        name. A therapist writes that title — "Shoulder &
+                        posture — phase 1" — and the patient was shown a fixed
+                        Portuguese label instead, identical for every plan. */}
+                    <View style={{ flex: 1 }}>
+                      <Text variant="label" style={{ fontWeight: "600" }}>
+                        {protocol.title?.trim()
+                          || tr(lang, { en: "Treatment plan", pt: "Plano de tratamento" })}
+                      </Text>
+                      <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                        {tr(lang, { en: "by", pt: "por" })} {protocol.therapist.firstName} {protocol.therapist.lastName}
+                      </Text>
+                    </View>
                   </View>
-                  {protocol.diagnosis?.summary && (
-                    <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>{protocol.diagnosis.summary}</Text>
+                  {(protocol.summary || protocol.diagnosis?.summary) && (
+                    <Text variant="body" color={t.colors.textSecondary} style={{ marginTop: 10, lineHeight: 20 }}>
+                      {protocol.summary || protocol.diagnosis?.summary}
+                    </Text>
+                  )}
+
+                  {/* Goals and precautions come down with every plan and the
+                      app showed neither. Precautions are safety instructions —
+                      "stop any movement that reproduces sharp pain" — which is
+                      not something to keep on the web only. */}
+                  {protocol.goals && protocol.goals.length > 0 && (
+                    <View style={{ marginTop: 12, gap: 4 }}>
+                      <Text variant="caption" style={{ fontWeight: "700" }}>
+                        {tr(lang, { en: "Goals", pt: "Objetivos" })}
+                      </Text>
+                      {protocol.goals.map((g, i) => (
+                        <View key={i} style={{ flexDirection: "row", gap: 6 }}>
+                          <Text variant="caption" color={t.colors.textSecondary}>•</Text>
+                          <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1, lineHeight: 18 }}>{g}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {protocol.precautions && (
+                    <View style={{
+                      marginTop: 12, padding: 10, borderRadius: 10,
+                      backgroundColor: t.colors.warnSoft,
+                      flexDirection: "row", gap: 8, alignItems: "flex-start",
+                    }}>
+                      <Ionicons name="warning-outline" size={16} color={t.colors.warn} />
+                      <View style={{ flex: 1 }}>
+                        <Text variant="caption" style={{ fontWeight: "700", color: t.colors.warn }}>
+                          {tr(lang, { en: "Take care", pt: "Cuidados" })}
+                        </Text>
+                        <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2, lineHeight: 18 }}>
+                          {protocol.precautions}
+                        </Text>
+                      </View>
+                    </View>
                   )}
                 </Card>
                 {protocol.items.map((item) => (
@@ -92,12 +143,17 @@ function TreatmentProtocolScreen() {
                           </Text>
                           {item.exercise && (
                             <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                              {item.sets ?? item.exercise.defaultSets}x{item.reps ?? item.exercise.defaultReps} · {item.exercise.name}
+                              {/* `· {item.exercise.name}` was here, and the title
+                                  above is that same name — "Chin Tucks · Chin
+                                  Tucks". The frequency is what the patient
+                                  actually needs beside the dose. */}
+                              {item.sets ?? item.exercise.defaultSets}x{item.reps ?? item.exercise.defaultReps}
+                              {item.frequency ? ` · ${item.frequency}` : ""}
                             </Text>
                           )}
                           {item.completedCount > 0 && (
                             <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
-                              Concluido {item.completedCount}x
+                              {tr(lang, { en: "Done", pt: "Concluído" })} {item.completedCount}x
                             </Text>
                           )}
                         </View>

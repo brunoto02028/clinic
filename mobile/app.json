@@ -17,7 +17,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.bpr.clinic",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic.",
+        "NSPhotoLibraryUsageDescription": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
+        "NSPhotoLibraryAddUsageDescription": "BPR saves a copy of documents you download from your clinical record."
       }
     },
     "android": {
@@ -29,7 +32,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": []
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -38,7 +44,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
+          "cameraPermission": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic."
+        }
+      ]
     ],
     "extra": {
       "router": {},

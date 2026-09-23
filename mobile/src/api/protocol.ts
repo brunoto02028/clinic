@@ -14,6 +14,9 @@ export interface ProtocolItem {
   sortOrder: number;
   title: string;
   itemType: string;
+  /** "Daily", "3x per week" — the therapist's own wording. Returned all along
+   *  and simply never declared, so the screen could not show it. */
+  frequency: string | null;
   isCompleted: boolean;
   completedCount: number;
   lastCompletedAt: string | null;
@@ -32,6 +35,14 @@ export interface ProtocolItem {
 export interface Protocol {
   id: string;
   status: string;
+  /** What the therapist called this plan. The card printed a fixed
+   *  "Protocolo — <therapist>" for every plan instead. */
+  title: string | null;
+  summary: string | null;
+  goals: string[] | null;
+  /** Safety instructions — "stop any movement that reproduces sharp pain".
+   *  The endpoint has always sent these; the app showed none of them. */
+  precautions: string | null;
   therapist: { firstName: string; lastName: string };
   diagnosis?: { summary: string };
   items: ProtocolItem[];

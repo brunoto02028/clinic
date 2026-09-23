@@ -60,7 +60,12 @@ export default function Health() {
   // paywall: it is a false statement about the patient's own plan. The count
   // is only a count when there is data.
   const exerciseCount = exercises.data?.length ?? null;
-  const exercisesUnavailable = exerciseCount === null;
+  // "We could not load today's exercises" was printed while the request was
+  // still in flight: `exerciseCount === null` is also true before the first
+  // answer arrives, and the spinner above only showed when *both* queries were
+  // loading. A pending request is not a failure.
+  const exercisesPending = exercises.isPending || exercises.isFetching;
+  const exercisesUnavailable = exerciseCount === null && !exercisesPending;
   // The patient's own diagnosis, or nothing. This card used to read
   // "YOUR PLAN · Shoulder" and "Day 12 of 42" as literals in the JSX — a knee
   // patient on their third of eight sessions read it as their own chart. There
@@ -68,7 +73,9 @@ export default function Health() {
   const planLabel = protocols.data?.[0]?.diagnosis?.summary ?? null;
   const unreadMessages = unreadFromStaff(messages.data ?? []);
 
-  if (appts.isLoading && exercises.isLoading) {
+  // `&&` meant the screen rendered as soon as either query settled, with the
+  // other still running — which is how a live request came out as an error.
+  if (appts.isLoading || exercises.isLoading) {
     return (
       <Screen testID="health-screen">
         <Spinner center />
@@ -202,7 +209,9 @@ export default function Health() {
           {/* The "~N min" beside this was exerciseCount × 5 — a number with no
               source, shown as if the therapist had set it. */}
           <Text variant="heading">
-            {exercisesUnavailable
+            {exercisesPending && exerciseCount === null
+              ? "…"
+              : exercisesUnavailable
               ? tr(lang, {
                   en: isPlanError(exercises.error) ? "Not included in your plan" : "We could not load today's exercises",
                   pt: isPlanError(exercises.error) ? "Não incluído no seu plano" : "Não foi possível carregar os exercícios de hoje",
@@ -213,7 +222,7 @@ export default function Health() {
           {/* Both of these used to render under "Not included in your plan":
               a progress bar with two of three segments filled against nothing,
               and a full-width call to action that opened a locked screen. */}
-          {!exercisesUnavailable && (
+          {exerciseCount !== null && (
             <>
               <TriBar work health />
               <Button

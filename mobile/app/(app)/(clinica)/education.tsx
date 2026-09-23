@@ -94,7 +94,7 @@ function EducationScreen() {
                             borderRadius: 6,
                           }}>
                             <Text variant="caption" color={t.colors.ok} style={{ fontSize: 10, fontWeight: "600" }}>
-                              Concluído
+                              {tr(lang, { en: "Done", pt: "Concluído" })}
                             </Text>
                           </View>
                         ) : null}

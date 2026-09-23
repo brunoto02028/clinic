@@ -42,13 +42,20 @@ export default function Login() {
       await login(email.trim(), password);
       router.replace("/(app)/module-select");
     } catch (e) {
+      // The API answers in English only, and "Invalid email or password" is
+      // the message a patient meets most. The web already translates this
+      // one; the app printed the raw string under a Portuguese screen.
+      const wrongCredentials =
+        e instanceof AuthError && /invalid (email|e-mail)|credenc/i.test(e.message);
       setError(
-        e instanceof AuthError
-          ? e.message
-          : tr(lang, {
-              en: "Unable to sign in. Please try again.",
-              pt: "Não foi possível entrar. Tente de novo.",
-            })
+        wrongCredentials
+          ? tr(lang, { en: "Invalid email or password", pt: "E-mail ou senha incorretos" })
+          : e instanceof AuthError
+            ? e.message
+            : tr(lang, {
+                en: "Unable to sign in. Please try again.",
+                pt: "Não foi possível entrar. Tente de novo.",
+              })
       );
     } finally {
       setLoading(false);

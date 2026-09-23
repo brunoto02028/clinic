@@ -8,6 +8,7 @@ import { SHOW_LAB, CLINIC_ONLY } from "@/lib/feature-flags";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
+import { localeToLang, t as tr } from "@/lib/i18n";
 import { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -40,6 +41,11 @@ const ROUTE_MAP: Record<AppModule["key"], string> = {
 
 export default function ModuleSelect() {
   const t = useTheme();
+  // Runs before any patient data is fetched, so `useLang()` has nothing to
+  // read; the device's locale is the honest default here, as on sign-in.
+  const lang = localeToLang(
+    (() => { try { return Intl.DateTimeFormat().resolvedOptions().locale; } catch { return "en"; } })()
+  );
   const setActiveModule = useModule((s) => s.setActiveModule);
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
@@ -111,7 +117,7 @@ export default function ModuleSelect() {
               marginTop: 20,
             }}
           >
-            We could not load your areas
+            {tr(lang, { en: "We could not load your areas", pt: "Não foi possível carregar suas áreas" })}
           </Text>
           <Text
             style={{
@@ -123,7 +129,7 @@ export default function ModuleSelect() {
               lineHeight: 20,
             }}
           >
-            Check your connection and try again.
+            {tr(lang, { en: "Check your connection and try again.", pt: "Verifique sua conexão e tente de novo." })}
           </Text>
           <Pressable
             onPress={() => refetch()}
@@ -138,7 +144,7 @@ export default function ModuleSelect() {
             })}
           >
             <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
-              Try again
+              {tr(lang, { en: "Try again", pt: "Tentar de novo" })}
             </Text>
           </Pressable>
         </View>
@@ -160,7 +166,7 @@ export default function ModuleSelect() {
               marginTop: 20,
             }}
           >
-            No areas available yet
+            {tr(lang, { en: "No areas available yet", pt: "Nenhuma área disponível ainda" })}
           </Text>
           <Text
             style={{
@@ -172,8 +178,10 @@ export default function ModuleSelect() {
               lineHeight: 20,
             }}
           >
-            Your account has no areas enabled in this app yet. Please contact
-            your clinic.
+            {tr(lang, {
+              en: "Your account has no areas enabled in this app yet. Please contact your clinic.",
+              pt: "Sua conta ainda não tem nenhuma área liberada neste app. Fale com sua clínica.",
+            })}
           </Text>
 
           {/* Without this the screen is a dead end: module-select is the only
@@ -192,7 +200,7 @@ export default function ModuleSelect() {
             })}
           >
             <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
-              Sign out
+              {tr(lang, { en: "Sign out", pt: "Sair" })}
             </Text>
           </Pressable>
         </View>
@@ -221,7 +229,9 @@ export default function ModuleSelect() {
             marginBottom: 6,
           }}
         >
-          {user?.firstName ? `Hi, ${user.firstName}` : "Welcome"}
+          {user?.firstName
+            ? `${tr(lang, { en: "Hi", pt: "Olá" })}, ${user.firstName}`
+            : tr(lang, { en: "Welcome", pt: "Bem-vindo" })}
         </Text>
         <Text
           style={{
@@ -231,7 +241,7 @@ export default function ModuleSelect() {
             marginBottom: 36,
           }}
         >
-          Choose where you want to go.
+          {tr(lang, { en: "Choose where you want to go.", pt: "Escolha para onde quer ir." })}
         </Text>
 
         <View style={{ gap: 14 }}>

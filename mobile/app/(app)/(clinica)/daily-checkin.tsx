@@ -146,9 +146,17 @@ function DailyCheckInScreen() {
                   <Text style={{ fontSize: 28 }}>{progress.streakDays > 0 ? "🔥" : "❄️"}</Text>
                   <View>
                     <Text variant="subtitle" style={{ fontSize: 20 }}>
-                      {progress.streakDays} dia{progress.streakDays !== 1 ? "s" : ""}
+                      {progress.streakDays}{" "}
+                      {lang === "pt"
+                        ? `dia${progress.streakDays !== 1 ? "s" : ""}`
+                        : `day${progress.streakDays !== 1 ? "s" : ""}`}
                     </Text>
-                    <Text variant="caption" color={t.colors.textMuted}>Recorde: {progress.longestStreak} dias</Text>
+                    <Text variant="caption" color={t.colors.textMuted}>
+                      {tr(lang, { en: "Best", pt: "Recorde" })}: {progress.longestStreak}{" "}
+                      {lang === "pt"
+                        ? `dia${progress.longestStreak !== 1 ? "s" : ""}`
+                        : `day${progress.longestStreak !== 1 ? "s" : ""}`}
+                    </Text>
                   </View>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>

@@ -44,10 +44,36 @@ export async function PATCH(req: NextRequest) {
     const userId = effectiveUser.userId;
     const body = await req.json();
 
-    const allowedFields = ['phone', 'address', 'preferredLocale', 'communicationPreference', 'dateOfBirth', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+    // `firstName`/`lastName` are here now. They were excluded, which made the
+    // app's name inputs a trap: they accepted typing and the change vanished on
+    // Save, with no error, because the field never reached this list. A patient
+    // correcting a misspelt surname is doing ordinary self-service, not
+    // something that needs the clinic on the phone.
+    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'dateOfBirth', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
     const data: Record<string, any> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) data[field] = body[field];
+    }
+
+    // A blank name is never an edit worth saving: it is what an empty input
+    // sends, and it would leave the patient nameless on every staff screen,
+    // every letter and every appointment card. Trim and refuse the empty.
+    for (const field of ['firstName', 'lastName'] as const) {
+      if (data[field] === undefined) continue;
+      // `String(...)` alone turned `{"lastName":{"a":1}}` into the literal
+      // "[object Object]" and stored it. Anything that is not a string is a
+      // malformed request, not a name.
+      if (typeof data[field] !== 'string') {
+        return NextResponse.json({ error: `${field} must be text` }, { status: 400 });
+      }
+      const trimmed = String(data[field] ?? '').trim();
+      if (!trimmed) {
+        return NextResponse.json(
+          { error: field === 'firstName' ? 'First name cannot be empty' : 'Last name cannot be empty' },
+          { status: 400 }
+        );
+      }
+      data[field] = trimmed.slice(0, 100);
     }
 
     // Convert dateOfBirth string to DateTime

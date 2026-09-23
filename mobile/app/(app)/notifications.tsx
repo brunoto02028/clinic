@@ -6,6 +6,7 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchNotifications } from "@/api/notifications";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, pick } from "@/lib/i18n";
+import { appRouteFor } from "@/lib/app-route";
 
 function getIconMap(t: ReturnType<typeof useTheme>): Record<string, { icon: string; color: string }> {
   return {
@@ -61,10 +62,14 @@ export default function Notifications() {
           <View style={{ gap: 8 }}>
             {notifications.map((notif) => {
               const iconInfo = ICON_MAP[notif.type] ?? { icon: "notifications-outline", color: t.colors.textMuted };
+              // The API speaks the web's paths. Pushing "/dashboard/treatment"
+              // into expo-router landed every notification on "Unmatched Route".
+              const target = appRouteFor(notif.link);
               return (
                 <Pressable
                   key={notif.id}
-                  onPress={() => notif.link ? router.push(notif.link) : null}
+                  onPress={() => { if (target) router.push(target as any); }}
+                  disabled={!target}
                   style={({ pressed }) => ({
                     flexDirection: "row", gap: 12, padding: 14,
                     backgroundColor: pressed ? t.colors.surfaceMuted : notif.isUrgent ? t.colors.badSoft : "transparent",

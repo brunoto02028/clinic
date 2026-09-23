@@ -151,6 +151,11 @@ const publicRoutes = [
   '/api/analytics/vitals', // web-vitals beacon fires on public pages too
   '/api/vcard', // the /start page's "save contact" download — no session by definition
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
+  // The wearable provider redirects the patient's browser here after OAuth,
+  // with no session of ours — behind the gate it was bounced to /login and the
+  // connection could never complete. It is safe to expose because the route
+  // trusts nothing in the query but a state this server signed.
+  '/api/wearables/callback',
   '/api/vapi/web-token', // the voice widget sits on the public landing page and the
                          // route is written to work without a session; without this
                          // every anonymous visit spent two requests being bounced

@@ -4,8 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
-import { fetchConnections, disconnectProvider, syncProvider, OW_PROVIDERS } from "@/api/wearables";
-import { API_URL } from "@/api/config";
+import { fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS } from "@/api/wearables";
 import { useLang, t as tr } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 
@@ -38,9 +37,18 @@ export default function Wearables() {
 
   const connectedProviders = new Set((connections || []).map((c) => c.provider.toLowerCase()));
 
-  const handleConnect = (providerKey: string) => {
-    Linking.openURL(`${API_URL}/api/wearables/connect/${providerKey}`);
-  };
+  const connectMut = useMutation({
+    mutationFn: fetchConnectUrl,
+    onSuccess: (url) => Linking.openURL(url),
+    onError: (e) => Alert.alert(
+      tr(lang, { en: "Devices", pt: "Dispositivos" }),
+      (e as Error).message
+        || tr(lang, {
+          en: "We could not start the connection.",
+          pt: "Não foi possível iniciar a conexão.",
+        }),
+    ),
+  });
 
   return (
     <Screen scroll testID="wearables-screen">
@@ -158,7 +166,8 @@ export default function Wearables() {
                     </View>
                   ) : (
                     <Pressable
-                      onPress={() => handleConnect(p.key)}
+                      onPress={() => connectMut.mutate(p.key)}
+                      disabled={connectMut.isPending}
                       style={{
                         paddingHorizontal: 16,
                         paddingVertical: 8,

@@ -16,6 +16,9 @@ export default function PatientProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -49,6 +52,8 @@ export default function PatientProfilePage() {
       .then(r => r.json())
       .then(d => {
         setProfile(d.user);
+        setFirstName(d.user?.firstName || '');
+        setLastName(d.user?.lastName || '');
         setPhone(d.user?.phone || '');
         setAddress(d.user?.address || '');
         setDateOfBirth(d.user?.dateOfBirth ? d.user.dateOfBirth.split('T')[0] : '');
@@ -64,11 +69,14 @@ export default function PatientProfilePage() {
   async function handleSave() {
     setSaving(true);
     setSaved(false);
+    setSaveError('');
     try {
       const res = await fetch('/api/patient/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName,
+          lastName,
           phone,
           address,
           preferredLocale: locale,
@@ -79,10 +87,22 @@ export default function PatientProfilePage() {
           communicationPreference: commPref,
         }),
       });
+      // Only `res.ok` was handled, so a 400 did nothing at all: no error, no
+      // "saved", and — because the whole form goes in one PATCH — an empty
+      // surname silently discarded the phone number edited beside it. The
+      // e-mail form in this same file already does it this way.
       if (res.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+      } else {
+        const data = await res.json().catch(() => null);
+        setSaveError(
+          data?.error ||
+            (isPt ? 'Não foi possível salvar. Confira os campos.' : 'Could not save. Please check the fields.')
+        );
       }
+    } catch {
+      setSaveError(isPt ? 'Erro de conexão.' : 'Connection error.');
     } finally {
       setSaving(false);
     }
@@ -302,6 +322,37 @@ export default function PatientProfilePage() {
             </p>
           </div>
 
+          {/* Name — editable on both surfaces. The app's inputs accepted
+              typing and dropped it on save because the endpoint refused the
+              field; the web had no inputs at all. Correcting your own surname
+              is self-service, not a phone call to the clinic. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
+                <User className="h-4 w-4 text-ba1-health" />
+                {isPt ? 'Nome' : 'First name'}
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
+                <User className="h-4 w-4 text-ba1-health" />
+                {isPt ? 'Sobrenome' : 'Last name'}
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              />
+            </div>
+          </div>
+
           {/* Date of Birth */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
@@ -398,6 +449,13 @@ export default function PatientProfilePage() {
               </div>
             </div>
           </div>
+
+          {saveError && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-ba1-bad/10 border border-ba1-bad/30">
+              <AlertCircle className="h-4 w-4 text-ba1-bad shrink-0 mt-0.5" />
+              <p className="text-sm text-ba1-bad">{saveError}</p>
+            </div>
+          )}
 
           {/* Save button */}
           <button

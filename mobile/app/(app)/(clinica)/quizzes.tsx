@@ -31,7 +31,7 @@ function QuizzesScreen() {
           contentContainerStyle={{ gap: 10 }}
           renderItem={({ item }) => (
             <Card>
-              <Text variant="subtitle">{quizTitle(item)}</Text>
+              <Text variant="subtitle">{quizTitle(item, lang)}</Text>
             </Card>
           )}
         />

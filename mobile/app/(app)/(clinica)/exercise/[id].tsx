@@ -22,9 +22,9 @@ function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
-    EASY: { label: "Facil", color: t.colors.ok, bg: t.colors.okSoft },
-    MEDIUM: { label: "Moderado", color: t.colors.warn, bg: t.colors.warnSoft },
-    HARD: { label: "Avancado", color: t.colors.bad, bg: t.colors.badSoft },
+    EASY: { label: tr(lang, { en: "Easy", pt: "Fácil" }), color: t.colors.ok, bg: t.colors.okSoft },
+    MEDIUM: { label: tr(lang, { en: "Moderate", pt: "Moderado" }), color: t.colors.warn, bg: t.colors.warnSoft },
+    HARD: { label: tr(lang, { en: "Advanced", pt: "Avançado" }), color: t.colors.bad, bg: t.colors.badSoft },
   };
 
   const { data, isLoading, isError } = useQuery({
@@ -36,9 +36,15 @@ function ExerciseDetailScreen() {
     mutationFn: () => completeExercise(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
-      Alert.alert("Exercicio concluido!", "Parabens por completar mais uma sessao.");
+      Alert.alert(
+        tr(lang, { en: "Exercise completed", pt: "Exercício concluído!" }),
+        tr(lang, { en: "Well done — one more session in the bag.", pt: "Parabéns por completar mais uma sessão." }),
+      );
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message || "Nao foi possivel registrar."),
+    onError: (e) => Alert.alert(
+      tr(lang, { en: "Error", pt: "Erro" }),
+      (e as Error).message || tr(lang, { en: "We could not record that.", pt: "Não foi possível registrar." }),
+    ),
   });
 
   const rx = data?.find((p) => p.id === id);
@@ -48,7 +54,7 @@ function ExerciseDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Exercicio",
+          title: tr(lang, { en: "Exercise", pt: "Exercício" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -145,7 +151,7 @@ function ExerciseDetailScreen() {
                 borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.holdSeconds}s</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Sustentacao</Text>
+                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Hold", pt: "Sustentação" })}</Text>
               </View>
             ) : null}
             {rx.frequency ? (
@@ -190,8 +196,10 @@ function ExerciseDetailScreen() {
                 <Ionicons name="play" size={24} color={t.colors.bad} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Watch the video", pt: "Assistir video" })}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Ver demonstracao do exercicio</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Watch the video", pt: "Assistir vídeo" })}</Text>
+                <Text variant="caption" color={t.colors.textMuted}>
+                  {tr(lang, { en: "See how it is done", pt: "Ver demonstração do exercício" })}
+                </Text>
               </View>
               <Ionicons name="open-outline" size={18} color={t.colors.textMuted} />
             </Pressable>
@@ -202,7 +210,7 @@ function ExerciseDetailScreen() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="information-circle-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Description", pt: "Descricao" })}</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Description", pt: "Descrição" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
                 {rx.exercise.description}
@@ -215,7 +223,7 @@ function ExerciseDetailScreen() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="list-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Instructions", pt: "Instrucoes" })}</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Instructions", pt: "Instruções" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
                 {pick(lang, rx.exercise.instructions, rx.exercise.instructionsPt)}
@@ -225,7 +233,9 @@ function ExerciseDetailScreen() {
 
           {/* Complete button */}
           <Button
-            title={completeMutation.isPending ? "Registrando..." : "Marcar como concluido"}
+            title={completeMutation.isPending
+              ? tr(lang, { en: "Recording...", pt: "Registrando..." })
+              : tr(lang, { en: "Mark as done", pt: "Marcar como concluído" })}
             onPress={() => completeMutation.mutate()}
             loading={completeMutation.isPending}
             icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}

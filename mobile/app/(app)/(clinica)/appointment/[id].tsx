@@ -9,11 +9,18 @@ import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
 
-function formatDate(iso: string) {
+/** The date in the patient's language. The weekday and month names were two
+ *  hardcoded Portuguese arrays, so an en-GB patient read "Qua, 24 Set 2026" on
+ *  their own appointment. */
+function formatDate(iso: string, lang: Lang) {
   const d = new Date(iso);
-  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** The clock in the patient's language — a module helper cannot read a hook. */
@@ -39,7 +46,7 @@ function AppointmentDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Agendamento",
+          title: tr(lang, { en: "Appointment", pt: "Consulta" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -73,7 +80,7 @@ function AppointmentDetailScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="subtitle">
-                  {data.therapist ? `${data.therapist.firstName} ${data.therapist.lastName}` : "Terapeuta"}
+                  {data.therapist ? `${data.therapist.firstName} ${data.therapist.lastName}` : tr(lang, { en: "Therapist", pt: "Terapeuta" })}
                 </Text>
                 <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
                   {data.treatmentType}
@@ -129,7 +136,7 @@ function AppointmentDetailScreen() {
                 </View>
                 <View>
                   <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{formatDate(data.dateTime)}</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{formatDate(data.dateTime, lang)}</Text>
                 </View>
               </View>
 
@@ -167,7 +174,7 @@ function AppointmentDetailScreen() {
                 </View>
                 <View>
                   <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Duration", pt: "Duração" })}</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} minutos</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} {tr(lang, { en: "minutes", pt: "minutos" })}</Text>
                 </View>
               </View>
             </View>

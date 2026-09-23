@@ -14,6 +14,10 @@ export interface PatientAccess {
   hiddenModules: string[];
   permissions: string[];
   fullAccessOverride?: boolean;
+  /** The same two answers the web gates its portal on. The app asked a
+   *  different question — `screening.consentGiven` — so the two surfaces could
+   *  disagree about whether this patient has consented. */
+  onboarding: { screeningComplete: boolean; consentAccepted: boolean };
 }
 
 export async function fetchAccess(): Promise<PatientAccess> {
@@ -23,5 +27,9 @@ export async function fetchAccess(): Promise<PatientAccess> {
     hiddenModules: Array.isArray(res?.hiddenModules) ? res.hiddenModules : [],
     permissions: Array.isArray(res?.permissions) ? res.permissions : [],
     fullAccessOverride: res?.fullAccessOverride,
+    onboarding: {
+      screeningComplete: res?.onboarding?.screeningComplete === true,
+      consentAccepted: res?.onboarding?.consentAccepted === true,
+    },
   };
 }
