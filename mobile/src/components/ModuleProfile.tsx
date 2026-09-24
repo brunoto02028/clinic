@@ -11,6 +11,8 @@ import { useLang, t as tr } from "@/lib/i18n";
 import { CLINIC_ONLY } from "@/lib/feature-flags";
 import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
 import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
+import Constants from "expo-constants";
+import { runningVersion } from "@/lib/app-updates";
 
 export interface ProfileSection {
   /** English canonical, Portuguese alongside — this menu was English-only, so
@@ -128,6 +130,31 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
         )}
 
         <Button title={tr(lang, { en: "Sign out", pt: "Sair" })} variant="ghost" onPress={handleLogout} size="md" />
+
+        {/* Qual versão está rodando de fato.
+            Existe para responder sem adivinhação a pergunta que custou horas
+            em 24/09/2026: "o update chegou?". `embedded` verdadeiro significa
+            que o app roda o JavaScript que veio dentro do binário — nenhum
+            update aplicado. Também é o que o suporte vai pedir quando um
+            paciente disser que algo não funciona. */}
+        {(() => {
+          const v = runningVersion(Constants.expoConfig?.version ?? "?");
+          return (
+            <Text
+              variant="caption"
+              color={t.colors.textMuted}
+              style={{ textAlign: "center", fontSize: 10, marginTop: 4 }}
+              testID="running-version"
+            >
+              {`v${v.app}`}
+              {v.embedded
+                ? ` · ${tr(lang, { en: "build only", pt: "só o build" })}`
+                : v.updateId
+                ? ` · ${tr(lang, { en: "update", pt: "update" })} ${v.updateId}`
+                : ""}
+            </Text>
+          );
+        })()}
       </View>
     </Screen>
   );
