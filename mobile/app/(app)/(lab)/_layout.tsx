@@ -24,7 +24,21 @@ export default function LabLayout() {
         headerStyle: { backgroundColor: "#F5F4F1" },
         headerTintColor: "#20242D",
         headerShadowVisible: false,
-      }} />
+      }}
+
+      >
+
+        {/* As abas trazem a própria navegação e o próprio título. Sem
+
+            declarar isto, o header do grupo aparecia vazio por cima
+
+            delas — e no laboratório empilhava dois headers. Regressão
+
+            que eu introduzi ao ligar `headerShown` no grupo. */}
+
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+      </Stack>
     </ModuleGuard>
   );
 }

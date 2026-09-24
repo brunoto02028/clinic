@@ -11,6 +11,7 @@ import { useLang, t as tr } from "@/lib/i18n";
 
 function OutcomeMeasuresScreen() {
   const t = useTheme();
+  const { forte: funcCor, suave: funcCorSuave } = funcCorFactory(t);
   const lang = useLang();
   const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
@@ -168,24 +169,33 @@ function OutcomeMeasuresScreen() {
             })}
           </Text>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <Text variant="title" color={t.colors.ok} style={{ fontSize: 36 }}>{overallFunction}%</Text>
+            {/* Era sempre verde. "0% — incapacidade total" aparecia na cor de
+                tudo-certo, a mesma contradição da escala de dor logo acima:
+                aqui o ruim é o número BAIXO, então a regra inverte. */}
+            <Text variant="title" color={funcCor(overallFunction)} style={{ fontSize: 36 }}>{overallFunction}%</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text variant="caption" color={t.colors.textMuted}>0%</Text>
             <View style={{ flex: 1, height: 6, backgroundColor: t.colors.surfaceMuted, borderRadius: 3, overflow: "hidden" }}>
-              <View style={{ height: 6, width: `${overallFunction}%`, backgroundColor: t.colors.ok, borderRadius: 3 }} />
+              <View style={{ height: 6, width: `${overallFunction}%`, backgroundColor: funcCor(overallFunction), borderRadius: 3 }} />
             </View>
             <Text variant="caption" color={t.colors.textMuted}>100%</Text>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
             {[0, 25, 50, 75, 100].map(v => (
-              <View
+              // Último `View` com `onTouchEnd` do app — dispara até em gesto
+              // cancelado, não anuncia que é botão e não dá retorno ao toque.
+              <Pressable
                 key={v}
-                onTouchEnd={() => setOverallFunction(v)}
-                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: overallFunction === v ? t.colors.okSoft : t.colors.surfaceMuted }}
+                onPress={() => setOverallFunction(v)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: overallFunction === v }}
+                accessibilityLabel={`${v}%`}
+                hitSlop={10}
+                style={{ minHeight: 34, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, justifyContent: "center", backgroundColor: overallFunction === v ? funcCorSuave(v) : t.colors.surfaceMuted }}
               >
-                <Text variant="caption" color={overallFunction === v ? t.colors.ok : t.colors.textMuted}>{v}%</Text>
-              </View>
+                <Text variant="caption" color={overallFunction === v ? funcCor(v) : t.colors.textSecondary} style={{ fontWeight: overallFunction === v ? "700" : "400" }}>{v}%</Text>
+              </Pressable>
             ))}
           </View>
         </Card>
@@ -201,6 +211,20 @@ function OutcomeMeasuresScreen() {
  * refuses them with the plan closed. The app not only showed them, it let the
  * patient write a new row.
  */
+/**
+ * A cor da funcionalidade.
+ *
+ * Aqui o ruim é o número **baixo** — 0% é "incapacidade total" —, então a
+ * regra é o espelho da escala de dor. Estava sempre verde: escolher zero
+ * pintava a incapacidade total com a cor de tudo-certo.
+ */
+function funcCorFactory(t: any) {
+  return {
+    forte: (v: number) => (v < 40 ? t.colors.bad : v < 70 ? t.colors.warn : t.colors.ok),
+    suave: (v: number) => (v < 40 ? t.colors.badSoft : v < 70 ? t.colors.warnSoft : t.colors.okSoft),
+  };
+}
+
 export default function OutcomeMeasures() {
   return (
     <PlanGate module="mod_records">

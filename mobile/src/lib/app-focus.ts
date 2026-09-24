@@ -2,6 +2,7 @@ import { AppState, type AppStateStatus, Platform } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { API_URL } from "@/api/config";
 import { focusManager, onlineManager } from "@tanstack/react-query";
+import { useAuth } from "@/store/auth";
 import { shouldBeFocused, listensToAppState, canReachNetwork } from "./app-focus-rules";
 
 export { shouldBeFocused, listensToAppState, canReachNetwork };
@@ -64,7 +65,15 @@ export function wireAppFocus(): () => void {
   if (!listensToAppState(Platform.OS)) return () => {};
 
   const onChange = (status: AppStateStatus) => {
-    focusManager.setFocused(shouldBeFocused(status));
+    // Trancado, o app nunca tem foco. Sem esta condição o `AppState` religava
+    // o foco de forma **síncrona** ao voltar do segundo plano, enquanto a
+    // re-tranca só acontece depois de um `await` — e as consultas de dado
+    // clínico disparavam na janela entre as duas, atrás de uma cortina
+    // fechada. A promessa da tranca é que nada do paciente é buscado antes de
+    // destrancar; esta linha é o que a cumpre.
+    focusManager.setFocused(
+      shouldBeFocused(status) && useAuth.getState().status !== "locked"
+    );
   };
 
   const subscription = AppState.addEventListener("change", onChange);

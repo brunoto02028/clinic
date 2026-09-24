@@ -434,6 +434,10 @@ function ScreeningScreen() {
           <View style={{ flex: 1 }}>
             <Button
               variant="health"
+              // Nove etapas de dado clínico e o toque final não dava retorno
+              // nenhum: `submit.isPending` existia e ninguém lia. Dois toques
+              // viravam dois POST.
+              loading={step === STEPS.length - 1 && submit.isPending}
               title={step < STEPS.length - 1
                 ? tr(lang, { en: "Next", pt: "Próximo" })
                 : tr(lang, { en: "Submit assessment", pt: "Enviar avaliação" })}
