@@ -464,3 +464,34 @@ no banco; a regra pura é a definição única de "esta janela cobre esta mediç
 
 **Contorno que continua útil:** hotspot do celular como rede conhecida do aparelho, para a leitura
 subir na hora em visita domiciliar. Agora é conveniência, não necessidade.
+
+---
+
+## 18. "O menu precisa ficar visível em todas as páginas" (pedido, não decidido)
+
+Pedido do Bruno em 24/09/2026, testando no iPhone. A barra de abas some nas telas empilhadas.
+
+**O mapa:** 4 telas dentro de `(clinica)/(tabs)`, **18 fora**. As 18 são empilhadas por cima do
+navegador de abas, e é isso que esconde a barra.
+
+**A favor:** `(tabs)` é um grupo de rotas e **não entra no caminho**. Mover uma tela de
+`(clinica)/` para `(clinica)/(tabs)/` não muda o endereço dela — os `router.push` existentes
+continuam válidos. O que parecia refatoração de 18 rotas é movimentação de arquivo.
+
+**Contra, e é o ponto:** dentro do navegador de abas as telas viram **irmãs**, não empilhadas.
+Ganha-se a barra sempre visível e **perde-se o botão voltar** — que é o que o Bruno pediu horas
+antes, no achado 2. Os dois não vêm juntos de graça.
+
+**Opções:**
+
+| | resultado | custo |
+|---|---|---|
+| A. mover as 18 para dentro das abas | barra sempre visível, sem voltar | médio; mexe na navegação toda |
+| B. barra fixa própria nas telas empilhadas | barra **e** voltar | médio; dois componentes a manter alinhados |
+| C. manter | só header + voltar | zero |
+
+**Decisão adiada de propósito:** o Bruno avaliou isto no build `f9806d3b` (commit `347aee4b`,
+13:54), que é **anterior** às correções do botão voltar (`27608606`) e do teclado (`229e15eb`).
+Com o voltar funcionando e nomeado, a falta da barra pode deixar de incomodar — e aí não se mexe
+em 18 telas à toa. Se ainda incomodar, a recomendação é a **B**, que não desfaz o que foi
+ganho hoje.
