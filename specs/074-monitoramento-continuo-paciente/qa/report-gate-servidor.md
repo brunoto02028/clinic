@@ -90,13 +90,34 @@ consentAcceptedAt carimbado?   SIM
   `ModuleGate`: todas já tratam falha (`r.ok ? … : []`, `.catch`), então antes do aceite
   os contadores ficam vazios em vez de quebrar. Conferido linha a linha.
 
+## QA online (produção)
+
+Deploy do PR #99, build `1.0.1790240361161` (24/09, 08:59). Anônimo e de leitura, como os
+anteriores: nenhuma sessão de paciente, nenhum dado criado, nenhum paciente real tocado.
+
+| Verificação | Resultado |
+|---|---|
+| 12 rotas com gate, anônimas | 307 → /login, **nenhuma 500** |
+| Bearer inválido em `/api/patient/documents` | 401 |
+| Schema aplicado no boot | `The database is already in sync with the Prisma schema.` |
+| Backfill de `clinicId` | `nothing to fill` (já tinha rodado) |
+| **Backfill de consentimento** | `[backfill-consent] nothing to fill` |
+
+A última linha é a que responde a pergunta que importava: **nenhum paciente em produção tinha
+aceitado só pela triagem**. Ninguém precisou ser carregado, e ninguém ficou trancado pela divisão
+entre as duas colunas. O script fica no boot de qualquer forma, porque o caminho existe.
+
 ## Fora do escopo, não consertado (avisado)
 
-Duas suítes já estavam vermelhas **antes desta tarefa**, e não são bugs de produção —
-são mocks de teste desatualizados:
+Duas suítes já estavam vermelhas **antes desta tarefa**. Avisei, e o Bruno pediu para
+arrumar — **corrigidas**, suíte inteira verde (39 suítes, 400 testes):
 
-- `__tests__/exercises/prescribe-folder.test.ts` — 7 casos. O mock do Prisma não tem
-  `user.findUnique`, que a rota passou a usar no commit `bd4efa86` (18/09).
-- `__tests__/tenant/personal-blocked-routes.test.ts` — 2 casos: `/admin/treatment-plans`
-  e `/api/admin/patients/:id/packages` são dados como bloqueados para tenant personal, e
-  o teste espera o contrário.
+- `__tests__/exercises/prescribe-folder.test.ts` — 7 casos. O mock do Prisma só tinha
+  `user.findFirst`; a rota passou a usar `user.findUnique` para o nome do terapeuta na
+  auditoria (commit `bd4efa86`, 18/09) e o handler inteiro caía no catch. Mock completado.
+- `__tests__/tenant/personal-blocked-routes.test.ts` — 2 casos, e aqui **quem estava
+  errado era o teste**. `/admin/treatment-plans` e `/api/admin/patients/<id>/packages`
+  foram bloqueados de propósito na atividade 52 (commit `1c80a6b5`): cobram pela conta
+  Stripe da BPR, então um estúdio vendendo por ali mandaria o dinheiro dele para a
+  clínica. O teste não era tocado desde a T-29, anterior a isso. Movidos para um bloco
+  próprio, com o motivo escrito.
