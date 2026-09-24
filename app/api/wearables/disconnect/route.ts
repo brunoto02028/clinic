@@ -39,21 +39,34 @@ export async function POST(request: NextRequest) {
   // patient who asked us to stop, and the webhook would go on writing to their
   // record. Revoking the token itself, and deleting it from the database, is
   // T-10 — this is only the half that T-9 created.
+  // Whether we actually managed to stop the notifications. It matters because
+  // the screen says "we stopped the notifications" — and QA caught it saying
+  // that after all four revocations had failed with 401. A disconnect that
+  // quietly leaves the provider calling us is the false promise this task
+  // exists to avoid.
+  let subscriptionsRevoked: boolean | null = null;
+
   if (provider.toUpperCase() === 'WITHINGS' && connection.accessToken) {
+    subscriptionsRevoked = true;
     try {
       const token = await withingsAccessToken(connection);
       const callbackUrl = withingsCallbackUrl();
-      await Promise.all(
+      const results = await Promise.all(
         [WITHINGS_APPLI.BLOOD_PRESSURE, WITHINGS_APPLI.WEIGHT, WITHINGS_APPLI.ACTIVITY, WITHINGS_APPLI.SLEEP].map((appli) =>
-          withingsRevokeSubscription(token, callbackUrl, appli).catch((err) =>
-            console.error(`[wearables/disconnect] notify revoke appli=${appli}:`, err?.message)
-          )
+          withingsRevokeSubscription(token, callbackUrl, appli)
+            .then(() => true)
+            .catch((err) => {
+              console.error(`[wearables/disconnect] notify revoke appli=${appli}:`, err?.message);
+              return false;
+            })
         )
       );
+      subscriptionsRevoked = results.every(Boolean);
     } catch (e: any) {
       // A token that no longer refreshes cannot revoke anything, and that is
       // not a reason to refuse the disconnection the patient asked for.
       console.error('[wearables/disconnect] withings revoke:', e?.message);
+      subscriptionsRevoked = false;
     }
   }
 
@@ -65,7 +78,10 @@ export async function POST(request: NextRequest) {
   await (prisma as any).wearableConnection.update({
     where: { id: connection.id },
     data: {
-      status: 'DISCONNECTED',
+      // A state the admin can see, instead of a row that looks identical
+      // whether the revocation worked or failed completely. Nothing treats
+      // this as connected: the webhook and the sync both require CONNECTED.
+      status: subscriptionsRevoked === false ? 'DISCONNECTED_REVOKE_FAILED' : 'DISCONNECTED',
       accessToken: null,
       refreshToken: null,
       tokenExpiresAt: null,
@@ -79,5 +95,5 @@ export async function POST(request: NextRequest) {
   const providerRevokeUrl =
     provider.toUpperCase() === 'WITHINGS' ? 'https://account.withings.com/partner/my_apps' : null;
 
-  return NextResponse.json({ ok: true, providerRevokeUrl });
+  return NextResponse.json({ ok: true, providerRevokeUrl, subscriptionsRevoked });
 }

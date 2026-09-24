@@ -1,6 +1,6 @@
 # T-13: Aviso de não emergência no app
 
-**Status:** pendente
+**Status:** ✅ concluída
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -24,6 +24,20 @@ promessa implícita de vigilância contínua que a clínica não faz.
 4. Toda mensagem de crise (≥180/120) já diz "ligue 999"; esta tarefa garante que o aviso genérico
    esteja presente também quando nada aconteceu.
 5. Bilíngue, inglês primeiro. Nada de "Rehab" no texto; "Terapeuta", nunca "fisioterapeuta".
+
+## O que foi feito
+
+- `lib/non-emergency-notice.ts`: o texto, em EN e PT, com uma versão (`1.0`) que é gravada junto com
+  o aceite — "aceitou" só significa alguma coisa com "aceitou **este** texto".
+- Aparece em quatro telas: dispositivos e pressão, na web e no app.
+- **Rodapé de alerta:** o e-mail de crise leva a frase curta. E, de quebra, corrigi uma incoerência
+  que o QA da T-11 achou: o e-mail dizia "contate seu médico se a leitura persistir" enquanto o push
+  dizia "vá ao pronto-socorro agora" — para a **mesma** leitura de crise. Agora os dois dizem a
+  mesma coisa.
+- **Aceite obrigatório antes do primeiro aparelho**, gravado em `ConsentLog` com
+  `MONITORING_NOTICE_ACCEPTED` + versão. Recusado **no servidor** (`/api/wearables/connect`), não só
+  na tela. O staff conectando o aparelho da clínica não passa por este gate: é outro ato.
+- Impersonação não pode aceitar pelo paciente — a declaração é dele.
 
 ## Arquivos afetados
 - componente de aviso (web + mobile)

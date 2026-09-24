@@ -4658,6 +4658,10 @@ model ServiceAccess {
 enum ConsentAction {
   TERMS_ACCEPTED
   TERMS_VIEWED
+  // The patient read "this is not an emergency service" and said so, before
+  // connecting their first health device (activity 074, T-13). Recorded with
+  // the wording's version, so "which text did they agree to" has an answer.
+  MONITORING_NOTICE_ACCEPTED
   CONSENT_WITHDRAWN
   DATA_ACCESS_REQUEST
   DATA_DELETION_REQUEST

@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
     // A notification for an account we do not know is not an error on their
     // side or ours — it is a subscription left over from a disconnected
     // patient. Answering 0 keeps their retry queue from filling up.
-    if (!connection || connection.status === "DISCONNECTED") return ok();
+    //
+    // The test is "is it connected", not "is it not disconnected": a
+    // connection in any other state — including one whose revocation failed —
+    // must not have data written to it.
+    if (!connection || connection.status !== "CONNECTED") return ok();
 
     // Their window, widened by a minute at each end: the timestamps are whole
     // seconds and their clock is not ours, and a measurement missed here would

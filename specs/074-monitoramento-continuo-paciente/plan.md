@@ -132,12 +132,12 @@ removido quando o provedor diz que morreu — token zumbi é a causa clássica d
 | T-5 | Preferências de notificação do paciente | pendente |
 | T-6 | Relatório consolidado do paciente (tela) | ✅ concluída |
 | T-7 | Exportação do relatório em PDF | ✅ concluída |
-| T-8 | Sync Withings completo: SpO2, HRV, temperatura, FC intraday, ECG | pendente |
+| T-8 | Sync Withings completo: SpO2, HRV, temperatura, FC intraday, ECG | ✅ concluída (ECG **não** verificado) |
 | T-9 | Webhook da Withings para medidas novas | ✅ concluída |
-| T-10 | Desconectar revogando o acesso na Withings | 🟡 feita, QA pendente |
+| T-10 | Desconectar revogando o acesso na Withings | ✅ concluída |
 | T-11 | Bloqueio da sessão por pressão pré-exercício (200/110) | ✅ concluída |
 | T-12 | Módulos e permissões por plano de assinatura | pendente |
-| T-13 | Aviso de não emergência no app | pendente |
+| T-13 | Aviso de não emergência no app | ✅ concluída (telas do app aguardam build) |
 | T-14 | Dispositivo da clínica: sessão de medição e atribuição da leitura | ✅ concluída |
 | T-15 | Botão "Medir pressão" na ficha e caixa de entrada de não atribuídas | ✅ concluída |
 
@@ -154,6 +154,24 @@ pelo sync agendado, com atraso de minutos.
 **Ordem sugerida para destravar o piloto**, seguindo o checklist do plano comercial: T-3 (feita),
 T-6, T-7, T-11, T-8, T-13 — depois T-9 e T-14/T-15, que dependem dela, depois T-1/T-2/T-4/T-5, que
 dependem do build nativo, e T-12, que depende de decidir o processador de pagamento.
+
+## Estado em produção (24/09/2026)
+
+Deployado nos PRs #95 e #96. QA online em `qa/report-online.md`: 11 verificações, 0 falhas, e o log
+do container confirma o `db push` (`Your database is now in sync`) e a criação das quatro regras de
+automação — que **não existiam em produção** até o #96, o que tornava falsa a promessa da T-3 e da
+T-11 de mudar um limiar sem deploy.
+
+Duas coisas ficaram deliberadamente de fora e dependem de você:
+
+1. **O índice `@@unique([provider, providerUserId])`** não foi ao ar. Produção aplica o schema com
+   `prisma db push` no start e o `start.sh` engole a falha com `|| echo warning`: uma linha
+   duplicada lá faria o push abortar **inteiro** e o container subiria sem as tabelas novas, com
+   deploy verde. Volta depois de conferir duplicatas em produção — e vale decidir se o `|| echo`
+   fica como está.
+2. **O aparelho da clínica ainda não foi conectado de verdade.** O botão existe
+   (`/admin/measurements/inbox`), mas o OAuth real depende de promover a aplicação Withings de
+   `Development` para produção.
 
 ## Suposições
 

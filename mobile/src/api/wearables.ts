@@ -76,3 +76,22 @@ export async function fetchConnectUrl(provider: string): Promise<string> {
   if (!res?.url) throw new Error("No authorisation URL returned");
   return res.url;
 }
+
+/**
+ * Whether the patient has said they read the non-emergency notice
+ * (activity 074, T-13). The server refuses to start a device connection
+ * without it; the screen asks first so the refusal never has to happen.
+ */
+export interface MonitoringConsent {
+  accepted: boolean;
+  acceptedAt: string | null;
+  version: string;
+}
+
+export async function fetchMonitoringConsent(): Promise<MonitoringConsent> {
+  return apiFetch<MonitoringConsent>("/api/patient/monitoring-consent");
+}
+
+export async function acceptMonitoringConsent(): Promise<MonitoringConsent> {
+  return apiFetch<MonitoringConsent>("/api/patient/monitoring-consent", { method: "POST" });
+}

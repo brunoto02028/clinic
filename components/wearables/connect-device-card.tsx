@@ -8,11 +8,14 @@ interface Props {
   connected: boolean;
   lastSync?: string;
   onConnect: () => void;
+  /** Blocked until the patient accepts the monitoring notice (T-13). */
+  connectDisabled?: boolean;
+  connectDisabledReason?: string;
   onDisconnect: () => void;
   onSync: () => void;
 }
 
-export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, onDisconnect, onSync }: Props) {
+export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, onDisconnect, onSync, connectDisabled, connectDisabledReason }: Props) {
   const [loading, setLoading] = useState(false);
   const { locale } = useLocale();
   const isPt = locale === 'pt-BR';
@@ -50,7 +53,9 @@ export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, on
         ) : (
           <button
             onClick={onConnect}
-            className="px-3 py-1.5 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700"
+            disabled={connectDisabled}
+            title={connectDisabled ? connectDisabledReason : undefined}
+            className="px-3 py-1.5 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-violet-600"
           >
             {isPt ? 'Conectar' : 'Connect'}
           </button>
