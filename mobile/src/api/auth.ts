@@ -1,7 +1,18 @@
 import { API_URL } from "./config";
 import type { AuthResponse, AuthTokens } from "./types";
 
-export class AuthError extends Error {}
+export class AuthError extends Error {
+  /**
+   * The HTTP status, because the sign-up screen has to tell three refusals
+   * apart and act differently on each: 409 the account already exists (offer
+   * to sign in or set a password), 403 the clinic is at its patient limit,
+   * 503 no clinic could be resolved. One sentence for all three would be a
+   * dead end in the first case, which is the one a real patient meets.
+   */
+  constructor(message: string, public status?: number) {
+    super(message);
+  }
+}
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -11,7 +22,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new AuthError(data?.error || `Request failed (${res.status})`);
+    throw new AuthError(data?.error || `Request failed (${res.status})`, res.status);
   }
   return data as T;
 }

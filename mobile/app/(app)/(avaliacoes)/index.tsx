@@ -81,7 +81,7 @@ export default function AssessmentsList() {
           {(weightSeries.length || bfSeries.length || waistSeries.length) ? (
             <View
               style={{
-                backgroundColor: t.colors.card,
+                backgroundColor: t.colors.surface,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
                 borderColor: t.colors.borderSubtle,
@@ -104,7 +104,7 @@ export default function AssessmentsList() {
               onPress={() => router.push(`/(app)/(avaliacoes)/${a.id}` as any)}
               testID={`assessment-${a.id}`}
               style={({ pressed }) => ({
-                backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.card,
+                backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
                 borderColor: t.colors.borderSubtle,

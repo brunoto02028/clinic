@@ -132,6 +132,19 @@ export default function Login() {
                 the road: the reset form lives on the website, and nothing here
                 said so. The address already typed and the chosen language go
                 along, so being locked out does not mean starting over. */}
+            {/* Até aqui o app abria numa tela de entrar e quem não tinha conta
+                não tinha caminho nenhum — a rota de cadastro existia e nenhuma
+                tela chamava. */}
+            <Pressable
+              onPress={() => router.push("/register")}
+              accessibilityRole="button"
+              testID="login-create-account"
+              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+            >
+              <Text variant="caption" color={t.colors.text} style={{ fontWeight: "600" }}>
+                {tr(lang, { en: "Create an account", pt: "Criar uma conta" })}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() =>
                 router.push({
@@ -141,7 +154,7 @@ export default function Login() {
               }
               accessibilityRole="button"
               testID="login-forgot-password"
-              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+              style={{ alignSelf: "center", marginTop: 2, paddingVertical: 6, paddingHorizontal: 10 }}
             >
               <Text variant="caption" color={t.colors.textMuted}>
                 {tr(lang, { en: "Forgot your password?", pt: "Esqueceu sua senha?" })}
