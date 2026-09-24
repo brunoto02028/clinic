@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth-options";
 import { getActor, isStaff } from "@/lib/tenant-access";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { sendPatientInvite } from "@/lib/patient-invite";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { checkPatientLimit } from "@/lib/tenant-limits";
 import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
@@ -150,9 +151,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
 
-    // Hash password (use default if not provided)
-    const rawPassword = password || "Patient123!";
-    const hashedPassword = await bcrypt.hash(rawPassword, 12);
+    // Sem senha, de propósito.
+    //
+    // Antes, todo paciente cadastrado pelo admin nascia com `"Patient123!"` —
+    // a mesma senha para todos, fixa no código, com `emailVerified` já
+    // marcado. Quem soubesse o padrão entrava na conta de qualquer paciente
+    // que a clínica criou e que nunca a trocou; bastava saber o e-mail. Num
+    // sistema com prontuário, pressão e notas clínicas, isso não podia ficar.
+    //
+    // Agora a conta nasce sem senha e o paciente recebe um convite para
+    // escolher a dele. A clínica nunca conhece a senha de ninguém — que é
+    // como deve ser — e uma senha que ninguém definiu não abre nada:
+    // `validateCredentials` recusa conta sem senha.
+    const hashedPassword = password ? await bcrypt.hash(password, 12) : null;
     const defaultOverrides = await getDefaultPatientModuleOverrides(actor.clinicId);
 
     const patient = await prisma.user.create({
@@ -179,20 +190,40 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send welcome email to patient
-    try {
-      const appUrl = process.env.NEXTAUTH_URL || '';
-      await sendTemplatedEmail('WELCOME', email.toLowerCase(), {
-        patientName: firstName.trim(),
-        portalUrl: `${appUrl}/dashboard`,
-        clinicPhone: '+44 7XXX XXXXXX',
-      }, patient.id, actor.clinicId);
-    } catch (emailErr) {
-      console.warn('[patients] Failed to send welcome email:', emailErr);
+    // Um e-mail, não dois. O convite já dá as boas-vindas e diz o que fazer
+    // em seguida; mandar o "bem-vindo" junto seria pedir ao paciente que leia
+    // duas mensagens para descobrir que só uma tem o botão que importa.
+    let invite: { sent: boolean; expiresAt: Date } | null = null;
+    if (!password) {
+      invite = await sendPatientInvite({
+        id: patient.id,
+        email: patient.email,
+        firstName: patient.firstName,
+        clinicId: actor.clinicId,
+      });
+    } else {
+      try {
+        const appUrl = process.env.NEXTAUTH_URL || '';
+        await sendTemplatedEmail('WELCOME', email.toLowerCase(), {
+          patientName: firstName.trim(),
+          portalUrl: `${appUrl}/dashboard`,
+          clinicPhone: '+44 7XXX XXXXXX',
+        }, patient.id, actor.clinicId);
+      } catch (emailErr) {
+        console.warn('[patients] Failed to send welcome email:', emailErr);
+      }
     }
 
     return NextResponse.json(
-      { patient, tempPassword: rawPassword === "Patient123!" ? rawPassword : undefined },
+      {
+        patient,
+        invited: !password,
+        // `sent: false` é informação, não detalhe: a clínica precisa saber que
+        // o convite não saiu para poder reenviar, em vez de esperar por um
+        // paciente que nunca recebeu nada.
+        inviteSent: invite?.sent ?? undefined,
+        inviteExpiresAt: invite?.expiresAt ?? undefined,
+      },
       { status: 201 }
     );
   } catch (error: any) {
