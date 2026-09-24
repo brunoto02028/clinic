@@ -54,7 +54,12 @@ const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exe
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
 const MOBILE_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN,
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  // `DELETE` entrou com a remoção da foto de perfil (075, T-14). Sem ele, o
+  // preflight recusava um verbo que a rota implementa — e a única vítima era o
+  // Expo Web, que é justamente onde se testa. O app nativo não aplica CORS e a
+  // web da clínica é mesma origem, então o erro ficaria invisível até alguém
+  // abrir o app no navegador e não conseguir remover a própria foto.
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 // clinicType from a mobile access token's payload (unverified — see its use).
