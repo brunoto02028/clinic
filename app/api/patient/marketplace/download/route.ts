@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * Returns the digital file for a product the user has purchased.
  */
 export async function GET(req: NextRequest) {
-  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
   const __gate = await patientGate({ module: "mod_marketplace" });
   if (__gate.response) return __gate.response;
 

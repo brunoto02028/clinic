@@ -16,7 +16,7 @@ function getStripe() {
 
 // POST — Patient initiates payment for their package
 export async function POST(req: NextRequest) {
-  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
   const __gate = await patientGate({ skipConsent: true });
   if (__gate.response) return __gate.response;
 

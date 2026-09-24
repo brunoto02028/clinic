@@ -128,6 +128,25 @@ export default function Login() {
                 size="lg"
               />
             </View>
+            {/* Until this existed, "Invalid email or password" was the end of
+                the road: the reset form lives on the website, and nothing here
+                said so. The address already typed and the chosen language go
+                along, so being locked out does not mean starting over. */}
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/forgot-password",
+                  params: { email: email.trim(), lang },
+                })
+              }
+              accessibilityRole="button"
+              testID="login-forgot-password"
+              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+            >
+              <Text variant="caption" color={t.colors.textMuted}>
+                {tr(lang, { en: "Forgot your password?", pt: "Esqueceu sua senha?" })}
+              </Text>
+            </Pressable>
           </View>
 
           {/* "Continue with Apple" and "Continue with Google" sat here with no

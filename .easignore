@@ -1,0 +1,18 @@
+# O app do paciente mora em mobile/, dentro deste repo, então o EAS empacota o
+# repositório inteiro: o primeiro build iOS subiu 672 MB e gastou quase cinco
+# minutos só no upload.
+#
+# Nada listado aqui participa da compilação do app. As dependências o EAS
+# instala do zero, e o resto é o site Next.js, conteúdo editorial e specs.
+# Deliberadamente conservador: nenhuma pasta de mobile/ entra nesta lista.
+.next/
+node_modules/
+recovered-content/
+book/
+reconstruir/
+.qa-tmp/
+specs/
+docs/
+tests/
+__tests__/
+public/uploads/

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { owDisconnect } from '@/lib/open-wearables';
@@ -12,6 +13,10 @@ import {
 } from '@/lib/withings';
 
 export async function POST(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_devices" });
+  if (__gate.response) return __gate.response;
+
   const eff = await getEffectiveUser();
   if (!eff) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

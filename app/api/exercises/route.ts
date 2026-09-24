@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
@@ -23,9 +22,6 @@ export async function GET(req: NextRequest) {
   const userId = effectiveUser.userId;
 
   try {
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(userId, "mod_exercises");
-    }
 
     // Exercises of protocol weeks not released yet stay out, like the items themselves.
     const prescriptions = await prisma.exercisePrescription.findMany({
@@ -99,9 +95,6 @@ export async function PATCH(req: NextRequest) {
   const userId = effectiveUser.userId;
 
   try {
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(userId, "mod_exercises");
-    }
 
     const { prescriptionId, date } = await req.json();
 

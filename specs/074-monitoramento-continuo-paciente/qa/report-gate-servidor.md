@@ -90,13 +90,81 @@ consentAcceptedAt carimbado?   SIM
   `ModuleGate`: todas já tratam falha (`r.ok ? … : []`, `.catch`), então antes do aceite
   os contadores ficam vazios em vez de quebrar. Conferido linha a linha.
 
+## QA online (produção)
+
+Deploy do PR #99, build `1.0.1790240361161` (24/09, 08:59). Anônimo e de leitura, como os
+anteriores: nenhuma sessão de paciente, nenhum dado criado, nenhum paciente real tocado.
+
+| Verificação | Resultado |
+|---|---|
+| 12 rotas com gate, anônimas | 307 → /login, **nenhuma 500** |
+| Bearer inválido em `/api/patient/documents` | 401 |
+| Schema aplicado no boot | `The database is already in sync with the Prisma schema.` |
+| Backfill de `clinicId` | `nothing to fill` (já tinha rodado) |
+| **Backfill de consentimento** | `[backfill-consent] nothing to fill` |
+
+A última linha é a que responde a pergunta que importava: **nenhum paciente em produção tinha
+aceitado só pela triagem**. Ninguém precisou ser carregado, e ninguém ficou trancado pela divisão
+entre as duas colunas. O script fica no boot de qualquer forma, porque o caminho existe.
+
+## Segunda rodada — o code review
+
+O review leu as 48 rotas e aprovou o desenho; achou as bordas. Nenhum achado crítico, quatro
+altos, e todos corrigidos antes do deploy.
+
+| # | Achado | O que era |
+|---|---|---|
+| A1 | `/api/patient/change-email/confirm` | está em `publicRoutes` **de propósito** — o link vai para o e-mail novo e é aberto onde a pessoa lê e-mail, sem sessão. O gate quebraria toda troca de e-mail. **Gate removido**, com o motivo escrito. |
+| A2 | Backfill carimbava aceite de terceiro | o AI import cria triagem com `consentGiven: true` e `filledBy: "CLINIC"` (e a coluna tem CLINIC como padrão). Seria **registro falso de consentimento** num produto de saúde — e `lib/automation/outbox.ts:159` segura mensagens automáticas por essa coluna, então também abriria a fila. **Filtro `filledBy = 'PATIENT'`.** |
+| A3 | `appointments/confirm-schedule` sem gate | confirma o bloco inteiro de sessões e grava mensagem que a equipe lê como "o paciente confirmou". |
+| A4 | 3 sub-rotas de `journey/` sem gate | comunidade (XP), quiz (créditos e badge) e marketplace — **todas escrevem**. |
+| M5 | `skipConsent` a mais | `monitoring-consent` e `social-media-consent`: sem aceite dos Termos, dava para ligar a coleta contínua de dados de saúde e autorizar uso de imagem. São consentimentos próprios, não vêm antes daquele. |
+| M6 | 4 módulos divergindo do app | `daily-checkin`→`mod_journey`, `outcome-measures`→`mod_records`, `monitoring-consent`→`mod_devices`, `assessment-progress`→`mod_screening`, pelo `PlanGate` do próprio app. |
+| M7 | Custo dobrado na rota mais quente | `/api/patient/access` fazia a mesma consulta do gate de novo. O gate passou a devolver a linha carregada; os `assertModuleAccess` duplicados de exercises/protocol/clinical-notes saíram. |
+| M8 | Fora de `app/api/patient/**` | `wearables/{data,connections,sync,disconnect}` e `education` — sem consentimento e sem módulo. |
+
+Prova reexecutada com as rotas novas:
+
+```
+== 1) SEM consentimento ==                       == 3) COM consentimento ==
+journey/community      403 consent_required      daily-checkin   403 module_not_in_plan
+journey/marketplace    403 consent_required      education       403 module_not_in_plan
+outcome-measures/due   403 consent_required      journey/comm.   403 module_not_in_plan
+wearables/data         403 consent_required      wearables/data  200 (mod_devices é padrão)
+wearables/connections  403 consent_required
+education              403 consent_required
+monitoring-consent     403 consent_required
+```
+
+Não mexi no que o review marcou como baixo e é só estilo, exceto a acentuação (11 arquivos com
+"nao so na tela", marca de duas passadas de script) e o comentário do `patient-gate.ts` que
+prometia espelhar o `consentBypass` da web sem espelhar.
+
+## A tela que faltava: recuperar a senha no app
+
+Achado fora do review, testando o TestFlight: a tela de login do app **não tem "esqueci minha
+senha"**. O site tem o formulário; nada no app dizia isso. Quem esquecia a senha via
+*"Invalid email or password"* e mais nada — a saída era já saber que o produto tem um site.
+
+`mobile/app/forgot-password.tsx` posta na **mesma rota** que o formulário do site
+(`/api/auth/forgot-password`, pública e confirmada respondendo em produção). A confirmação diz
+*"se existir uma conta com esse e-mail"* e nunca "enviamos": o servidor responde a mesma frase
+para um endereço que nunca viu, de propósito, para que ninguém use o formulário para descobrir
+quem é paciente aqui. O e-mail e o idioma já digitados vão junto.
+
+Depende de um build novo do app — não há `expo-updates` no projeto, então não existe canal OTA.
+
 ## Fora do escopo, não consertado (avisado)
 
-Duas suítes já estavam vermelhas **antes desta tarefa**, e não são bugs de produção —
-são mocks de teste desatualizados:
+Duas suítes já estavam vermelhas **antes desta tarefa**. Avisei, e o Bruno pediu para
+arrumar — **corrigidas**, suíte inteira verde (39 suítes, 400 testes):
 
-- `__tests__/exercises/prescribe-folder.test.ts` — 7 casos. O mock do Prisma não tem
-  `user.findUnique`, que a rota passou a usar no commit `bd4efa86` (18/09).
-- `__tests__/tenant/personal-blocked-routes.test.ts` — 2 casos: `/admin/treatment-plans`
-  e `/api/admin/patients/:id/packages` são dados como bloqueados para tenant personal, e
-  o teste espera o contrário.
+- `__tests__/exercises/prescribe-folder.test.ts` — 7 casos. O mock do Prisma só tinha
+  `user.findFirst`; a rota passou a usar `user.findUnique` para o nome do terapeuta na
+  auditoria (commit `bd4efa86`, 18/09) e o handler inteiro caía no catch. Mock completado.
+- `__tests__/tenant/personal-blocked-routes.test.ts` — 2 casos, e aqui **quem estava
+  errado era o teste**. `/admin/treatment-plans` e `/api/admin/patients/<id>/packages`
+  foram bloqueados de propósito na atividade 52 (commit `1c80a6b5`): cobram pela conta
+  Stripe da BPR, então um estúdio vendendo por ali mandaria o dinheiro dele para a
+  clínica. O teste não era tocado desde a T-29, anterior a isso. Movidos para um bloco
+  próprio, com o motivo escrito.

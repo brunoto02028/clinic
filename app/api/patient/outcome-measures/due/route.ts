@@ -11,6 +11,7 @@
 // viewed. Pre-existing gap elsewhere, not something this route should also
 // have.
 
+import { patientGate } from "@/lib/patient-gate";
 import { NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
@@ -18,6 +19,10 @@ import { prisma } from "@/lib/db";
 const DUE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_records" });
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
