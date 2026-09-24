@@ -24,6 +24,11 @@ export type BPReading = {
   heartRate: number | null;
   notes: string | null;
   recordedBy: { firstName: string; lastName: string } | null;
+  // Where the reading came from and what it was for (activity 074, T-14).
+  // Older rows have neither; they predate the columns and read as what they
+  // were: something a person typed.
+  source?: "PATIENT_DEVICE" | "CLINIC_DEVICE" | "MANUAL" | null;
+  context?: "PRE_SESSION" | "POST_SESSION" | "HOME" | "OTHER" | null;
 };
 
 const T = {
@@ -35,6 +40,8 @@ const T = {
     notes: "Notes", save: "Save", saving: "Saving…", saved: "Reading saved.",
     history: "History", empty: "No readings yet.", confirmDelete: "Delete this reading?",
     self: "Patient self-reported", recordedBy: "Recorded by",
+    origin: "Origin", atHome: "Patient's own device", atClinic: "Clinic device", byHand: "Entered by hand",
+    PRE_SESSION: "before the session", POST_SESSION: "after the session", HOME: "at home", OTHER: "",
     numbersOnly: "Use whole numbers only.", networkError: "Network error — nothing was changed. Try again.",
     LOW: "Low", NORMAL: "Normal", ELEVATED: "Elevated", STAGE1: "High (Stage 1)", STAGE2: "High (Stage 2)", CRISIS: "Hypertensive crisis",
     latest: "Latest reading",
@@ -47,6 +54,8 @@ const T = {
     notes: "Observações", save: "Salvar", saving: "Salvando…", saved: "Medida salva.",
     history: "Histórico", empty: "Ainda sem medidas.", confirmDelete: "Excluir esta medida?",
     self: "Autorregistrada pela paciente", recordedBy: "Registrada por",
+    origin: "Origem", atHome: "Aparelho do paciente", atClinic: "Aparelho da clínica", byHand: "Digitada",
+    PRE_SESSION: "antes da sessão", POST_SESSION: "depois da sessão", HOME: "em casa", OTHER: "",
     numbersOnly: "Use apenas números inteiros.", networkError: "Erro de rede — nada foi alterado. Tente de novo.",
     LOW: "Baixa", NORMAL: "Normal", ELEVATED: "Elevada", STAGE1: "Alta (Estágio 1)", STAGE2: "Alta (Estágio 2)", CRISIS: "Crise hipertensiva",
     latest: "Última medida",
@@ -244,6 +253,7 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                     <th className="p-2 text-left">mmHg</th>
                     <th className="p-2 text-left" />
                     <th className="p-2 text-left">{isPt ? "FC" : "HR"}</th>
+                    <th className="p-2 text-left">{t.origin}</th>
                     <th className="p-2 text-left">{t.recordedBy}</th>
                     <th className="p-2" />
                   </tr>
@@ -259,6 +269,18 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${CLASS_COLOR[cls]}`}>{t[cls]}</span>
                         </td>
                         <td className="p-2">{r.heartRate ?? "—"}</td>
+                        {/* Home and clinic readings sit in one list; without
+                            this the therapist cannot tell a measurement taken
+                            on the reception cuff from one the patient took on
+                            a Sunday morning. */}
+                        <td className="p-2 whitespace-nowrap">
+                          <span className="text-muted-foreground">
+                            {r.source === "CLINIC_DEVICE" ? t.atClinic : r.source === "PATIENT_DEVICE" ? t.atHome : t.byHand}
+                          </span>
+                          {r.context && t[r.context] ? (
+                            <div className="text-[10px] text-muted-foreground">{t[r.context]}</div>
+                          ) : null}
+                        </td>
                         <td className="p-2 whitespace-nowrap">{r.recordedBy ? `${r.recordedBy.firstName} ${r.recordedBy.lastName}` : <span className="text-muted-foreground">{t.self}</span>}
                           {r.notes && <div className="text-muted-foreground whitespace-normal max-w-[16rem] mt-0.5">{r.notes}</div>}
                         </td>

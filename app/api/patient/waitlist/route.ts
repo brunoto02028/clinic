@@ -3,9 +3,14 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { patientGate } from "@/lib/patient-gate";
 
 // GET: patient's own waitlist entries
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,6 +32,10 @@ export async function GET() {
 
 // POST: join the waitlist for a treatment type
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -75,6 +84,10 @@ export async function POST(req: NextRequest) {
 
 // DELETE: leave the waitlist
 export async function DELETE(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

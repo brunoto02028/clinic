@@ -6,7 +6,13 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **065**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **076**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+
+> Existem **duas pastas `074-…`** (`074-cadastro-paciente-no-admin` e
+> `074-monitoramento-continuo-paciente`) — colisão de numeração entre
+> duas sessões trabalhando em paralelo, mesmo padrão já visto com a
+> dupla `072-…` (fatura estruturada / motor de acompanhamento). Nenhum
+> conteúdo foi perdido; os nomes das pastas são únicos.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -40,6 +46,16 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [057](057-superadmin-visao-estudio/) | Superadmin enxerga o estúdio como o personal vê | ✅ |
 | [058](058-esconder-jornada-aluno-estudio/) | Esconder a Jornada do aluno de estúdio | ✅ |
 | [059](059-limpeza-jornada-comunidade-estudio/) | Comunidade fora do aluno de estúdio e limpeza do Journey do personal | ✅ |
+
+## App mobile do paciente
+
+| Nº | Atividade | Status |
+|---|---|---|
+| [070](070-app-paciente-clinica/) | App do paciente da clínica BPR (gating, identidade, porte da área web) | 🟡 em andamento |
+| [071](071-seguranca-api-mobile/) | Segurança da API mobile (catálogo aberto, GET que escreve, auth sem releitura) | 📋 planejada |
+| [074](074-monitoramento-continuo-paciente/) | Monitoramento contínuo: limiares como regra, relatório do paciente, webhook Withings, bloqueio pré-exercício, aparelho da clínica | 🟡 em andamento |
+
+> **070 nasceu como 069** e foi renumerada em 22/09/2026: outra sessão criou `069-pressao-arterial-pelo-terapeuta` ao mesmo tempo, e aquela já estava no `main`. Commits anteriores à renumeração citam `069` e `specs/069-app-paciente-clinica`; a 071 era `070-seguranca-api-mobile`.
 
 ## Plataforma (multi-tenant, segurança, design, custos)
 

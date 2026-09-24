@@ -68,6 +68,11 @@ export async function owGetHealthScores(owUserId: string) {
   return owFetch(`/users/${owUserId}/health-scores`);
 }
 
+/**
+ * `direct: true` means we speak to the provider ourselves rather than through
+ * the aggregator — Withings is the only one that measures blood pressure, and
+ * it has a public OAuth2 API instead of a partner agreement.
+ */
 export const OW_PROVIDERS = [
   { key: 'oura', name: 'Oura Ring', icon: '💍' },
   { key: 'garmin', name: 'Garmin', icon: '⌚' },
@@ -75,4 +80,5 @@ export const OW_PROVIDERS = [
   { key: 'fitbit', name: 'Fitbit', icon: '📱' },
   { key: 'polar', name: 'Polar', icon: '❄️' },
   { key: 'strava', name: 'Strava', icon: '🚴' },
+  { key: 'withings', name: 'Withings', icon: '🩺' },
 ] as const;

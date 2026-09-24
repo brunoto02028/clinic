@@ -3,4 +3,4 @@
  * EXPO_PUBLIC_API_URL env var (e.g. http://localhost:3000).
  */
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") || "https://bpr.rehab";
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") || "https://bpr.clinic";

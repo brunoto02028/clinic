@@ -2,11 +2,13 @@ import { View, Pressable } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, Spinner } from "@/components/ui";
+import { Text, Spinner, Logo } from "@/components/ui";
 import { fetchModules, type AppModule } from "@/api/modules";
+import { SHOW_LAB, CLINIC_ONLY } from "@/lib/feature-flags";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
+import { localeToLang, t as tr } from "@/lib/i18n";
 import { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -19,10 +21,19 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "nutrition-outline": "nutrition-outline",
 };
 
-const ROUTE_MAP: Record<string, string> = {
+/** Same shape the server sends, so the card renders identically. */
+const LAB_DEF: AppModule = {
+  key: "lab",
+  name: "Laboratory",
+  icon: "flask-outline",
+  description: "Lab tests & results",
+};
+
+const ROUTE_MAP: Record<AppModule["key"], string> = {
   lab: "/(app)/(lab)/(tabs)",
   clinica: "/(app)/(clinica)/(tabs)",
   ba: "/(app)/(ba)/(tabs)",
+  // The studio's modules — the personal-trainer product, untouched here.
   treino: "/(app)/(treino)",
   avaliacoes: "/(app)/(avaliacoes)",
   nutricao: "/(app)/(nutricao)",
@@ -30,28 +41,174 @@ const ROUTE_MAP: Record<string, string> = {
 
 export default function ModuleSelect() {
   const t = useTheme();
+  // Runs before any patient data is fetched, so `useLang()` has nothing to
+  // read; the device's locale is the honest default here, as on sign-in.
+  const lang = localeToLang(
+    (() => { try { return Intl.DateTimeFormat().resolvedOptions().locale; } catch { return "en"; } })()
+  );
   const setActiveModule = useModule((s) => s.setActiveModule);
   const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
 
-  const { data: modules, isLoading } = useQuery({
+  const { data: rawModules, isLoading, isError, refetch } = useQuery({
     queryKey: ["modules"],
     queryFn: fetchModules,
   });
 
+  // The app binary and the API deploy independently, so the server can answer
+  // with a key this build has no route for (a module added later, or an older
+  // build against a newer API). An unknown key would make the ROUTE_MAP lookup
+  // undefined and router.replace throw — unprompted, inside the auto-select
+  // effect. Unknown keys are dropped instead.
+  const routable = rawModules?.filter((m) => m.key in ROUTE_MAP);
+
+  // The lab ships finished in every build and is offered unless this build
+  // turned it off (see lib/feature-flags.ts). Only ever added for someone the
+  // server already treats as a clinic patient — a studio's students have no
+  // `clinica` in their list and are a different product entirely.
+  const isClinicPatient = !!routable?.some((m) => m.key === "clinica");
+  const modules =
+    SHOW_LAB && isClinicPatient && !routable?.some((m) => m.key === "lab")
+      ? [...(routable ?? []), LAB_DEF]
+      : routable;
+
+  // Straight past the chooser when there is nothing to choose: either the
+  // account has one area, or this build is the clinic app and the account is a
+  // clinic patient. Anyone else still picks — for a studio's student or a
+  // lab-only account the chooser is the only way in.
+  const skipTo =
+    modules && modules.length === 1
+      ? modules[0].key
+      : CLINIC_ONLY && isClinicPatient
+        ? ("clinica" as const)
+        : null;
+
   useEffect(() => {
-    if (modules && modules.length === 1) {
-      const m = modules[0];
-      setActiveModule(m.key);
-      router.replace(ROUTE_MAP[m.key] as any);
-    }
-  }, [modules]);
+    if (!skipTo) return;
+    setActiveModule(skipTo);
+    router.replace(ROUTE_MAP[skipTo] as any);
+  }, [skipTo]);
+
+  // An account with no areas at all — rare, but a blank chooser with zero
+  // cards and no way out was the old behaviour. Say so and offer sign-out.
+  const noModules = !!modules && modules.length === 0;
 
   const onSelect = (mod: AppModule) => {
     setActiveModule(mod.key);
     router.replace(ROUTE_MAP[mod.key] as any);
   };
 
-  if (isLoading || (modules && modules.length === 1)) {
+  // A failed lookup is not an empty entitlement list: without this the screen
+  // fell through to a chooser with zero cards and no way forward. Only when
+  // there is nothing cached, though — TanStack keeps `data` through a failed
+  // refetch, and blocking on that would strand a user who has a perfectly
+  // good answer in hand.
+  if (isError && !modules) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="cloud-offline-outline" size={40} color="#8A8F9A" />
+          <Text
+            style={{
+              fontFamily: "Sora_600SemiBold",
+              fontSize: 18,
+              color: "#FFFFFF",
+              textAlign: "center",
+              marginTop: 20,
+            }}
+          >
+            {tr(lang, { en: "We could not load your areas", pt: "Não foi possível carregar suas áreas" })}
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 13,
+              color: "#8A8F9A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            {tr(lang, { en: "Check your connection and try again.", pt: "Verifique sua conexão e tente de novo." })}
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={({ pressed }) => ({
+              marginTop: 24,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              borderWidth: 1,
+              borderColor: "#33373F",
+            })}
+          >
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+              {tr(lang, { en: "Try again", pt: "Tentar de novo" })}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (noModules) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="phone-portrait-outline" size={40} color="#8A8F9A" />
+          <Text
+            style={{
+              fontFamily: "Sora_600SemiBold",
+              fontSize: 18,
+              color: "#FFFFFF",
+              textAlign: "center",
+              marginTop: 20,
+            }}
+          >
+            {tr(lang, { en: "No areas available yet", pt: "Nenhuma área disponível ainda" })}
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 13,
+              color: "#8A8F9A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            {tr(lang, {
+              en: "Your account has no areas enabled in this app yet. Please contact your clinic.",
+              pt: "Sua conta ainda não tem nenhuma área liberada neste app. Fale com sua clínica.",
+            })}
+          </Text>
+
+          {/* Without this the screen is a dead end: module-select is the only
+              route a user with no modules can reach, so they could never sign
+              out — not even to let someone else use the phone. */}
+          <Pressable
+            onPress={() => logout()}
+            style={({ pressed }) => ({
+              marginTop: 28,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              borderWidth: 1,
+              borderColor: "#33373F",
+            })}
+          >
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+              {tr(lang, { en: "Sign out", pt: "Sair" })}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || skipTo) {
     return (
       <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
         <Spinner />
@@ -62,6 +219,7 @@ export default function ModuleSelect() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 60 }}>
+        <Logo tone="bone" height={44} style={{ marginBottom: 28 }} />
         <Text
           style={{
             fontFamily: "Sora_700Bold",
@@ -71,7 +229,9 @@ export default function ModuleSelect() {
             marginBottom: 6,
           }}
         >
-          {user?.firstName ? `Hi, ${user.firstName}` : "Welcome"}
+          {user?.firstName
+            ? `${tr(lang, { en: "Hi", pt: "Olá" })}, ${user.firstName}`
+            : tr(lang, { en: "Welcome", pt: "Bem-vindo" })}
         </Text>
         <Text
           style={{
@@ -81,7 +241,7 @@ export default function ModuleSelect() {
             marginBottom: 36,
           }}
         >
-          Choose where you want to go.
+          {tr(lang, { en: "Choose where you want to go.", pt: "Escolha para onde quer ir." })}
         </Text>
 
         <View style={{ gap: 14 }}>

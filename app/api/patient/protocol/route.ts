@@ -3,21 +3,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
+import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
 // GET — Patient's own protocols (sent to patient)
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
     const userId = effectiveUser.userId;
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(userId, "mod_treatment");
-    }
 
     // Same cross-tenant gap fixed in lib/patient-daily-adherence.ts's
     // getExpectedToday (activity 51): a TreatmentProtocol row filtered by
@@ -134,13 +136,14 @@ export async function GET(req: NextRequest) {
 // POST — Patient toggles "did it today" (or a given date) for one item
 // (activity 42 — see specs/042-protocolo-semanal-checklist-diario).
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(effectiveUser.userId, "mod_treatment");
-    }
 
     const body = await req.json();
     if (body.action !== "toggleLog") {
@@ -171,6 +174,17 @@ export async function POST(req: NextRequest) {
     const existing = await (prisma as any).exerciseCompletionLog.findUnique({
       where: { protocolItemId_patientId_completedDate: { protocolItemId: itemId, patientId: effectiveUser.userId, completedDate } },
     });
+
+    // Blood pressure over the clinic's training limit stops today's session
+    // (activity 074, T-11). Checked here as well as on screen, because QA
+    // ticked the exercise on the day strip with the block banner still up.
+    // Unmarking stays allowed: undoing a tick is not training.
+    if (!existing) {
+      const gate = await isTrainingBlockedToday(effectiveUser.userId, dateStr);
+      if (gate.blocked) {
+        return NextResponse.json(trainingBlockedResponse(gate), { status: 409 });
+      }
+    }
 
     if (existing) {
       await (prisma as any).exerciseCompletionLog.delete({ where: { id: existing.id } });
@@ -208,13 +222,14 @@ export async function POST(req: NextRequest) {
 
 // PATCH — Patient marks item as completed
 export async function PATCH(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(effectiveUser.userId, "mod_treatment");
-    }
 
     const { itemId, completed, notes } = await req.json();
     if (!itemId) {

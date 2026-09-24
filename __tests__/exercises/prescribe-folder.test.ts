@@ -13,7 +13,10 @@ jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
 jest.mock("@/lib/notify-patient", () => ({ notifyPatient: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   prisma: {
-    user: { findFirst: jest.fn() },
+    // findUnique is the therapist's name for the audit entry (activity 51);
+    // findFirst is the patient. Both are the route's, and a mock that has only
+    // one of them fails the whole handler in its catch.
+    user: { findFirst: jest.fn(), findUnique: jest.fn() },
     exerciseFolder: { findFirst: jest.fn(), findMany: jest.fn() },
     exercise: { findMany: jest.fn() },
     exercisePrescription: { findMany: jest.fn(), create: jest.fn() },
@@ -53,6 +56,7 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
       user: { role: "ADMIN", clinicId: "clinic-1", id: "therapist-1" },
     });
     db.user.findFirst.mockResolvedValue({ id: "pat-1", firstName: "Gabby" });
+    db.user.findUnique.mockResolvedValue({ firstName: "Ana", lastName: "Lima" });
     notify.mockResolvedValue({ channel: "EMAIL", success: true });
     db.exerciseFolder.findFirst.mockResolvedValue({ id: "f1", name: "Swimmer's Shoulder" });
     db.exerciseFolder.findMany.mockResolvedValue([]);

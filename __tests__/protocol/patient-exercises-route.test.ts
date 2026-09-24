@@ -8,7 +8,13 @@
  */
 
 jest.mock("@/lib/db", () => ({
-  prisma: { exercisePrescription: { findMany: jest.fn() }, treatmentProtocol: { findMany: jest.fn() } },
+  prisma: {
+    exercisePrescription: { findMany: jest.fn() },
+    treatmentProtocol: { findMany: jest.fn() },
+    // The route now asks the shared patient gate first, and the gate reads the
+    // patient: consent and plan are decided on the server, not on the screen.
+    user: { findUnique: jest.fn() },
+  },
 }));
 jest.mock("@/lib/get-effective-user", () => ({ getEffectiveUser: jest.fn() }));
 jest.mock("@/lib/module-access", () => ({ assertModuleAccess: jest.fn() }));
@@ -19,6 +25,7 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { GET } from "@/app/api/exercises/route";
 
 const rx = (prisma as any).exercisePrescription;
+const users = (prisma as any).user;
 const protocols = (prisma as any).treatmentProtocol;
 const effective = getEffectiveUser as jest.Mock;
 const req = () => new NextRequest("http://localhost/api/exercises");
@@ -27,6 +34,16 @@ const whereOf = () => rx.findMany.mock.calls[0][0].where;
 beforeEach(() => {
   jest.resetAllMocks();
   effective.mockResolvedValue({ userId: "p1", role: "PATIENT", isImpersonating: false });
+  // A patient who consented and whose plan includes the exercises: what this
+  // suite is about is the WHERE clause, not the gate, which has its own proof.
+  users.findUnique.mockResolvedValue({
+    id: "p1",
+    role: "PATIENT",
+    clinicId: "c1",
+    consentAcceptedAt: new Date(),
+    moduleOverrides: { mod_exercises: true },
+    fullAccessOverride: false,
+  });
   rx.findMany.mockResolvedValue([]);
 });
 

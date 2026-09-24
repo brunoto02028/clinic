@@ -11,6 +11,7 @@ import {
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
   Dumbbell, Apple, CreditCard, Receipt, MapPin, Contact,
 } from "lucide-react";
+import ClinicMeasurementButton from "@/components/admin/clinic-measurement-button";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
@@ -786,6 +787,14 @@ export default function PatientProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Only renders when this clinic has a cuff connected (activity 074,
+              T-15); it asks the API and draws nothing otherwise. */}
+          <ClinicMeasurementButton
+            patientId={patientId}
+            patientName={`${p.firstName} ${p.lastName}`.trim()}
+            onReading={() => fetchData()}
+          />
+          <Link href={`/admin/patients/${patientId}/report`}><Button variant="outline" size="sm" className="h-8 text-xs"><ClipboardList className="h-3.5 w-3.5 mr-1" /> Report</Button></Link>
           <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissions</Button></Link>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
 {!isPersonal && (() => {

@@ -1,9 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getEffectiveUser } from "@/lib/get-effective-user";
-import { computePatientAccess, PATIENT_ACCESS_SELECT } from "@/lib/patient-access";
+import { computePatientAccess } from "@/lib/patient-access";
+import { patientGate } from "@/lib/patient-gate";
 
 /**
  * GET /api/patient/access
@@ -14,23 +13,16 @@ import { computePatientAccess, PATIENT_ACCESS_SELECT } from "@/lib/patient-acces
  * "locked", about full access, and about free plans.
  */
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
-    const effectiveUser = await getEffectiveUser();
-    if (!effectiveUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = effectiveUser.userId;
-    const userRole = effectiveUser.role;
-
-    const patient = await (prisma as any).user.findUnique({
-      where: { id: userId },
-      select: PATIENT_ACCESS_SELECT,
-    });
-
-    if (!patient) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
-    }
+    // The gate above already resolved the session and loaded this exact row.
+    // This is the most called route in the portal — every ModuleGate and the
+    // sidebar ask it, with no store — so asking Prisma the same question twice
+    // doubled the cost of the page that runs on every navigation.
+    const { userId, role: userRole, patient } = __gate.gate;
 
     const access = computePatientAccess({ ...patient, role: userRole });
 

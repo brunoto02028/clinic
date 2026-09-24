@@ -3,10 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

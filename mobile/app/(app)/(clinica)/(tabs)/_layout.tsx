@@ -2,9 +2,11 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
 import { Platform } from "react-native";
+import { useLang, t as tr } from "@/lib/i18n";
 
 export default function ClinicaTabsLayout() {
   const t = useTheme();
+  const lang = useLang();
   return (
     <Tabs
       screenOptions={{
@@ -30,7 +32,7 @@ export default function ClinicaTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: tr(lang, { en: "Home", pt: "Início" }),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "medkit" : "medkit-outline"} size={size} color={color} />
           ),
@@ -39,7 +41,7 @@ export default function ClinicaTabsLayout() {
       <Tabs.Screen
         name="appointments"
         options={{
-          title: "Sessions",
+          title: tr(lang, { en: "Appointments", pt: "Consultas" }),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "calendar" : "calendar-outline"} size={size} color={color} />
           ),
@@ -48,7 +50,7 @@ export default function ClinicaTabsLayout() {
       <Tabs.Screen
         name="exercises"
         options={{
-          title: "Exercises",
+          title: tr(lang, { en: "Exercises", pt: "Exercícios" }),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "fitness" : "fitness-outline"} size={size} color={color} />
           ),
@@ -57,7 +59,7 @@ export default function ClinicaTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: tr(lang, { en: "Profile", pt: "Perfil" }),
           tabBarActiveTintColor: t.colors.text,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "menu" : "menu-outline"} size={size} color={color} />

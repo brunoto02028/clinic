@@ -58,4 +58,40 @@ export const OW_PROVIDERS = [
   { key: "fitbit", name: "Fitbit", icon: "📱" },
   { key: "polar", name: "Polar", icon: "❄️" },
   { key: "strava", name: "Strava", icon: "🚴" },
+  { key: "withings", name: "Withings", icon: "🩺" },
 ] as const;
+
+/**
+ * The provider's authorisation URL, fetched with the patient's token.
+ *
+ * `Linking.openURL(API_URL + "/api/wearables/connect/" + key)` was the old
+ * route in: a plain browser open, with no Authorization header, against an
+ * endpoint that wanted a cookie session. It landed on the web login every
+ * time. The URL is asked for here, authenticated, and only then opened.
+ */
+export async function fetchConnectUrl(provider: string): Promise<string> {
+  const res = await apiFetch<{ url: string }>(
+    `/api/wearables/connect/${encodeURIComponent(provider)}?format=json`
+  );
+  if (!res?.url) throw new Error("No authorisation URL returned");
+  return res.url;
+}
+
+/**
+ * Whether the patient has said they read the non-emergency notice
+ * (activity 074, T-13). The server refuses to start a device connection
+ * without it; the screen asks first so the refusal never has to happen.
+ */
+export interface MonitoringConsent {
+  accepted: boolean;
+  acceptedAt: string | null;
+  version: string;
+}
+
+export async function fetchMonitoringConsent(): Promise<MonitoringConsent> {
+  return apiFetch<MonitoringConsent>("/api/patient/monitoring-consent");
+}
+
+export async function acceptMonitoringConsent(): Promise<MonitoringConsent> {
+  return apiFetch<MonitoringConsent>("/api/patient/monitoring-consent", { method: "POST" });
+}

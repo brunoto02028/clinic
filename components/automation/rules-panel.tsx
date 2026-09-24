@@ -9,6 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+// bp-bands, não bp-thresholds: este componente é do browser e o outro importa o Prisma.
+import { BP_THRESHOLD_RULE, thresholdsFromCondition, classify } from "@/lib/automation/bp-bands";
+// Only the rule code: importing lib/automation/exercise-bp here would pull
+// Prisma into the browser bundle, which is the thing this file already split
+// bp-bands out to avoid.
+const EXERCISE_BP_RULE = "EXERCISE_BP_LIMITS";
 
 type Operators = Record<string, number | string | boolean | unknown[]>;
 type Condition = Record<string, number | string | boolean | Operators>;
@@ -37,6 +43,7 @@ const UI = {
     on: "On", off: "Off",
     conditionTitle: "Fires when", textTitle: "Text",
     previewWith: (n: number) => `On a patient with ${n} missing activities`,
+    previewWithBp: (sys: number, dia: number) => `On a reading of ${sys}/${dia} mmHg`,
     readOnly: "Only an administrator can change these.",
     saved: "Saved. It applies on the next run.",
     nothingChanged: "Nothing changed, so nothing was saved.",
@@ -52,6 +59,7 @@ const UI = {
     on: "Ligada", off: "Desligada",
     conditionTitle: "Dispara quando", textTitle: "Texto",
     previewWith: (n: number) => `Num paciente com ${n} atividades não feitas`,
+    previewWithBp: (sys: number, dia: number) => `Numa leitura de ${sys}/${dia} mmHg`,
     readOnly: "Só um administrador pode mudar estas regras.",
     saved: "Salvo. Vale na próxima execução.",
     nothingChanged: "Nada mudou, então nada foi salvo.",
@@ -88,8 +96,55 @@ function thresholdOf(condition: Condition): number {
   return 1;
 }
 
+/**
+ * The sample the preview fills the placeholders with.
+ *
+ * There used to be one sentence and one fact, `missingItems`. On the
+ * blood-pressure rule that printed “On a patient with 130 missing activities:
+ * Blood pressure {systolic}/{diastolic} mmHg” — a sentence about a different
+ * rule, with the placeholders left raw. A preview is read as what the rule will
+ * send, so a wrong one is worse than none.
+ */
+function sampleFor(
+  code: string,
+  condition: Condition,
+  ui: (typeof UI)["en-GB"] | (typeof UI)["pt-BR"]
+): { label: string; facts: Record<string, string | number> } {
+  if (code === BP_THRESHOLD_RULE) {
+    // The crisis pair, because that is the reading this rule exists to catch.
+    const t = thresholdsFromCondition(condition);
+    return {
+      label: ui.previewWithBp(t.crisisSystolic, t.crisisDiastolic),
+      facts: {
+        systolic: t.crisisSystolic,
+        diastolic: t.crisisDiastolic,
+        classification: classify(t.crisisSystolic, t.crisisDiastolic, t).classification,
+      },
+    };
+  }
+  if (code === EXERCISE_BP_RULE) {
+    // The blocking pair, just over the line, since that is the reading that
+    // stops a session. Without this branch the rule previewed as "On a patient
+    // with 1 missing activities" with {systolic} left raw — the same wrong
+    // sentence QA caught on the blood-pressure rule, one rule later.
+    const num = (key: string, fallback: number) => {
+      const v = (condition as Record<string, unknown>)?.[key];
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    const systolic = num("blockSystolic", 200) + 5;
+    const diastolic = num("blockDiastolic", 110) + 2;
+    return {
+      label: ui.previewWithBp(systolic, diastolic),
+      facts: { systolic, diastolic },
+    };
+  }
+  const n = thresholdOf(condition);
+  return { label: ui.previewWith(n), facts: { missingItems: n } };
+}
+
 /** Fills `{fact}` the way lib/automation/rules.ts does, for the preview. */
-function interpolate(text: string, facts: Record<string, number>) {
+function interpolate(text: string, facts: Record<string, string | number>) {
   return text.replace(/\{(\w+)\}/g, (whole, key) =>
     facts[key] === undefined ? whole : String(facts[key])
   );
@@ -106,6 +161,11 @@ export default function RulesPanel() {
   const [draft, setDraft] = useState<Record<string, Rule>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // The refusal belongs next to the rule that was refused. It used to render
+  // at the top of the panel: with three rules the blood-pressure card sits
+  // below the fold, so QA clicked Save, saw nothing change, and the rejected
+  // numbers stayed in the boxes — a refusal nobody sees reads as acceptance.
+  const [ruleError, setRuleError] = useState<Record<string, string>>({});
   // What the server last said, so an edit in progress can be told apart from a
   // stale copy. Without it, saving rule B wiped an unsaved edit on rule A.
   const server = useRef<Record<string, Rule>>({});
@@ -148,6 +208,7 @@ export default function RulesPanel() {
     const was = server.current[code];
     setBusy(code);
     setMessage(null);
+    setRuleError((e) => ({ ...e, [code]: "" }));
 
     // Only what changed. Sending everything made a save with nothing edited
     // create an override, quietly cutting that clinic off from the default
@@ -171,8 +232,16 @@ export default function RulesPanel() {
       const data = await res.json().catch(() => ({}));
       // The server's own words when it refuses — a mistyped placeholder or an
       // operator it does not understand deserves to be read, not swallowed.
-      setMessage(res.ok ? ui.saved : data?.error ?? ui.failed);
-      await load();
+      // `errorPt` is sent for the refusals that have a translation.
+      if (res.ok) {
+        setMessage(ui.saved);
+        await load();
+      } else {
+        const text = (locale === "pt-BR" ? data?.errorPt : null) ?? data?.error ?? ui.failed;
+        setRuleError((e) => ({ ...e, [code]: text }));
+        // No reload on a refusal: it would wipe what the admin typed, and the
+        // point of showing the message is to let them correct it.
+      }
     } finally {
       setBusy(null);
     }
@@ -181,10 +250,13 @@ export default function RulesPanel() {
   const reset = async (code: string) => {
     setBusy(code);
     setMessage(null);
+    setRuleError((e) => ({ ...e, [code]: "" }));
     try {
       const res = await fetch(`/api/automation/rules/${code}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) setMessage(data?.error ?? ui.failed);
+      if (!res.ok) {
+        setRuleError((e) => ({ ...e, [code]: ((locale === "pt-BR" ? data?.errorPt : null) ?? data?.error ?? ui.failed) }));
+      }
       await load();
     } finally {
       setBusy(null);
@@ -296,7 +368,26 @@ export default function RulesPanel() {
                       ) : (
                         <div key={fact} className="flex items-center gap-2">
                           <Label className="text-sm">{fact} =</Label>
-                          <Input className="w-32" value={String(expr)} disabled />
+                          {/* A plain value used to render read-only, which made
+                              the blood-pressure thresholds — four plain numbers —
+                              visible and unchangeable on the one screen built to
+                              change them. Same wiring as the operator branch
+                              above; the type follows the value, so a number
+                              stays a number. */}
+                          <Input
+                            type={typeof expr === "number" ? "number" : "text"}
+                            className="w-32"
+                            value={String(expr)}
+                            disabled={!canEdit || busy === r.code}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const next = typeof expr === "number" ? Number(raw) : raw;
+                              setDraft((s) => ({
+                                ...s,
+                                [r.code]: { ...d, condition: { ...d.condition, [fact]: next } },
+                              }));
+                            }}
+                          />
                         </div>
                       )
                     )}
@@ -343,15 +434,27 @@ export default function RulesPanel() {
                           )}
                           {/* Only where there is something to fill, and with the
                               rule's own threshold rather than a made-up 3. */}
-                          {typeof value === "string" && value.includes("{") && (
-                            <p className="text-xs text-muted-foreground">
-                              {ui.previewWith(thresholdOf(d.condition))}: “
-                              {interpolate(String(value), { missingItems: thresholdOf(d.condition) })}”
-                            </p>
-                          )}
+                          {typeof value === "string" && value.includes("{") && (() => {
+                            const sample = sampleFor(r.code, d.condition, ui);
+                            return (
+                              <p className="text-xs text-muted-foreground">
+                                {sample.label}: “{interpolate(String(value), sample.facts)}”
+                              </p>
+                            );
+                          })()}
                         </div>
                       ))}
                   </div>
+                )}
+
+                {ruleError[r.code] && (
+                  <p
+                    role="alert"
+                    data-testid={`rule-error-${r.code}`}
+                    className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2"
+                  >
+                    {ruleError[r.code]}
+                  </p>
                 )}
 
                 {canEdit && (

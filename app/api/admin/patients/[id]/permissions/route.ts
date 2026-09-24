@@ -95,6 +95,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       category: m.category,
       href: m.href,
       alwaysVisible: m.alwaysVisible || false,
+      // Granted without being in any plan, and still toggleable — the screen
+      // needs to know, or it would show "not included" beside a module the
+      // patient can plainly use.
+      defaultGranted: m.defaultGranted || false,
+      appOnly: m.appOnly || false,
       grantedByPlan: planModules.has(m.key),
       adminOverride: overrides[m.key] !== undefined ? overrides[m.key] : null, // null = no override
       effectiveAccess: effectiveModules.has(m.key),

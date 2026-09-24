@@ -20,6 +20,17 @@ export function loginRequest(email: string, password: string): Promise<AuthRespo
   return postJson<AuthResponse>("/api/mobile/login", { email, password });
 }
 
+/**
+ * Asks for a reset link — the same route the website's own form posts to.
+ *
+ * The server answers the same sentence whether or not the account exists, on
+ * purpose: otherwise this screen would tell a stranger who is a patient here.
+ * The screen repeats that answer as it comes, and never says "we sent it".
+ */
+export function forgotPasswordRequest(email: string): Promise<{ message?: string }> {
+  return postJson<{ message?: string }>("/api/auth/forgot-password", { email });
+}
+
 export function registerRequest(
   firstName: string,
   lastName: string,

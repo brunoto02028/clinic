@@ -4,11 +4,17 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { signFileToken } from "@/lib/file-access-token";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
 // GET — Patient's own documents
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_documents" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -23,7 +29,20 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ documents });
+    // An absolute URL that opens on its own, because the app hands it to the
+    // phone's viewer and that viewer has no session of ours. Relative, and
+    // behind a cookie, it did nothing at all when tapped — silently (found by
+    // the admin→app parity audit). The token is bound to the file and the
+    // person and lasts minutes.
+    const base = (process.env.NEXTAUTH_URL || "https://bpr.clinic").replace(/\/$/, "");
+    const withLinks = documents.map((d: any) => ({
+      ...d,
+      // Kept as-is for the web, which is authenticated by cookie already.
+      fileUrl: d.fileUrl,
+      openUrl: `${base}/api/files/${d.id}?t=${signFileToken(d.id, userId)}`,
+    }));
+
+    return NextResponse.json({ documents: withLinks });
   } catch (err: any) {
     console.error("[patient-documents] GET error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -32,6 +51,10 @@ export async function GET(req: NextRequest) {
 
 // POST — Patient uploads their own document
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_documents" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }

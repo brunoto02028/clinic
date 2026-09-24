@@ -116,6 +116,17 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
+        // Readings from the clinic's own cuff that matched no measurement
+        // window (activity 074, T-15). It needs a door in the navigation, or
+        // the only way to reach it is the link on an expired measurement.
+        key: "measurements",
+        label: "Measurements",
+        labelPt: "Medições",
+        href: "/admin/measurements/inbox",
+        matchRoutes: ["/admin/measurements/inbox"],
+        clinicalOnly: true,
+      },
+      {
         key: "portal",
         label: "Portal",
         labelPt: "Portal",
@@ -160,6 +171,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/patients",
       "/admin/screening-preview",
       "/admin/patient-tasks",
+      // Sem isto a aba "Medições" cai na seção Agenda ao ser clicada: o título
+      // vira "Agenda", a barra troca de abas e a própria aba desaparece.
+      "/admin/measurements",
       "/admin/patient-portal",
       "/admin/journey",
       "/admin/conditions",

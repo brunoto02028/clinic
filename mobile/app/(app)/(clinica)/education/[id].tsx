@@ -7,9 +7,11 @@ import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchEducation, educationList } from "@/api/education";
 import { updateEducationProgress } from "@/api/education-progress";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
 
 export default function EducationDetail() {
   const t = useTheme();
+  const lang = useLang();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [rating, setRating] = useState(0);
@@ -37,12 +39,12 @@ export default function EducationDetail() {
   return (
     <Screen scroll testID="education-detail">
       <Stack.Screen
-        options={{ headerShown: true, title: "Conteudo", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
+        options={{ headerShown: true, title: tr(lang, { en: "Article", pt: "Conteúdo" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       {isLoading ? (
         <Spinner center />
       ) : isError || !item ? (
-        <Card><Text color={t.colors.danger}>Nao foi possivel carregar.</Text></Card>
+        <Card><Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text></Card>
       ) : (
         <View style={{ gap: 16 }}>
           <View>
@@ -59,7 +61,7 @@ export default function EducationDetail() {
               {isCompleted && (
                 <View style={{ backgroundColor: t.colors.okSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Ionicons name="checkmark-circle" size={12} color={t.colors.ok} />
-                  <Text variant="caption" color={t.colors.ok} style={{ fontSize: 11 }}>Concluido</Text>
+                  <Text variant="caption" color={t.colors.ok} style={{ fontSize: 11 }}>{tr(lang, { en: "Completed", pt: "Concluído" })}</Text>
                 </View>
               )}
             </View>
@@ -84,8 +86,12 @@ export default function EducationDetail() {
                 <Ionicons name="play" size={24} color={t.colors.bad} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>Assistir video</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Abrir no navegador</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>
+                  {tr(lang, { en: "Watch video", pt: "Assistir vídeo" })}
+                </Text>
+                <Text variant="caption" color={t.colors.textMuted}>
+                  {tr(lang, { en: "Opens in your browser", pt: "Abrir no navegador" })}
+                </Text>
               </View>
             </Pressable>
           )}
@@ -93,7 +99,7 @@ export default function EducationDetail() {
           {/* Rating & complete */}
           {!isCompleted && (
             <Card>
-              <Text variant="label" style={{ fontWeight: "600", marginBottom: 8 }}>Avaliar conteudo</Text>
+              <Text variant="label" style={{ fontWeight: "600", marginBottom: 8 }}>{tr(lang, { en: "Rate this article", pt: "Avaliar conteúdo" })}</Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
                 {[1, 2, 3, 4, 5].map(star => (
                   <Pressable key={star} onPress={() => setRating(star)}>
@@ -106,7 +112,7 @@ export default function EducationDetail() {
                 ))}
               </View>
               <Button
-                title="Marcar como concluido"
+                title={tr(lang, { en: "Mark as completed", pt: "Marcar como concluído" })}
                 onPress={() => completeMutation.mutate()}
                 loading={completeMutation.isPending}
                 icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}

@@ -5,13 +5,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { sendTemplatedEmail } from "@/lib/email-templates";
-import { notifyPatient } from "@/lib/notify-patient";
-import { sendAdminAlert } from "@/lib/admin-alert-email";
-import { escapeHtml } from "@/lib/admin-notify-email";
+import { afterBloodPressureRecorded } from "@/lib/bp-alerts";
+import { patientGate } from "@/lib/patient-gate";
 
 // GET — list patient's own BP readings
 export async function GET(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -36,6 +38,10 @@ export async function GET(request: NextRequest) {
 
 // POST — create a new BP reading
 export async function POST(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -72,56 +78,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send BP_HIGH_ALERT if reading is high (Stage 1 hypertension or above)
-    const sys = parseInt(systolic);
-    const dia = parseInt(diastolic);
-    if (sys >= 130 || dia >= 80) {
-      const classification = sys >= 180 || dia >= 120
-        ? 'Hypertensive Crisis'
-        : sys >= 140 || dia >= 90
-        ? 'Stage 2 Hypertension'
-        : 'Stage 1 Hypertension';
-      const isCrisis = sys >= 180 || dia >= 120;
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
-      notifyPatient({
-        patientId: userId,
-        emailTemplateSlug: 'BP_HIGH_ALERT',
-        emailVars: {
-          bpReading: `${sys}/${dia} mmHg`,
-          readingDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-          classification,
-          portalUrl: `${BASE}/dashboard/blood-pressure`,
-        },
-        plainMessage: isCrisis
-          ? `🚨 HYPERTENSIVE CRISIS: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. Call 999/112 or go to A&E now.`
-          : `⚠️ High BP Alert: Your reading of ${sys}/${dia} mmHg is classified as ${classification}. Please contact your healthcare provider.`,
-        plainMessagePt: isCrisis
-          ? `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. Ligue 999/112 ou vá ao pronto-socorro agora.`
-          : `⚠️ Alerta de PA Alta: Sua leitura de ${sys}/${dia} mmHg é classificada como ${classification}. Entre em contato com seu médico.`,
-      }).catch(err => console.error('[bp] alert notification error:', err));
-
-      // Dedicated admin alert (activity 37) — the patient-facing template
-      // above already BCCs the admin, but that's a passive copy of an email
-      // addressed to the patient. This is the only event in the system with
-      // a direct clinical-safety implication, so it gets its own clearly
-      // flagged alert instead of relying on the BCC being noticed.
-      const patientName = _u ? `${_u.firstName} ${_u.lastName}` : "A patient";
-      sendAdminAlert({
-        clinicId,
-        subject: isCrisis
-          ? `🚨 HYPERTENSIVE CRISIS: ${patientName} — ${sys}/${dia} mmHg`
-          : `🚨 High Blood Pressure Reading: ${patientName} — ${sys}/${dia} mmHg`,
-        title: isCrisis ? "Hypertensive Crisis Reading" : "High Blood Pressure Reading",
-        intro: `<strong>${escapeHtml(patientName)}</strong> just logged a reading requiring attention.`,
-        rows: [
-          { label: "Reading", value: `${sys}/${dia} mmHg` },
-          { label: "Classification", value: classification },
-          { label: "Date", value: new Date().toLocaleString("en-GB") },
-        ],
-        ctaUrl: `${BASE}/admin/patients/${userId}`,
-        accentColor: "#dc2626",
-      }).catch(err => console.error('[bp] admin alert error:', err));
-    }
+    // Classification, the clinic's alert and the patient's crisis message all
+    // live in lib/bp-alerts.ts now, because this stopped being the only way a
+    // reading arrives: the Withings webhook, the clinic's cuff and a manual
+    // assignment all write readings too, and none of them alerted anyone.
+    await afterBloodPressureRecorded({
+      patientId: userId,
+      clinicId,
+      systolic: parseInt(systolic),
+      diastolic: parseInt(diastolic),
+      measuredAt: reading.measuredAt ?? new Date(),
+      via: "app",
+    });
 
     return NextResponse.json({ reading });
   } catch (error) {

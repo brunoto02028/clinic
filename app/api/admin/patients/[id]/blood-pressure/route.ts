@@ -95,6 +95,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         notes: parsed.data.notes ?? null,
         measuredAt: parsed.data.measuredAt ?? new Date(),
         method: "MANUAL",
+        // Medida pelo terapeuta, no prontuário: não veio de casa. Ficava com
+        // o default `HOME` do schema e ia assim para o relatório, para a
+        // média e para o histórico do app (auditoria de paridade, F7).
+        source: "MANUAL",
+        context: "OTHER",
       },
       include: { recordedBy: { select: { firstName: true, lastName: true } } },
     });

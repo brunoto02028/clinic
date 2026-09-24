@@ -1,5 +1,10 @@
 import { Stack } from "expo-router";
+import ModuleGuard from "@/components/ModuleGuard";
 
 export default function LabLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <ModuleGuard module="lab">
+      <Stack screenOptions={{ headerShown: false }} />
+    </ModuleGuard>
+  );
 }

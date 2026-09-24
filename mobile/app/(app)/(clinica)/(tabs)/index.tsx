@@ -14,21 +14,27 @@ import {
   Spinner,
 } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { isConsentError, isPlanError } from "@/lib/plan";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
+import { fetchProtocols } from "@/api/protocol";
+import { fetchMessages, unreadFromStaff } from "@/api/messages";
 
-function formatSessionDate(iso: string): string {
+function formatSessionDate(iso: string, lang: Lang): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
+  const locale = lang === "pt" ? "pt-BR" : "en-GB";
+  const weekday = d.toLocaleDateString(locale, { weekday: "short" });
   const day = d.getDate();
-  const month = d.toLocaleDateString("en-US", { month: "short" });
+  const month = d.toLocaleDateString(locale, { month: "short" });
   const hours = d.getHours().toString().padStart(2, "0");
   const minutes = d.getMinutes().toString().padStart(2, "0");
   return `${weekday} ${day} ${month} · ${hours}:${minutes}`;
 }
 
 export default function Health() {
+  const lang = useLang();
   const t = useTheme();
 
   const appts = useQuery({
@@ -39,12 +45,37 @@ export default function Health() {
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
   });
+  const protocols = useQuery({
+    queryKey: ["protocols"],
+    queryFn: fetchProtocols,
+  });
+  const messages = useQuery({
+    queryKey: ["messages"],
+    queryFn: () => fetchMessages(),
+  });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
-  const exerciseCount = exercises.data?.length ?? 0;
-  const estimatedMinutes = exerciseCount * 5;
+  // `?? 0` turned a failed request — and a 403 from the plan gate — into the
+  // sentence "0 exercises today", which is not an error message and not a
+  // paywall: it is a false statement about the patient's own plan. The count
+  // is only a count when there is data.
+  const exerciseCount = exercises.data?.length ?? null;
+  // "We could not load today's exercises" was printed while the request was
+  // still in flight: `exerciseCount === null` is also true before the first
+  // answer arrives, and the spinner above only showed when *both* queries were
+  // loading. A pending request is not a failure.
+  const exercisesPending = exercises.isPending || exercises.isFetching;
+  const exercisesUnavailable = exerciseCount === null && !exercisesPending;
+  // The patient's own diagnosis, or nothing. This card used to read
+  // "YOUR PLAN · Shoulder" and "Day 12 of 42" as literals in the JSX — a knee
+  // patient on their third of eight sessions read it as their own chart. There
+  // is no day-of-plan figure in the API, so none is shown.
+  const planLabel = protocols.data?.[0]?.diagnosis?.summary ?? null;
+  const unreadMessages = unreadFromStaff(messages.data ?? []);
 
-  if (appts.isLoading && exercises.isLoading) {
+  // `&&` meant the screen rendered as soon as either query settled, with the
+  // other still running — which is how a live request came out as an error.
+  if (appts.isLoading || exercises.isLoading) {
     return (
       <Screen testID="health-screen">
         <Spinner center />
@@ -56,7 +87,7 @@ export default function Health() {
     <Screen scroll testID="health-screen">
       <View style={{ gap: 20 }}>
         {/* ── Header ── */}
-        <Text variant="title">Health</Text>
+        <Text variant="title">{tr(lang, { en: "Health", pt: "Saúde" })}</Text>
 
         {/* ── Next session card ── */}
         {next ? (
@@ -73,19 +104,19 @@ export default function Health() {
               color="#CBDCD2"
               style={{ textTransform: "uppercase" }}
             >
-              NEXT SESSION
+              {tr(lang, { en: "NEXT SESSION", pt: "PRÓXIMA SESSÃO" })}
             </Text>
             <Text
               variant="subtitle"
               color="#FFFFFF"
               style={{ fontFamily: "Sora_700Bold" }}
             >
-              {formatSessionDate(next.dateTime)}
+              {formatSessionDate(next.dateTime, lang)}
             </Text>
             <Text variant="body" color="rgba(255,255,255,0.85)">
               {next.treatmentType}
               {next.therapist
-                ? ` · with ${next.therapist.firstName}`
+                ? ` · ${tr(lang, { en: "with", pt: "com" })} ${next.therapist.firstName}`
                 : ""}
             </Text>
 
@@ -108,31 +139,14 @@ export default function Health() {
                   color="#FFFFFF"
                   style={{ fontFamily: "Sora_700Bold", fontSize: 13 }}
                 >
-                  Reschedule
+                  {tr(lang, { en: "Reschedule", pt: "Remarcar" })}
                 </Text>
               </Pressable>
 
-              <Pressable
-                onPress={() => {}}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingVertical: 12,
-                  borderRadius: t.radius.md,
-                  backgroundColor: pressed
-                    ? "rgba(255,255,255,0.88)"
-                    : "#FFFFFF",
-                })}
-              >
-                <Text
-                  variant="label"
-                  color={t.colors.health}
-                  style={{ fontFamily: "Sora_700Bold", fontSize: 13 }}
-                >
-                  Directions
-                </Text>
-              </Pressable>
+              {/* "Directions" lived here with `onPress={() => {}}`. A button
+                  that does nothing is worse than no button: the patient taps it
+                  before the session and concludes the app is broken. It comes
+                  back when there is an address to open a map with. */}
             </View>
           </View>
         ) : (
@@ -151,17 +165,20 @@ export default function Health() {
               color={t.colors.health}
             />
             <Text variant="heading" color={t.colors.health}>
-              No upcoming sessions
+              {tr(lang, { en: "No upcoming sessions", pt: "Nenhuma sessão agendada" })}
             </Text>
             <Text
               variant="body"
               color={t.colors.textSecondary}
               style={{ textAlign: "center" }}
             >
-              Book your next rehab session to stay on track.
+              {tr(lang, {
+                en: "Book your next session to stay on track.",
+                pt: "Agende sua próxima sessão para manter o ritmo.",
+              })}
             </Text>
             <Button
-              title="Book a session"
+              title={tr(lang, { en: "Book a session", pt: "Agendar sessão" })}
               variant="health"
               size="sm"
               onPress={() => router.push("/appointments")}
@@ -183,31 +200,54 @@ export default function Health() {
               color={t.colors.textMuted}
               style={{ textTransform: "uppercase" }}
             >
-              YOUR PLAN · Shoulder
+              {planLabel
+                ? `${tr(lang, { en: "YOUR PLAN", pt: "SEU PLANO" })} · ${planLabel}`
+                : tr(lang, { en: "YOUR PLAN", pt: "SEU PLANO" })}
             </Text>
-            <Pill label="Day 12 of 42" variant="health" />
           </View>
 
+          {/* The "~N min" beside this was exerciseCount × 5 — a number with no
+              source, shown as if the therapist had set it. */}
           <Text variant="heading">
-            {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""} today
-            {" "}· ~{estimatedMinutes} min
+            {exercisesPending && exerciseCount === null
+              ? "…"
+              : exercisesUnavailable
+              ? tr(lang, {
+                  en: isConsentError(exercises.error)
+                    ? "Accept the terms to continue"
+                    : isPlanError(exercises.error)
+                    ? "Not included in your plan"
+                    : "We could not load today's exercises",
+                  pt: isConsentError(exercises.error)
+                    ? "Aceite os termos para continuar"
+                    : isPlanError(exercises.error)
+                    ? "Não incluído no seu plano"
+                    : "Não foi possível carregar os exercícios de hoje",
+                })
+              : `${exerciseCount} ${exerciseCount === 1 ? tr(lang, { en: "exercise", pt: "exercício" }) : tr(lang, { en: "exercises", pt: "exercícios" })} ${tr(lang, { en: "today", pt: "hoje" })}`}
           </Text>
 
-          <TriBar work health />
-
-          <Button
-            title="Start today's exercises"
-            variant="health"
-            onPress={() => router.push("/exercises")}
-          />
+          {/* Both of these used to render under "Not included in your plan":
+              a progress bar with two of three segments filled against nothing,
+              and a full-width call to action that opened a locked screen. */}
+          {exerciseCount !== null && (
+            <>
+              <TriBar work health />
+              <Button
+                title={tr(lang, { en: "Start today's exercises", pt: "Começar os exercícios de hoje" })}
+                variant="health"
+                onPress={() => router.push("/exercises")}
+              />
+            </>
+          )}
         </Card>
 
         {/* ── Quick links ── */}
         <Card>
           <ListItem
             icon={<Avatar label="📈" pillar="health" size={36} />}
-            title="Pain trend"
-            subtitle="Track your progress over time"
+            title={tr(lang, { en: "Pain trend", pt: "Evolução da dor" })}
+            subtitle={tr(lang, { en: "Track your progress over time", pt: "Acompanhe seu progresso ao longo do tempo" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -219,8 +259,8 @@ export default function Health() {
           />
           <ListItem
             icon={<Avatar label="🗓" pillar="health" size={36} />}
-            title="Book a new session"
-            subtitle="Schedule your next appointment"
+            title={tr(lang, { en: "Book a new session", pt: "Agendar nova sessão" })}
+            subtitle={tr(lang, { en: "Schedule your next appointment", pt: "Marque sua próxima consulta" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -231,9 +271,9 @@ export default function Health() {
             onPress={() => router.push("/appointments")}
           />
           <ListItem
-            icon={<Avatar label="💬" pillar="health" size={36} />}
-            title="Message the clinic"
-            subtitle="Send a message to your therapist"
+            icon={<Avatar label="📋" pillar="health" size={36} />}
+            title={tr(lang, { en: "My records", pt: "Meu prontuário" })}
+            subtitle={tr(lang, { en: "Notes from your sessions", pt: "Notas das suas sessões" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -242,6 +282,24 @@ export default function Health() {
               />
             }
             onPress={() => router.push("/clinical-notes")}
+          />
+          {/* This link used to say "Message the clinic" and open the
+              therapist's read-only SOAP notes, because the channel did not
+              exist in the app. Now it does, and the badge counts what the
+              clinic has sent and the patient has not read. */}
+          <ListItem
+            icon={<Avatar label="💬" pillar="health" size={36} />}
+            title={tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" })}
+            subtitle={tr(lang, { en: "Send a message to your therapist", pt: "Envie uma mensagem ao seu terapeuta" })}
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {unreadMessages > 0 && (
+                  <Pill label={String(unreadMessages)} variant="health" />
+                )}
+                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+              </View>
+            }
+            onPress={() => router.push("/messages")}
             last
           />
         </Card>

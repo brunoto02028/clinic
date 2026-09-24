@@ -5,6 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
+import { LoadFailure } from "@/components/LoadFailure";
 import { fetchCheckIns, submitCheckIn } from "@/api/daily-checkin";
 
 const MOODS = [
@@ -15,7 +18,10 @@ const MOODS = [
   { v: 5, emoji: "😄" },
 ];
 
-const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DAY_LABELS: Record<Lang, string[]> = {
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  pt: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+};
 
 function SliderRow({ label, value, onChange, color }: { label: string; value: number; onChange: (v: number) => void; color?: string }) {
   const t = useTheme();
@@ -40,13 +46,17 @@ function SliderRow({ label, value, onChange, color }: { label: string; value: nu
 
 function HistoryDots({ history }: { history: Array<{ checkinDate: string; exercisesDone: boolean }> }) {
   const t = useTheme();
+  const lang = useLang();
   const last7 = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
+    // Local parts, not UTC: the weekday label comes from `getDay()` in the
+    // phone's timezone, so a UTC date string would mark the wrong dot near
+    // midnight — the day shown and the day matched must be the same day.
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const entry = history.find(h => h.checkinDate === dateStr);
-    last7.push({ date: dateStr, day: DAY_LABELS[d.getDay()], entry });
+    last7.push({ date: dateStr, day: DAY_LABELS[lang][d.getDay()], entry });
   }
 
   return (
@@ -73,10 +83,11 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
   );
 }
 
-export default function DailyCheckIn() {
+function DailyCheckInScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
 
   const [pain, setPain] = useState(3);
   const [mood, setMood] = useState(3);
@@ -102,13 +113,15 @@ export default function DailyCheckIn() {
     mutationFn: submitCheckIn,
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["daily-checkin"] });
-      qc.invalidateQueries({ queryKey: ["patient-progress"] });
+      qc.invalidateQueries({ queryKey: ["assessment-progress"] });
       const streakMsg = res.streak
-        ? `\nStreak: ${res.streak.current} dia${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " - Novo recorde!" : ""}`
+        ? lang === "pt"
+          ? `\nSequência: ${res.streak.current} dia${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " — novo recorde!" : ""}`
+          : `\nStreak: ${res.streak.current} day${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " — new record!" : ""}`
         : "";
-      Alert.alert("Salvo!", `+${res.xpAwarded ?? 15} XP${streakMsg}`);
+      Alert.alert(tr(lang, { en: "Saved", pt: "Salvo!" }), `+${res.xpAwarded ?? 15} XP${streakMsg}`);
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const handleSave = () => {
@@ -123,9 +136,13 @@ export default function DailyCheckIn() {
 
   return (
     <Screen scroll testID="daily-checkin-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Check-in Diário", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Daily check-in", pt: "Check-in Diário" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       {isLoading ? (
         <Spinner center />
+      ) : isError ? (
+        /* Opening the form on a failed load would show yesterday's answers as
+           blanks and save them over the real ones. */
+        <LoadFailure error={error} onRetry={() => refetch()} />
       ) : (
         <View style={{ gap: 20 }}>
 
@@ -137,28 +154,36 @@ export default function DailyCheckIn() {
                   <Text style={{ fontSize: 28 }}>{progress.streakDays > 0 ? "🔥" : "❄️"}</Text>
                   <View>
                     <Text variant="subtitle" style={{ fontSize: 20 }}>
-                      {progress.streakDays} dia{progress.streakDays !== 1 ? "s" : ""}
+                      {progress.streakDays}{" "}
+                      {lang === "pt"
+                        ? `dia${progress.streakDays !== 1 ? "s" : ""}`
+                        : `day${progress.streakDays !== 1 ? "s" : ""}`}
                     </Text>
-                    <Text variant="caption" color={t.colors.textMuted}>Recorde: {progress.longestStreak} dias</Text>
+                    <Text variant="caption" color={t.colors.textMuted}>
+                      {tr(lang, { en: "Best", pt: "Recorde" })}: {progress.longestStreak}{" "}
+                      {lang === "pt"
+                        ? `dia${progress.longestStreak !== 1 ? "s" : ""}`
+                        : `day${progress.longestStreak !== 1 ? "s" : ""}`}
+                    </Text>
                   </View>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text variant="label" color={t.colors.warn} style={{ fontWeight: "700" }}>{progress.xp} XP</Text>
-                  <Text variant="caption" color={t.colors.textMuted}>Nível {progress.level}</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Level", pt: "Nível" })} {progress.level}</Text>
                 </View>
               </View>
             </Card>
           )}
 
-          <Text variant="title">Como você está hoje?</Text>
+          <Text variant="title">{tr(lang, { en: "How are you today?", pt: "Como você está hoje?" })}</Text>
 
-          <SliderRow label="Dor" value={pain} onChange={setPain} color={t.colors.bad} />
-          <SliderRow label="Energia" value={energy} onChange={setEnergy} color={t.colors.warn} />
-          <SliderRow label="Qualidade do Sono" value={sleep} onChange={setSleep} color={t.colors.work} />
-          <SliderRow label="Estresse" value={stress} onChange={setStress} color={t.colors.community} />
+          <SliderRow label={tr(lang, { en: "Pain", pt: "Dor" })} value={pain} onChange={setPain} color={t.colors.bad} />
+          <SliderRow label={tr(lang, { en: "Energy", pt: "Energia" })} value={energy} onChange={setEnergy} color={t.colors.warn} />
+          <SliderRow label={tr(lang, { en: "Sleep quality", pt: "Qualidade do sono" })} value={sleep} onChange={setSleep} color={t.colors.work} />
+          <SliderRow label={tr(lang, { en: "Stress", pt: "Estresse" })} value={stress} onChange={setStress} color={t.colors.community} />
 
           <View style={{ gap: 4 }}>
-            <Text variant="label">Humor</Text>
+            <Text variant="label">{tr(lang, { en: "Mood", pt: "Humor" })}</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {MOODS.map((m) => (
                 <Pressable key={m.v} onPress={() => setMood(m.v)}
@@ -174,35 +199,39 @@ export default function DailyCheckIn() {
             <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: exercises ? t.colors.health : "transparent", borderWidth: exercises ? 0 : 1.5, borderColor: t.colors.border, alignItems: "center", justifyContent: "center" }}>
               {exercises && <Text style={{ color: t.colors.primaryFg, fontSize: 14 }}>{"✓"}</Text>}
             </View>
-            <Text variant="label">Exercícios do dia realizados</Text>
+            <Text variant="label">{tr(lang, { en: "Today's exercises done", pt: "Exercícios do dia realizados" })}</Text>
           </Pressable>
 
           <View style={{ gap: 4 }}>
-            <Text variant="label">Notas (opcional)</Text>
-            <TextInput value={notes} onChangeText={setNotes} placeholder="Como você se sente hoje?" placeholderTextColor={t.colors.textMuted} multiline numberOfLines={3}
+            <Text variant="label">{tr(lang, { en: "Notes (optional)", pt: "Notas (opcional)" })}</Text>
+            <TextInput value={notes} onChangeText={setNotes} placeholder={tr(lang, { en: "How are you feeling today?", pt: "Como você se sente hoje?" })} placeholderTextColor={t.colors.textMuted} multiline numberOfLines={3}
               style={{ padding: 12, borderRadius: t.radius.lg, backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border, color: t.colors.text, fontSize: 14, textAlignVertical: "top", minHeight: 80 }} />
           </View>
 
           <Pressable onPress={handleSave} disabled={mutation.isPending}
             style={{ padding: 16, borderRadius: t.radius.lg, backgroundColor: t.colors.primary, alignItems: "center", opacity: mutation.isPending ? 0.6 : 1 }}>
             <Text style={{ color: t.colors.primaryFg, fontWeight: "700", fontSize: 16 }}>
-              {mutation.isPending ? "Salvando..." : data?.today ? "Atualizar" : "Salvar"}
+              {mutation.isPending
+                ? tr(lang, { en: "Saving...", pt: "Salvando..." })
+                : data?.today
+                  ? tr(lang, { en: "Update", pt: "Atualizar" })
+                  : tr(lang, { en: "Save", pt: "Salvar" })}
             </Text>
           </Pressable>
 
           {/* History */}
           {data?.history && data.history.length > 0 && (
             <Card>
-              <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>Últimos 7 dias</Text>
+              <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Last 7 days", pt: "Últimos 7 dias" })}</Text>
               <HistoryDots history={data.history} />
               <View style={{ flexDirection: "row", gap: 16, marginTop: 12, justifyContent: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.ok }} />
-                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Check-in + exercício</Text>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{tr(lang, { en: "Check-in + exercise", pt: "Check-in + exercício" })}</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.warn }} />
-                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Só check-in</Text>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{tr(lang, { en: "Check-in only", pt: "Só check-in" })}</Text>
                 </View>
               </View>
             </Card>
@@ -211,5 +240,17 @@ export default function DailyCheckIn() {
         </View>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_journey` — the check-in is the Journey's pain log. With the
+ * plan closed the app not only showed the form, it accepted a save.
+ */
+export default function DailyCheckIn() {
+  return (
+    <PlanGate module="mod_journey">
+      <DailyCheckInScreen />
+    </PlanGate>
   );
 }

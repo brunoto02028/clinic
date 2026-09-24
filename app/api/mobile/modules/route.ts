@@ -11,9 +11,11 @@ export function OPTIONS() {
   return corsPreflight();
 }
 
+const CLINICA_DEF = { key: "clinica", name: "Clinic", icon: "medkit-outline", description: "Sessions & rehab" } as const;
+
 const MODULE_DEFS = [
   { key: "lab", name: "Laboratory", icon: "flask-outline", description: "Lab tests & results" },
-  { key: "clinica", name: "Clinic", icon: "medkit-outline", description: "Sessions & rehab" },
+  CLINICA_DEF,
   { key: "ba", name: "BA", icon: "briefcase-outline", description: "Business & community" },
 ] as const;
 
@@ -25,6 +27,17 @@ const AVALIACOES_DEF = { key: "avaliacoes", name: "Assessments", icon: "body-out
 const NUTRICAO_DEF = { key: "nutricao", name: "Nutrition", icon: "nutrition-outline", description: "Meal plans & logging" };
 
 // Maps our mobile module keys to the ClinicModule enum values that gate them.
+// moduleOverrides is tri-state across this codebase, not a boolean: the web
+// (lib/patient-access.ts) reads true|"unlocked" as granted, false|"locked" as
+// denied and "hidden" as hidden. Read as a boolean, "locked" and "hidden" —
+// both truthy strings — granted the module here, so the app showed patients
+// areas the web hides from them. Returns undefined when there is no override.
+function overrideGrants(value: unknown): boolean | undefined {
+  if (value === true || value === "unlocked") return true;
+  if (value === false || value === "locked" || value === "hidden") return false;
+  return undefined;
+}
+
 const MODULE_KEY_MAP: Record<string, string[]> = {
   lab: ["DIAGNOSTICS"],
   clinica: ["APPOINTMENTS", "CLINICAL_NOTES"],
@@ -63,7 +76,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Admins and full-access users see everything (plus Training when on).
-    if (user?.fullAccessOverride || actor.role === "SUPERADMIN" || actor.role === "ADMIN") {
+    // THERAPIST is staff too (tenant-access STAFF_ROLES) and signs in here.
+    // Today therapists get every module through the "show everything"
+    // fallback below; that fallback is what this change narrows for patients,
+    // so therapists are named here to keep exactly what they have now.
+    if (
+      user?.fullAccessOverride ||
+      actor.role === "SUPERADMIN" ||
+      actor.role === "ADMIN" ||
+      actor.role === "THERAPIST"
+    ) {
       return corsJson(withTraining([...MODULE_DEFS]));
     }
 
@@ -80,19 +102,40 @@ export async function GET(request: NextRequest) {
     }
 
     const available = MODULE_DEFS.filter((mod) => {
-      const overrideKey = `mod_${mod.key}`;
-      if (overrideKey in overrides) return overrides[overrideKey];
+      const override = overrideGrants(overrides[`mod_${mod.key}`]);
+      if (override !== undefined) return override;
       const requiredModules = MODULE_KEY_MAP[mod.key] || [];
       if (requiredModules.length === 0) return true;
       return requiredModules.some((m) => clinicModules.includes(m));
     });
 
-    // If no modules found via permissions, show all (graceful fallback for new users)
-    if (available.length === 0) {
-      return corsJson(withTraining([...MODULE_DEFS]));
+    // The clinic itself is not something a patient loses by gaining something
+    // else. ClinicModuleAccess gates `lab` on DIAGNOSTICS and `ba` on ORDERS,
+    // but nothing grants `clinica` — so enabling DIAGNOSTICS would have given
+    // every patient `[lab]` and taken the clinical area away. BPR's own
+    // clinics have no ClinicModuleAccess rows, so switching the lab on would
+    // have done that to all of them at once. An explicit override removes it.
+    const clinicaDenied = overrideGrants(overrides["mod_clinica"]) === false;
+    const keys = new Set(available.map((m) => m.key));
+    if (!clinicaDenied) {
+      keys.add("clinica");
     }
+    const result = MODULE_DEFS.filter((m) => keys.has(m.key));
 
-    return corsJson(withTraining(available));
+    // Fail closed. This returned every module "for new users", which handed
+    // BA and Lab to any clinic patient whose access was never configured —
+    // every BPR patient, since those rows do not exist. A patient gets the
+    // clinic. Training is still appended when the clinic has it on, as before.
+    //
+    // An explicit denial is honoured all the way down: a patient with
+    // `mod_clinica` locked or hidden and nothing else gets an empty list, not
+    // the clinic back through this fallback. The app shows that as "no areas
+    // available", with a way to sign out.
+    // The `result.length > 0 || clinicaDenied ? result : [CLINICA_DEF]` fallback
+    // here was unreachable: when clinica is not denied it is added to `keys`
+    // above, so `result` is never empty; when it is denied the condition is
+    // already true. An empty list is the honest answer for a denied account.
+    return corsJson(withTraining(result));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

@@ -15,7 +15,11 @@ export default function AppLayout() {
   }
 
   if (status !== "authenticated") {
-    return <Redirect href="/" />;
+    // Never `/`: seven files resolve to it — the root welcome screen and the
+    // index of every module group, since a (group) adds no path segment. The
+    // router could land back inside this layout, which would redirect again,
+    // for ever ("Maximum update depth exceeded" — the freeze on sign-out).
+    return <Redirect href="/login" />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;

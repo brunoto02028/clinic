@@ -10,6 +10,17 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 import { logAudit } from "@/lib/system-logger";
+import {
+  BP_THRESHOLD_RULE,
+  bpThresholdProblem,
+  thresholdsFromCondition,
+  type ThresholdProblem,
+} from "@/lib/automation/bp-thresholds";
+import {
+  EXERCISE_BP_RULE,
+  exerciseBpProblem,
+  limitsFromCondition,
+} from "@/lib/automation/exercise-bp";
 
 export const dynamic = "force-dynamic";
 
@@ -75,14 +86,26 @@ const bodySchema = z
   .strict();
 
 /** Facts the engine computes today. A placeholder outside this list is a typo. */
+// Facts a rule's text may interpolate. Per rule, not one global list: the
+// blood-pressure rule speaks of a reading, and the adherence rules of missed
+// items, so a single list made every text edit on the BP rule fail with
+// "Available: {missingItems}" even when the author touched no placeholder.
 const KNOWN_FACTS = ["missingItems"];
+const FACTS_BY_RULE: Record<string, string[]> = {
+  BP_THRESHOLDS: ["systolic", "diastolic", "classification"],
+  EXERCISE_BP_LIMITS: ["systolic", "diastolic"],
+};
+function factsFor(code: string): string[] {
+  return [...KNOWN_FACTS, ...(FACTS_BY_RULE[code] ?? [])];
+}
 
-function unknownPlaceholders(actionData: Record<string, unknown>): string[] {
+function unknownPlaceholders(actionData: Record<string, unknown>, code: string): string[] {
+  const known = factsFor(code);
   const found = new Set<string>();
   for (const value of Object.values(actionData)) {
     if (typeof value !== "string") continue;
     for (const m of value.matchAll(/\{(\w+)\}/g)) {
-      if (!KNOWN_FACTS.includes(m[1])) found.add(m[1]);
+      if (!known.includes(m[1])) found.add(m[1]);
     }
   }
   return [...found];
@@ -117,13 +140,59 @@ export async function PATCH(request: NextRequest, { params }: { params: { code: 
     );
   }
 
+  // A threshold rule carries plain numbers, not operators, and those numbers
+  // are the only thing standing between a hypertensive crisis and silence.
+  // QA of T-3 stored 500/300–600/400 through this endpoint and a real 195/130
+  // reading then produced nothing at all — the engine fell back to its
+  // defaults, while this screen went on showing the stored values as the ones
+  // in force. Refusing here is the only place that cannot be out of step.
+  // Each rule that carries plain numbers says here what a usable set of them
+  // looks like. Two rules speak about blood pressure and mean different things
+  // by it — 130/80 classifies a reading at home, 200/110 decides whether today's
+  // session happens — so they are validated apart, never by one shared check.
+  const NUMERIC_RULE_CHECKS: Record<string, (c: unknown) => ThresholdProblem | null> = {
+    [BP_THRESHOLD_RULE]: (c) => bpThresholdProblem(thresholdsFromCondition(c)),
+    [EXERCISE_BP_RULE]: (c) => exerciseBpProblem(limitsFromCondition(c)),
+  };
+  const check = NUMERIC_RULE_CHECKS[params.code];
+  if (condition && check) {
+    // The raw values first. `thresholdsFromCondition` replaces anything that is
+    // not a usable number with the default *before* the check runs, so an empty
+    // field — `Number("")` is 0 — sailed through: the response said 200, the
+    // screen reloaded showing 0, and the engine went on using 130. A screen
+    // showing one number while another is in force is the exact failure T-3
+    // exists to prevent.
+    const bad = Object.entries(condition as Record<string, unknown>)
+      .filter(([, v]) => {
+        const n = typeof v === "number" ? v : Number(v);
+        return !Number.isFinite(n) || n <= 0;
+      })
+      .map(([k]) => k);
+    if (bad.length > 0) {
+      return NextResponse.json(
+        {
+          error: `These need a number above zero: ${bad.join(", ")}`,
+          errorPt: `Estes precisam de um número maior que zero: ${bad.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const problem = check(condition);
+    if (problem) {
+      // Both languages: the panel is translated and the refusal was not, so a
+      // Portuguese admin read an English sentence (QA of T-3, R2).
+      return NextResponse.json({ error: problem.en, errorPt: problem.pt }, { status: 400 });
+    }
+  }
+
   if (actionData) {
-    const unknown = unknownPlaceholders(actionData);
+    const unknown = unknownPlaceholders(actionData, params.code);
     if (unknown.length > 0) {
       // A mistyped placeholder reaches the therapist's screen as literal
       // braces (QA of T-3, R3). Better refused here than read there.
       return NextResponse.json(
-        { error: `Unknown placeholder: ${unknown.map((u) => `{${u}}`).join(", ")}. Available: ${KNOWN_FACTS.map((f) => `{${f}}`).join(", ")}` },
+        { error: `Unknown placeholder: ${unknown.map((u) => `{${u}}`).join(", ")}. Available: ${factsFor(params.code).map((f) => `{${f}}`).join(", ")}` },
         { status: 400 }
       );
     }

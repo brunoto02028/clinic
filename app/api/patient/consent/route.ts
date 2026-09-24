@@ -7,11 +7,16 @@ import { sendTemplatedEmail } from '@/lib/email-templates';
 import { notifyPatient } from '@/lib/notify-patient';
 import { sendAdminAlert } from '@/lib/admin-alert-email';
 import { escapeHtml } from '@/lib/admin-notify-email';
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = 'force-dynamic';
 
 // GET — check consent status
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -28,6 +33,10 @@ export async function GET() {
 
 // POST — accept consent
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (effectiveUser.isImpersonating) return NextResponse.json({ error: 'Read-only during impersonation' }, { status: 403 });

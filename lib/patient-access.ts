@@ -1,4 +1,4 @@
-import { ALWAYS_VISIBLE_MODULES, MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
+import { ALWAYS_VISIBLE_MODULES, DEFAULT_GRANTED_MODULES, MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
 
 /**
  * One answer to "what does this patient have access to?".
@@ -21,6 +21,7 @@ import { ALWAYS_VISIBLE_MODULES, MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/
 /** How a module or permission came to be granted. */
 export type GrantReason =
   | "always" // always-visible module
+  | "default" // granted unless an admin revokes it (see defaultGranted)
   | "plan" // feature of an active subscription
   | "treatment" // active, paid treatment package
   | "free" // active subscription on a free plan
@@ -141,6 +142,9 @@ export function computePatientAccess(patient: PatientAccessInput): PatientAccess
   };
 
   for (const mod of ALWAYS_VISIBLE_MODULES) grantModule(mod.key, "always");
+  // Surfaces that predate the registry: on for everyone, and the override
+  // loop below can still take them away.
+  for (const mod of DEFAULT_GRANTED_MODULES) grantModule(mod.key, "default");
 
   // A personal-trainer studio doesn't sell the clinic's plans: its students get
   // every module and permission by default (activity 55, T-1). The trainer can

@@ -1,8 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
@@ -114,9 +112,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    // Authenticated through getActor, not getServerSession. The session
+    // gate that stood here accepted only the web's cookie, so every booking
+    // from the mobile app answered 401 — the app has never been able to book,
+    // in production included, since this route's first commit. getActor goes
+    // through getEffectiveUser, which accepts the bearer token as well, and is
+    // strictly stronger besides: it re-reads the user and refuses an inactive
+    // account, which the session check did not. The GET above already worked
+    // from the app for exactly this reason.
+    const actor = await getActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
@@ -136,10 +141,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid paymentMethod" }, { status: 400 });
     }
 
-    const actor = await getActor(request);
-    if (!actor) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-    }
     if (!actor.clinicId) {
       return NextResponse.json({ error: "This account is not linked to a clinic" }, { status: 409 });
     }

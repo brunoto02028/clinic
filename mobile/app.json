@@ -1,26 +1,33 @@
 {
   "expo": {
-    "name": "BA One",
-    "slug": "bpr-rehab",
-    "scheme": "bprrehab",
+    "name": "BPR",
+    "slug": "bpr-clinic",
+    "scheme": "bprclinic",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#20242D",
       "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bpr.rehab",
+      "bundleIdentifier": "com.bpr.clinic",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic.",
+        "NSPhotoLibraryUsageDescription": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
+        "NSPhotoLibraryAddUsageDescription": "BPR saves a copy of documents you download from your clinical record."
       }
     },
     "android": {
-      "package": "com.bpr.rehab",
+      "package": "com.bpr.clinic",
       "adaptiveIcon": {
         "backgroundColor": "#20242D",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,7 +35,11 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": []
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,13 +48,24 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
+          "cameraPermission": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic."
+        }
+      ]
     ],
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2ac11231-fdb1-485a-adaf-8cf0209bf51d"
+        "projectId": "7484b72b-b105-4536-9c1d-5901970e3922"
       }
+    },
+    "owner": "ba-intelligence",
+    "updates": {
+      "url": "https://u.expo.dev/7484b72b-b105-4536-9c1d-5901970e3922"
     }
   }
 }

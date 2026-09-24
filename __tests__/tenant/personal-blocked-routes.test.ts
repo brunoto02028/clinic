@@ -48,16 +48,31 @@ describe("isPersonalBlockedRoute (T-19b/T-29 personal gate)", () => {
     });
   });
 
+  // Activity 52, T-7: these do not charge the studio, they charge BPR. Treatment
+  // plans, memberships, packages and the shop all run on the platform's own
+  // Stripe account, so a studio selling through them would be sending its money
+  // to the clinic. A studio charges through its own Connect account.
+  describe("what would charge BPR's Stripe account is blocked", () => {
+    const money = [
+      "/admin/treatment-plans",
+      "/admin/memberships",
+      "/admin/marketplace",
+      "/api/admin/treatment-plans",
+      "/api/admin/patients/abc123DEF456/packages",
+    ];
+    it.each(money)("%s → true", (p) => {
+      expect(isPersonalBlockedRoute(p)).toBe(true);
+    });
+  });
+
   describe("shared routes stay reachable for a personal tenant", () => {
     const allowed = [
       "/admin/exercises",
       "/admin/equipment",
-      "/admin/treatment-plans",
       "/admin/patients",
       "/admin/appointments",
       "/api/admin/exercises",
       "/api/admin/patients", // list
-      "/api/admin/patients/abc123/packages",
       "/api/admin/patients/abc123/documents",
       "/api/admin/patients/abc123/messages",
       "/api/admin/patients/abc123", // the patient record itself

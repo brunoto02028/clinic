@@ -1,8 +1,16 @@
-/** Formats an ISO datetime as a readable date+time (pt-BR). */
-export function formatDateTime(iso: string): string {
+import type { Lang } from "./i18n";
+
+/**
+ * An ISO datetime as the patient reads it.
+ *
+ * The locale used to be `pt-BR`, full stop — so a patient whose record said
+ * `en-GB` read "qua., 23 de set." on their own appointment. English is the
+ * default here for the same reason it is everywhere else in this app.
+ */
+export function formatDateTime(iso: string, lang: Lang = "en"): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleString("pt-BR", {
+  return d.toLocaleString(lang === "pt" ? "pt-BR" : "en-GB", {
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -12,10 +20,10 @@ export function formatDateTime(iso: string): string {
   });
 }
 
-export function formatDate(iso: string): string {
+export function formatDate(iso: string, lang: Lang = "en"): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("pt-BR", {
+  return d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",

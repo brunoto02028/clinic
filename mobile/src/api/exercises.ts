@@ -12,6 +12,11 @@ export interface PrescribedExercise {
     name: string;
     description: string | null;
     instructions: string | null;
+    // The route has returned these all along; the client simply never declared
+    // them, so every patient read English whatever their record said.
+    namePt: string | null;
+    descriptionPt: string | null;
+    instructionsPt: string | null;
     bodyRegion: string;
     difficulty: string;
     videoUrl: string | null;
@@ -31,4 +36,23 @@ export async function completeExercise(prescriptionId: string): Promise<Prescrib
     body: JSON.stringify({ prescriptionId }),
   });
   return res.prescription;
+}
+
+/**
+ * Whether today's session opens (activity 074, T-11).
+ *
+ * Its own call, not a field on the prescription list: the answer changes with
+ * a new blood-pressure reading, not with the prescriptions, and both this app
+ * and the web ask the same endpoint so they cannot disagree about it.
+ */
+export interface ExerciseClearance {
+  state: "CLEAR" | "BLOCKED" | "NO_RECENT_READING" | "OVERRIDDEN";
+  blocked: boolean;
+  limits: { blockSystolic: number; blockDiastolic: number; stopSystolic: number; stopDiastolic: number };
+  reading: { systolic: number; diastolic: number; measuredAt: string } | null;
+  validForMinutes: number | null;
+}
+
+export async function fetchExerciseClearance(): Promise<ExerciseClearance> {
+  return apiFetch<ExerciseClearance>("/api/patient/exercise-clearance");
 }
