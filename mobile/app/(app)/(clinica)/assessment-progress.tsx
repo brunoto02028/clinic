@@ -18,7 +18,11 @@ const STEP_ICONS: Record<string, string> = {
 const STEP_PATHS: Record<string, string> = {
   screening: "/screening",
   outcome_measures: "/outcome-measures",
-  results: "/",
+  // Era `"/"`, que o próprio guarda do app documenta como proibido: sete
+  // arquivos resolvem para essa rota — a tela de boas-vindas e o índice de
+  // cada grupo, já que um (grupo) não acrescenta segmento — e o roteador podia
+  // cair de volta dentro do guarda, redirecionando para sempre.
+  results: "/(app)/(clinica)/(tabs)",
 };
 
 function AssessmentProgressScreen() {

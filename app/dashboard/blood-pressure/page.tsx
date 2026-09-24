@@ -635,7 +635,7 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
             <span className="text-sm font-semibold text-ba1-health">NHS / GP</span>
           </div>
           <p className="text-xs text-ba1-health/80">
-            {systolic >= 180 || diastolic >= 120 ? (locale === "pt-BR" ? "🚨 CRISE HIPERTENSIVA: Ligue 192 (SAMU) ou vá ao pronto-socorro imediatamente. Não espere." : "🚨 HYPERTENSIVE CRISIS: Call 999/112 or go to A&E immediately. Do not wait.") :
+            {systolic >= 180 || diastolic >= 120 ? (locale === "pt-BR" ? "🚨 CRISE HIPERTENSIVA: Ligue 999 ou vá ao pronto-socorro imediatamente. Não espere." : "🚨 HYPERTENSIVE CRISIS: Call 999/112 or go to A&E immediately. Do not wait.") :
              systolic >= 140 || diastolic >= 90 ? T("bp.nhsStage2") :
              systolic >= 130 || diastolic >= 80 ? T("bp.nhsStage1") :
              systolic >= 120 && diastolic < 80 ? T("bp.nhsElevated") :

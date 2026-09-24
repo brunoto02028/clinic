@@ -45,7 +45,18 @@ const light: ThemeColors = {
   surfaceMuted: "#EBEAE6",
   text: palette.ink,
   textSecondary: "#4A4F59",
-  textMuted: palette.muted,
+  /**
+   * Era `palette.muted` (#767B85), que dá 3,86:1 sobre o fundo bege e 4,25:1
+   * sobre o card — abaixo do mínimo de 4,5:1 da WCAG, em **258 nós de texto**.
+   * É o cinza de legenda do app inteiro: data da medição, dose do exercício,
+   * texto de apoio de cada tela.
+   *
+   * `#5B616C` mantém o mesmo tom neutro e passa nos três fundos. Não é um
+   * token novo nem outra paleta: é o mesmo cinza, escuro o bastante para ser
+   * lido por alguém de sessenta anos com dor. O `muted` original segue no
+   * lugar onde ele sempre coube — bordas e ícones inativos.
+   */
+  textMuted: "#5B616C",
   primary: palette.ink,
   primaryFg: palette.white,
   greige: palette.greige,

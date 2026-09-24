@@ -218,6 +218,24 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
     // janela, sem nenhuma folga — e é justamente a linha em que alguém clica
     // para editar ou apagar uma leitura.
     <div className="space-y-4 pb-16">
+      {/* Este aviso já tinha sido escrito uma vez e **não chegou à tela**: o
+          hook rodava, `esperando` era calculado, e o JSX nunca foi inserido —
+          um script meu que verificava se "algo" mudou em vez de verificar cada
+          substituição. Sem ele, medir sem janela aberta não dá retorno nenhum,
+          que foi o que fez o Bruno concluir que suas medições tinham sumido. */}
+      {esperando > 0 && (
+        <Link
+          href="/admin/measurements/inbox"
+          className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+        >
+          <Inbox className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            {isPt
+              ? `${esperando} ${esperando === 1 ? "medição aguarda" : "medições aguardam"} atribuição — medir sem abrir a janela de 3 minutos deixa a leitura lá.`
+              : `${esperando} ${esperando === 1 ? "measurement is" : "measurements are"} waiting to be assigned — measuring without opening the 3-minute window leaves the reading there.`}
+          </span>
+        </Link>
+      )}
       <div>
         <h3 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="h-4 w-4" />{t.title}</h3>
         <p className="text-xs text-muted-foreground mt-0.5">{t.subtitle}</p>

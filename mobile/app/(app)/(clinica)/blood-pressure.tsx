@@ -13,8 +13,7 @@ import {
   fetchBloodPressure,
   saveBloodPressure,
   bpBand,
-  type BpBand,
-} from "@/api/blood-pressure";
+  type BpBand, bpNeedsAttentionNow} from "@/api/blood-pressure";
 
 function Field({
   label, value, onChangeText, placeholder, suffix,
@@ -63,12 +62,23 @@ export default function BloodPressureScreen() {
   const [diastolic, setDiastolic] = useState("");
   const [heartRate, setHeartRate] = useState("");
 
+  /**
+   * Cinco faixas cabiam em três cores, e as duas colisões eram justamente as
+   * que importam: `elevated` era igual a `stage1`, e **`crisis` era pixel a
+   * pixel igual a `stage2`** — 180/120 com a mesma aparência de 140/90.
+   *
+   * Agora cada faixa tem a sua, a crise fica em texto branco sobre vermelho
+   * cheio (é a única que grita, e deve gritar sozinha), e a hipotensão entra
+   * com a cor do pilar Work, que é o azul da identidade — a web já pinta de
+   * azul, e baixo não é uma versão mais fraca de alto.
+   */
   const BAND: Record<BpBand, { label: string; color: string; bg: string }> = {
+    low: { label: tr(lang, { en: "Low", pt: "Baixa" }), color: t.colors.work, bg: t.colors.workSoft },
     normal: { label: tr(lang, { en: "Normal", pt: "Normal" }), color: t.colors.ok, bg: t.colors.okSoft },
     elevated: { label: tr(lang, { en: "Elevated", pt: "Elevada" }), color: t.colors.warn, bg: t.colors.warnSoft },
-    stage1: { label: tr(lang, { en: "Stage 1", pt: "Estágio 1" }), color: t.colors.warn, bg: t.colors.warnSoft },
-    stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: t.colors.bad, bg: t.colors.badSoft },
-    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: t.colors.bad, bg: t.colors.badSoft },
+    stage1: { label: tr(lang, { en: "Stage 1", pt: "Estágio 1" }), color: t.colors.bad, bg: t.colors.badSoft },
+    stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: "#FFFFFF", bg: t.colors.bad },
+    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: "#FFFFFF", bg: "#8C2F22" },
   };
 
   const sys = parseInt(systolic, 10);
@@ -143,10 +153,46 @@ export default function BloodPressureScreen() {
                   {BAND[bpBand(latest.systolic, latest.diastolic)].label}
                 </Text>
               </View>
-              <Text variant="caption" color={t.colors.textMuted}>
+              <Text variant="caption" color={t.colors.textSecondary}>
                 {formatDate(latest.measuredAt, lang)}
               </Text>
             </View>
+
+            {/* A crise dizia o que precisava dizer num selo de 10px, do mesmo
+                tamanho de "Normal". A web mostra um bloco de aviso e manda
+                procurar atendimento; o app dava a mesma informação num
+                sussurro. Um número que pede ação agora não pode ter o formato
+                de um número que pede registro. */}
+            {bpNeedsAttentionNow(bpBand(latest.systolic, latest.diastolic)) && (
+              <View
+                style={{
+                  marginTop: 12,
+                  backgroundColor: "#8C2F22",
+                  borderRadius: 12,
+                  padding: 12,
+                  flexDirection: "row",
+                  gap: 10,
+                  alignItems: "flex-start",
+                }}
+                accessibilityRole="alert"
+              >
+                <Ionicons name="warning" size={18} color="#FFFFFF" style={{ marginTop: 1 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>
+                    {tr(lang, {
+                      en: "Hypertensive crisis",
+                      pt: "Crise hipertensiva",
+                    })}
+                  </Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+                    {tr(lang, {
+                      en: "Do not wait for your therapist. Call 999 if you feel unwell, or 111 for urgent advice.",
+                      pt: "Não espere seu terapeuta. Ligue 999 se estiver passando mal, ou 111 para orientação urgente.",
+                    })}
+                  </Text>
+                </View>
+              </View>
+            )}
           </Card>
         )}
 

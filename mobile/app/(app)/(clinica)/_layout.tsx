@@ -1,6 +1,19 @@
 import { Stack } from "expo-router";
 import ModuleGuard from "@/components/ModuleGuard";
+import { HeaderBack } from "@/components/HeaderBack";
 import { deviceLang, t as tr } from "@/lib/i18n";
+
+/**
+ * A âncora do módulo.
+ *
+ * Sem isto, entrar na clínica por `replace` — é o que o cadastro faz, mandando
+ * o recém-cadastrado direto para a avaliação — monta este `<Stack>` com **uma
+ * entrada só**. Sem rota embaixo não há seta, e `router.back()` não faz nada:
+ * a pessoa preenche nove etapas, aperta Enviar, e a tela não muda.
+ */
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
 
 export default function ClinicaLayout() {
   // O idioma vem do aparelho, não do paciente: este layout monta antes de
@@ -11,32 +24,49 @@ export default function ClinicaLayout() {
     <ModuleGuard module="clinica">
       <Stack
         screenOptions={{
-          headerShown: false,
           /**
-           * O botão de voltar mostrava "(tabs)" e "(clinica)" — nomes de
-           * pastas do nosso código, na tela do paciente.
+           * Estava `false` no grupo inteiro — e a clínica era o **único**
+           * módulo assim. Os outros cinco já tinham sido corrigidos, cada um
+           * com o comentário "quem entrava no módulo não tinha como voltar".
+           * A clínica ficou de fora, justo o módulo que o paciente usa.
            *
-           * O iOS rotula o voltar com o título da rota **anterior**, e caindo
-           * para o nome dela quando não há título. A rota anterior é um grupo,
-           * e o nome de um grupo tem parênteses.
+           * Com `false`, cada tela tinha que pedir o header na mão — e todo
+           * caminho de render que não pede ficava sem saída: carregando, erro,
+           * plano bloqueado. Era isso que prendia o paciente.
            *
-           * `headerBackTitle: ""` não resolve: o iOS trata string vazia como
-           * ausente e volta a cair no nome da rota. Quem esconde o rótulo é
-           * isto, que a documentação do native-stack aponta:
+           * O título fica vazio porque cada tela desenha o próprio no
+           * conteúdo; as que definem `title` continuam sobrescrevendo.
            */
-          headerBackButtonDisplayMode: "minimal",
+          headerShown: true,
+          headerTitle: "",
+          /**
+           * `headerBackTitle: ""` não esconde nada: o iOS trata a string vazia
+           * como ausente e cai no nome da rota anterior — que é o nome de um
+           * grupo, com parênteses, na tela do paciente.
+           */
+          // O botão nativo aparecia e não navegava — diagnosticado errado três
+          // vezes. `headerLeft` põe um que é nosso: ele chama `goBackOr()`, que
+          // volta quando há para onde e vai para a casa do paciente quando não há.
+          // O toque sempre faz alguma coisa.
+          headerBackButtonDisplayMode: "minimal" as const,
+          headerLeft: () => <HeaderBack />,
+          headerStyle: { backgroundColor: "#F5F4F1" },
+          headerTintColor: "#20242D",
+          headerShadowVisible: false,
         }}
       >
         {/*
-          Cinto e suspensório. Se um dia a linha acima for ignorada — outra
-          versão do native-stack, outra plataforma —, o iOS cai no título da
-          rota anterior. Dando um título de verdade a ela, o pior caso deixa de
-          ser um nome de pasta e passa a ser uma palavra que o paciente
+          As abas trazem a própria navegação e não levam header. O título aqui
+          é cinto e suspensório: se um dia o rótulo do voltar reaparecer, o pior
+          caso deixa de ser "(tabs)" e passa a ser uma palavra que o paciente
           entende.
         */}
         <Stack.Screen
           name="(tabs)"
-          options={{ title: tr(lang, { en: "Health", pt: "Saúde" }) }}
+          options={{
+            headerShown: false,
+            title: tr(lang, { en: "Health", pt: "Saúde" }),
+          }}
         />
       </Stack>
     </ModuleGuard>
