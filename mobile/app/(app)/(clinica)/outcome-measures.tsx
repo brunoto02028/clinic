@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Alert } from "react-native";
+import { View, Alert, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -123,15 +123,32 @@ function OutcomeMeasuresScreen() {
                 </View>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
-                  <View
-                    key={v}
-                    onTouchEnd={() => setVasScore(v)}
-                    style={{ width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: v === vasScore ? t.colors.okSoft : "transparent" }}
-                  >
-                    <Text variant="caption" color={v === vasScore ? t.colors.ok : t.colors.textMuted} style={{ fontSize: 10 }}>{v}</Text>
-                  </View>
-                ))}
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => {
+                  // O número escolhido era SEMPRE verde — escolher 10, "pior
+                  // dor imaginável", pintava o 10 de verde-tudo-bem. E a vinte
+                  // pixels dali, na mesma tela, o número grande e a régua já
+                  // usavam a regra certa. Duas gramáticas de cor se
+                  // contradizendo. Agora é uma só.
+                  const forte = v > 6 ? t.colors.bad : v > 3 ? t.colors.warn : t.colors.ok;
+                  const suave = v > 6 ? t.colors.badSoft : v > 3 ? t.colors.warnSoft : t.colors.okSoft;
+                  const escolhido = v === vasScore;
+                  return (
+                    <Pressable
+                      key={v}
+                      onPress={() => setVasScore(v)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: escolhido }}
+                      accessibilityLabel={String(v)}
+                      // 24pt era metade do mínimo da Apple, e num `View` com
+                      // `onTouchEnd` — que dispara até em gesto cancelado e não
+                      // dá retorno nenhum ao toque.
+                      hitSlop={10}
+                      style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: escolhido ? suave : "transparent" }}
+                    >
+                      <Text variant="caption" color={escolhido ? forte : t.colors.textSecondary} style={{ fontSize: 12, fontWeight: escolhido ? "700" : "400" }}>{v}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
             <Text variant="caption" color={t.colors.textMuted}>10</Text>
