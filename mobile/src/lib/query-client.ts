@@ -27,7 +27,16 @@ export const queryClient = new QueryClient({
       // Volta a ter rede: tenta de novo sozinho em vez de deixar a tela de
       // erro até alguém puxar para atualizar.
       refetchOnReconnect: true,
+      // Sem isto, o `onlineManager` marcando offline faz o React Query nem
+      // tentar: a query fica `paused`, o que não é `isLoading` nem `isError`.
+      // Nenhuma tela do app trata esse estado — o resultado seria tela vazia
+      // e muda, sem spinner, sem erro e sem "tentar de novo", e o `ModuleGuard`
+      // chegaria a redirecionar o paciente para fora da área da clínica.
+      // `offlineFirst` tenta assim mesmo: falha vira erro de verdade, que as
+      // telas já sabem mostrar (code review da T-12).
+      networkMode: "offlineFirst",
     },
+    mutations: { networkMode: "offlineFirst" },
   },
 });
 

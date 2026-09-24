@@ -24,6 +24,9 @@ export default function ProfileEdit() {
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
     queryFn: fetchProfile,
+    // Formulário em edição não pode ser sobrescrito pelo servidor no meio
+    // (revalidação no foco, 075 T-12 — a mesma razão da triagem).
+    refetchOnWindowFocus: false,
   });
 
   const [firstName, setFirstName] = useState("");
