@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/system-logger";
 import type { WithingsBpReading } from "@/lib/withings";
+import {
+  MATCHABLE_SESSION_STATUSES,
+  SESSION_GRACE_MS,
+  sessionCovers,
+} from "@/lib/clinic-session-match";
 
 /**
  * Whose record a reading from the clinic's own cuff belongs to.
@@ -26,8 +31,11 @@ export const SESSION_WINDOW_MS = 3 * 60 * 1000;
  *
  * The therapist sometimes presses "Measure" with the cuff already inflating,
  * and the measurement is then stamped a few seconds before the session exists.
+ *
+ * Mora em `clinic-session-match.ts` junto com a regra que a usa, e é
+ * reexportada aqui porque era daqui que todo mundo a importava.
  */
-export const SESSION_GRACE_MS = 30 * 1000;
+export { SESSION_GRACE_MS } from "@/lib/clinic-session-match";
 
 export type AttributionOutcome =
   | { kind: "assigned"; patientId: string; readingId: string; sessionId: string }
@@ -46,17 +54,27 @@ export interface ClinicConnection {
  * The comparison is against the measurement's own timestamp, never against
  * `now()`: the cuff syncs over Wi-Fi when it finishes and the webhook arrives
  * later, so "now" would attribute the wrong reading or discard a good one.
+ *
+ * E por isso uma janela **expirada** também conta. Ela descreve um intervalo de
+ * tempo verdadeiro; o que perdeu foi a contagem na tela. Sem isto, a leitura
+ * que só subia horas depois — visita domiciliar, manguito sem rede conhecida —
+ * chegava com a sessão já marcada `EXPIRED` pela varredura e ia para a caixa de
+ * entrada, com a resposta certa existindo e sendo descartada. Quem decide fica
+ * em `clinic-session-match.ts`, fora do banco, para poder ser testado.
  */
 async function matchingSessions(connectionId: string, measuredAt: Date) {
-  return (prisma as any).clinicMeasurementSession.findMany({
+  const candidatas = await (prisma as any).clinicMeasurementSession.findMany({
     where: {
       connectionId,
-      status: "OPEN",
+      status: { in: [...MATCHABLE_SESSION_STATUSES] },
       openedAt: { lte: new Date(measuredAt.getTime() + SESSION_GRACE_MS) },
       expiresAt: { gte: measuredAt },
     },
     orderBy: { openedAt: "desc" },
   });
+  // A consulta já filtra pelo mesmo intervalo; passar pela regra pura mantém
+  // uma única definição de "esta janela cobre esta medição".
+  return candidatas.filter((c: any) => sessionCovers(c, measuredAt));
 }
 
 /**
