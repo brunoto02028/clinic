@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
-  Dumbbell, Apple, CreditCard, Receipt,
+  Dumbbell, Apple, CreditCard, Receipt, MapPin, Contact,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
@@ -171,6 +171,12 @@ export default function PatientProfilePage() {
   const [success, setSuccess] = useState("");
 
   // Edit states
+  // Registration card (activity 074) — name/phone/address/DOB/emergency
+  // contact, the first data the clinic needs handy for this patient.
+  // Email is deliberately not part of this form (see plan.md — that field
+  // stays view-only in the header, it's a separate confirmation-gated flow).
+  const [editingRegistration, setEditingRegistration] = useState(false);
+  const [registrationForm, setRegistrationForm] = useState<any>({});
   const [editingScreening, setEditingScreening] = useState(false);
   const [screeningForm, setScreeningForm] = useState<any>({});
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -326,6 +332,10 @@ export default function PatientProfilePage() {
   };
 
   // ─── Save handlers ───
+  const saveRegistration = async () => {
+    const r = await apiPatch({ action: "edit_registration", ...registrationForm });
+    if (r) { setEditingRegistration(false); flash("Registration updated"); fetchData(); }
+  };
   const saveScreening = async () => {
     const r = await apiPatch({ action: "edit_screening", screeningId: data.screening.id, ...screeningForm });
     if (r) { setEditingScreening(false); flash("Screening updated"); fetchData(); }
@@ -1097,6 +1107,73 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Resumo ── */}
         <TabsContent value="resumo" className="space-y-4 mt-4">
+
+      {/* Registration — activity 074. First thing on Summary: the basic
+          contact/identity data the clinic needs handy, which until now only
+          existed on the patient's own self-service profile. Email stays
+          view-only (already in the header) — see plan.md for why. */}
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2"><Contact className="h-4 w-4 text-primary" /> Registration</CardTitle>
+          {!editingRegistration ? (
+            <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => {
+              setRegistrationForm({
+                firstName: p.firstName || "",
+                lastName: p.lastName || "",
+                phone: p.phone || "",
+                address: p.address || "",
+                dateOfBirth: p.dateOfBirth ? String(p.dateOfBirth).split("T")[0] : "",
+                emergencyContactName: p.emergencyContactName || "",
+                emergencyContactPhone: p.emergencyContactPhone || "",
+                emergencyContactRelation: p.emergencyContactRelation || "",
+              });
+              setEditingRegistration(true);
+            }}><Pencil className="h-2.5 w-2.5 mr-0.5" /> Edit</Button>
+          ) : (
+            <div className="flex gap-1">
+              <Button size="sm" className="h-6 text-[10px]" onClick={saveRegistration} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button>
+              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingRegistration(false)}>Cancel</Button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          {!editingRegistration ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+              <div><span className="text-muted-foreground">Full name: </span>{p.firstName} {p.lastName}</div>
+              <div className="flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" /> {p.phone || "—"}</div>
+              <div className="flex items-center gap-1 sm:col-span-2"><MapPin className="h-3 w-3 text-muted-foreground shrink-0" /> {p.address || "—"}</div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                {p.dateOfBirth
+                  ? <>{new Date(p.dateOfBirth).toLocaleDateString("en-GB")} <span className="text-muted-foreground">({new Date().getFullYear() - new Date(p.dateOfBirth).getFullYear()} yrs)</span></>
+                  : "—"}
+              </div>
+              <div className="sm:col-span-2">
+                <span className="text-muted-foreground">Emergency contact: </span>
+                {p.emergencyContactName || p.emergencyContactPhone || p.emergencyContactRelation
+                  ? [p.emergencyContactName, p.emergencyContactPhone, p.emergencyContactRelation].filter(Boolean).join(" · ")
+                  : "—"}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <EF label="First Name" value={registrationForm.firstName} onChange={(v) => setRegistrationForm({ ...registrationForm, firstName: v })} rows={1} />
+              <EF label="Last Name" value={registrationForm.lastName} onChange={(v) => setRegistrationForm({ ...registrationForm, lastName: v })} rows={1} />
+              <EF label="Phone" value={registrationForm.phone} onChange={(v) => setRegistrationForm({ ...registrationForm, phone: v })} rows={1} />
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-semibold">Date of Birth</Label>
+                <Input type="date" value={registrationForm.dateOfBirth} onChange={(e) => setRegistrationForm({ ...registrationForm, dateOfBirth: e.target.value })} className="h-8 text-xs" />
+              </div>
+              <div className="sm:col-span-2">
+                <EF label="Address" value={registrationForm.address} onChange={(v) => setRegistrationForm({ ...registrationForm, address: v })} rows={1} />
+              </div>
+              <EF label="Emergency Contact Name" value={registrationForm.emergencyContactName} onChange={(v) => setRegistrationForm({ ...registrationForm, emergencyContactName: v })} rows={1} />
+              <EF label="Emergency Contact Phone" value={registrationForm.emergencyContactPhone} onChange={(v) => setRegistrationForm({ ...registrationForm, emergencyContactPhone: v })} rows={1} />
+              <EF label="Emergency Contact Relation" value={registrationForm.emergencyContactRelation} onChange={(v) => setRegistrationForm({ ...registrationForm, emergencyContactRelation: v })} rows={1} placeholder="e.g. Spouse, Daughter" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Invite Link */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">

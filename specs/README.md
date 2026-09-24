@@ -82,6 +82,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [062](062-guia-permissoes-padrao-idioma-lembretes/) | Guia da consulta domiciliar, permissões padrão e idioma dos lembretes | ✅ |
 | [063](063-historico-evidencia-checkin-semanal/) | Histórico de relatórios de evidência clínica + check-in semanal de dor/função (passivo) | ✅ |
 | [064](064-gravacao-robusta-consultas-diarizacao/) | Gravação robusta de consultas ao vivo (multi-hora) com distinção de voz (diarização, AssemblyAI) | ⏸ |
+| [074](074-cadastro-paciente-no-admin/) | Cadastro do paciente visível/editável no admin | 🟡 plano em aprovação |
 
 ## App mobile
 
