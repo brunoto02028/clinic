@@ -78,7 +78,9 @@ export async function attributeClinicReading(
   }
 
   // The same measurement reaches us twice: once from the webhook, once from
-  // the scheduled sync. Withings' own group id is the key, and it has to be
+  // the daily sync at /api/cron/wearables-sync — which, until activity 075
+  // T-11, did not exist, so this deduplication was guarding a second path that
+  // never ran. Withings' own group id is the key, and it has to be
   // checked on *both* sides — the inbox and the records. Checking only the
   // inbox put a re-delivered reading there a second time even though it had
   // already been filed, because by then its session was closed and no window
@@ -99,6 +101,23 @@ export async function attributeClinicReading(
       }),
     ]);
     if (inInbox || inRecord) return { kind: "duplicate" };
+  } else {
+    // Sem id da Withings não há chave de deduplicação — e isso era
+    // sobrevivível enquanto o webhook entregava cada medida uma vez. Com o
+    // cron da T-11 relendo a mesma janela todo dia, a mesma leitura viraria
+    // uma linha nova na caixa de entrada por dia, por até trinta dias.
+    // O horário mais os dois números é o que essa leitura tem de próprio;
+    // duas medidas iguais no mesmo segundo, no mesmo aparelho, são a mesma.
+    const igual = await (prisma as any).unassignedMeasurement.findFirst({
+      where: {
+        connectionId: connection.id,
+        measuredAt: reading.measuredAt,
+        systolic: reading.systolic,
+        diastolic: reading.diastolic,
+      },
+      select: { id: true },
+    });
+    if (igual) return { kind: "duplicate" };
   }
 
   const sessions = await matchingSessions(connection.id, new Date(reading.measuredAt));
@@ -217,6 +236,15 @@ export async function expireStaleSessions(connectionId?: string): Promise<number
 export async function clinicDevice(clinicId: string) {
   return (prisma as any).wearableConnection.findFirst({
     where: { clinicId, isClinicDevice: true, status: "CONNECTED" },
-    select: { id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true },
+    select: {
+      id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true,
+      // Se a Withings confirmou que manda. O manguito da recepção alimenta
+      // vários pacientes e era o único sem nenhuma tela dizendo se está mudo:
+      // o /admin/biohacking só varre quem tem papel PATIENT, e esta conexão
+      // pertence a quem autorizou (atividade 075, T-10).
+      notifyConfirmedAppli: true, notifyCheckedAt: true,
+      lastReadingAt: true, createdAt: true, status: true,
+      accessToken: true, refreshToken: true, tokenExpiresAt: true,
+    },
   });
 }

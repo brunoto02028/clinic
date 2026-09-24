@@ -74,7 +74,7 @@ export default function NutritionScreen() {
         </Text>
       ) : (
         <View style={{ gap: 12 }}>
-          <View style={{ backgroundColor: t.colors.card, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.borderSubtle, padding: 14 }}>
+          <View style={{ backgroundColor: t.colors.surface, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.borderSubtle, padding: 14 }}>
             <Text variant="body" style={{ fontFamily: "Inter_700Bold" }}>{plan.name}</Text>
             {(plan.targetKcal != null || plan.targetProteinG != null || plan.targetCarbsG != null || plan.targetFatG != null) && (
               <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
@@ -93,7 +93,7 @@ export default function NutritionScreen() {
                 key={m.id}
                 testID={`meal-${m.id}`}
                 style={{
-                  backgroundColor: t.colors.card,
+                  backgroundColor: t.colors.surface,
                   borderRadius: t.radius.md,
                   borderWidth: 1,
                   borderColor: done ? t.colors.ok : t.colors.borderSubtle,

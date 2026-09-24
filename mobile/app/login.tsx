@@ -63,13 +63,13 @@ export default function Login() {
   };
 
   return (
-    <Screen testID="login-screen">
+    <Screen scroll testID="login-screen">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ gap: 32, paddingVertical: 16 }}
       >
-        <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
-          <Logo tone="ink" height={56} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <View style={{ gap: 32 }}>
+          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}
           <View style={{ gap: 6 }}>
@@ -132,6 +132,19 @@ export default function Login() {
                 the road: the reset form lives on the website, and nothing here
                 said so. The address already typed and the chosen language go
                 along, so being locked out does not mean starting over. */}
+            {/* Até aqui o app abria numa tela de entrar e quem não tinha conta
+                não tinha caminho nenhum — a rota de cadastro existia e nenhuma
+                tela chamava. */}
+            <Pressable
+              onPress={() => router.push("/register")}
+              accessibilityRole="button"
+              testID="login-create-account"
+              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+            >
+              <Text variant="caption" color={t.colors.text} style={{ fontWeight: "600" }}>
+                {tr(lang, { en: "Create an account", pt: "Criar uma conta" })}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() =>
                 router.push({
@@ -141,7 +154,7 @@ export default function Login() {
               }
               accessibilityRole="button"
               testID="login-forgot-password"
-              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+              style={{ alignSelf: "center", marginTop: 2, paddingVertical: 6, paddingHorizontal: 10 }}
             >
               <Text variant="caption" color={t.colors.textMuted}>
                 {tr(lang, { en: "Forgot your password?", pt: "Esqueceu sua senha?" })}

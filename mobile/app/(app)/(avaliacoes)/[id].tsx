@@ -52,7 +52,7 @@ export default function AssessmentDetail() {
   );
 
   const card = {
-    backgroundColor: t.colors.card,
+    backgroundColor: t.colors.surface,
     borderRadius: t.radius.md,
     borderWidth: 1,
     borderColor: t.colors.borderSubtle,

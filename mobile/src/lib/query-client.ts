@@ -14,7 +14,21 @@ import { QueryClient } from "@tanstack/react-query";
  * landed. `clearSessionCache` is called on every identity change.
  */
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      // Estava `false`, e era o motivo de o app nunca mostrar o que a clínica
+      // mudava: as abas não desmontam durante a sessão, então `refetchOnMount`
+      // nunca disparava de novo e a tela ficava congelada no estado da
+      // primeira abertura. Em React Native "foco de janela" não existe por si
+      // — quem traduz `AppState` em foco é `lib/app-focus.ts`, e sem estas
+      // duas coisas juntas nenhuma das duas faz nada (075, T-12).
+      refetchOnWindowFocus: true,
+      // Volta a ter rede: tenta de novo sozinho em vez de deixar a tela de
+      // erro até alguém puxar para atualizar.
+      refetchOnReconnect: true,
+    },
+  },
 });
 
 /** Drop everything cached for the previous identity. Cancels in-flight

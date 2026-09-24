@@ -136,7 +136,7 @@ export default function Membership() {
           {currentSub && !currentSub.cancelAtPeriodEnd && (
             <Button
               title="Cancelar plano"
-              variant="secondary"
+              variant="greige"
               size="sm"
               onPress={handleCancel}
               loading={cancelMutation.isPending}
@@ -186,7 +186,7 @@ export default function Membership() {
                 {currentPlan?.id !== item.id && (
                   <Button
                     title={item.isFree ? "Ativar" : "Assinar"}
-                    variant="secondary"
+                    variant="greige"
                     onPress={() => subscribeMutation.mutate(item.id)}
                     loading={subscribeMutation.isPending && subscribeMutation.variables === item.id}
                     testID={`sub-${item.id}`}

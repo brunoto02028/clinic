@@ -1,15 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
+
+// Mesma razão da rota de esquecer a senha: o app fala com esta, e o alvo Web
+// precisa do preflight. Ver o comentário em ../forgot-password/route.ts.
+export function OPTIONS() {
+  return corsPreflight();
+}
 
 export async function POST(request: NextRequest) {
     try {
         const { token, password } = await request.json();
 
         if (!token || !password) {
-            return NextResponse.json({ error: "Token and password are required" }, { status: 400 });
+            return corsJson({ error: "Token and password are required" }, { status: 400 });
         }
 
         const resetToken = await prisma.passwordResetToken.findUnique({
@@ -17,7 +24,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (!resetToken || resetToken.expires < new Date()) {
-            return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
+            return corsJson({ error: "Invalid or expired token" }, { status: 400 });
         }
 
         const user = await prisma.user.findUnique({
@@ -25,7 +32,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (!user) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
+            return corsJson({ error: "User not found" }, { status: 404 });
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
@@ -42,9 +49,9 @@ export async function POST(request: NextRequest) {
             }),
         ]);
 
-        return NextResponse.json({ message: "Password updated successfully" });
+        return corsJson({ message: "Password updated successfully" });
     } catch (error) {
         console.error("Reset password error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return corsJson({ error: "Internal server error" }, { status: 500 });
     }
 }

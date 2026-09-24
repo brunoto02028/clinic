@@ -6650,6 +6650,28 @@ model WearableConnection {
   refreshToken   String?   @db.Text
   tokenExpiresAt DateTime?
 
+  // Which notifications Withings has CONFIRMED it will send us, by `appli`
+  // (1 weight, 4 blood pressure, 16 activity, 44 sleep), and when we last
+  // asked. Subscribing is best-effort by design — failing it would drop the
+  // connection while the patient stands in front of a redirect — so the answer
+  // has to be checked afterwards and written down. Without this, "connected"
+  // meant "the authorisation worked", and a device could sit there authorised
+  // and silent with nothing anywhere saying so (activity 075, T-10).
+  //
+  // Empty is not the same as unchecked, and a check we could not make is not
+  // recorded at all: `notifyCheckedAt` null means nobody has asked yet OR the
+  // last attempt never reached Withings, and an empty array WITH a date means
+  // Withings answered and said it will send nothing.
+  notifyConfirmedAppli Int[]     @default([])
+  notifyCheckedAt      DateTime?
+
+  // Quando chegou dado pela última vez — não quando falamos com o provedor.
+  // `lastSyncedAt` já quer dizer a segunda coisa e é isso que a tela mostra
+  // como "Last sync"; redefinir o sentido dela em silêncio faria um aparelho
+  // mudo desde janeiro parecer sincronizado hoje. Silêncio se mede por esta
+  // (atividade 075, T-11).
+  lastReadingAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

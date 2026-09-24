@@ -116,6 +116,32 @@ const RULES = [
     channels: ["INTERNAL"],
     active: true,
   },
+  {
+    code: "WEARABLE_SILENCE",
+    name: "Aparelho conectado que parou de enviar",
+    // Um aparelho pode parar de mandar sem nada quebrar: a assinatura expira,
+    // o paciente sai da conta Withings no celular, o manguito some da tomada.
+    // Nada disso gera erro em lugar nenhum — o dado simplesmente deixa de
+    // chegar, e a clínica só descobre quando vai procurar. O número fica aqui
+    // para poder mudar sem deploy: quem mede uma vez por semana não é quem
+    // mede todo dia (atividade 075, T-11).
+    trigger: "THRESHOLD",
+    condition: { silentDays: 5 },
+    active: true,
+    channels: ["INTERNAL"],
+    // Como em BP_THRESHOLDS: hoje **só o `condition` é lido** — o limiar pinta
+    // as duas telas de âmbar (/admin/biohacking e a caixa de medições) e não
+    // cria alerta nenhum. O texto abaixo é o que um alerta diria quando for
+    // ligado ao motor; enquanto isso, é configuração declarada, não alavanca
+    // ligada em nada. O interruptor `active`, esse sim, já vale: desligar a
+    // regra silencia os avisos (lib/wearable-silence.ts).
+    action: "CREATE_ALERT",
+    actionData: {
+      priority: "MEDIUM",
+      titleEn: "Device has sent nothing for {days} days",
+      titlePt: "Aparelho nao envia nada ha {days} dias",
+    },
+  },
 ];
 
 async function main() {

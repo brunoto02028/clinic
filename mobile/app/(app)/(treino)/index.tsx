@@ -62,7 +62,7 @@ export default function TrainingList() {
         onPress={() => router.push(`/(app)/(treino)/${w.id}` as any)}
         testID={`workout-${w.id}`}
         style={({ pressed }) => ({
-          backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.card,
+          backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
           borderRadius: t.radius.md,
           borderWidth: 1,
           borderColor: w.scheduledDate && isToday(w.scheduledDate) ? t.colors.text : t.colors.borderSubtle,

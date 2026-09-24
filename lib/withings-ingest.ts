@@ -144,6 +144,31 @@ export const WINDOW_DAYS = 30;
  * `until` exists for the webhook, which is told the exact window a measurement
  * falls in and has no reason to re-read a month of history to find it.
  */
+/**
+ * O instante mais recente entre tudo que a Withings devolveu na janela.
+ *
+ * Vale a leitura que o aparelho da clínica mandou para a caixa de não
+ * atribuídas: ela **é** dado chegando. Contá-la só quando cai num paciente
+ * fazia a mesma tela listar as leituras e dizer "nada chega deste aparelho há
+ * N dias" — uma contradição dentro de um cartão só.
+ */
+function newestMoment(
+  bp: Array<{ measuredAt: Date | string }>,
+  activity: Array<{ dataDate: Date | string }>,
+  sleep: Array<{ dataDate: Date | string }>
+): Date | null {
+  let melhor: number | null = null;
+  const considerar = (v: Date | string | undefined | null) => {
+    if (!v) return;
+    const t = (v instanceof Date ? v : new Date(v)).getTime();
+    if (!Number.isNaN(t) && (melhor === null || t > melhor)) melhor = t;
+  };
+  for (const r of bp) considerar(r.measuredAt);
+  for (const a of activity) considerar(a.dataDate);
+  for (const n of sleep) considerar(n.dataDate);
+  return melhor === null ? null : new Date(melhor);
+}
+
 export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
@@ -250,9 +275,24 @@ export async function ingestWithings(
     });
   }
 
+  // O carimbo de "chegou dado" mora aqui, e não em cada chamador: são três
+  // (webhook, cron e o botão do paciente) e dois deles carimbavam enquanto o
+  // terceiro não — quem sincronizasse pelo botão recebia o dado e continuava
+  // marcado como mudo (achado do code review da T-11).
+  //
+  // E a data é a da **leitura mais nova**, não `agora`. Com `agora`, a janela
+  // do cron olha alguns dias para trás, então um aparelho que parou ontem
+  // continuaria devolvendo as medidas de antes por mais três ou quatro
+  // rodadas — e cada uma delas empurraria o relógio do silêncio para a frente.
+  // O silêncio nunca seria detectado no prazo. A data da medida não mente.
+  const latestAt = newestMoment(bp, activity, sleep);
   await (prisma as any).wearableConnection.update({
     where: { id: connection.id },
-    data: { lastSyncedAt: new Date(), status: "CONNECTED" },
+    data: {
+      lastSyncedAt: new Date(),
+      status: "CONNECTED",
+      ...(latestAt ? { lastReadingAt: latestAt } : {}),
+    },
   });
 
   return {

@@ -31,6 +31,9 @@ interface WearableConnection {
   status: string;
   lastSyncedAt: string | null;
   createdAt: string;
+  /** Se o provedor confirmou que vai enviar — ver lib/withings-subscriptions. */
+  delivery?: 'receiving' | 'partial' | 'silent' | 'unchecked';
+  missingBloodPressure?: boolean;
 }
 
 interface WearableDataPoint {
@@ -61,6 +64,9 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState<WearableConnection[]>([]);
   const [wearableData, setWearableData] = useState<WearableDataPoint[]>([]);
+  // `wearableMsg` é derivado do parâmetro de volta do provedor, não é estado.
+  // O resultado de "Corrigir" precisa do próprio.
+  const [fixMsg, setFixMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const connected = searchParams?.get("connected");
   const wearableMsg =
@@ -145,6 +151,44 @@ export default function DevicesPage() {
         body: JSON.stringify({ provider: providerKey }),
       });
     } catch {}
+    load();
+  };
+
+  // Pedir de novo, sem refazer a autorização. O `load()` no fim é o que evita
+  // dizer "pronto" e mostrar outra coisa: a tela relê o que ficou gravado.
+  const handleFixDelivery = async () => {
+    setFixMsg(null);
+    try {
+      const res = await fetch("/api/wearables/resubscribe", { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setFixMsg({
+          text:
+            (isPt ? data?.errorPt : data?.error) ||
+            (isPt ? "Não foi possível corrigir agora." : "We could not fix this right now."),
+          ok: false,
+        });
+      } else if (data?.delivery === "receiving") {
+        setFixMsg({
+          text: isPt
+            ? "Pronto — a Withings vai enviar suas medições agora."
+            : "Done — Withings will send your measurements now.",
+          ok: true,
+        });
+      } else {
+        setFixMsg({
+          text: isPt
+            ? "A Withings ainda não confirmou. Sua clínica também consegue ver isso."
+            : "Withings still has not confirmed. Your clinic can see this too.",
+          ok: false,
+        });
+      }
+    } catch {
+      setFixMsg({
+        text: isPt ? "Não foi possível corrigir agora." : "We could not fix this right now.",
+        ok: false,
+      });
+    }
     load();
   };
 
@@ -256,6 +300,13 @@ export default function DevicesPage() {
                 : "bg-ba1-bad/10 text-ba1-bad border border-ba1-bad/20"
             }`}>{wearableMsg}</div>
           )}
+          {fixMsg && (
+            <div className={`text-sm p-3 rounded-lg ${
+              fixMsg.ok
+                ? "bg-ba1-ok/10 text-ba1-ok border border-ba1-ok/20"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+            }`}>{fixMsg.text}</div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {OW_PROVIDERS.map(provider => {
               const conn = connections.find(c => c.provider === provider.key.toUpperCase());
@@ -264,6 +315,9 @@ export default function DevicesPage() {
                   key={provider.key}
                   provider={provider}
                   connected={!!conn}
+                  delivery={conn?.delivery}
+                  missingBloodPressure={conn?.missingBloodPressure}
+                  onFixDelivery={provider.key === 'withings' ? handleFixDelivery : undefined}
                   lastSync={conn?.lastSyncedAt || undefined}
                   onConnect={() => {
                     // A recusa do servidor é a que vale; isto só evita mandar

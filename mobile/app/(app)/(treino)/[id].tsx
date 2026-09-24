@@ -52,7 +52,7 @@ export default function TrainingSession() {
   const cellStyle = useMemo(
     () => ({
       flex: 1,
-      backgroundColor: t.colors.card,
+      backgroundColor: t.colors.surface,
       borderWidth: 1,
       borderColor: t.colors.borderSubtle,
       borderRadius: t.radius.sm,
@@ -136,7 +136,7 @@ export default function TrainingSession() {
 
       <View style={{ gap: 14, marginTop: 16 }}>
         {workout.exercises.map((e) => (
-          <View key={e.id} style={{ backgroundColor: t.colors.card, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.borderSubtle, padding: 12, gap: 8 }}>
+          <View key={e.id} style={{ backgroundColor: t.colors.surface, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.borderSubtle, padding: 12, gap: 8 }}>
             <Text variant="body" style={{ fontFamily: "Inter_700Bold" }}>
               {e.exercise?.name ?? "Exercise"}
               {e.supersetGroup ? `  ·  SS ${e.supersetGroup}` : ""}

@@ -9,6 +9,11 @@ export interface AuthUser {
   clinicId: string | null;
   clinicName: string | null;
   clinicSlug: string | null;
+  /** CLINIC ou PERSONAL_TRAINER. Já vinha no token e na resposta do cadastro;
+   *  faltava declarar. É o que distingue um paciente de clínica, que faz
+   *  avaliação clínica, de um aluno de estúdio, para quem essa rota é
+   *  bloqueada. */
+  clinicType: string | null;
   permissions: Record<string, boolean>;
 }
 
