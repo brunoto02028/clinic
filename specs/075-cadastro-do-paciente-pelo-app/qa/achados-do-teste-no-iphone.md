@@ -551,3 +551,60 @@ Feita enquanto o Bruno testava, 24/09/2026:
 idioma (`preferredLocale?.startsWith("pt")`) em vez de usar `useLang()`. Leem a fonte certa, então
 não é defeito — mas são três implementações da mesma decisão, e foi uma divergência dessas que
 fez quinze telas mostrarem português para quem tinha `en-GB` (ver o comentário em `lib/i18n.ts`).
+
+---
+
+## 21. Build 10 — o que entrou, e o que o Bruno testa no iPad
+
+Disparado na madrugada de 24→25/09/2026, autorizado: *"pode fazer todas essas revisões, pode
+gerar um novo build, e quando eu acordar, eu vou testar"*.
+
+```
+build 10 · id 43e16b93 · commit 9ae460d9
+runtime  428c60ba1306964b5e40b090d768c6ec2961acbb
+canal    production · EXPO_PUBLIC_SHOW_LAB=false
+```
+
+**O runtime mudou** (era `7e4f203e`), porque houve mudança nativa: `orientation: default` e
+`userInterfaceStyle: light`. Updates OTA publicados de agora em diante precisam bater com
+`428c60ba` — conferir antes de prometer que chegaram ([[bug-fingerprint-eas-json-corta-ota]]).
+
+### Navegação (auditoria das 63 telas)
+
+A causa raiz era uma linha: **`(clinica)` era o único módulo com `headerShown: false`.** Os outros
+cinco já tinham sido corrigidos, cada um com o comentário "quem entrava no módulo não tinha como
+voltar". A clínica ficou de fora — justo o módulo do paciente. Com `false`, cada tela pedia o
+header na mão, e todo caminho que não pede — carregando, erro, plano bloqueado — virava beco.
+
+Junto: a tranca virou **cortina** em vez de rota (era `<Redirect>`, que remonta o `<Stack>` e zera
+o histórico; dois minutos em segundo plano bastavam); `goBackOr()` para o `router.back()` que não
+tem para onde ir; `unstable_settings.initialRouteName` para quem entra por `replace`; a porta do
+`PlanGate` deixou de ser condicional (19 telas); e a etapa "Resultados" parou de navegar para
+`"/"`, a rota que o próprio guarda documenta como proibida.
+
+### Tamanho de tela
+
+Quase tudo já estava certo: nada mede a janela, nenhuma largura ou altura fixa grande, e o
+`Screen` já limitava o conteúdo a 560pt centralizados. **O layout sempre foi flexível; só estava
+proibido de girar.** `booking-confirmed` era a única que cortava de verdade — num iPhone SE com
+local e endereço, a única saída ficava abaixo da dobra.
+
+### Cor (revisão de UX) — três achados clínicos
+
+1. **A faixa de hipotensão não existia no app.** 85/55 mostrava selo verde "Normal" enquanto a web
+   classificava como `LOW`. Paciente pós-operatório em anti-hipertensivo: risco de queda.
+2. **Crise hipertensiva tinha a aparência de rotina.** Cinco faixas em três cores; 180/120 era
+   pixel a pixel igual a 140/90. Agora tem bloco com ícone e instrução — distinta **pela forma**,
+   não só pela cor, o que também resolve daltonismo.
+3. **A escala de dor mostrava o 10 em verde.** E a régua vinte pixels ao lado já usava gravidade.
+
+Contraste medido: o cinza de legenda falhava em **258 nós** (3,86 / 4,25 / 3,66:1) e agora dá
+5,66 / 6,23 / 5,37:1, no mesmo tom. `bad`, `warn` e `community` escurecidos 6-13% para passar
+4,5:1 sobre os próprios fundos `Soft` — única mudança de token, justificada por número.
+
+### Decisão que ficou para o Bruno
+
+**67% do texto do app está abaixo de 12px** — incluindo precauções de segurança, texto de
+consentimento e dose prescrita, a 10,5px. O mínimo da HIG é 11pt e o corpo padrão é 17pt. Mudar
+isso altera a densidade de todas as telas, então não foi feito sem ele ver. É o achado com maior
+impacto real nos pacientes.
