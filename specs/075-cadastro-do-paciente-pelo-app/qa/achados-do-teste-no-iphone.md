@@ -365,12 +365,28 @@ princípio: o Bruno precisa resolver isso pela interface, não com uma URL que e
 
 Apontados pelo Bruno durante o teste do manguito de consultório, 24/09/2026.
 
-**A barra de medição cobria o nome do paciente.** Aberta, a barra
-("Waiting for Daniel To's reading… 2:57") é muito mais larga que o botão que a originou, e nenhum
-dos dois lados podia ceder: o grupo de botões não tinha `min-w-0` e as barras não quebravam linha.
-Resultado: transbordava por cima do `<h1>` com o nome. Agora as quatro barras do
-`ClinicMeasurementButton` têm `flex-wrap min-w-0 max-w-full`, o grupo de botões encolhe, e o nome
-e o e-mail usam `truncate` para degradar com elegância em vez de empurrar.
+**A barra de medição cobria o nome do paciente.** Diagnostiquei errado duas vezes antes de medir.
+
+Não eram as caixas se sobrepondo — era o **conteúdo transbordando de uma caixa colapsada**. O
+bloco do paciente tinha `flex-1 min-w-0`, então o flexbox podia encolhê-lo **até quase zero** para
+caber a barra na mesma linha. Reproduzido num arquivo isolado, com as posições medidas:
+
+| largura da tela | antes | depois |
+|---|---|---|
+| 1024px | 356px | 356px |
+| 900px  | 232px | **839px** (a barra desce de linha) |
+| 800px  | 132px | **739px** |
+| 700px  | **32px** | **639px** |
+
+A 32px de largura, "Gabby Boss" (que precisa de ~110px) escapa da própria caixa e desliza por
+baixo da barra. Por isso a primeira tentativa — `truncate` no `<h1>` e `min-w-0` no grupo de
+botões — não resolveu: truncava o texto, mas o bloco inteiro continuava colapsando. Só aparecia
+com a tela estreita, e o Bruno usa zoom alto, o que estreita a largura efetiva.
+
+**A correção é um piso:** `flex-1 basis-72 min-w-[18rem] overflow-hidden` no bloco do paciente. Sem
+para onde crescer, o grupo de botões cai para a linha de baixo — que é o comportamento natural do
+`flex-wrap` que já estava no cabeçalho. As barras do `ClinicMeasurementButton` também ganharam
+`flex-wrap min-w-0 max-w-full`, e o nome e o e-mail truncam.
 
 **A última linha do histórico ficava colada na borda.** `pb-16` na aba de pressão — e é
 justamente a linha onde se clica para editar ou apagar uma leitura.
