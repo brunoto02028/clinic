@@ -60,6 +60,34 @@ Corrigido no PR #96 (`scripts/seed-automation-rules.js`, rodado no boot). Log do
 
 `created` nas quatro confirma o diagnóstico: não havia nenhuma.
 
+## Terceiro deploy — T-8, T-10 e T-13 (24/09/2026, build `3WJ_b7xauAgfaAgytOVH8`, PR #97)
+
+Mesmo script, agora com duas verificações a mais (a rota de aceite do aviso): **13 ok, 0 falhas.**
+
+```
+ok   /api/patient/monitoring-consent anônimo  (307)
+ok   POST sem sessão                          (307)
+```
+
+Schema e regras, do log do container:
+
+```
+🚀  Your database is now in sync with your Prisma schema. Done in 1.61s
+[start.sh] Seeding automation rules...
+[seed-automation-rules] updated ADHERENCE_DAILY_REMINDER
+[seed-automation-rules] updated ADHERENCE_DAILY_ALERT
+[seed-automation-rules] updated BP_THRESHOLDS
+[seed-automation-rules] updated EXERCISE_BP_LIMITS
+```
+
+`updated` — na primeira vez foi `created`. O seed de boot está mantendo as regras a cada deploy.
+
+**Janela observada, que vale registrar:** o `start.sh` sobe o servidor **antes** de aplicar o schema
+(de propósito, para o site não ficar fora do ar durante o deploy). Entre o `✓ Ready` e o
+`in sync` passaram-se alguns segundos em que o código novo servia tráfego com o banco velho — nesse
+intervalo, `/api/patient/monitoring-consent` e o conectar-aparelho responderiam 500. Não houve
+tráfego real nessa janela, mas é uma consequência real do desenho atual do `start.sh`.
+
 ## Não coberto por este QA
 
 - **Qualquer coisa que exija sessão** em produção (abrir janela de medição, caixa de entrada,
