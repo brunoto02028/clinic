@@ -138,6 +138,14 @@ node /app/scripts/backfill-patient-invoices.js || echo "[start.sh] patient invoi
 echo "[start.sh] Seeding ACL reconstruction protocol template..."
 node /app/scripts/seed-acl-protocol.js || echo "[start.sh] ACL protocol seed warning — check logs"
 
+# The automation rules (activities 72 and 74). They were seeded by hand, which
+# meant production had none: /admin/automation listed nothing and the clinic
+# could not change a threshold without a deploy — the exact thing putting them
+# in a rule was meant to fix. Idempotent, and it never touches a clinic's own
+# override row.
+echo "[start.sh] Seeding automation rules..."
+node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
+
 # Corrects generic template placeholder content (wrong city, fake address,
 # placeholder phone) that app/api/settings/route.ts's auto-create used to
 # fill in on a fresh DB — idempotent, only touches fields still matching the
