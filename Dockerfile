@@ -91,6 +91,7 @@ COPY --from=builder /app/scripts/backfill-instagram-import-flag.js ./scripts/bac
 COPY --from=builder /app/scripts/migrate-personal-trainer-colors.js ./scripts/migrate-personal-trainer-colors.js
 COPY --from=builder /app/scripts/backfill-appointment-clinicid.js ./scripts/backfill-appointment-clinicid.js
 COPY --from=builder /app/scripts/seed-acl-protocol.js ./scripts/seed-acl-protocol.js
+COPY --from=builder /app/scripts/seed-automation-rules.js ./scripts/seed-automation-rules.js
 COPY --from=builder /app/scripts/backfill-protocol-template-clinicid.js ./scripts/backfill-protocol-template-clinicid.js
 COPY --from=builder /app/scripts/backfill-prescription-protocolid.js ./scripts/backfill-prescription-protocolid.js
 COPY --from=builder /app/scripts/backfill-email-message-clinicid.js ./scripts/backfill-email-message-clinicid.js
