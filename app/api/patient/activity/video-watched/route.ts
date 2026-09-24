@@ -1,3 +1,4 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getActor } from "@/lib/tenant-access";
@@ -9,6 +10,10 @@ export const dynamic = "force-dynamic";
 // timeline (specs/048-atividade-do-paciente) already had a source to read
 // from; "watched a video" didn't. Reuses the AuditLog model, same as login.
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   const actor = await getActor(req);
   if (!actor || actor.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

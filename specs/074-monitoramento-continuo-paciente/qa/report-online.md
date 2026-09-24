@@ -88,6 +88,19 @@ Schema e regras, do log do container:
 intervalo, `/api/patient/monitoring-consent` e o conectar-aparelho responderiam 500. Não houve
 tráfego real nessa janela, mas é uma consequência real do desenho atual do `start.sh`.
 
+## Quarto deploy — correções da auditoria de paridade (24/09/2026, build `W7PPreUFcpzxs2T28zvvq`, PR #98)
+
+**13 ok, 0 falhas.** E o backfill do `clinicId` rodou contra o banco de produção:
+
+```
+The database is already in sync with the Prisma schema.
+[backfill-clinicid] messages=11 screenings=5
+```
+
+Ou seja: havia **5 triagens reais** em produção sem tenant. É exatamente o que o QA previu — o
+contador de triagens por clínica em `lib/command-context.ts` vinha reportando zero para elas. Agora
+estão preenchidas, e as rotas que as criam passaram a preencher na origem.
+
 ## Não coberto por este QA
 
 - **Qualquer coisa que exija sessão** em produção (abrir janela de medição, caixa de entrada,

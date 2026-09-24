@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { patientGate } from "@/lib/patient-gate";
 import {
   getExerciseBpLimits,
   evaluateClearance,
@@ -22,6 +23,10 @@ import {
  * after a new reading without reloading the whole list.
  */
 export async function GET(_req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_exercises" });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

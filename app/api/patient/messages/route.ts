@@ -4,11 +4,16 @@ import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { saveChatAttachment } from "@/lib/chat-attachment";
 import { sendEmail } from "@/lib/email";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
 // GET — patient's own message thread
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_messages" });
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,6 +40,10 @@ export async function GET(req: NextRequest) {
 
 // POST — patient sends a reply to the clinic
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_messages" });
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -115,6 +124,10 @@ export async function POST(req: NextRequest) {
 
 // PATCH — mark staff messages as read
 export async function PATCH() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_messages" });
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

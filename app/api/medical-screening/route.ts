@@ -12,8 +12,13 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
+import { patientGate } from "@/lib/patient-gate";
 
 export async function GET(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) {
@@ -77,6 +82,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const session = await getRequestSession(request);
 
@@ -176,6 +185,21 @@ export async function POST(request: NextRequest) {
 
       if (isAutosave) {
         return NextResponse.json({ success: true, autosaved: true });
+      }
+
+      // The tick on the last step of the assessment IS the consent — this app's
+      // own consent screen says so in as many words. It wrote only
+      // `MedicalScreening.consentGiven`, while the portal reads
+      // `User.consentAcceptedAt`: two columns for one promise, and a patient who
+      // consented in the app was refused on the web. Now that the server enforces
+      // it, that split would have locked them out of everything.
+      // `updateMany` with a null filter so an earlier, real acceptance date is
+      // never overwritten by this one.
+      if (body?.consentGiven) {
+        await prisma.user.updateMany({
+          where: { id: userId, consentAcceptedAt: null } as any,
+          data: { consentAcceptedAt: new Date() } as any,
+        });
       }
 
       // FIX 6: Log notification failure with CRITICAL so admin can see in system logs
@@ -307,6 +331,21 @@ export async function POST(request: NextRequest) {
 
     if (isAutosave) {
       return NextResponse.json({ success: true, autosaved: true });
+    }
+
+    // The tick on the last step of the assessment IS the consent — this app's
+    // own consent screen says so in as many words. It wrote only
+    // `MedicalScreening.consentGiven`, while the portal reads
+    // `User.consentAcceptedAt`: two columns for one promise, and a patient who
+    // consented in the app was refused on the web. Now that the server enforces
+    // it, that split would have locked them out of everything.
+    // `updateMany` with a null filter so an earlier, real acceptance date is
+    // never overwritten by this one.
+    if (body?.consentGiven) {
+      await prisma.user.updateMany({
+        where: { id: userId, consentAcceptedAt: null } as any,
+        data: { consentAcceptedAt: new Date() } as any,
+      });
     }
 
     // FIX 6: Log with CRITICAL prefix so admin can see in system logs

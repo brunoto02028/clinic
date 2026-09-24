@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { getLevelForXP, getXPToNextLevel, XP_REWARDS } from "@/lib/journey";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,10 @@ export const dynamic = "force-dynamic";
  * GET /api/patient/journey — Get full journey state (progress, missions, badges, recovery ring)
  */
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_journey" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -146,6 +151,10 @@ export async function GET() {
  * body: { action: "add_xp" | "complete_mission_task" | "mark_active", ... }
  */
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_journey" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

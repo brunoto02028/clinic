@@ -3,9 +3,14 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 
 export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
+import { patientGate } from "@/lib/patient-gate";
 
 // GET - Get patient's body assessments (only sent/completed ones)
 export async function GET(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) {

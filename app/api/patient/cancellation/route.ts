@@ -7,11 +7,16 @@ import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { sendTemplatedEmail } from '@/lib/email-templates';
 import { notifyPatient } from '@/lib/notify-patient';
+import { patientGate } from "@/lib/patient-gate";
 
 const CANCELLATION_WINDOW_HOURS = 24;
 
 // GET: patient's own cancellation requests
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,6 +40,10 @@ export async function GET(req: NextRequest) {
 
 // POST: patient submits a cancellation request
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

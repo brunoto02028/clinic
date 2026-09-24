@@ -1,9 +1,14 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const { token } = await request.json();
 

@@ -1,3 +1,4 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -49,6 +50,10 @@ async function syncServiceAccessForPlan(patientId: string, plan: any, adminId?: 
  * - Paid plans: create Stripe Checkout session and return URL
  */
 export async function POST(request: NextRequest) {
+  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) {

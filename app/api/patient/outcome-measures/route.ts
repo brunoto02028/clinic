@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
+import { patientGate } from "@/lib/patient-gate";
 
 // How far back a `range` value reaches, in days. `all` (or anything else) = no cutoff.
 function rangeCutoff(range: string | null): Date | null {
@@ -22,6 +23,10 @@ function rangeCutoff(range: string | null): Date | null {
 }
 
 export async function GET(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,6 +104,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   const effective = await getEffectiveUser();
   if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

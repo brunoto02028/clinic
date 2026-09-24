@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = 'force-dynamic';
 
 // GET - Check if patient has given social media consent
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,6 +32,10 @@ export async function GET(req: NextRequest) {
 
 // POST - Grant or revoke social media image consent
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { NON_EMERGENCY_NOTICE_VERSION } from "@/lib/non-emergency-notice";
+import { patientGate } from "@/lib/patient-gate";
 
 /**
  * The patient saying, once, that they read "this is not an emergency service"
@@ -19,6 +20,10 @@ import { NON_EMERGENCY_NOTICE_VERSION } from "@/lib/non-emergency-notice";
  */
 
 export async function GET() {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -40,6 +45,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (effectiveUser.isImpersonating) {

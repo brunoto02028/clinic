@@ -1,3 +1,4 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -11,6 +12,10 @@ export const dynamic = "force-dynamic";
  * Returns the patient's active subscription (if any).
  */
 export async function GET() {
+  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ skipConsent: true });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) {

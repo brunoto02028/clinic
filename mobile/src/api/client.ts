@@ -61,7 +61,13 @@ async function failSession(): Promise<never> {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  /**
+   * The server's machine-readable reason, when it gave one. Two different
+   * 403s reach the same screens — "not in your plan" and "you have not
+   * accepted the terms" — and only one of them is something the patient can
+   * fix. Telling them apart needs more than a status code.
+   */
+  constructor(public status: number, message: string, public code?: string) {
     super(message);
   }
 }
@@ -91,7 +97,11 @@ export async function apiFetch<T>(
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new ApiError(res.status, (data as any)?.error || `Request failed (${res.status})`);
+    throw new ApiError(
+      res.status,
+      (data as any)?.error || `Request failed (${res.status})`,
+      (data as any)?.code
+    );
   }
   return data as T;
 }
