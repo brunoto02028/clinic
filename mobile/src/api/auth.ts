@@ -3,11 +3,12 @@ import type { AuthResponse, AuthTokens } from "./types";
 
 export class AuthError extends Error {
   /**
-   * The HTTP status, because the sign-up screen has to tell three refusals
+   * The HTTP status, because the sign-up screen has to tell four refusals
    * apart and act differently on each: 409 the account already exists (offer
-   * to sign in or set a password), 403 the clinic is at its patient limit,
-   * 503 no clinic could be resolved. One sentence for all three would be a
-   * dead end in the first case, which is the one a real patient meets.
+   * to sign in or set a password), 404 the professional code is not one of
+   * ours, 403 the clinic is at its patient limit, 503 no clinic could be
+   * resolved. One sentence for all four would be a dead end in the first
+   * case, which is the one a real patient meets.
    */
   constructor(message: string, public status?: number) {
     super(message);

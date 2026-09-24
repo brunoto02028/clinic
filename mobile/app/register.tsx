@@ -19,7 +19,7 @@ import { localeToLang, t as tr, type Lang } from "@/lib/i18n";
  * missing was any way to reach it: the app opened on a sign-in screen and a
  * person without an account had nowhere to go.
  *
- * The three refusals are kept apart on purpose. "An account with this email
+ * The four refusals are kept apart on purpose. "An account with this email
  * already exists" is the one a real patient meets — the clinic created their
  * record — and it is the one where a single generic error would be a dead end.
  *
@@ -192,7 +192,7 @@ export default function Register() {
                 title={tr(lang, { en: "Sign in", pt: "Entrar" })}
                 variant="primary"
                 size="sm"
-                onPress={() => router.replace("/login")}
+                onPress={() => router.push("/login")}
                 testID="register-go-signin"
               />
               <Button
@@ -200,7 +200,7 @@ export default function Register() {
                 variant="greige"
                 size="sm"
                 onPress={() =>
-                  router.replace({
+                  router.push({
                     pathname: "/forgot-password",
                     params: { email: email.trim().toLowerCase(), lang },
                   })
@@ -321,7 +321,7 @@ export default function Register() {
           </View>
 
           <Pressable
-            onPress={() => router.replace("/login")}
+            onPress={() => router.push("/login")}
             accessibilityRole="button"
             testID="register-back-to-login"
             style={{ alignSelf: "center", paddingVertical: 6, paddingHorizontal: 10 }}

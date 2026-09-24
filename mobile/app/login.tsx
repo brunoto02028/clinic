@@ -63,12 +63,12 @@ export default function Login() {
   };
 
   return (
-    <Screen testID="login-screen">
+    <Screen scroll testID="login-screen">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ gap: 32, paddingVertical: 16 }}
       >
-        <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
+        <View style={{ gap: 32 }}>
           <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}

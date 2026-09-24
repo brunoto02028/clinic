@@ -54,8 +54,8 @@ export default function Health() {
     queryKey: ["messages"],
     queryFn: () => fetchMessages(),
   });
-  // A única rota que responde antes do aceite — é de bypass no gate — e por
-  // isso a única que pode dizer por que todo o resto está recusando.
+  // Uma das rotas que responde antes do aceite (passa `skipConsent` no gate),
+  // e a que sabe dizer por que o resto está recusando.
   const access = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
@@ -79,7 +79,11 @@ export default function Health() {
 
   // `&&` meant the screen rendered as soon as either query settled, with the
   // other still running — which is how a live request came out as an error.
-  if (appts.isLoading || exercises.isLoading) {
+  // `access` entra aqui junto com as outras: sem isso, quando appts e
+  // exercises resolviam primeiro, a home inteira renderizava com os seis erros
+  // e só depois era trocada pelo convite. O recém-cadastrado é o pior caso —
+  // o cache é limpo no cadastro, então as cinco partem do zero juntas.
+  if (appts.isLoading || exercises.isLoading || access.isLoading) {
     return (
       <Screen testID="health-screen">
         <Spinner center />

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
+import { rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import crypto from "crypto";
@@ -22,7 +23,35 @@ export function OPTIONS() {
 
 export async function POST(request: NextRequest) {
     try {
+        // O middleware exclui `/api/auth` do rate limit dele, e agora esta rota
+        // aceita chamada de qualquer origem — uma página qualquer poderia usar
+        // o navegador de quem a visita para disparar reset em massa contra
+        // endereços de terceiros. Dois limites, porque protegem coisas
+        // diferentes: o IP contra o volume, o endereço contra ser alvo.
+        const ip =
+            request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            request.headers.get("x-real-ip") ||
+            "unknown";
+        const porIp = rateLimit(`forgot-password:ip:${ip}`, { max: 10, windowMs: 15 * 60_000 });
+        if (!porIp.allowed) {
+            return corsJson({ error: "Too many requests. Try again later." }, { status: 429 });
+        }
+
         const { email } = await request.json();
+
+        if (typeof email === "string" && email.trim()) {
+            const porEmail = rateLimit(`forgot-password:email:${email.trim().toLowerCase()}`, {
+                max: 3,
+                windowMs: 60 * 60_000,
+            });
+            if (!porEmail.allowed) {
+                // A mesma frase do caminho feliz: dizer "este endereço já pediu
+                // demais" contaria a um estranho que a conta existe.
+                return corsJson({
+                    message: "If an account exists with that email, a reset link has been sent.",
+                });
+            }
+        }
 
         if (!email) {
             return corsJson({ error: "Email is required" }, { status: 400 });
