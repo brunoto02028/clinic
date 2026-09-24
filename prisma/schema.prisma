@@ -6665,6 +6665,13 @@ model WearableConnection {
   notifyConfirmedAppli Int[]     @default([])
   notifyCheckedAt      DateTime?
 
+  // Quando chegou dado pela última vez — não quando falamos com o provedor.
+  // `lastSyncedAt` já quer dizer a segunda coisa e é isso que a tela mostra
+  // como "Last sync"; redefinir o sentido dela em silêncio faria um aparelho
+  // mudo desde janeiro parecer sincronizado hoje. Silêncio se mede por esta
+  // (atividade 075, T-11).
+  lastReadingAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

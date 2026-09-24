@@ -79,6 +79,20 @@ export async function POST(req: NextRequest) {
       kinds: KINDS_BY_APPLI[appli] ?? ["bp"],
     });
 
+    // Quando chega dado, isto é o que mede silêncio — e é a prova mais forte
+    // que existe de que a entrega funciona, bem melhor que um `notify list` de
+    // meses atrás (atividade 075, T-11).
+    const arrived =
+      counts.bloodPressure + counts.activityDays + counts.sleepNights + counts.vitalsDays > 0;
+    if (arrived) {
+      await (prisma as any).wearableConnection
+        .update({
+          where: { id: connection.id },
+          data: { lastReadingAt: new Date(), lastSyncedAt: new Date() },
+        })
+        .catch((e: any) => console.error("[withings/webhook] could not stamp arrival:", e?.message));
+    }
+
     console.log(
       `[withings/webhook] userid=${userid} appli=${appli} bp=${counts.bloodPressure} activity=${counts.activityDays} sleep=${counts.sleepNights}`
     );

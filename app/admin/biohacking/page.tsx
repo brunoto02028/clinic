@@ -80,12 +80,21 @@ function PatientCard({ p, protocols, onAssign }: { p: any; protocols: any[]; onA
                 const mudos = p.wearableConnections.filter(
                   (c: any) => c.delivery === "silent" || c.delivery === "partial"
                 ).length;
+                // Assinatura confirmada e mesmo assim parou de chegar dado: a
+                // assinatura expira, o paciente sai da conta no celular, o
+                // aparelho fica fora da tomada. Nada disso dá erro (075, T-11).
+                const calado = p.wearableConnections.find((c: any) => c.silent);
                 return (
-                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${mudos ? "text-amber-400" : "text-violet-400"}`}>
+                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${mudos || calado ? "text-amber-400" : "text-violet-400"}`}>
                     <Watch className="h-3 w-3" /> {p.wearableConnections.length} device{p.wearableConnections.length > 1 ? 's' : ''}
                     {mudos > 0 && (
                       <span title="Authorised, but the provider has not confirmed it will send measurements">
                         · {mudos} not sending
+                      </span>
+                    )}
+                    {calado && (
+                      <span title="Nothing has arrived from this device for longer than the clinic's threshold">
+                        · silent {calado.daysSilent}d
                       </span>
                     )}
                   </p>

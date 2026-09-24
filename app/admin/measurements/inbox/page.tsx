@@ -46,6 +46,7 @@ const UI = {
     connect: "Connect the clinic device",
     deviceOn: "Clinic device connected",
     deviceSilent: "Connected, but Withings has not confirmed it will send readings.",
+    deviceQuiet: "Nothing has arrived from this device in {d} days.",
     deviceFix: "Try again",
     deviceFixed: "Withings will send readings now.",
     deviceStillSilent: "Withings still has not confirmed.",
@@ -74,6 +75,7 @@ const UI = {
     connect: "Conectar o aparelho da clínica",
     deviceOn: "Aparelho da clínica conectado",
     deviceSilent: "Conectado, mas a Withings não confirmou que vai enviar as leituras.",
+    deviceQuiet: "Nada chega deste aparelho há {d} dias.",
     deviceFix: "Tentar de novo",
     deviceFixed: "A Withings vai enviar as leituras agora.",
     deviceStillSilent: "A Withings ainda não confirmou.",
@@ -92,7 +94,13 @@ export default function MeasurementInboxPage() {
   // The device itself, so this screen can say why nothing ever arrives when
   // there is none — and be the one place that connects it.
   const [device, setDevice] = useState<
-    { id: string; label: string | null; delivery?: "receiving" | "partial" | "silent" | "unchecked" } | null | undefined
+    {
+      id: string;
+      label: string | null;
+      delivery?: "receiving" | "partial" | "silent" | "unchecked";
+      daysSilent?: number | null;
+      silent?: boolean;
+    } | null | undefined
   >(undefined);
   const [fixing, setFixing] = useState(false);
   const [deviceMsg, setDeviceMsg] = useState<string | null>(null);
@@ -241,6 +249,11 @@ export default function MeasurementInboxPage() {
               alimenta vários pacientes: se a Withings não confirmou o envio,
               ninguém ficava sabendo — e a clínica mediria achando que a leitura
               ia chegar (atividade 075, T-10). */}
+          {device.silent && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {ui.deviceQuiet.replace("{d}", String(device.daysSilent ?? "?"))}
+            </p>
+          )}
           {(device.delivery === "silent" || device.delivery === "partial") && (
             <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
               <span>{ui.deviceSilent}</span>

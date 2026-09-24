@@ -44,7 +44,9 @@ ela a submissão é rejeitada.
 | T-8 | Entrar com Google e com Apple *(opcional — só se você quiser)* | pendente |
 | T-9 | Conectar o aparelho logo depois do cadastro | pendente |
 | T-10 | Confirmar que a assinatura existe, em vez de torcer | em revisão |
-| T-11 | A rede de segurança, e alguém que perceba o silêncio | pendente |
+| T-11 | A rede de segurança, e alguém que perceba o silêncio | em revisão |
+| T-12 | O app revalida quando o paciente volta para ele | pendente |
+| T-13 | Senha trocada derruba a sessão do app | pendente |
 
 ## Decisões do Bruno (24/09/2026)
 

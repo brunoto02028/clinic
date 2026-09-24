@@ -78,7 +78,9 @@ export async function attributeClinicReading(
   }
 
   // The same measurement reaches us twice: once from the webhook, once from
-  // the scheduled sync. Withings' own group id is the key, and it has to be
+  // the daily sync at /api/cron/wearables-sync — which, until activity 075
+  // T-11, did not exist, so this deduplication was guarding a second path that
+  // never ran. Withings' own group id is the key, and it has to be
   // checked on *both* sides — the inbox and the records. Checking only the
   // inbox put a re-delivered reading there a second time even though it had
   // already been filed, because by then its session was closed and no window
@@ -224,6 +226,7 @@ export async function clinicDevice(clinicId: string) {
       // o /admin/biohacking só varre quem tem papel PATIENT, e esta conexão
       // pertence a quem autorizou (atividade 075, T-10).
       notifyConfirmedAppli: true, notifyCheckedAt: true,
+      lastReadingAt: true, createdAt: true, status: true,
       accessToken: true, refreshToken: true, tokenExpiresAt: true,
     },
   });

@@ -1,4 +1,5 @@
 import { deliveryState } from "@/lib/withings-subscriptions";
+import { daysSilent, isSilent, silenceThreshold } from "@/lib/wearable-silence";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -57,6 +58,9 @@ export async function GET() {
             terraUserId: true,
             notifyConfirmedAppli: true,
             notifyCheckedAt: true,
+            lastReadingAt: true,
+            createdAt: true,
+            status: true,
           },
           take: 3,
         },
@@ -68,6 +72,10 @@ export async function GET() {
       },
       orderBy: { firstName: "asc" },
     });
+
+    // O limiar é da clínica e mora numa AutomationRule, para poder mudar sem
+    // deploy: quem mede uma vez por semana não é quem mede todo dia.
+    const limiteSilencio = await silenceThreshold(user.clinicId);
 
     const enriched = patients.map((p: any) => {
       const checks = p.dailyCheckIns || [];
@@ -114,6 +122,11 @@ export async function GET() {
         wearableConnections: (p.wearableConnections || []).map((c: any) => ({
           ...c,
           delivery: deliveryState(c),
+          // Um aparelho pode ter assinatura confirmada e mesmo assim parar de
+          // mandar — a assinatura expira, o paciente sai da conta no celular,
+          // o manguito fica fora da tomada. Nada disso dá erro (075, T-11).
+          daysSilent: daysSilent(c),
+          silent: isSilent(c, limiteSilencio),
         })),
         latestWearable: p.wearableDataPoints?.[0] || null,
       };

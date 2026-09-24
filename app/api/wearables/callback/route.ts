@@ -95,7 +95,9 @@ export async function GET(request: NextRequest) {
       // Ask Withings to tell us when a measurement is taken (T-9), and then
       // ask it what it actually agreed to send (075, T-10). Failing here must
       // not fail the connection: the patient is standing in front of a
-      // redirect and a subscription can be created later. What changed is that
+      // redirect, a subscription can be created later, and o cron diário de
+      // /api/cron/wearables-sync busca o que a notificação não trouxer — o que
+      // antes era uma promessa em comentário e agora existe. What changed is that
       // the outcome is now written on the connection instead of into a log —
       // a device that was authorised and silent used to look exactly like one
       // that was working.

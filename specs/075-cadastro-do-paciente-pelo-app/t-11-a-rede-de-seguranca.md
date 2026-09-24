@@ -1,6 +1,6 @@
 # T-11: A rede de segurança, e alguém que perceba o silêncio
 
-**Status:** pendente · **Depende de:** T-10
+**Status:** em revisão · **Depende de:** T-10
 
 ## Objetivo
 Que um dado não se perca porque uma notificação se perdeu — e que ninguém descubra isso meses
