@@ -48,6 +48,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "BPR asks for Face ID so only you can open your clinical record on this device. Your password still works if Face ID is unavailable."
+        }
+      ],
       "expo-font",
       [
         "expo-image-picker",

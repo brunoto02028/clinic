@@ -7,6 +7,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { useAuth } from "@/store/auth";
 import { wireAppFocus, wireNetwork } from "@/lib/app-focus";
+import { wireAppLock } from "@/lib/app-lock";
+import { PrivacyCover } from "@/components/PrivacyCover";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -51,6 +53,11 @@ export default function RootLayout() {
   useEffect(() => wireAppFocus(), []);
   useEffect(() => wireNetwork(), []);
 
+  // Tranca de novo quando o app passa tempo demais em segundo plano. Sem isto
+  // a biometria só valeria na abertura a frio, e o app fica semanas vivo na
+  // bandeja do telefone.
+  useEffect(() => wireAppLock(), []);
+
   const onReady = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -67,6 +74,9 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <View style={{ flex: 1 }} onLayout={onReady}>
           <Stack screenOptions={{ headerShown: false }} />
+          {/* Por cima de tudo, inclusive da tela de tranca: o print do
+              multitarefa é tirado antes de qualquer navegação acontecer. */}
+          <PrivacyCover />
         </View>
       </SafeAreaProvider>
     </QueryClientProvider>

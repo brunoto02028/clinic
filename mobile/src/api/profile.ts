@@ -1,6 +1,7 @@
 import { apiFetch } from "./client";
 
 export interface PatientProfile {
+  profileImageUrl?: string | null;
   id: string;
   firstName: string;
   lastName: string;

@@ -1,5 +1,5 @@
 import { View, Linking, Alert } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { fetchLabOrder } from "@/api/labs";
@@ -97,7 +97,15 @@ export default function LabResult() {
           </Card>
         )}
 
-        <Button title="Discuss with physiotherapist" variant="ghost" size="md" />
+        {/* Estava sem `onPress`: o botão existia, enchia a tela e não fazia
+            nada. Leva para a conversa com a clínica, que é onde o resultado
+            de fato se discute. */}
+        <Button
+          title="Discuss with your therapist"
+          variant="ghost"
+          size="md"
+          onPress={() => router.push("/(app)/(clinica)/messages")}
+        />
       </View>
     </Screen>
   );

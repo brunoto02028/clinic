@@ -767,16 +767,19 @@ export default function PatientProfilePage() {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-6 w-6 text-primary" /></div>
             <div>
-              <h1 className="text-xl font-bold">{p.firstName} {p.lastName}</h1>
+              <h1 className="text-xl font-bold truncate">{p.firstName} {p.lastName}</h1>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {p.email}</span>
+                <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{p.email}</span></span>
                 {p.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {p.phone}</span>}
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(p.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* `min-w-0`: a barra de medição, aberta, é muito mais larga que o
+            botão que a abriu, e sem isto ela transbordava por cima do nome do
+            paciente em vez de empurrar o cabeçalho. */}
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 max-w-full">
           {/* Only renders when this clinic has a cuff connected (activity 074,
               T-15); it asks the API and draws nothing otherwise. */}
           <ClinicMeasurementButton

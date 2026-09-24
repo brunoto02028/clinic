@@ -6,25 +6,7 @@ import { Screen, Text, Input, Button, Logo } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { AuthError } from "@/api/auth";
 import { useTheme } from "@/theme/useTheme";
-import { localeToLang, t as tr, type Lang } from "@/lib/i18n";
-
-/**
- * Which language to open the sign-in screen in.
- *
- * `useLang()` cannot answer here: it reads the patient's `preferredLocale`,
- * and before sign-in there is no patient. The device's own locale is the only
- * honest guess, and the switcher below lets the person override it.
- *
- * Read through `Intl`, which Hermes and every browser already provide, rather
- * than adding a localisation package for one string.
- */
-function deviceLang(): Lang {
-  try {
-    return localeToLang(Intl.DateTimeFormat().resolvedOptions().locale);
-  } catch {
-    return "en";
-  }
-}
+import { deviceLang, t as tr, type Lang } from "@/lib/i18n";
 
 export default function Login() {
   const t = useTheme();

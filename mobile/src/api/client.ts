@@ -1,5 +1,5 @@
 import { API_URL } from "./config";
-import { refreshRequest } from "./auth";
+import { AuthError, refreshRequest } from "./auth";
 import { tokenStorage } from "@/lib/secure-storage";
 import type { AuthUser } from "./types";
 
@@ -17,6 +17,19 @@ import type { AuthUser } from "./types";
 export interface RefreshOutcome {
   ok: boolean;
   user?: AuthUser;
+  /**
+   * Por que falhou — e a distincao nao e academica.
+   *
+   * `auth` e sessao morta: token revogado, expirado, conta desativada. O
+   * servidor respondeu, e apagar os tokens e o certo.
+   *
+   * `network` e telefone sem sinal. O `fetch` lanca antes de sair do aparelho,
+   * e o `catch` cego tratava os dois como a mesma coisa — entao o paciente num
+   * tunel de metro perdia a sessao e caia num login que, sem rede, tambem nao
+   * funciona. A tranca promete que "a senha continua sendo a chave"; apaga-la
+   * aqui quebrava a promessa.
+   */
+  reason?: "network" | "auth";
 }
 
 let refreshPromise: Promise<RefreshOutcome> | null = null;
@@ -29,13 +42,15 @@ export function setOnAuthFailure(handler: () => void): void {
 
 async function doRefresh(): Promise<RefreshOutcome> {
   const current = await tokenStorage.getRefresh();
-  if (!current) return { ok: false };
+  if (!current) return { ok: false, reason: "auth" };
   try {
     const res = await refreshRequest(current);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     return { ok: true, user: res.user };
-  } catch {
-    return { ok: false };
+  } catch (e) {
+    // `AuthError` significa que o servidor respondeu — a sessao e que nao
+    // serve. Qualquer outra coisa e o `fetch` falhando antes disso.
+    return { ok: false, reason: e instanceof AuthError ? "auth" : "network" };
   }
 }
 
@@ -70,6 +85,48 @@ export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) {
     super(message);
   }
+}
+
+/**
+ * Envio de arquivo com a mesma disciplina do `apiFetch`.
+ *
+ * O upload não podia sair por um `fetch` solto: o access token vale 15
+ * minutos, e quem usasse o app por dezesseis tomava 401 num caminho que não
+ * sabe renovar — "não foi possível salvar essa foto", de novo e de novo, até
+ * outra tela por acaso renovar a sessão.
+ *
+ * O `Content-Type` fica por conta do `FormData`: escrevê-lo à mão apaga o
+ * `boundary` e o servidor não consegue separar as partes.
+ */
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+  method: "POST" | "PUT" = "POST"
+): Promise<T> {
+  const send = async (): Promise<Response> => {
+    const access = await tokenStorage.getAccess();
+    const headers = new Headers();
+    if (access) headers.set("Authorization", `Bearer ${access}`);
+    return fetch(`${API_URL}${path}`, { method, headers, body: form });
+  };
+
+  let res = await send();
+  if (res.status === 401) {
+    const refreshed = await refreshSession();
+    if (!refreshed.ok) await failSession();
+    res = await send();
+    if (res.status === 401) await failSession();
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      (data as any)?.error || `Request failed (${res.status})`,
+      (data as any)?.code
+    );
+  }
+  return data as T;
 }
 
 export async function apiFetch<T>(

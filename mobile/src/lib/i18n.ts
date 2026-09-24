@@ -20,6 +20,24 @@ export function localeToLang(locale: string | null | undefined): Lang {
   return String(locale ?? "").toLowerCase().startsWith("pt") ? "pt" : "en";
 }
 
+/**
+ * The language to use before anyone has signed in.
+ *
+ * `useLang()` cannot answer on the sign-in and lock screens: it reads the
+ * patient's `preferredLocale`, and there is no patient yet. The device's own
+ * locale is the only honest guess.
+ *
+ * Read through `Intl`, which Hermes and every browser already provide, rather
+ * than adding a localisation package for one string.
+ */
+export function deviceLang(): Lang {
+  try {
+    return localeToLang(Intl.DateTimeFormat().resolvedOptions().locale);
+  } catch {
+    return "en";
+  }
+}
+
 /** The patient's language. Shares the `profile` query, so it costs no request. */
 export function useLang(): Lang {
   const { data } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });

@@ -194,7 +194,7 @@ export default function ClinicMeasurementButton({
     const mm = String(Math.floor(secondsLeft / 60)).padStart(1, "0");
     const ss = String(secondsLeft % 60).padStart(2, "0");
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-ba1-health/40 bg-ba1-health/5 px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ba1-health/40 bg-ba1-health/5 px-3 py-1.5 min-w-0 max-w-full">
         <Loader2 className="h-4 w-4 animate-spin text-ba1-health" />
         <span className="text-sm">{ui.waiting(patientName)}</span>
         <Badge variant="outline" className="font-mono text-[11px]">{mm}:{ss}</Badge>
@@ -210,7 +210,7 @@ export default function ClinicMeasurementButton({
 
   if (phase === "done" && reading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-1.5 min-w-0 max-w-full">
         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
         <span className="text-sm font-semibold">
           {reading.systolic}/{reading.diastolic} mmHg
@@ -226,7 +226,7 @@ export default function ClinicMeasurementButton({
 
   if (phase === "expired") {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-1.5 flex-wrap">
+      <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-1.5 flex-wrap min-w-0 max-w-full">
         <AlertCircle className="h-4 w-4 text-amber-500" />
         <span className="text-sm">{ui.expired}</span>
         <span className="text-xs text-muted-foreground">{ui.expiredHint}</span>
@@ -244,7 +244,7 @@ export default function ClinicMeasurementButton({
 
   if (phase === "choosing") {
     return (
-      <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 flex-wrap">
+      <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 flex-wrap min-w-0 max-w-full">
         <span className="text-xs text-muted-foreground">{ui.context}</span>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => open("PRE_SESSION")}>{ui.pre}</Button>
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => open("POST_SESSION")}>{ui.post}</Button>

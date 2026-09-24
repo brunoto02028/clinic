@@ -179,7 +179,10 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
   const labelCls = "text-[11px] text-muted-foreground mb-0.5 block";
 
   return (
-    <div className="space-y-4">
+    // `pb-16`: a última linha do histórico ficava colada na borda inferior da
+    // janela, sem nenhuma folga — e é justamente a linha em que alguém clica
+    // para editar ou apagar uma leitura.
+    <div className="space-y-4 pb-16">
       <div>
         <h3 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="h-4 w-4" />{t.title}</h3>
         <p className="text-xs text-muted-foreground mt-0.5">{t.subtitle}</p>
