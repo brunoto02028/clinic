@@ -400,3 +400,51 @@ do Bruno. Toda pressão de paciente medida nele fica gravada também no Health M
 perfil dele. Para uso de rotina com pacientes reais, mover o aparelho para uma conta da clínica —
 mesmo caminho de hoje, mais `/api/wearables/connect/withings?clinic=1`. Ver
 [[aparelho-pressao-clinica]].
+
+---
+
+## 17. A janela fecha antes da leitura atrasada chegar (achado, não corrigido)
+
+Levantado pelo Bruno em 24/09/2026, perguntando sobre **home visit** — onde não há Wi-Fi da clínica
+e a leitura pode subir só horas depois.
+
+`matchingSessions` (`lib/clinic-device.ts:50`) compara contra o **horário da medição**, nunca
+contra `now()`, e o comentário diz por quê: *"the cuff syncs over Wi-Fi when it finishes and the
+webhook arrives later"*. A intenção é clara — aguentar chegada atrasada.
+
+**Só que o mesmo `where` exige `status: "OPEN"`**, e `expireStaleSessions` fecha as janelas
+vencidas toda vez que a tela de medição é consultada (`measurement-sessions/route.ts:33,81`). Na
+prática: o terapeuta abre a janela na casa do paciente, mede, a leitura não sobe; de volta à
+clínica ele abre a tela, a varredura marca aquela sessão como `EXPIRED`; quando a leitura
+finalmente chega, **não casa com nada** e vai para a caixa de entrada.
+
+O `measuredAt` da leitura continua dentro de `[openedAt, expiresAt]` daquela sessão. A resposta
+certa existe e é descartada por causa do estado da sessão, não por ambiguidade.
+
+**Correção sugerida:** `matchingSessions` aceitar também sessões `EXPIRED` cujo intervalo contenha
+o `measuredAt` — o que a janela delimita é o **tempo**, e o estado é só um rótulo de interface.
+Manter a regra de ouro intacta: mais de uma janela casando continua indo para a caixa de entrada
+([[aparelho-pressao-clinica]]). O risco de aceitar expiradas é baixo justamente porque a janela é
+de 3 minutos: duas sessões distintas cobrindo o mesmo instante já caem na regra de ambiguidade.
+
+**CORRIGIDO** em 24/09/2026, autorizado pelo Bruno na mesma conversa.
+
+`matchingSessions` passa a aceitar `status: { in: ["OPEN", "EXPIRED"] }`. Duas exclusões ficam, e
+por motivos diferentes:
+
+- **`CANCELLED`** é o terapeuta dizendo *não atribua isto*. Intenção explícita não é vencida por
+  um horário que bate.
+- **`COMPLETED`** já recebeu a sua leitura. Aceitá-la de novo faria a segunda medição da mesma
+  janela cair no mesmo paciente sem ninguém confirmar — costuma ser repetição, e "costuma" não é
+  base para escrever num prontuário.
+
+A regra de ouro segue intacta: duas janelas cobrindo o mesmo instante continuam indo para a caixa
+de entrada. E aceitar expiradas **não cria** ambiguidade nova, porque janelas de 3 minutos em
+momentos diferentes não se cruzam — tem teste para isso.
+
+A decisão saiu para `lib/clinic-session-match.ts`, sem imports, com 13 testes
+(`__tests__/wearables/clinic-session-match.test.ts`). A consulta continua filtrando pelo intervalo
+no banco; a regra pura é a definição única de "esta janela cobre esta medição".
+
+**Contorno que continua útil:** hotspot do celular como rede conhecida do aparelho, para a leitura
+subir na hora em visita domiciliar. Agora é conveniência, não necessidade.
