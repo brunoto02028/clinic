@@ -1,6 +1,6 @@
 # Atividade 075 — Cadastro do paciente pelo app
 
-**Status:** em andamento — T-1, T-2 e T-3 com QA aprovado, em code review · **Aberta em:** 24/09/2026
+**Status:** em andamento — T-1, T-2, T-3, T-10, T-11 e T-12 concluídas (QA + code review aplicado em cada uma) · **Aberta em:** 24/09/2026
 
 ## Objetivo
 
@@ -34,18 +34,18 @@ ela a submissão é rejeitada.
 
 | T | Nome | Status |
 |---|---|---|
-| T-1 | Tela de cadastro no app | em revisão |
-| T-2 | Para onde vai quem acabou de se cadastrar | em revisão |
-| T-3 | Quem já é paciente: reconhecer em vez de recusar | em revisão |
+| T-1 | Tela de cadastro no app | concluído |
+| T-2 | Para onde vai quem acabou de se cadastrar | concluído |
+| T-3 | Quem já é paciente: reconhecer em vez de recusar | concluído |
 | T-4 | Excluir a conta pelo app (exigência da Apple) | pendente |
 | T-5 | Código do profissional e link por clínica | pendente |
 | T-6 | O atalho no site | pendente |
 | T-7 | Preparar a submissão à App Store | pendente |
 | T-8 | Entrar com Google e com Apple *(opcional — só se você quiser)* | pendente |
 | T-9 | Conectar o aparelho logo depois do cadastro | pendente |
-| T-10 | Confirmar que a assinatura existe, em vez de torcer | em revisão |
-| T-11 | A rede de segurança, e alguém que perceba o silêncio | em revisão |
-| T-12 | O app revalida quando o paciente volta para ele | em revisão |
+| T-10 | Confirmar que a assinatura existe, em vez de torcer | concluído |
+| T-11 | A rede de segurança, e alguém que perceba o silêncio | concluído |
+| T-12 | O app revalida quando o paciente volta para ele | concluído |
 | T-13 | Senha trocada derruba a sessão do app | pendente |
 
 ## Decisões do Bruno (24/09/2026)

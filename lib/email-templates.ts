@@ -366,6 +366,14 @@ export const DEFAULT_TEMPLATES = [
     </div>`,
   },
   {
+    slug: 'PATIENT_INVITE' as const,
+    name: 'Patient invitation — set your password',
+    subject: 'Your BPR account is ready — set your password',
+    description: 'Sent when the clinic creates a patient, so they choose their own password',
+    variables: ['patientName', 'resetUrl'],
+    htmlBody: `<h2 style="color:#20242D;font-size:22px;margin:0 0 16px;">Welcome to BPR 👋</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, your clinic has created your account. All that is left is choosing a password — it is yours, and nobody at the clinic knows it.</p><div style="text-align:center;margin:28px 0;"><a href="{{resetUrl}}" style="display:inline-block;background-color:#4F7361;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Set My Password →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link is valid for 7 days.</p>`,
+  },
+  {
     slug: 'PASSWORD_RESET' as const,
     name: 'Password Reset',
     subject: 'Reset Your Password — Bruno Rehab',

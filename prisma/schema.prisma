@@ -4273,6 +4273,10 @@ enum EmailTemplateSlug {
   TREATMENT_PROTOCOL
   ASSESSMENT_COMPLETED
   PASSWORD_RESET
+  // O convite que a clínica manda ao cadastrar um paciente. Não é
+  // "redefinir sua senha": ninguém pediu nada, e o paciente ainda não tem
+  // senha para redefinir (atividade 075).
+  PATIENT_INVITE
   EMAIL_CHANGE_CONFIRMATION
   SCREENING_RECEIVED
   APPOINTMENT_CANCELLED

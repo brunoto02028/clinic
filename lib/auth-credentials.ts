@@ -110,8 +110,13 @@ export async function validateCredentials(
     }
 
     if (!user.password) {
+      // Duas contas chegam aqui e a mensagem precisa servir às duas: quem
+      // entrou pelo Google (nunca teve senha) e quem a clínica acabou de
+      // cadastrar, que recebeu um convite para definir a sua (075). Dizer só
+      // "use o Google" mandava metade das pessoas para um botão que não
+      // resolve o problema delas.
       throw new Error(
-        "This account uses Google sign-in. Please use the 'Sign in with Google' button."
+        "This account has no password yet. Use 'Forgot your password?' to set one, or sign in with Google if that is how it was created."
       );
     }
 

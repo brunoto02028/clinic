@@ -1,3 +1,4 @@
+import { ApiError } from "@/api/client";
 import { useEffect, useState } from "react";
 import { View, Pressable, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
@@ -24,8 +25,17 @@ export default function AssessmentsList() {
     (async () => {
       try {
         setList(await fetchAssessments());
-      } catch {
-        setError("Could not load your assessments.");
+      } catch (e) {
+        // 403 não é falha de carregamento: é o servidor dizendo que esta
+        // área não é desta conta (lib/workout-access.ts recusa quem não é
+        // paciente). "Não foi possível carregar" convida a tentar de novo,
+        // e tentar de novo nunca vai resolver — foi o que aconteceu com uma
+        // conta da equipe entrando no app do paciente, 24/09/2026.
+        setError(
+          e instanceof ApiError && e.status === 403
+            ? "This area is not available for your account."
+            : "Could not load your assessments."
+        );
       } finally {
         setLoading(false);
       }

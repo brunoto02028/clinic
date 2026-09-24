@@ -47,8 +47,16 @@ export default function Login() {
       // one; the app printed the raw string under a Portuguese screen.
       const wrongCredentials =
         e instanceof AuthError && /invalid (email|e-mail)|credenc/i.test(e.message);
+      // O app é do paciente: uma conta da clínica é recusada na porta, e a
+      // recusa precisa dizer o que fazer em vez de parecer senha errada.
+      const clinicAccount = e instanceof AuthError && e.status === 403;
       setError(
-        wrongCredentials
+        clinicAccount
+          ? tr(lang, {
+              en: "The BPR app is for patients. This is a clinic account — please use bpr.clinic in your browser.",
+              pt: "O app da BPR é para pacientes. Esta é uma conta da clínica — use o bpr.clinic no navegador.",
+            })
+          : wrongCredentials
           ? tr(lang, { en: "Invalid email or password", pt: "E-mail ou senha incorretos" })
           : e instanceof AuthError
             ? e.message

@@ -1,6 +1,6 @@
 # T-12: O app revalida quando o paciente volta para ele
 
-**Status:** em revisão · **Depende de:** nenhuma
+**Status:** concluído · **Depende de:** nenhuma
 
 ## Objetivo
 Que o que a clínica muda no admin apareça no app sem o paciente reinstalar nada.
