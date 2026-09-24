@@ -373,19 +373,24 @@ export const WITHINGS_APPLI_WE_WANT: number[] = [
  * A kind counts as confirmed only when OUR callback is in their list: their
  * `list` is per account, and another integration's subscription is not ours.
  *
- * Never throws. A check that fails is "we do not know", which is recorded as
- * an empty result, not as a promise that data is coming.
+ * Never throws, and says how many of the questions were actually answered.
+ * That second number is the difference between "Withings told us it will send
+ * nothing" and "we could not reach Withings" — recording both as an empty list
+ * would show a perfectly good connection to the patient as silent, as a fact,
+ * because their provider had a bad minute.
  */
 export async function confirmWithingsSubscriptions(
   accessToken: string,
   callbackUrl: string,
   appliList: number[] = WITHINGS_APPLI_WE_WANT
-): Promise<number[]> {
+): Promise<{ confirmed: number[]; answered: number }> {
   const confirmed: number[] = [];
+  let answered = 0;
   await Promise.all(
     appliList.map(async (appli) => {
       try {
         const profiles = await withingsListSubscriptions(accessToken, appli);
+        answered++;
         const ours = profiles.some(
           (p: any) => typeof p?.callbackurl === "string" && p.callbackurl.replace(/\/$/, "") === callbackUrl.replace(/\/$/, "")
         );
@@ -395,7 +400,7 @@ export async function confirmWithingsSubscriptions(
       }
     })
   );
-  return confirmed.sort((a, b) => a - b);
+  return { confirmed: confirmed.sort((a, b) => a - b), answered };
 }
 
 /** Where Withings should call us. Public, HTTPS, and the same for every clinic. */

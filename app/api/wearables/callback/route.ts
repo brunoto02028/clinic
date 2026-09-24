@@ -99,11 +99,22 @@ export async function GET(request: NextRequest) {
       // the outcome is now written on the connection instead of into a log —
       // a device that was authorised and silent used to look exactly like one
       // that was working.
+      // A conexão real, não um objeto de nulos: `saveWithingsTokens` acabou de
+      // gravar os tokens nela. Com os nulos, remover o override um dia faria
+      // `withingsAccessToken` lançar, o catch engolir e **toda** conexão nova
+      // nascer marcada como muda, sem nada quebrar visivelmente.
       const outcome = await subscribeAndRecord(
-        { id: connection.id, accessToken: null, refreshToken: null, tokenExpiresAt: null },
+        {
+          id: connection.id,
+          accessToken: connection.accessToken ?? null,
+          refreshToken: connection.refreshToken ?? null,
+          tokenExpiresAt: connection.tokenExpiresAt ?? null,
+        },
         tokens.accessToken
       );
-      if (outcome.missing.length) {
+      if (!outcome.answered) {
+        console.error(`[wearables/callback] Withings did not answer the subscription check for connection ${connection.id}`);
+      } else if (outcome.missing.length) {
         console.error(
           `[wearables/callback] Withings did not confirm appli=${outcome.missing.join(",")} for connection ${connection.id}`
         );

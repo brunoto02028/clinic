@@ -45,6 +45,10 @@ const UI = {
     deviceNoneHint: "Connect the clinic's Withings account once, and readings taken on it will file themselves.",
     connect: "Connect the clinic device",
     deviceOn: "Clinic device connected",
+    deviceSilent: "Connected, but Withings has not confirmed it will send readings.",
+    deviceFix: "Try again",
+    deviceFixed: "Withings will send readings now.",
+    deviceStillSilent: "Withings still has not confirmed.",
   },
   "pt-BR": {
     back: "Voltar aos pacientes",
@@ -69,6 +73,10 @@ const UI = {
     deviceNoneHint: "Conecte a conta Withings da clínica uma vez, e as medidas feitas nele se arquivam sozinhas.",
     connect: "Conectar o aparelho da clínica",
     deviceOn: "Aparelho da clínica conectado",
+    deviceSilent: "Conectado, mas a Withings não confirmou que vai enviar as leituras.",
+    deviceFix: "Tentar de novo",
+    deviceFixed: "A Withings vai enviar as leituras agora.",
+    deviceStillSilent: "A Withings ainda não confirmou.",
   },
 } as const;
 
@@ -83,7 +91,11 @@ export default function MeasurementInboxPage() {
   const [rows, setRows] = useState<any[] | null>(null);
   // The device itself, so this screen can say why nothing ever arrives when
   // there is none — and be the one place that connects it.
-  const [device, setDevice] = useState<{ id: string; label: string | null } | null | undefined>(undefined);
+  const [device, setDevice] = useState<
+    { id: string; label: string | null; delivery?: "receiving" | "partial" | "silent" | "unchecked" } | null | undefined
+  >(undefined);
+  const [fixing, setFixing] = useState(false);
+  const [deviceMsg, setDeviceMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -118,13 +130,17 @@ export default function MeasurementInboxPage() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
+  const loadDevice = useCallback(() => {
     fetch("/api/admin/measurement-sessions")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setDevice(d?.device ?? null))
       .catch(() => setDevice(null));
-  }, [load]);
+  }, []);
+
+  useEffect(() => {
+    load();
+    loadDevice();
+  }, [load, loadDevice]);
 
   // The patient list is only fetched once a reading is actually being
   // assigned — the inbox itself has no business listing patients.
@@ -217,9 +233,43 @@ export default function MeasurementInboxPage() {
       )}
 
       {device && (
-        <p className="text-xs text-muted-foreground">
-          {ui.deviceOn}{device.label ? `: ${device.label}` : ""}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            {ui.deviceOn}{device.label ? `: ${device.label}` : ""}
+          </p>
+          {/* "Conectado" dizia só que a autorização funcionou. Este manguito
+              alimenta vários pacientes: se a Withings não confirmou o envio,
+              ninguém ficava sabendo — e a clínica mediria achando que a leitura
+              ia chegar (atividade 075, T-10). */}
+          {(device.delivery === "silent" || device.delivery === "partial") && (
+            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+              <span>{ui.deviceSilent}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px]"
+                disabled={fixing}
+                onClick={async () => {
+                  setFixing(true);
+                  try {
+                    const res = await fetch("/api/wearables/resubscribe", { method: "POST" });
+                    const data = await res.json().catch(() => null);
+                    setDeviceMsg(
+                      res.ok && data?.delivery === "receiving" ? ui.deviceFixed : ui.deviceStillSilent
+                    );
+                  } catch {
+                    setDeviceMsg(ui.deviceStillSilent);
+                  }
+                  setFixing(false);
+                  loadDevice();
+                }}
+              >
+                {ui.deviceFix}
+              </Button>
+              {deviceMsg && <span>{deviceMsg}</span>}
+            </div>
+          )}
+        </div>
       )}
 
       {loading && (

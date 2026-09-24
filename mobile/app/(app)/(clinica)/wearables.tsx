@@ -67,8 +67,8 @@ function WearablesScreen() {
               pt: "Pronto — a Withings vai enviar suas medições agora.",
             })
           : tr(lang, {
-              en: "Withings still has not confirmed. Your clinic has been able to see this.",
-              pt: "A Withings ainda não confirmou. Sua clínica consegue ver isso.",
+              en: "Withings still has not confirmed. Your clinic can see this too.",
+              pt: "A Withings ainda não confirmou. Sua clínica também consegue ver isso.",
             })
       );
     },
@@ -219,6 +219,11 @@ function WearablesScreen() {
                             ? tr(lang, {
                                 en: "Authorised, but not sending measurements yet.",
                                 pt: "Autorizado, mas ainda não está enviando medições.",
+                              })
+                            : conn?.missingBloodPressure
+                            ? tr(lang, {
+                                en: "Not sending your blood pressure.",
+                                pt: "Não está enviando sua pressão arterial.",
                               })
                             : tr(lang, {
                                 en: "Sending only part of your measurements.",

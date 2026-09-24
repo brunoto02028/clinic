@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { patientGate } from '@/lib/patient-gate';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { subscribeAndRecord, deliveryState } from '@/lib/withings-subscriptions';
+import { rateLimit } from '@/lib/rate-limit';
 
 /**
  * Asking Withings again to send us measurements.
@@ -33,6 +34,21 @@ export async function POST() {
     );
   }
 
+  // Cada POST vira oito chamadas na Withings (quatro subscribe, quatro list) e
+  // pode ainda disparar um refresh de token. Sem limite, um paciente
+  // autenticado queima a cota da conta da clínica com o dedo no botão.
+  const limite = rateLimit(`wearables-resubscribe:${eff.userId}`, { max: 5, windowMs: 10 * 60_000 });
+  if (!limite.allowed) {
+    return NextResponse.json(
+      {
+        error: 'Too many attempts. Try again in a few minutes.',
+        errorPt: 'Muitas tentativas. Tente de novo em alguns minutos.',
+        retryAfter: limite.retryAfter,
+      },
+      { status: 429 }
+    );
+  }
+
   const connection = await (prisma as any).wearableConnection.findFirst({
     where: { userId: eff.userId, provider: 'WITHINGS', status: 'CONNECTED' },
     select: { id: true, accessToken: true, refreshToken: true, tokenExpiresAt: true },
@@ -49,13 +65,29 @@ export async function POST() {
   }
 
   const outcome = await subscribeAndRecord(connection);
+  // O que a tela mostra tem que ser o que ficou gravado. Antes o retorno era
+  // montado em memória, então o app dizia "pronto" enquanto o `invalidate` da
+  // mesma função relia o banco e repintava o card de âmbar.
+  if (!outcome.answered) {
+    return NextResponse.json(
+      {
+        error: 'We could not reach Withings just now. Nothing was changed.',
+        errorPt: 'Não conseguimos falar com a Withings agora. Nada foi alterado.',
+        code: 'provider_unreachable',
+      },
+      { status: 503 }
+    );
+  }
   return NextResponse.json({
     confirmed: outcome.confirmed,
     missing: outcome.missing,
     checkedAt: outcome.checkedAt,
-    delivery: deliveryState({
-      notifyConfirmedAppli: outcome.confirmed,
-      notifyCheckedAt: outcome.checkedAt,
-    }),
+    recorded: outcome.recorded,
+    delivery: outcome.recorded
+      ? deliveryState({
+          notifyConfirmedAppli: outcome.confirmed,
+          notifyCheckedAt: outcome.checkedAt,
+        })
+      : 'unchecked',
   });
 }

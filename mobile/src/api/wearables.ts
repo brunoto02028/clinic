@@ -19,6 +19,8 @@ export interface WearableConnection {
   lastSyncedAt: string | null;
   createdAt: string;
   delivery?: WearableDelivery;
+  /** Se o que falta é justamente a pressão — a medida que esta clínica trata. */
+  missingBloodPressure?: boolean;
 }
 
 export interface WearableDataPoint {

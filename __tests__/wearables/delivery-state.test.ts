@@ -10,7 +10,7 @@
 
 jest.mock("@/lib/db", () => ({ prisma: {} }));
 
-import { deliveryState } from "@/lib/withings-subscriptions";
+import { deliveryState, missingKinds, bloodPressureMissing } from "@/lib/withings-subscriptions";
 import { WITHINGS_APPLI } from "@/lib/withings";
 
 const ALL = [
@@ -60,6 +60,31 @@ describe("deliveryState", () => {
         notifyCheckedAt: new Date(),
       })
     ).toBe("partial");
+  });
+
+  it("blood pressure missing is its own answer, not just 'partial'", () => {
+    // Faltar sono e faltar pressão dão o mesmo `partial`, e por isso a tela
+    // precisa de uma segunda pergunta: numa clínica de pressão, "enviando só
+    // parte" esconde a única parte que importa.
+    const semPressao = { notifyConfirmedAppli: [1, 16, 44], notifyCheckedAt: new Date() };
+    const comPressao = { notifyConfirmedAppli: [4, 16], notifyCheckedAt: new Date() };
+    expect(deliveryState(semPressao)).toBe("partial");
+    expect(deliveryState(comPressao)).toBe("partial");
+    expect(bloodPressureMissing(semPressao)).toBe(true);
+    expect(bloodPressureMissing(comPressao)).toBe(false);
+  });
+
+  it("never asked is not the same as missing", () => {
+    // Um aparelho que ninguém perguntou não está "sem pressão": está sem
+    // resposta. Dizer o contrário seria inventar um defeito.
+    expect(bloodPressureMissing({ notifyConfirmedAppli: [], notifyCheckedAt: null })).toBe(false);
+  });
+
+  it("missingKinds names what is absent", () => {
+    expect(missingKinds({ notifyConfirmedAppli: ALL })).toEqual([]);
+    expect(missingKinds({ notifyConfirmedAppli: [] })).toEqual(
+      expect.arrayContaining([WITHINGS_APPLI.BLOOD_PRESSURE, WITHINGS_APPLI.SLEEP])
+    );
   });
 
   it("an old check is still a check — staleness is a different question", () => {

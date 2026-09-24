@@ -217,6 +217,14 @@ export async function expireStaleSessions(connectionId?: string): Promise<number
 export async function clinicDevice(clinicId: string) {
   return (prisma as any).wearableConnection.findFirst({
     where: { clinicId, isClinicDevice: true, status: "CONNECTED" },
-    select: { id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true },
+    select: {
+      id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true,
+      // Se a Withings confirmou que manda. O manguito da recepção alimenta
+      // vários pacientes e era o único sem nenhuma tela dizendo se está mudo:
+      // o /admin/biohacking só varre quem tem papel PATIENT, e esta conexão
+      // pertence a quem autorizou (atividade 075, T-10).
+      notifyConfirmedAppli: true, notifyCheckedAt: true,
+      accessToken: true, refreshToken: true, tokenExpiresAt: true,
+    },
   });
 }

@@ -6658,9 +6658,10 @@ model WearableConnection {
   // meant "the authorisation worked", and a device could sit there authorised
   // and silent with nothing anywhere saying so (activity 075, T-10).
   //
-  // Empty is not the same as unchecked: `notifyCheckedAt` null means nobody has
-  // asked yet, an empty array with a date means Withings said it will send
-  // nothing.
+  // Empty is not the same as unchecked, and a check we could not make is not
+  // recorded at all: `notifyCheckedAt` null means nobody has asked yet OR the
+  // last attempt never reached Withings, and an empty array WITH a date means
+  // Withings answered and said it will send nothing.
   notifyConfirmedAppli Int[]     @default([])
   notifyCheckedAt      DateTime?
 
