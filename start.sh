@@ -148,6 +148,13 @@ node /app/scripts/seed-acl-protocol.js || echo "[start.sh] ACL protocol seed war
 echo "[start.sh] Backfilling clinicId on messages and screenings..."
 node /app/scripts/backfill-message-screening-clinicid.js || echo "[start.sh] clinicId backfill warning — check logs"
 
+# O aceite dos termos vivia em duas colunas: a triagem gravava
+# `consentGiven`, o portal (e agora o servidor) le `consentAcceptedAt`. Quem
+# aceitou pelo app ficaria trancado, e a triagem e travada depois do envio —
+# nao teria como aceitar de novo. So preenche nulos, com a data do aceite.
+echo "[start.sh] Backfilling consent acceptance..."
+node /app/scripts/backfill-consent-accepted-at.js || echo "[start.sh] consent backfill warning — check logs"
+
 echo "[start.sh] Seeding automation rules..."
 node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
 

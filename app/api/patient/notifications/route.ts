@@ -6,8 +6,13 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 import { getExpectedToday } from "@/lib/patient-daily-adherence";
 import { computePatientAccess, PATIENT_ACCESS_SELECT } from "@/lib/patient-access";
+import { patientGate } from "@/lib/patient-gate";
 
 export async function GET(request: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate();
+  if (__gate.response) return __gate.response;
+
   try {
     const effective = await getEffectiveUser();
     if (!effective) {

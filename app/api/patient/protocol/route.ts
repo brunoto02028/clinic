@@ -6,11 +6,16 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
 // GET — Patient's own protocols (sent to patient)
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -135,6 +140,10 @@ export async function GET(req: NextRequest) {
 // POST — Patient toggles "did it today" (or a given date) for one item
 // (activity 42 — see specs/042-protocolo-semanal-checklist-diario).
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -220,6 +229,10 @@ export async function POST(req: NextRequest) {
 
 // PATCH — Patient marks item as completed
 export async function PATCH(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_treatment" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }

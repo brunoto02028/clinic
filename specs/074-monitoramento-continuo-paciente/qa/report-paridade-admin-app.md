@@ -3,6 +3,7 @@
 **Data:** 24/09/2026 · **Ambiente:** worktree `app_clinic`, `http://localhost:4010` (PID confirmado), banco `bpr_clinic_local`
 **Dados:** prefixo `qa-par1-` — 2 clínicas, 2 staff, 3 pacientes fictícios. Removidos ao final.
 **Resultado geral:** ❌ **reprovado** — 1 falha crítica, 4 altas, 5 médias, 5 baixas.
+**Atualização 24/09:** F3 e F4 corrigidas — ver `report-gate-servidor.md`.
 
 Pedido do Bruno: *"reveja com o QA se todos os comandos dentro do admin vão refletir corretamente
 dentro do APP e vice-versa"*. Esta é a metade admin → app; a volta está em
@@ -27,12 +28,12 @@ marcado **[por inspeção]**.
 | 7 | Criar tarefa | `/api/patient/tasks` | ✅ |
 | 8 | Nota SOAP visível ao paciente | `/api/patient/clinical-notes` | ⚠️ o controle não existe (F10) |
 | 9 | Medidas de evolução | `/api/patient/outcome-measures` | ⚠️ a ação não existe no admin (F11) |
-| 10 | Ligar/desligar `mod_*` | `/api/patient/access`, `/api/mobile/modules` | ⚠️ cálculo ✅, **gate só no cliente** (F4) |
+| 10 | Ligar/desligar `mod_*` | `/api/patient/access`, `/api/mobile/modules` | ✅ → **corrigido** (F4) |
 | 11 | Trocar o idioma do paciente | várias | ⚠️ parcial (F6) |
 | 12 | Editar nome/dados | `/api/patient/profile` | ✅ |
 | 13 | Treino e nutrição | `/api/mobile/workouts`, `/meal-plans` | ✅ |
 | 14 | Medição do aparelho da clínica (T-15) | `/api/patient/blood-pressure` | ✅ |
-| — | Consentimento pendente | todas | ❌ a web tranca, o app não (F3) |
+| — | Consentimento pendente | todas | ✅ → **corrigido** (F3) |
 | — | Cache do app depois da mudança | todas | ❌ [por inspeção] (F5) |
 | — | Isolamento entre pacientes | todas | ✅ |
 | — | Paciente transferido de clínica | várias | ❌ (F8) |
@@ -120,9 +121,10 @@ o `/dashboard`. No mesmo instante, com o token do mesmo paciente, o app lê docu
 mensagens, pressão e consultas — todos 200. Nenhuma tela do app checa `consentAccepted`; o
 `PlanGate` só olha módulos.
 
-**Não corrigido** — é decisão sua, e de tamanho: para valer nos dois canais, a checagem tem de ser
-no servidor, nas ~35 rotas de paciente (ou num guard compartilhado). Registrado como o achado mais
-sensível junto com F4.
+**Corrigido** (24/09, depois do "pode fazer o gate no servidor"): guard compartilhado
+`lib/patient-gate.ts` como primeira instrução de 48 rotas de paciente. Prova e o que o QA achou no
+caminho — o aceite vivia em duas colunas, e ligar o gate sem unificá-las trancaria o app — em
+`report-gate-servidor.md`.
 
 ## F4 — 🔴 ALTA · O módulo revogado não é aplicado no servidor (33 de 35 rotas)
 
@@ -140,7 +142,9 @@ marca. A recusa é que não existe. Só `protocol`, `clinical-notes` e `/api/exe
 O `PlanGate` esconde a tela — e o próprio comentário dele avisa que não é fronteira de segurança.
 O que faltava dizer é que a fronteira do servidor também não existe para 33 rotas.
 
-**Não corrigido** — mesma decisão de F3.
+**Corrigido** junto com F3, pelo mesmo guard: a rota declara o `mod_*` que serve e um módulo fora do
+plano responde `403 module_not_in_plan`. O app passou a distinguir esse 403 do de consentimento,
+porque só um dos dois o paciente pode resolver sozinho.
 
 ## F5 — 🔴 ALTA [por inspeção] · Nada no app invalida o que o admin muda
 

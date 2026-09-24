@@ -5,11 +5,16 @@ import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
+import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
 // GET - Patient's prescribed exercises
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_exercises" });
+  if (__gate.response) return __gate.response;
+
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -79,6 +84,10 @@ export async function GET(req: NextRequest) {
 // call for a given date, unmarks on the second — replaces the old
 // increment-only counter, which never recorded which day.
 export async function PATCH(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_exercises" });
+  if (__gate.response) return __gate.response;
+
   // Must be impersonation-aware like the GET above, otherwise a staff member
   // previewing a patient hits their own (empty) prescriptions and every
   // completion 404s.

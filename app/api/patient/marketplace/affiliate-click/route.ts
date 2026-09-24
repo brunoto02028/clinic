@@ -1,5 +1,6 @@
 // app/api/patient/marketplace/affiliate-click/route.ts
 // Tracks affiliate link clicks for analytics
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
@@ -7,6 +8,10 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_marketplace" });
+  if (__gate.response) return __gate.response;
+
   try {
     const { productId } = await req.json();
     if (!productId) return NextResponse.json({ error: "productId required" }, { status: 400 });

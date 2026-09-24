@@ -15,7 +15,7 @@ import {
 } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
-import { isPlanError } from "@/lib/plan";
+import { isConsentError, isPlanError } from "@/lib/plan";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
 import { fetchProtocols } from "@/api/protocol";
@@ -213,8 +213,16 @@ export default function Health() {
               ? "…"
               : exercisesUnavailable
               ? tr(lang, {
-                  en: isPlanError(exercises.error) ? "Not included in your plan" : "We could not load today's exercises",
-                  pt: isPlanError(exercises.error) ? "Não incluído no seu plano" : "Não foi possível carregar os exercícios de hoje",
+                  en: isConsentError(exercises.error)
+                    ? "Accept the terms to continue"
+                    : isPlanError(exercises.error)
+                    ? "Not included in your plan"
+                    : "We could not load today's exercises",
+                  pt: isConsentError(exercises.error)
+                    ? "Aceite os termos para continuar"
+                    : isPlanError(exercises.error)
+                    ? "Não incluído no seu plano"
+                    : "Não foi possível carregar os exercícios de hoje",
                 })
               : `${exerciseCount} ${exerciseCount === 1 ? tr(lang, { en: "exercise", pt: "exercício" }) : tr(lang, { en: "exercises", pt: "exercícios" })} ${tr(lang, { en: "today", pt: "hoje" })}`}
           </Text>

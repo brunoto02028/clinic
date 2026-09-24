@@ -10,7 +10,17 @@ import { ApiError } from "@/api/client";
  * throwing that away.
  */
 export function isPlanError(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403;
+  return error instanceof ApiError && error.status === 403 && error.code !== "consent_required";
+}
+
+/**
+ * Whether the refusal is the terms, not the plan.
+ *
+ * This one the patient can act on — the tick is on the last step of the
+ * assessment — so it gets a way forward instead of "ask your clinic".
+ */
+export function isConsentError(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "consent_required";
 }
 
 /** The server's own words for why, when it gave any. */
