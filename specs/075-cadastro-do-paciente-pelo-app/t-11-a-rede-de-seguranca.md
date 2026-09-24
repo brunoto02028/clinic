@@ -35,8 +35,15 @@ olhando — um aparelho pode parar de mandar em janeiro e a clínica descobrir e
   prontuário do admin, `lib/clinic-device.ts` e `app/api/wearables/callback/route.ts` (comentários)
 
 ## Critérios de aceite
-- [ ] Medida tirada com o servidor fora do ar aparece depois do cron
-- [ ] Rodar o cron duas vezes não duplica nada
-- [ ] `lastSyncedAt` reflete chegada de dado, não tentativa
-- [ ] Aparelho em silêncio aparece para a clínica sem ninguém ir procurar
-- [ ] Os dois comentários passam a ser verdade
+- [ ] Medida tirada com o servidor fora do ar aparece depois do cron — **falta o
+      teste real com o BPM Connect**
+- [x] Rodar o cron duas vezes não duplica nada — dedup por `grpid`, e por
+      horário+valores quando a Withings não manda id (code review da T-11)
+- [x] ~~`lastSyncedAt` reflete chegada de dado~~ — **mudado de propósito**:
+      `lastSyncedAt` continua querendo dizer "falamos com o provedor", que é o
+      que a tela mostra como "Last sync". Quem mede chegada é `lastReadingAt`,
+      campo novo, carimbado com a **data da leitura** e não com `agora`
+- [x] Aparelho em silêncio aparece para a clínica sem ninguém ir procurar —
+      âmbar em `/admin/biohacking` e na caixa de medições. **Parcial**: são duas
+      telas que alguém precisa abrir; alerta no motor fica para decisão do Bruno
+- [x] Os dois comentários passam a ser verdade

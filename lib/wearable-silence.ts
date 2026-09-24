@@ -19,6 +19,9 @@ import { loadRule } from "@/lib/automation/rules";
  */
 
 export const DEFAULT_SILENT_DAYS = 5;
+/** O código da regra, em um lugar só — errar a string aqui e no seed daria o
+ *  padrão para sempre, em silêncio. */
+export const SILENCE_RULE = "WEARABLE_SILENCE";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** How many days since anything arrived. Null when we have never had a reading. */
@@ -40,7 +43,13 @@ export function daysSilent(connection: {
 export async function silenceThreshold(clinicId: string | null | undefined): Promise<number> {
   if (!clinicId) return DEFAULT_SILENT_DAYS;
   try {
-    const rule = await loadRule("WEARABLE_SILENCE", clinicId);
+    const rule = await loadRule(SILENCE_RULE, clinicId);
+    // O painel mostra um interruptor para cada regra e o PATCH aceita
+    // `active`. Ignorá-lo aqui faria o admin desligar a regra e os avisos
+    // continuarem — uma alavanca ligada em nada, que é exatamente o que os
+    // comentários do seed condenam. Desligada = limiar infinito, ou seja,
+    // ninguém é marcado como mudo.
+    if (rule && rule.active === false) return Number.POSITIVE_INFINITY;
     const raw = (rule?.condition as any)?.silentDays;
     const days = typeof raw === "number" ? raw : Number(raw);
     return Number.isFinite(days) && days > 0 ? days : DEFAULT_SILENT_DAYS;
@@ -55,7 +64,10 @@ export function isSilent(
   connection: { lastReadingAt?: Date | string | null; createdAt?: Date | string | null; status?: string },
   thresholdDays: number
 ): boolean {
-  if (connection.status && connection.status !== "CONNECTED") return false;
+  // Só `DISCONNECTED` isenta: quem desconectou sabe que não vai receber nada.
+  // `ERROR` é o oposto — é o estado que significa "quebrado" e ninguém sabe,
+  // então é justamente o que precisa aparecer (code review da T-11).
+  if (connection.status === "DISCONNECTED") return false;
   const days = daysSilent(connection);
   return days !== null && days >= thresholdDays;
 }

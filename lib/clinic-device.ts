@@ -101,6 +101,23 @@ export async function attributeClinicReading(
       }),
     ]);
     if (inInbox || inRecord) return { kind: "duplicate" };
+  } else {
+    // Sem id da Withings não há chave de deduplicação — e isso era
+    // sobrevivível enquanto o webhook entregava cada medida uma vez. Com o
+    // cron da T-11 relendo a mesma janela todo dia, a mesma leitura viraria
+    // uma linha nova na caixa de entrada por dia, por até trinta dias.
+    // O horário mais os dois números é o que essa leitura tem de próprio;
+    // duas medidas iguais no mesmo segundo, no mesmo aparelho, são a mesma.
+    const igual = await (prisma as any).unassignedMeasurement.findFirst({
+      where: {
+        connectionId: connection.id,
+        measuredAt: reading.measuredAt,
+        systolic: reading.systolic,
+        diastolic: reading.diastolic,
+      },
+      select: { id: true },
+    });
+    if (igual) return { kind: "duplicate" };
   }
 
   const sessions = await matchingSessions(connection.id, new Date(reading.measuredAt));

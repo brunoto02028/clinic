@@ -12,7 +12,13 @@
 jest.mock("@/lib/db", () => ({ prisma: {} }));
 jest.mock("@/lib/automation/rules", () => ({ loadRule: jest.fn() }));
 
-import { daysSilent, isSilent, silenceThreshold, DEFAULT_SILENT_DAYS } from "@/lib/wearable-silence";
+import {
+  daysSilent,
+  isSilent,
+  silenceThreshold,
+  DEFAULT_SILENT_DAYS,
+  SILENCE_RULE,
+} from "@/lib/wearable-silence";
 import { loadRule } from "@/lib/automation/rules";
 
 const diasAtras = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
@@ -47,6 +53,13 @@ describe("isSilent", () => {
     expect(isSilent({ lastReadingAt: diasAtras(60), status: "DISCONNECTED" }, 5)).toBe(false);
   });
 
+  it("mas ERROR é o contrário: é o estado que ninguém sabe que existe", () => {
+    // `DISCONNECTED` é uma escolha de alguém; `ERROR` é o sync que falhou e
+    // não contou para ninguém. Esconder este era esconder o único estado que
+    // já significa "quebrado" (code review da T-11).
+    expect(isSilent({ lastReadingAt: diasAtras(60), status: "ERROR" }, 5)).toBe(true);
+  });
+
   it("exatamente no limiar já conta", () => {
     expect(isSilent({ lastReadingAt: diasAtras(5), status: "CONNECTED" }, 5)).toBe(true);
     expect(isSilent({ lastReadingAt: diasAtras(4), status: "CONNECTED" }, 5)).toBe(false);
@@ -61,8 +74,20 @@ describe("silenceThreshold", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("usa o número da regra da clínica", async () => {
-    (loadRule as jest.Mock).mockResolvedValue({ condition: { silentDays: 14 } });
+    (loadRule as jest.Mock).mockResolvedValue({ active: true, condition: { silentDays: 14 } });
     await expect(silenceThreshold("c1")).resolves.toBe(14);
+    // O código da regra é string literal dos dois lados (aqui e no seed): um
+    // erro de digitação daria o padrão para sempre, em silêncio, e nenhum
+    // teste perceberia sem esta linha.
+    expect(loadRule).toHaveBeenCalledWith(SILENCE_RULE, "c1");
+  });
+
+  it("regra desligada no painel não marca ninguém como mudo", async () => {
+    // O interruptor existe na tela e o PATCH o aceita. Ignorá-lo seria uma
+    // alavanca ligada em nada.
+    (loadRule as jest.Mock).mockResolvedValue({ active: false, condition: { silentDays: 1 } });
+    const limiar = await silenceThreshold("c1");
+    expect(isSilent({ lastReadingAt: diasAtras(400), status: "CONNECTED" }, limiar)).toBe(false);
   });
 
   it("cai no padrão quando a regra não existe, está vazia ou é absurda", async () => {

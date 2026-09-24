@@ -60,6 +60,52 @@ sem resposta. Suíte: **422 passando**.
   único sem nenhuma tela sobre isso, porque `/admin/biohacking` só varre quem tem papel de paciente
   e aquela conexão pertence a quem autorizou.
 
+## Segunda rodada — o code review
+
+Um **crítico** e cinco **altos**. Todos corrigidos.
+
+**CRÍTICO — o cron queimava o próprio token.** A Withings rotaciona o refresh token a cada
+refresh e grava o novo no banco; o objeto em memória fica velho na hora. O cron chamava
+`subscribeAndRecord` (que refresca) e logo em seguida `ingestWithings` com o **mesmo objeto**, ou
+seja, tentando refrescar com um token que eles acabaram de invalidar. Quem caía nisso eram
+exatamente as conexões antigas que este cron existe para resgatar, em toda rodada em que o token
+estivesse vencendo — e o token deles dura ~3h. Agora a conexão é relida entre as duas chamadas.
+
+**ALTO — o carimbo estava em três lugares e errava em dois.**
+
+| O que era | O que é |
+|---|---|
+| `arrived` somava `activity.length` e `sleep.length`, que são **linhas devolvidas na janela**, não linhas novas. Como a janela olha 3 dias para trás, um aparelho que parou ontem seria carimbado por mais 3–4 rodadas e o silêncio só apareceria com ~9 dias | o carimbo usa a **data da leitura mais nova**, não `agora`. A data da medida não mente |
+| leitura do aparelho da clínica que cai na caixa de não atribuídas não contava como dado — a mesma tela listava as leituras e dizia "nada chega há N dias" | conta: é dado chegando do mesmo jeito |
+| o sync manual do paciente não carimbava nada: ele recebia o dado e continuava marcado como mudo | o carimbo mora dentro de `ingestWithings`, então os três chamadores usam o mesmo caminho |
+
+**ALTO — sem backfill, todo aparelho nasceria mudo.** A coluna nova nasce vazia e `daysSilent`
+cai na data de criação: no primeiro boot, **todos** apareceriam mudos há meses, inclusive os que
+reportam todo dia. Um alarme que grita em cima de quem está bem ensina a ignorar. Script de boot
+preenche a partir do que já está no banco — pontos de wearable, pressão e a caixa de não
+atribuídas. Local: **1 conexão preenchida**.
+
+**ALTO — nada agendava o cron.** Era trocar "comentário que promete um sync" por "rota que ninguém
+chama". Cadastrado no Coolify: `wearables-sync`, `0 */6 * * *`, ligado.
+
+**Médios, também corrigidos:** o interruptor `active` da regra era ignorado (o admin desligava e os
+avisos continuavam); `status: "ERROR"` — o único estado que já significa "quebrado" — era tratado
+como "não está mudo" e sumia de todas as telas e do próprio cron; o loop não tinha ordem nem teto
+contra os 300s do Coolify (agora vai do mais antigo para o mais novo, com orçamento de 240s, então
+a rodada seguinte continua de onde parou); leitura sem `grpid` no aparelho da clínica viraria uma
+linha nova na caixa **por dia**, porque o cron relê a mesma janela (agora deduplica por horário e
+valores); e a contagem no admin mostrava um aparelho quando havia dois.
+
+**Testes:** 429 passando, com dois novos que prendem o que o review achou — `ERROR` conta como
+silêncio, e regra desligada não marca ninguém. Mais a asserção que faltava: `loadRule` é chamada
+com o código certo, porque a string literal dos dois lados erraria em silêncio e o sistema usaria o
+padrão para sempre.
+
+**Deixado como está, e declarado:** a metade `CREATE_ALERT` da regra não cria alerta — só o
+`condition` é lido, exatamente como em `BP_THRESHOLDS`. O silêncio aparece em duas telas que
+alguém precisa abrir. Ligar isso ao motor de alertas é decisão do Bruno, porque passa a gerar
+linha de alerta todo dia.
+
 ## O que este QA não prova
 
 A busca real na Withings. O cron foi exercido com token inválido, que prova o caminho de erro e o

@@ -127,6 +127,14 @@ const RULES = [
     // mede todo dia (atividade 075, T-11).
     trigger: "THRESHOLD",
     condition: { silentDays: 5 },
+    active: true,
+    channels: ["INTERNAL"],
+    // Como em BP_THRESHOLDS: hoje **só o `condition` é lido** — o limiar pinta
+    // as duas telas de âmbar (/admin/biohacking e a caixa de medições) e não
+    // cria alerta nenhum. O texto abaixo é o que um alerta diria quando for
+    // ligado ao motor; enquanto isso, é configuração declarada, não alavanca
+    // ligada em nada. O interruptor `active`, esse sim, já vale: desligar a
+    // regra silencia os avisos (lib/wearable-silence.ts).
     action: "CREATE_ALERT",
     actionData: {
       priority: "MEDIUM",
