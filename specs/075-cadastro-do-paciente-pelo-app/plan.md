@@ -47,6 +47,8 @@ ela a submissão é rejeitada.
 | T-11 | A rede de segurança, e alguém que perceba o silêncio | concluído |
 | T-12 | O app revalida quando o paciente volta para ele | concluído |
 | T-13 | Senha trocada derruba a sessão do app | pendente |
+| T-14 | foto de perfil | em andamento |
+| T-15 | tranca biométrica (Face ID / Touch ID / digital) | em andamento |
 
 ## Decisões do Bruno (24/09/2026)
 

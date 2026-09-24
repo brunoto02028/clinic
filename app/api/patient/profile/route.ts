@@ -25,6 +25,7 @@ export async function GET() {
         phone: true, dateOfBirth: true, address: true,
         preferredLocale: true, communicationPreference: true,
         emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
+        profileImageUrl: true,
       } as any,
     });
 

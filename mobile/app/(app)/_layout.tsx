@@ -14,6 +14,12 @@ export default function AppLayout() {
     );
   }
 
+  // Sessão válida, ainda não liberada pelo rosto. Não é o mesmo que estar de
+  // fora: mandar para o login aqui apagaria a sessão que a tranca protege.
+  if (status === "locked") {
+    return <Redirect href="/lock" />;
+  }
+
   if (status !== "authenticated") {
     // Never `/`: seven files resolve to it — the root welcome screen and the
     // index of every module group, since a (group) adds no path segment. The

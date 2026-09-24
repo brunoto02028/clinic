@@ -175,6 +175,33 @@ function WearablesScreen() {
           <LoadFailure error={error} onRetry={() => refetch()} />
         ) : (
           <View style={{ gap: 12 }}>
+            {/* O aviso de não emergência fica no topo, e a lista é longa: quem
+                rola até o aparelho que quer conectar vê sete botões apagados e
+                nenhuma explicação — o motivo ficou quatrocentos pixels acima.
+                Um botão desabilitado sem motivo ao lado é o app parecendo
+                quebrado (achado no iPhone, 24/09/2026). */}
+            {consent && !consent.accepted && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  backgroundColor: t.colors.warnSoft,
+                  borderWidth: 1,
+                  borderColor: t.colors.warn,
+                  borderRadius: t.radius.md,
+                  padding: 12,
+                }}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color={t.colors.warn} />
+                <Text variant="caption" color={t.colors.warn} style={{ flex: 1 }}>
+                  {tr(lang, {
+                    en: "Read and accept the notice above to connect a device.",
+                    pt: "Leia e aceite o aviso acima para conectar um aparelho.",
+                  })}
+                </Text>
+              </View>
+            )}
             {OW_PROVIDERS.map((p) => {
               const isConnected = connectedProviders.has(p.key);
               const conn = (connections || []).find((c) => c.provider.toLowerCase() === p.key);

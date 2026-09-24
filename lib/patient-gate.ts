@@ -118,3 +118,4 @@ export async function patientGate(options: PatientGateOptions = {}): Promise<Gua
 
   return { gate: base };
 }
+

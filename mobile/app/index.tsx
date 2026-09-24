@@ -14,9 +14,12 @@ export default function Welcome() {
     if (status === "authenticated") {
       router.replace("/(app)/module-select");
     }
+    if (status === "locked") {
+      router.replace("/lock");
+    }
   }, [status]);
 
-  if (status === "loading") {
+  if (status === "loading" || status === "locked") {
     return (
       <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
         <Spinner />
