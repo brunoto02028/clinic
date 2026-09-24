@@ -1,6 +1,6 @@
 # Atividade 075 — Cadastro do paciente pelo app
 
-**Status:** aguardando aprovação · **Aberta em:** 24/09/2026
+**Status:** decisões tomadas, aguardando o "pode começar" · **Aberta em:** 24/09/2026
 
 ## Objetivo
 
@@ -43,7 +43,21 @@ ela a submissão é rejeitada.
 | T-7 | Preparar a submissão à App Store | pendente |
 | T-8 | Entrar com Google e com Apple *(opcional — só se você quiser)* | pendente |
 
-## Suposições — confirme ou corrija
+## Decisões do Bruno (24/09/2026)
+
+As três que travavam o trabalho, respondidas:
+
+1. **Exclusão de conta = anonimizar e guardar o clínico.** Encerra o acesso, apaga o
+   identificável, preserva triagem, notas e medições ligadas a um registro anonimizado — a
+   retenção que a própria tela de consentimento promete. A T-4 segue por aí.
+2. **Clínica padrão, código opcional.** Sem código, a conta entra na clínica do
+   `DEFAULT_CLINIC_SLUG`; com código, no estúdio correspondente. É o que a API já faz, então a
+   T-5 acrescenta a porta, não muda a regra.
+3. **Só iOS agora.** Android vira atividade própria.
+
+A T-8 (Google + Apple) fica fora até você pedir.
+
+## Suposições originais
 
 1. **Cadastro aberto na clínica padrão.** Sem código do profissional, a conta nova entra na
    clínica resolvida por `DEFAULT_CLINIC_SLUG`. É o que a API já faz. Se você quiser que todo
