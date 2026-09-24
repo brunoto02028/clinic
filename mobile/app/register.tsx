@@ -153,7 +153,7 @@ export default function Register() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ gap: 28, paddingVertical: 16 }}
       >
-          <Logo tone="ink" height={56} style={{ alignSelf: "center" }} />
+          <Logo tone="ink" height={96} style={{ alignSelf: "center" }} />
 
           <View style={{ gap: 6 }}>
             <Text variant="hero">{tr(lang, { en: "Create your account", pt: "Crie sua conta" })}</Text>

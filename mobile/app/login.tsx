@@ -69,7 +69,7 @@ export default function Login() {
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
-          <Logo tone="ink" height={56} style={{ alignSelf: "center", marginBottom: 4 }} />
+          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}
           <View style={{ gap: 6 }}>
