@@ -28,9 +28,15 @@ export interface ClinicMessage {
  * Oldest first, as the endpoint returns them — a conversation, not a feed.
  *
  * This took a `poll` flag that suppressed the server's scheduled-broadcast
- * sweep, and neither caller ever passed it; there is no `refetchInterval` on
- * this query either, so nothing polls. The parameter is gone rather than left
- * as a promise the code does not keep.
+ * sweep, and neither caller ever passed it. That was written when nothing
+ * repeated this request; since 075 T-12 the query revalidates whenever the app
+ * comes back to the foreground, so the sweep does run again each time.
+ *
+ * It stays that way on purpose: `dispatch-broadcasts` exists as a cron route
+ * and **is not scheduled anywhere**, so this sweep is the only thing sending a
+ * scheduled broadcast. Suppressing it here to save a query would stop them
+ * reaching anyone who only uses the app. The claim is atomic, so nothing is
+ * ever sent twice.
  */
 export async function fetchMessages(): Promise<ClinicMessage[]> {
   const res = await apiFetch<ClinicMessage[]>("/api/patient/messages");

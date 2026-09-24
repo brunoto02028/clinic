@@ -13,7 +13,13 @@ function OutcomeMeasuresScreen() {
   const t = useTheme();
   const lang = useLang();
   const qc = useQueryClient();
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["outcome-measures"], queryFn: fetchOutcomeMeasures });
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["outcome-measures"],
+    queryFn: fetchOutcomeMeasures,
+    // Formulário em edição não pode ser sobrescrito pelo servidor no meio
+    // (revalidação no foco, 075 T-12 — a mesma razão da triagem).
+    refetchOnWindowFocus: false,
+  });
 
   const [vasScore, setVasScore] = useState(0);
   const [overallFunction, setOverallFunction] = useState(50);

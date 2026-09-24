@@ -62,6 +62,45 @@ que faz alguém concluir "não funciona" quando funciona.
 
 **433 testes**, suíte inteira verde.
 
+## Segunda rodada — o code review, e o que ele impediu
+
+O review achou um **crítico** que teria ido para o build. Confirmei no código antes de mexer.
+
+**A revalidação no foco apagava a triagem em andamento — e reabilitava o envio de red flags
+negadas.** `screening.tsx` semeia o formulário a partir do servidor num `useEffect` com `[existing]`.
+Isso foi escrito quando a query só buscava na montagem; com a revalidação no foco, passou a rodar
+**toda vez que o app volta ao primeiro plano**. O paciente preenche a etapa, atende uma ligação,
+volta — e o que digitou some.
+
+A parte grave é a etapa de red flags: `confirmedFlags` é estado de sessão e **não** é resetado,
+mas os valores em `form` voltam para `false` (o servidor grava `?? false`). Resultado:
+`unanswered === 0`, botão de enviar habilitado, e a triagem seria enviada com **"não" em perguntas
+que a pessoa respondeu "sim"**. É a mesma falha que o comentário na própria tela descreve como já
+corrigida numa atividade anterior — reintroduzida por outro caminho.
+
+Corrigido: a triagem semeia **uma vez** e não revalida no foco. Um formulário sendo preenchido não
+pode ser sobrescrito pelo servidor. A troca de conta continua coberta pelo `clearSessionCache`, que
+limpa antes de a identidade mudar, e a tela desmonta no redirect para o login.
+
+O mesmo padrão existia em mais três formulários — perfil, medidas de evolução e check-in diário —
+e é justamente onde a feature dói: a clínica editando o cadastro enquanto o paciente digita. Os
+três também deixaram de revalidar no foco.
+
+**E o segundo: ficar offline virava tela vazia e muda.** Com o `onlineManager` ligado e o
+`networkMode` padrão, a query nem é tentada — fica `paused`, que não é `isLoading` nem `isError`.
+Nenhuma tela do app trata esse estado: sem spinner, sem erro, sem "tentar de novo" — e o
+`ModuleGuard` chegaria a **redirecionar o paciente para fora da área da clínica**. Agora é
+`networkMode: "offlineFirst"`: tenta assim mesmo, e a falha vira erro de verdade, que as telas já
+sabem mostrar.
+
+**Menores, também corrigidos:** `wireNetwork` não tinha a guarda de plataforma que o foco tem; e a
+sonda de rede do NetInfo aponta por padrão para um host do Google, a cada 60 segundos, no aparelho
+de um paciente — beacon de terceiro não declarado num app de saúde, e respondendo a pergunta
+errada (uma rede que bloqueie o Google mas alcance a nossa API seria dada como offline, congelando
+o app). Agora sonda o nosso `version.json`, que é arquivo estático e não toca no banco.
+
+**434 testes.**
+
 ## O que este QA não prova
 
 A ponte `AppState` → `focusManager` **no aparelho**. No alvo web ela é desligada de propósito, e

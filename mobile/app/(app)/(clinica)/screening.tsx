@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Pressable, ScrollView } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -95,15 +95,32 @@ function ScreeningScreen() {
   const { data: existing, isLoading, isError: loadError, refetch } = useQuery({
     queryKey: ["screening"],
     queryFn: fetchScreening,
+    // Um formulário sendo preenchido não pode ser sobrescrito pelo servidor.
+    // Com a revalidação no foco da T-12, atender uma ligação no meio da
+    // triagem apagava a etapa atual — e, pior, as red flags confirmadas
+    // continuavam contadas como respondidas enquanto os valores voltavam para
+    // `false`, deixando enviar "não" em perguntas que a pessoa respondeu
+    // "sim". Esta tela lê o servidor uma vez e depois é dona do que tem.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
+  // Semeia **uma vez**, na primeira resposta do servidor.
+  //
+  // `null` is a real answer — this patient has no screening yet — and must
+  // reset the form. `if (existing)` skipped it, so a form already holding
+  // someone's answers kept them: with another account's screening in the
+  // cache, the first autosave wrote that person's health data here.
+  // `undefined` is "still loading" and leaves the form alone.
+  //
+  // A troca de conta continua coberta: `clearSessionCache` limpa o cache antes
+  // de a identidade mudar e a tela desmonta no redirect para o login, então a
+  // próxima montagem semeia de novo, do zero.
+  const seeded = useRef(false);
   useEffect(() => {
-    // `null` is a real answer — this patient has no screening yet — and must
-    // reset the form. `if (existing)` skipped it, so a form already holding
-    // someone's answers kept them: with another account's screening in the
-    // cache, the first autosave wrote that person's health data here.
-    // `undefined` is "still loading" and leaves the form alone.
-    if (existing !== undefined) setForm(existing ?? {});
+    if (existing === undefined || seeded.current) return;
+    seeded.current = true;
+    setForm(existing ?? {});
   }, [existing]);
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));

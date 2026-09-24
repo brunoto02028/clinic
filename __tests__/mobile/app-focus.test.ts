@@ -70,4 +70,10 @@ describe("canReachNetwork", () => {
   it("conectado e alcançável é online", () => {
     expect(canReachNetwork({ isConnected: true, isInternetReachable: true })).toBe(true);
   });
+
+  it("`isConnected: null` também é desconhecido, não offline", () => {
+    // O NetInfo emite `null` no estado inicial em algumas plataformas. Antes
+    // isto caía no `true` por acidente; agora é decisão testada.
+    expect(canReachNetwork({ isConnected: null, isInternetReachable: null })).toBe(true);
+  });
 });
