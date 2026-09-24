@@ -49,6 +49,16 @@ export function Screen({ children, scroll, padded = true, style, testID }: Scree
           contentContainerStyle={[inner, style]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          // O teclado cobria o campo que a pessoa estava preenchendo, em
+          // qualquer tela com formulário — ela digitava sem ver o que digitava.
+          // Isto pede ao iOS que reserve a altura do teclado no próprio scroll,
+          // que é a correção que vale para as 45 telas de uma vez em vez de
+          // um `KeyboardAvoidingView` colado em cada uma. Achado pelo Bruno
+          // testando no iPhone, 24/09/2026.
+          automaticallyAdjustKeyboardInsets
+          // Arrastar para baixo fecha o teclado, que é como o resto do iOS se
+          // comporta e é a saída mais rápida quando ele está no caminho.
+          keyboardDismissMode="interactive"
         >
           {children}
         </ScrollView>

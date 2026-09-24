@@ -95,7 +95,12 @@ export default function ModuleSelect() {
 
   const onSelect = (mod: AppModule) => {
     setActiveModule(mod.key);
-    router.replace(ROUTE_MAP[mod.key] as any);
+    // `push`, não `replace`: com `replace` o seletor saía da pilha e o módulo
+    // virava um beco — sem botão de voltar, sem trocar de área, e numa tela
+    // bloqueada ("não incluído no seu plano") sem saída nenhuma. A escolha
+    // automática logo acima continua com `replace`, que é o certo lá: voltar
+    // para um seletor de uma opção só não leva a lugar nenhum.
+    router.push(ROUTE_MAP[mod.key] as any);
   };
 
   // A failed lookup is not an empty entitlement list: without this the screen

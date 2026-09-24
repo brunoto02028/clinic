@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { View } from "react-native";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t } from "@/lib/i18n";
 import { fetchAccess } from "@/api/access";
@@ -70,6 +71,18 @@ export function PlanGate({
               pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
             })}
           </Text>
+          {/* Uma tela que só diz "não" precisa de uma porta. Sem isto, quem
+              chegasse aqui ficava olhando um cadeado — e, dependendo de como
+              chegou, sem nem o gesto de voltar (achado no iPhone, 24/09). */}
+          {router.canGoBack() && (
+            <Button
+              title={t(lang, { en: "Go back", pt: "Voltar" })}
+              variant="greige"
+              size="sm"
+              onPress={() => router.back()}
+              testID="plan-gate-back"
+            />
+          )}
         </View>
       </Card>
     </Screen>
