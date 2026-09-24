@@ -1,8 +1,9 @@
 import { AppState, type AppStateStatus, Platform } from "react-native";
-import { focusManager } from "@tanstack/react-query";
-import { shouldBeFocused, listensToAppState } from "./app-focus-rules";
+import NetInfo from "@react-native-community/netinfo";
+import { focusManager, onlineManager } from "@tanstack/react-query";
+import { shouldBeFocused, listensToAppState, canReachNetwork } from "./app-focus-rules";
 
-export { shouldBeFocused, listensToAppState };
+export { shouldBeFocused, listensToAppState, canReachNetwork };
 
 /**
  * Faz o app perceber que voltou.
@@ -24,6 +25,21 @@ export { shouldBeFocused, listensToAppState };
  * `web` fica de fora de propósito: ali o comportamento de janela do próprio
  * React Query já é o certo, e sobrepor os dois daria refetch em dobro.
  */
+/**
+ * Faz o app perceber que a rede voltou.
+ *
+ * Sem isto, perder o sinal no meio de uma tela deixava a mensagem de erro
+ * parada até alguém puxar para atualizar — e o paciente que entra no elevador
+ * volta achando que o app quebrou. O `onlineManager` é a outra metade do que
+ * o `focusManager` faz: um diz "a pessoa voltou", o outro "a rede voltou", e
+ * o React Query refaz o que estava pendente.
+ */
+export function wireNetwork(): () => void {
+  return NetInfo.addEventListener((state) => {
+    onlineManager.setOnline(canReachNetwork(state));
+  });
+}
+
 export function wireAppFocus(): () => void {
   if (!listensToAppState(Platform.OS)) return () => {};
 

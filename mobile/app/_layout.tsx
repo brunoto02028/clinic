@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { useAuth } from "@/store/auth";
-import { wireAppFocus } from "@/lib/app-focus";
+import { wireAppFocus, wireNetwork } from "@/lib/app-focus";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -49,6 +49,7 @@ export default function RootLayout() {
   // Sem isto, o que a clínica muda só aparece quando o paciente fecha e abre
   // o app, porque as abas nunca desmontam (075, T-12).
   useEffect(() => wireAppFocus(), []);
+  useEffect(() => wireNetwork(), []);
 
   const onReady = useCallback(async () => {
     if (fontsLoaded) {

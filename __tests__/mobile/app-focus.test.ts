@@ -11,7 +11,11 @@
  * contam como foco, e em qual plataforma escutar. É o que fica preso aqui.
  */
 
-import { shouldBeFocused, listensToAppState } from "../../mobile/src/lib/app-focus-rules";
+import {
+  shouldBeFocused,
+  listensToAppState,
+  canReachNetwork,
+} from "../../mobile/src/lib/app-focus-rules";
 
 describe("shouldBeFocused", () => {
   it("só `active` é foco", () => {
@@ -41,5 +45,29 @@ describe("listensToAppState", () => {
 
   it("não escuta na web, onde o React Query já observa a janela", () => {
     expect(listensToAppState("web")).toBe(false);
+  });
+});
+
+describe("canReachNetwork", () => {
+  it("desconhecido vale como online", () => {
+    // `isInternetReachable` é `null` até a primeira sondagem. Tratar isso como
+    // offline deixaria o app parado logo ao abrir, sem tentar nada, esperando
+    // uma resposta que só chega depois. Tentar e falhar é mais barato.
+    expect(canReachNetwork({ isConnected: true, isInternetReachable: null })).toBe(true);
+    expect(canReachNetwork({})).toBe(true);
+  });
+
+  it("sem rede é offline", () => {
+    expect(canReachNetwork({ isConnected: false, isInternetReachable: null })).toBe(false);
+  });
+
+  it("o wi-fi que não leva a lugar nenhum é offline", () => {
+    // Conectado ao roteador e sem internet: o café com portal de login. É o
+    // único caso em que "conectado" mente.
+    expect(canReachNetwork({ isConnected: true, isInternetReachable: false })).toBe(false);
+  });
+
+  it("conectado e alcançável é online", () => {
+    expect(canReachNetwork({ isConnected: true, isInternetReachable: true })).toBe(true);
   });
 });

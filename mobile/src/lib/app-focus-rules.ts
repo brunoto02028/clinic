@@ -24,3 +24,25 @@ export function shouldBeFocused(status: string): boolean {
 export function listensToAppState(os: string): boolean {
   return os !== "web";
 }
+
+/**
+ * Se dá para tentar uma requisição.
+ *
+ * O NetInfo separa "tem rede" de "a rede leva a algum lugar":
+ * `isInternetReachable` é `null` enquanto ele ainda não sabe, e tratar esse
+ * `null` como offline deixaria o app parado logo ao abrir, antes da primeira
+ * sondagem — sem tentar nada, esperando uma resposta que só chega depois.
+ * Desconhecido vale como online: a tentativa falha rápido se não houver rede,
+ * e falhar é mais barato do que não tentar.
+ *
+ * Só a combinação explícita "conectado, mas não chega a lugar nenhum" conta
+ * como offline — o wi-fi do café com portal de login é exatamente isso.
+ */
+export function canReachNetwork(state: {
+  isConnected?: boolean | null;
+  isInternetReachable?: boolean | null;
+}): boolean {
+  if (state.isConnected === false) return false;
+  if (state.isInternetReachable === false) return false;
+  return true;
+}

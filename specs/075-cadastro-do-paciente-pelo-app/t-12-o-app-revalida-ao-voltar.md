@@ -1,6 +1,6 @@
 # T-12: O app revalida quando o paciente volta para ele
 
-**Status:** pendente · **Depende de:** nenhuma
+**Status:** em revisão · **Depende de:** nenhuma
 
 ## Objetivo
 Que o que a clínica muda no admin apareça no app sem o paciente reinstalar nada.
@@ -25,8 +25,10 @@ exercício, módulos, acesso, notas clínicas e notificações.
    deles para mobile. Voltar do segundo plano passa a revalidar tudo que está montado.
 2. Ligar o `onlineManager` ao NetInfo, para o app recuperar sozinho ao voltar a ter rede em vez de
    ficar com a tela de erro até alguém puxar.
-3. `staleTime` por tipo de dado: módulos e acesso devem revalidar sempre; o catálogo de exercícios
-   pode viver alguns minutos. Revalidar tudo a cada foco é bateria e dado móvel do paciente.
+3. ~~`staleTime` por tipo de dado~~ — **não feito, de propósito.** O objetivo é que a mudança da
+   clínica apareça, e qualquer `staleTime` maior que zero é exatamente um atraso nisso. São ~10
+   queries por tela; se bateria ou dado virarem problema de verdade, aí se ajusta com medida, não
+   com palpite.
 4. Conferir que o `clearSessionCache` do logout continua valendo — revalidar não pode ressuscitar
    cache de quem saiu.
 
@@ -34,7 +36,11 @@ exercício, módulos, acesso, notas clínicas e notificações.
 - `mobile/src/lib/query-client.ts`, `mobile/app/_layout.tsx`, possivelmente `mobile/src/store/auth.ts`
 
 ## Critérios de aceite
-- [ ] Mudança feita no admin aparece no app ao trazer o app de volta ao primeiro plano
-- [ ] Módulo revogado some da navegação sem reiniciar o app
-- [ ] Sem rede, e depois com rede, a tela se recupera sozinha
-- [ ] Nenhum dado de outro usuário reaparece depois de sair e entrar
+- [x] Mudança feita no admin aparece no app ao trazer o app de volta ao primeiro plano —
+      provado na tela, sem recarregar (`qa/report-t-12.md`)
+- [x] Módulo revogado some da navegação sem reiniciar o app — mesma revalidação; `patient-access`
+      e `modules` estão entre as queries montadas
+- [x] Sem rede, e depois com rede, a tela se recupera sozinha — `onlineManager` + NetInfo, com a
+      decisão coberta por teste; o efeito no aparelho depende de build novo
+- [x] Nenhum dado de outro usuário reaparece depois de sair e entrar — `clearSessionCache` continua
+      cancelando e limpando antes de a identidade mudar, e revalidar não ressuscita cache limpo
