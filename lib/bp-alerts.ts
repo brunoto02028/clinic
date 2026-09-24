@@ -5,6 +5,8 @@ import { escapeHtml } from "@/lib/admin-notify-email";
 import { getBpThresholds, classify } from "@/lib/automation/bp-thresholds";
 import { getExerciseBpLimits, evaluateClearance } from "@/lib/automation/exercise-bp";
 import { noticeFor } from "@/lib/non-emergency-notice";
+import { createAlert } from "@/lib/alerts";
+import { AlertPriority } from "@prisma/client";
 
 /**
  * What happens after a blood-pressure reading is stored, whoever stored it.
@@ -92,6 +94,43 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
         `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. ` +
         `Ligue 999/112 ou vá ao pronto-socorro agora. ${noticeFor("pt-BR").short}`,
     }).catch((err) => console.error("[bp-alerts] patient notification error:", err));
+  }
+
+  // An `Alert` row, not only an e-mail (activity 074, T-4; found by the
+  // parity audit). The clinic has a screen built for exactly this — and until
+  // now a hypertensive crisis reached it as nothing at all: if the e-mail
+  // failed, went to spam, or the tenant had no notification address, the
+  // reading entered the record in silence and /admin/alerts said "no alerts".
+  //
+  // The window is the day, so a patient measuring hourly produces one alert to
+  // act on rather than twenty — the dedupe of activity 072, reused.
+  if (clinicId) {
+    const day = measuredAt.toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+    await createAlert({
+      clinicId,
+      patientId,
+      ruleCode: isCrisis ? "BP_CRISIS" : blocksTraining && !isAlert ? "BP_BLOCKS_EXERCISE" : "BP_HIGH",
+      window: day,
+      title: isCrisis
+        ? `Hypertensive crisis: ${sys}/${dia} mmHg`
+        : blocksTraining && !isAlert
+          ? `Session blocked by blood pressure: ${sys}/${dia} mmHg`
+          : `High blood pressure: ${sys}/${dia} mmHg`,
+      titlePt: isCrisis
+        ? `Crise hipertensiva: ${sys}/${dia} mmHg`
+        : blocksTraining && !isAlert
+          ? `Sessão bloqueada pela pressão: ${sys}/${dia} mmHg`
+          : `Pressão alta: ${sys}/${dia} mmHg`,
+      priority: isCrisis ? AlertPriority.URGENT : AlertPriority.HIGH,
+      details: {
+        systolic: sys,
+        diastolic: dia,
+        classification,
+        blocksTraining,
+        measuredAt: measuredAt.toISOString(),
+        via: r.via ?? null,
+      },
+    }).catch((e) => console.error("[bp-alerts] alert row failed:", e?.message));
   }
 
   const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "A patient";

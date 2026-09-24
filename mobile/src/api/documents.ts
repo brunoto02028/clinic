@@ -4,6 +4,12 @@ export interface PatientDocument {
   id: string;
   fileName: string;
   fileUrl: string;
+  /**
+   * Absolute, signed, short-lived link the phone's viewer can open on its own
+   * (activity 074, auditoria de paridade). `fileUrl` is relative and behind a
+   * cookie: handing it to `Linking.openURL` did nothing at all.
+   */
+  openUrl?: string | null;
   /** The MIME type ("application/pdf"). Not the category. */
   fileType: string;
   /** The clinic's category (REFERRAL, SCAN, REPORT...). The screen was

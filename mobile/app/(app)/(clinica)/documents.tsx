@@ -164,7 +164,37 @@ function DocumentsScreen() {
             renderItem={({ item }) => {
               const typeInfo = TYPE_ICONS[item.documentType ?? "OTHER"] ?? TYPE_ICONS.OTHER;
               return (
-                <Pressable onPress={() => Linking.openURL(item.fileUrl).catch(() => {})}>
+                <Pressable
+                  onPress={async () => {
+                    // `fileUrl` is relative and behind a cookie the system
+                    // viewer does not have: tapping a document did nothing,
+                    // silently, because the failure was swallowed. `openUrl`
+                    // is absolute and signed; and when it is missing, the
+                    // patient is told rather than left tapping.
+                    const url = item.openUrl;
+                    if (!url) {
+                      Alert.alert(
+                        tr(lang, { en: "Document", pt: "Documento" }),
+                        tr(lang, {
+                          en: "We could not open this document. Please try again from the web portal.",
+                          pt: "Não foi possível abrir este documento. Tente pelo portal na web.",
+                        })
+                      );
+                      return;
+                    }
+                    try {
+                      await Linking.openURL(url);
+                    } catch {
+                      Alert.alert(
+                        tr(lang, { en: "Document", pt: "Documento" }),
+                        tr(lang, {
+                          en: "Your phone could not open this file.",
+                          pt: "Seu telefone não conseguiu abrir este arquivo.",
+                        })
+                      );
+                    }
+                  }}
+                >
                   <Card>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: typeInfo.bg, alignItems: "center", justifyContent: "center" }}>

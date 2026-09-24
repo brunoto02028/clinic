@@ -143,6 +143,11 @@ node /app/scripts/seed-acl-protocol.js || echo "[start.sh] ACL protocol seed war
 # could not change a threshold without a deploy — the exact thing putting them
 # in a rule was meant to fix. Idempotent, and it never touches a clinic's own
 # override row.
+# Mensagens e triagens criadas sem tenant (auditoria de paridade, 24/09/2026).
+# Só preenche nulos; nunca altera linha que já tem clínica.
+echo "[start.sh] Backfilling clinicId on messages and screenings..."
+node /app/scripts/backfill-message-screening-clinicid.js || echo "[start.sh] clinicId backfill warning — check logs"
+
 echo "[start.sh] Seeding automation rules..."
 node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
 

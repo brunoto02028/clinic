@@ -244,6 +244,10 @@ export async function POST(request: NextRequest) {
     const screening = await prisma.medicalScreening.create({
       data: {
         userId,
+        // Nascia nula, e os contadores de triagem por clínica
+        // (lib/command-context.ts) contavam zero para toda triagem vinda do
+        // paciente — achado da auditoria de paridade.
+        clinicId: (await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } }))?.clinicId ?? null,
         unexplainedWeightLoss: body?.unexplainedWeightLoss ?? false,
         nightPain: body?.nightPain ?? false,
         traumaHistory: body?.traumaHistory ?? false,

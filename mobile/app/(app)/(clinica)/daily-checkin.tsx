@@ -113,7 +113,7 @@ function DailyCheckInScreen() {
     mutationFn: submitCheckIn,
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["daily-checkin"] });
-      qc.invalidateQueries({ queryKey: ["patient-progress"] });
+      qc.invalidateQueries({ queryKey: ["assessment-progress"] });
       const streakMsg = res.streak
         ? lang === "pt"
           ? `\nSequência: ${res.streak.current} dia${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " — novo recorde!" : ""}`

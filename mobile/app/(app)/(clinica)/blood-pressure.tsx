@@ -87,7 +87,11 @@ export default function BloodPressureScreen() {
       heartRate: heartRate ? parseInt(heartRate, 10) : null,
     }),
     onSuccess: () => {
+      // A liberação do treino é derivada da pressão que acabou de ser salva; sem
+      // isto a tela de exercícios continuava mostrando o veredito anterior até
+      // o app ser reaberto (auditoria de paridade, F5).
       qc.invalidateQueries({ queryKey: ["blood-pressure"] });
+      qc.invalidateQueries({ queryKey: ["exercise-clearance"] });
       setSystolic(""); setDiastolic(""); setHeartRate("");
     },
     onError: (e) => Alert.alert(

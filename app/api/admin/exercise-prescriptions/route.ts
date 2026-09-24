@@ -282,10 +282,40 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { id, ...updateData } = body;
+    const { id } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Prescription ID required" }, { status: 400 });
+    }
+
+    // This checked the role and nothing else, then spread the whole body into
+    // `data`. A therapist at another clinic could edit any prescription by id
+    // — and, by passing `patientId` and `clinicId`, move it to their own
+    // patient: the exercise vanished from the original patient's app with no
+    // trace. Found by the admin→app parity audit, 24/09/2026.
+    const clinicId = await resolveClinicId(session);
+    const existing = await prisma.exercisePrescription.findFirst({
+      where: { id, clinicId: clinicId ?? undefined },
+      select: { id: true },
+    });
+    if (!existing) {
+      // A prescription of another tenant answers exactly like a missing one.
+      return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
+    }
+
+    // Only the fields this endpoint is for. `patientId` and `clinicId` are not
+    // among them: moving a prescription between patients or clinics is not an
+    // edit, and was the other half of the same hole.
+    const EDITABLE = [
+      "sets", "reps", "holdSeconds", "restSeconds", "frequency",
+      "notes", "isActive", "sortOrder", "folderId",
+    ] as const;
+    const updateData: Record<string, unknown> = {};
+    for (const key of EDITABLE) {
+      if (key in body) updateData[key] = body[key];
+    }
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
     const prescription = await prisma.exercisePrescription.update({
