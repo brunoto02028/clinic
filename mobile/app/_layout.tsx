@@ -9,6 +9,7 @@ import { useAuth } from "@/store/auth";
 import { wireAppFocus, wireNetwork } from "@/lib/app-focus";
 import { wireAppLock } from "@/lib/app-lock";
 import { PrivacyCover } from "@/components/PrivacyCover";
+import { LockOverlay } from "@/components/LockOverlay";
 import { applyUpdateOnLaunch } from "@/lib/app-updates";
 import * as SplashScreen from "expo-splash-screen";
 import {
@@ -82,8 +83,13 @@ export default function RootLayout() {
         <StatusBar style="dark" />
         <View style={{ flex: 1 }} onLayout={onReady}>
           <Stack screenOptions={{ headerShown: false }} />
-          {/* Por cima de tudo, inclusive da tela de tranca: o print do
-              multitarefa é tirado antes de qualquer navegação acontecer. */}
+          {/* A tranca cobre o app em vez de navegar até ele. Como rota, ela
+              trocava o <Stack> por um <Redirect> e destruía o histórico de
+              navegação do paciente a cada duas horas... a cada dois minutos em
+              segundo plano, na verdade. */}
+          <LockOverlay />
+          {/* Por cima até da tranca: o print do multitarefa é tirado antes de
+              qualquer coisa acontecer. */}
           <PrivacyCover />
         </View>
       </SafeAreaProvider>

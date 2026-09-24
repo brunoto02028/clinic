@@ -14,13 +14,12 @@ export default function AppLayout() {
     );
   }
 
-  // Sessão válida, ainda não liberada pelo rosto. Não é o mesmo que estar de
-  // fora: mandar para o login aqui apagaria a sessão que a tranca protege.
-  if (status === "locked") {
-    return <Redirect href="/lock" />;
-  }
-
-  if (status !== "authenticated") {
+  // `locked` NÃO aparece aqui de propósito. Era um <Redirect href="/lock">,
+  // que troca este <Stack> por outra coisa — e um <Stack> remontado nasce sem
+  // histórico, então dois minutos em segundo plano quebravam o botão de voltar
+  // em todas as telas. A tranca agora é uma cortina na raiz
+  // (components/LockOverlay), que cobre sem desmontar.
+  if (status !== "authenticated" && status !== "locked") {
     // Never `/`: seven files resolve to it — the root welcome screen and the
     // index of every module group, since a (group) adds no path segment. The
     // router could land back inside this layout, which would redirect again,

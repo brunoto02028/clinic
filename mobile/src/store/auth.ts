@@ -93,7 +93,10 @@ export const useAuth = create<AuthState>((set) => ({
 
   relock: () => {
     if (useAuth.getState().status !== "authenticated") return;
-    set({ status: "locked", user: null });
+    // O usuário fica. Com a tranca virando cortina, as telas continuam
+    // montadas por baixo — zerar `user` as faria renderizar vazias ou quebrar
+    // atrás de uma cortina que ninguém está vendo.
+    set({ status: "locked" });
   },
 
   login: async (email, password) => {

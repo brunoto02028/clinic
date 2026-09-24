@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Pressable, ScrollView } from "react-native";
 import { Stack, router } from "expo-router";
+import { goBackOr } from "@/lib/go-back";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
@@ -171,7 +172,10 @@ function ScreeningScreen() {
     mutationFn: () => saveScreening(form, false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["screening"] });
-      router.back();
+      // O recém-cadastrado chega aqui por `replace`, sem histórico: um
+      // `router.back()` puro não fazia nada, e a pessoa terminava nove etapas,
+      // apertava Enviar e via a mesma tela, sem pista de que tinha salvo.
+      goBackOr();
     },
   });
 

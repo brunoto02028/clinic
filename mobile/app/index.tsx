@@ -14,9 +14,8 @@ export default function Welcome() {
     if (status === "authenticated") {
       router.replace("/(app)/module-select");
     }
-    if (status === "locked") {
-      router.replace("/lock");
-    }
+    // Nada a fazer com `locked`: a cortina da raiz já está por cima, e
+    // navegar para cá ou para lá por baixo dela só embaralharia o histórico.
   }, [status]);
 
   if (status === "loading" || status === "locked") {

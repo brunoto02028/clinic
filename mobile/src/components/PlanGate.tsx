@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { goBackOr } from "@/lib/go-back";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
@@ -71,18 +71,19 @@ export function PlanGate({
               pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
             })}
           </Text>
-          {/* Uma tela que só diz "não" precisa de uma porta. Sem isto, quem
-              chegasse aqui ficava olhando um cadeado — e, dependendo de como
-              chegou, sem nem o gesto de voltar (achado no iPhone, 24/09). */}
-          {router.canGoBack() && (
-            <Button
-              title={t(lang, { en: "Go back", pt: "Voltar" })}
-              variant="greige"
-              size="sm"
-              onPress={() => router.back()}
-              testID="plan-gate-back"
-            />
-          )}
+          {/* Uma tela que só diz "não" precisa de uma porta — e a porta não
+              pode ser condicional. Estava dentro de `canGoBack()`, ou seja,
+              sumia exatamente nos casos em que era mais necessária: quem
+              chegou aqui por `replace`, sem histórico, ficava olhando um
+              cadeado sem nada para tocar. Auditoria de navegação, 24/09/2026:
+              este componente cobre 19 telas. */}
+          <Button
+            title={t(lang, { en: "Go back", pt: "Voltar" })}
+            variant="greige"
+            size="sm"
+            onPress={() => goBackOr()}
+            testID="plan-gate-back"
+          />
         </View>
       </Card>
     </Screen>
