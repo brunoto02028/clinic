@@ -48,7 +48,15 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  // O código do estúdio ou da clínica. Opcional: sem ele a conta entra na
+  // clínica padrão, com ele no tenant daquele profissional — e um código que
+  // não existe é recusado, nunca silenciosamente trocado pela padrão.
+  const [professionalCode, setProfessionalCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // O 409 não é um erro a ser lido e esquecido: é a pessoa certa na porta
+  // errada. Quem a clínica já cadastrou chega aqui sem saber que tem conta,
+  // e muitas vezes sem nunca ter definido senha.
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const complete =
@@ -56,6 +64,7 @@ export default function Register() {
 
   const onSubmit = async () => {
     setError(null);
+    setAlreadyExists(false);
 
     if (!EMAIL_SHAPE.test(email.trim())) {
       setError(tr(lang, { en: "That e-mail does not look right.", pt: "Esse e-mail não parece certo." }));
@@ -77,17 +86,27 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await registerAccount(firstName.trim(), lastName.trim(), email.trim().toLowerCase(), password);
-      router.replace("/(app)/module-select");
+      await registerAccount(
+        firstName.trim(),
+        lastName.trim(),
+        email.trim().toLowerCase(),
+        password,
+        professionalCode.trim() || undefined
+      );
+      // A conta nasce sem consentimento, de propósito: o aceite é a última
+      // etapa da avaliação. Cair na home seria cair numa pilha de 403 do gate,
+      // todos pela mesma causa. Aluno de estúdio não faz avaliação clínica —
+      // a rota é bloqueada para o tenant dele —, então esse vai ao seletor.
+      const criado = useAuth.getState().user;
+      router.replace(
+        criado?.clinicType === "PERSONAL_TRAINER"
+          ? "/(app)/module-select"
+          : "/(app)/(clinica)/screening"
+      );
     } catch (e) {
       const status = e instanceof AuthError ? e.status : undefined;
       if (status === 409) {
-        setError(
-          tr(lang, {
-            en: "There is already an account with this e-mail.",
-            pt: "Já existe uma conta com este e-mail.",
-          })
-        );
+        setAlreadyExists(true);
       } else if (status === 403) {
         // The clinic is at its patient limit. Nothing the person can do, and
         // telling them to try again would be false.
@@ -95,6 +114,13 @@ export default function Register() {
           tr(lang, {
             en: "This clinic cannot take new patients right now. Please contact them.",
             pt: "Esta clínica não pode receber novos pacientes agora. Fale com ela.",
+          })
+        );
+      } else if (status === 404) {
+        setError(
+          tr(lang, {
+            en: "We could not find that professional code. Check it, or leave it empty.",
+            pt: "Não encontramos esse código do profissional. Confira, ou deixe em branco.",
           })
         );
       } else if (status === 503) {
@@ -138,6 +164,51 @@ export default function Register() {
               })}
             </Text>
           </View>
+
+          {alreadyExists ? (
+            <View
+              style={{
+                gap: 12,
+                backgroundColor: t.colors.surface,
+                borderWidth: 1,
+                borderColor: t.colors.border,
+                padding: 16,
+                borderRadius: t.radius.md,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Ionicons name="person-circle-outline" size={22} color={t.colors.textSecondary} />
+                <Text variant="label" style={{ fontWeight: "600", flex: 1 }} testID="register-already-exists">
+                  {tr(lang, { en: "You already have an account here", pt: "Você já tem uma conta aqui" })}
+                </Text>
+              </View>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                {tr(lang, {
+                  en: "Your clinic may have created it for you. Sign in, or set a password if you have never chosen one.",
+                  pt: "Pode ter sido sua clínica que criou. Entre, ou defina uma senha se você nunca escolheu uma.",
+                })}
+              </Text>
+              <Button
+                title={tr(lang, { en: "Sign in", pt: "Entrar" })}
+                variant="primary"
+                size="sm"
+                onPress={() => router.replace("/login")}
+                testID="register-go-signin"
+              />
+              <Button
+                title={tr(lang, { en: "Set my password", pt: "Definir minha senha" })}
+                variant="greige"
+                size="sm"
+                onPress={() =>
+                  router.replace({
+                    pathname: "/forgot-password",
+                    params: { email: email.trim().toLowerCase(), lang },
+                  })
+                }
+                testID="register-go-set-password"
+              />
+            </View>
+          ) : null}
 
           <View style={{ gap: 4 }}>
             {error ? (
@@ -201,7 +272,18 @@ export default function Register() {
               value={confirm}
               onChangeText={setConfirm}
               secureTextEntry
-              testID="register-confirm"
+              testID="register-confirm-password"
+            />
+            <Input
+              label={tr(lang, { en: "Professional code (optional)", pt: "Código do profissional (opcional)" })}
+              placeholder={tr(lang, {
+                en: "Your trainer or clinic code",
+                pt: "O código do seu treinador ou clínica",
+              })}
+              value={professionalCode}
+              onChangeText={setProfessionalCode}
+              autoCapitalize="none"
+              testID="register-professional-code"
             />
 
             <View style={{ marginTop: 10 }}>

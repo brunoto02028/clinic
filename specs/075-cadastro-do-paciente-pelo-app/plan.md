@@ -1,6 +1,6 @@
 # Atividade 075 — Cadastro do paciente pelo app
 
-**Status:** decisões tomadas, aguardando o "pode começar" · **Aberta em:** 24/09/2026
+**Status:** em andamento — T-1, T-2 e T-3 com QA aprovado, em code review · **Aberta em:** 24/09/2026
 
 ## Objetivo
 
@@ -34,9 +34,9 @@ ela a submissão é rejeitada.
 
 | T | Nome | Status |
 |---|---|---|
-| T-1 | Tela de cadastro no app | pendente |
-| T-2 | Para onde vai quem acabou de se cadastrar | pendente |
-| T-3 | Quem já é paciente: reconhecer em vez de recusar | pendente |
+| T-1 | Tela de cadastro no app | em revisão |
+| T-2 | Para onde vai quem acabou de se cadastrar | em revisão |
+| T-3 | Quem já é paciente: reconhecer em vez de recusar | em revisão |
 | T-4 | Excluir a conta pelo app (exigência da Apple) | pendente |
 | T-5 | Código do profissional e link por clínica | pendente |
 | T-6 | O atalho no site | pendente |

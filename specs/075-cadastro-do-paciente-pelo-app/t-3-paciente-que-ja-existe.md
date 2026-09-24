@@ -1,6 +1,6 @@
 # T-3: Quem já é paciente — reconhecer em vez de recusar
 
-**Status:** pendente · **Depende de:** T-1
+**Status:** em revisão · **Depende de:** T-1
 
 ## Objetivo
 Que o paciente que a clínica já cadastrou não bata num muro ao tentar "se cadastrar".

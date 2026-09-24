@@ -1,6 +1,6 @@
 # T-1: Tela de cadastro no app
 
-**Status:** pendente · **Depende de:** nenhuma
+**Status:** em revisão · **Depende de:** nenhuma
 
 ## Objetivo
 Um caminho para criar conta a partir da tela de login, usando a rota que já existe.

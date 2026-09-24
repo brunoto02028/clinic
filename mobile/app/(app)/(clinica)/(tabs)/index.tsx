@@ -20,6 +20,7 @@ import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
 import { fetchProtocols } from "@/api/protocol";
 import { fetchMessages, unreadFromStaff } from "@/api/messages";
+import { fetchAccess } from "@/api/access";
 
 function formatSessionDate(iso: string, lang: Lang): string {
   const d = new Date(iso);
@@ -53,6 +54,9 @@ export default function Health() {
     queryKey: ["messages"],
     queryFn: () => fetchMessages(),
   });
+  // A única rota que responde antes do aceite — é de bypass no gate — e por
+  // isso a única que pode dizer por que todo o resto está recusando.
+  const access = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
   // `?? 0` turned a failed request — and a 403 from the plan gate — into the
@@ -79,6 +83,46 @@ export default function Health() {
     return (
       <Screen testID="health-screen">
         <Spinner center />
+      </Screen>
+    );
+  }
+
+  // Antes do aceite dos termos, toda rota do paciente recusa (gate da 074) e
+  // cada cartão desta tela mostraria o seu próprio erro — meia dúzia de avisos
+  // sobre a mesma causa, nenhum deles dizendo o que fazer. Um convite, com o
+  // caminho, no lugar de todos eles.
+  if (access.data && !access.data.onboarding.consentAccepted) {
+    return (
+      <Screen scroll testID="health-screen">
+        <View style={{ gap: 20 }}>
+          <Text variant="title">{tr(lang, { en: "Health", pt: "Saúde" })}</Text>
+          <Card accent="health">
+            <View style={{ gap: 12, paddingVertical: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Ionicons name="document-text-outline" size={22} color={t.colors.textSecondary} />
+                <Text variant="label" style={{ fontWeight: "600", flex: 1 }} testID="home-onboarding">
+                  {tr(lang, {
+                    en: "Complete your assessment",
+                    pt: "Complete sua avaliação",
+                  })}
+                </Text>
+              </View>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                {tr(lang, {
+                  en: "It takes a few minutes, and the last step is where you read and accept the Terms. Your clinic cannot start until then.",
+                  pt: "Leva alguns minutos, e a última etapa é onde você lê e aceita os Termos. Sua clínica não pode começar antes disso.",
+                })}
+              </Text>
+              <Button
+                title={tr(lang, { en: "Start", pt: "Começar" })}
+                variant="health"
+                size="sm"
+                onPress={() => router.push("/(app)/(clinica)/screening")}
+                testID="home-onboarding-start"
+              />
+            </View>
+          </Card>
+        </View>
       </Screen>
     );
   }

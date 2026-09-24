@@ -1,6 +1,6 @@
 # T-2: Para onde vai quem acabou de se cadastrar
 
-**Status:** pendente · **Depende de:** T-1
+**Status:** em revisão · **Depende de:** T-1
 
 ## Objetivo
 Que a primeira tela depois do cadastro seja a avaliação, e não uma home vazia de erros.
