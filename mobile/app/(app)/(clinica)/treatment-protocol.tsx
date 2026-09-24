@@ -23,6 +23,39 @@ function phaseLabel(lang: Lang, key: string): string {
   return pair ? tr(lang, pair) : key;
 }
 
+/**
+ * One line of text out of whatever the server actually sent.
+ *
+ * `goals` and `precautions` are free-form JSON: the admin and the AI
+ * generator write `[{goal, phase, timeline, metrics}]` and
+ * `[{precaution, severity}]`, while older plans hold plain strings. Rendering
+ * the entry directly threw "Objects are not valid as a React child" and took
+ * the whole screen down for every patient with a generated plan.
+ */
+function readEntry(value: unknown, ...keys: string[]): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map((v) => readEntry(v, ...keys)).filter(Boolean).join(" · ");
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const k of keys) {
+      if (typeof obj[k] === "string" && obj[k]) return obj[k] as string;
+    }
+    // No known key: the first string in it beats showing nothing.
+    const firstString = Object.values(obj).find((v) => typeof v === "string" && v);
+    return (firstString as string) ?? "";
+  }
+  return "";
+}
+
+/** Precautions, one per line, whatever shape they arrived in. */
+function toPrecautionLines(value: unknown): string[] {
+  if (value == null) return [];
+  const list = Array.isArray(value) ? value : [value];
+  return list.map((v) => readEntry(v, "precaution", "text", "note")).filter(Boolean);
+}
+
 function TreatmentProtocolScreen() {
   const lang = useLang();
   const t = useTheme();
@@ -64,7 +97,9 @@ function TreatmentProtocolScreen() {
           </Card>
         ) : (
           <FlatList data={protocols} keyExtractor={p => p.id} contentContainerStyle={{ gap: 16 }} showsVerticalScrollIndicator={false}
-            renderItem={({ item: protocol }) => (
+            renderItem={({ item: protocol }) => {
+              const precautionLines = toPrecautionLines(protocol.precautions);
+              return (
               <View style={{ gap: 8 }}>
                 <Card variant="elevated">
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -101,13 +136,13 @@ function TreatmentProtocolScreen() {
                       {protocol.goals.map((g, i) => (
                         <View key={i} style={{ flexDirection: "row", gap: 6 }}>
                           <Text variant="caption" color={t.colors.textSecondary}>•</Text>
-                          <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1, lineHeight: 18 }}>{g}</Text>
+                          <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1, lineHeight: 18 }}>{readEntry(g, "goal")}</Text>
                         </View>
                       ))}
                     </View>
                   )}
 
-                  {protocol.precautions && (
+                  {precautionLines.length > 0 && (
                     <View style={{
                       marginTop: 12, padding: 10, borderRadius: 10,
                       backgroundColor: t.colors.warnSoft,
@@ -119,7 +154,7 @@ function TreatmentProtocolScreen() {
                           {tr(lang, { en: "Take care", pt: "Cuidados" })}
                         </Text>
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2, lineHeight: 18 }}>
-                          {protocol.precautions}
+                          {precautionLines.join(String.fromCharCode(10))}
                         </Text>
                       </View>
                     </View>
@@ -163,7 +198,8 @@ function TreatmentProtocolScreen() {
                   </Pressable>
                 ))}
               </View>
-            )}
+              );
+            }}
           />
         )}
       </View>

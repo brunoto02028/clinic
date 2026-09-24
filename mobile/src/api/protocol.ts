@@ -39,10 +39,18 @@ export interface Protocol {
    *  "Protocolo — <therapist>" for every plan instead. */
   title: string | null;
   summary: string | null;
-  goals: string[] | null;
+  /**
+   * Free-form JSON on the server: the admin and the AI generator write
+   * `[{goal, phase, timeline, metrics}]`, not strings. The type said
+   * `string[]` and the screen rendered each entry directly, which throws
+   * "Objects are not valid as a React child" — every patient with a generated
+   * plan hit it. Typed as unknown so the screen has to decide how to read it.
+   */
+  goals: unknown[] | null;
   /** Safety instructions — "stop any movement that reproduces sharp pain".
    *  The endpoint has always sent these; the app showed none of them. */
-  precautions: string | null;
+  /** Same: usually `[{precaution, severity, references}]`, sometimes a string. */
+  precautions: unknown;
   therapist: { firstName: string; lastName: string };
   diagnosis?: { summary: string };
   items: ProtocolItem[];

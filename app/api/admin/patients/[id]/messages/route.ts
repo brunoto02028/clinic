@@ -104,6 +104,11 @@ export async function POST(
     (prisma as any).clinicMessage.create({
       data: {
         patientId: params.id,
+        // A coluna existe e nascia sempre nula, nos dois sentidos (auditoria
+        // de paridade). Ninguém filtra por ela ainda — e é exatamente por isso
+        // que passou despercebido: no dia em que alguém escopar esta tabela
+        // por tenant, ou fizer relatório por clínica, estas linhas somem.
+        clinicId: tenantAccess.actor?.clinicId ?? null,
         senderId: (session.user as any).id,
         senderRole: "staff",
         kind,

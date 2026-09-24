@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
   const message = await (prisma as any).clinicMessage.create({
     data: {
       patientId: userId,
+      // Nascia nula; ver o comentário na rota do staff. Os contadores de
+      // triagem em lib/command-context.ts já contavam errado por causa disso.
+      clinicId: (await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } }))?.clinicId ?? null,
       senderId: userId,
       senderRole: "patient",
       kind: "message",

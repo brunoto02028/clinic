@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { verifyFileToken } from "@/lib/file-access-token";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,13 @@ export async function GET(
 ) {
   const { id } = await params;
 
+  // A signed link, for the app: the phone opens a document in the system
+  // viewer, which carries no session of ours. The token is bound to this file
+  // and to one person, and expires in minutes — see lib/file-access-token.ts.
+  const tokenUserId = verifyFileToken(req.nextUrl.searchParams.get("t"), id);
+
   const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  if (!session?.user && !tokenUserId) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
@@ -41,7 +47,13 @@ export async function GET(
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  const role = (session.user as any)?.role;
+  // A token only ever opens its owner's document, whatever else it claims.
+  if (tokenUserId) {
+    if (tokenUserId !== doc.patientId) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
+  } else {
+  const role = (session!.user as any)?.role;
   if (STAFF_ROLES.includes(role)) {
     // Staff previewing a patient still carries their staff session — allowed.
   } else {
@@ -51,6 +63,7 @@ export async function GET(
     if (!effective || effective.userId !== doc.patientId) {
       return new NextResponse("Not Found", { status: 404 });
     }
+  }
   }
 
   const bytes = Buffer.from(doc.fileData, "base64");

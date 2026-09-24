@@ -15,6 +15,7 @@ type ActivityEvent = {
     | "SCREENING_SUBMITTED"
     | "SCREENING_UPDATED"
     | "DOCUMENT_UPLOADED"
+    | "CHECK_IN"
     | "OTHER";
   title: string;
   description: string | null;
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // whichever source it belongs to.
   const take = offset + limit + 1;
 
-  const [auditLogs, completionLogs, messages, screening, documents] = await Promise.all([
+  const [auditLogs, completionLogs, messages, screening, documents, checkIns] = await Promise.all([
     prisma.auditLog.findMany({
       where: { userId: patientId },
       orderBy: { createdAt: "desc" },
@@ -89,6 +90,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       take,
       select: { id: true, fileName: true, createdAt: true },
     }),
+    // The check-in was missing from this feed, which is the screen a therapist
+    // opens to see whether the patient has been showing up (found by the
+    // parity audit). A patient checking in every day looked inactive here.
+    (prisma as any).dailyCheckIn.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: {
+        id: true, checkinDate: true, painLevel: true, moodLevel: true,
+        exercisesDone: true, notes: true, createdAt: true,
+      },
+    }),
   ]);
 
   const events: ActivityEvent[] = [];
@@ -101,6 +114,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       title: labeled.title,
       description: log.description,
       at: log.createdAt.toISOString(),
+    });
+  }
+
+  for (const c of checkIns as any[]) {
+    events.push({
+      id: c.id,
+      type: "CHECK_IN",
+      title: `Check-in: pain ${c.painLevel}/10, mood ${c.moodLevel}/5`,
+      // What they wrote, when they wrote something — it is the part a
+      // therapist actually reads.
+      description: c.notes || (c.exercisesDone ? "Did the exercises" : null),
+      at: c.createdAt.toISOString(),
     });
   }
 

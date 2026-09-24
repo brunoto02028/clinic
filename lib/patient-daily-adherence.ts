@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { exerciseVisibility } from "@/lib/protocol-exercise-gating";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 // What's on a patient's "Today" card, computed server-side — same rules as
 // GET /api/patient/protocol + app/dashboard/treatment/page.tsx's
@@ -21,10 +22,24 @@ function currentWeekOf(proto: { startDate: Date | null; createdAt: Date }, at: D
   return Math.max(1, Math.floor((at.getTime() - effectiveStartDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
 }
 
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+/**
+ * Midnight of the clinic's calendar day, as UTC — which is how the day is
+ * stored.
+ *
+ * `ExerciseCompletionLog.completedDate` is a `@db.Date`, and the write side
+ * builds it as `new Date("YYYY-MM-DDT00:00:00.000Z")` from the Europe/London
+ * date. This used `setHours(0,0,0,0)`, local midnight, so in British Summer
+ * Time the window became 23:00Z→23:00Z; Postgres truncated both ends to a
+ * DATE and the query asked for **yesterday**.
+ *
+ * QA proved it: an exercise marked today came back as "missing", and one
+ * dated yesterday made the panel say today was all done. It hit the patient
+ * panel, the clinic card and the daily reminder cron — all of which read
+ * through here. The read now derives the day the same way the write does.
+ */
+export function startOfDay(d: Date): Date {
+  const dateStr = d.toLocaleDateString("en-CA", { timeZone: CLINIC_TIMEZONE });
+  return new Date(`${dateStr}T00:00:00.000Z`);
 }
 
 /**

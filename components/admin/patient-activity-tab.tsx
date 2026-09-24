@@ -2,11 +2,13 @@
 
 // Unified "what did this patient do" timeline (activity 48). Reads
 // /api/admin/patients/[id]/activity, which merges login, exercise
-// completions, video views, messages, screening and documents into one list.
+// completions, video views, messages, screening, documents and daily
+// check-ins into one list. The check-in was missing until the parity audit:
+// a patient who checked in every day looked inactive on this screen.
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Loader2, LogIn, Dumbbell, Video, MessageSquare, ClipboardList, FileText, History,
+  Loader2, LogIn, Dumbbell, Video, MessageSquare, ClipboardList, FileText, History, HeartPulse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +29,7 @@ const ICONS: Record<string, any> = {
   SCREENING_SUBMITTED: ClipboardList,
   SCREENING_UPDATED: ClipboardList,
   DOCUMENT_UPLOADED: FileText,
+  CHECK_IN: HeartPulse,
 };
 
 const LIMIT = 50;
