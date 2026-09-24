@@ -42,6 +42,9 @@ ela a submissão é rejeitada.
 | T-6 | O atalho no site | pendente |
 | T-7 | Preparar a submissão à App Store | pendente |
 | T-8 | Entrar com Google e com Apple *(opcional — só se você quiser)* | pendente |
+| T-9 | Conectar o aparelho logo depois do cadastro | pendente |
+| T-10 | Confirmar que a assinatura existe, em vez de torcer | pendente |
+| T-11 | A rede de segurança, e alguém que perceba o silêncio | pendente |
 
 ## Decisões do Bruno (24/09/2026)
 
@@ -76,7 +79,29 @@ A T-8 (Google + Apple) fica fora até você pedir.
 6. **Google/Apple ficam fora por ora.** E-mail e senha resolvem o objetivo. Se entrar Google, a
    diretriz 4.8 obriga Sign in with Apple junto — é a T-8, opcional.
 
+## Por que T-9, T-10 e T-11 entraram depois
+
+O Bruno perguntou se dava para criar a conta Withings do paciente por API no cadastro. **Não dá:**
+a API pública deles é toda OAuth e pressupõe que a conta já existe — não há endpoint de criação de
+usuário, e criar uma conta *para* o paciente, com senha nossa, guardando dado de saúde dele, é uma
+posição jurídica bem diferente de ele autorizar a leitura da conta dele. O que dá é tirar o atrito
+(T-9): a própria tela de login da Withings oferece criar conta ali.
+
+A pergunta seguinte foi a boa: *"como ter certeza de que o app recebe os sinais?"* Hoje **não dá
+para ter**. Três coisas garantem isso e só a primeira existe:
+
+1. **Assinar as notificações** — existe (`callback/route.ts:104`), mas engole a falha e a conexão
+   segue dizendo "conectado". Ninguém confere depois. → **T-10**
+2. **Uma rede de segurança** — o comentário do código promete um "sync agendado" que **não
+   existe**: nenhum cron toca wearables, e o único sync é o botão que o paciente aperta. Webhook é
+   o único caminho, e o que se perde, se perde. → **T-11**
+3. **Perceber o silêncio** — `lastSyncedAt` está na tabela e nada olha. Um aparelho pode parar em
+   janeiro e a clínica saber em março. → **T-11**
+
 ## Ordem
+
+T-9 depende da T-2 e o Bruno já aprovou. T-10 e T-11 são o que transforma "conectado" em
+"recebendo" — sem elas, a T-9 entrega uma promessa que o sistema não cumpre.
 
 T-1 → T-2 → T-3 são o fluxo e podem ir juntas ao ar em TestFlight. T-4 é o bloqueio da loja e
 precisa da sua decisão sobre a suposição 5. T-6 depende da T-7 (sem link de loja, não há atalho
