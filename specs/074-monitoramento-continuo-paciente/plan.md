@@ -155,6 +155,24 @@ pelo sync agendado, com atraso de minutos.
 T-6, T-7, T-11, T-8, T-13 — depois T-9 e T-14/T-15, que dependem dela, depois T-1/T-2/T-4/T-5, que
 dependem do build nativo, e T-12, que depende de decidir o processador de pagamento.
 
+## Estado em produção (24/09/2026)
+
+Deployado nos PRs #95 e #96. QA online em `qa/report-online.md`: 11 verificações, 0 falhas, e o log
+do container confirma o `db push` (`Your database is now in sync`) e a criação das quatro regras de
+automação — que **não existiam em produção** até o #96, o que tornava falsa a promessa da T-3 e da
+T-11 de mudar um limiar sem deploy.
+
+Duas coisas ficaram deliberadamente de fora e dependem de você:
+
+1. **O índice `@@unique([provider, providerUserId])`** não foi ao ar. Produção aplica o schema com
+   `prisma db push` no start e o `start.sh` engole a falha com `|| echo warning`: uma linha
+   duplicada lá faria o push abortar **inteiro** e o container subiria sem as tabelas novas, com
+   deploy verde. Volta depois de conferir duplicatas em produção — e vale decidir se o `|| echo`
+   fica como está.
+2. **O aparelho da clínica ainda não foi conectado de verdade.** O botão existe
+   (`/admin/measurements/inbox`), mas o OAuth real depende de promover a aplicação Withings de
+   `Development` para produção.
+
 ## Suposições
 
 Tudo aqui foi decidido por mim e precisa da sua validação antes de virar código.
