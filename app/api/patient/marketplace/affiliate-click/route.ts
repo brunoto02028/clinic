@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
   const __gate = await patientGate({ module: "mod_marketplace" });
   if (__gate.response) return __gate.response;
 

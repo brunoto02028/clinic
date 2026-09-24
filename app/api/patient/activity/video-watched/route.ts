@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // timeline (specs/048-atividade-do-paciente) already had a source to read
 // from; "watched a video" didn't. Reuses the AuditLog model, same as login.
 export async function POST(req: NextRequest) {
-  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
   const __gate = await patientGate();
   if (__gate.response) return __gate.response;
 

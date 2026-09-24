@@ -1,14 +1,14 @@
-import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  // Consentimento e plano valem no servidor, nao so na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate({ skipConsent: true });
-  if (__gate.response) return __gate.response;
-
+  // Sem gate, e de proposito: esta rota esta em `publicRoutes` (middleware.ts)
+  // porque o link de confirmacao chega no e-mail NOVO e e aberto onde a pessoa
+  // ler — outro navegador, o celular, o webmail — onde nao ha sessao nenhuma.
+  // Quem autoriza aqui e o token, que ja diz de quem ele e; exigir sessao so
+  // tiraria disponibilidade de um fluxo que nao depende dela.
   try {
     const { token } = await request.json();
 

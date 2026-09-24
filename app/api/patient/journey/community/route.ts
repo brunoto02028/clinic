@@ -1,3 +1,4 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -10,6 +11,10 @@ export const dynamic = "force-dynamic";
  * GET /api/patient/journey/community — Get community feed, challenges, ranking
  */
 export async function GET(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_community" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,6 +80,10 @@ export async function GET(req: NextRequest) {
  * body: { action: "high_five" | "contribute", postId?, challengeId?, amount? }
  */
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_community" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

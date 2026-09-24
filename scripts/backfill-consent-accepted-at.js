@@ -25,7 +25,8 @@ async function main() {
      WHERE s."userId" = u.id
        AND u."consentAcceptedAt" IS NULL
        AND s."consentGiven" = true
-       AND s."isSubmitted" = true`);
+       AND s."isSubmitted" = true
+       AND s."filledBy" = 'PATIENT'`);
 
   console.log(filled
     ? `[backfill-consent] filled=${filled}`

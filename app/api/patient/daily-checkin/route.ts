@@ -15,7 +15,7 @@ function todayStr() {
  */
 export async function GET() {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate();
+  const __gate = await patientGate({ module: "mod_journey" });
   if (__gate.response) return __gate.response;
 
   try {
@@ -53,7 +53,7 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate();
+  const __gate = await patientGate({ module: "mod_journey" });
   if (__gate.response) return __gate.response;
 
   try {

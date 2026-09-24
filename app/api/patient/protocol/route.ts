@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
 import { patientGate } from "@/lib/patient-gate";
@@ -21,9 +20,6 @@ export async function GET(req: NextRequest) {
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
     const userId = effectiveUser.userId;
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(userId, "mod_treatment");
-    }
 
     // Same cross-tenant gap fixed in lib/patient-daily-adherence.ts's
     // getExpectedToday (activity 51): a TreatmentProtocol row filtered by
@@ -148,9 +144,6 @@ export async function POST(req: NextRequest) {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(effectiveUser.userId, "mod_treatment");
-    }
 
     const body = await req.json();
     if (body.action !== "toggleLog") {
@@ -237,9 +230,6 @@ export async function PATCH(req: NextRequest) {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
-    if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(effectiveUser.userId, "mod_treatment");
-    }
 
     const { itemId, completed, notes } = await req.json();
     if (!itemId) {

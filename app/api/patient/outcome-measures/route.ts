@@ -24,7 +24,7 @@ function rangeCutoff(range: string | null): Date | null {
 
 export async function GET(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate();
+  const __gate = await patientGate({ module: "mod_records" });
   if (__gate.response) return __gate.response;
 
   const effective = await getEffectiveUser();
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate();
+  const __gate = await patientGate({ module: "mod_records" });
   if (__gate.response) return __gate.response;
 
   const effective = await getEffectiveUser();

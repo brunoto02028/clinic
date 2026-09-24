@@ -21,15 +21,28 @@ import { getModuleByKey } from "@/lib/module-registry";
  *
  * One exception, deliberate: routes the patient must reach *in order to*
  * consent, or to see who they are and what they pay for. Blocking those would
- * lock the door from the inside. They pass `skipConsent`, and the list mirrors
- * `consentBypass` in `components/dashboard/module-gate.tsx` — the two have to
- * say the same thing.
+ * lock the door from the inside. They pass `skipConsent`, and the set is close
+ * to `consentBypass` in `components/dashboard/module-gate.tsx` — close, not
+ * identical, because that list is of pages and this is of the routes those
+ * pages call. Two that looked like they belonged were taken out in the code
+ * review: giving consent to wearable monitoring and to the use of one's image
+ * are consents of their own, and collecting either before the Terms are
+ * accepted is the thing the wall exists to stop.
  */
 
 export interface PatientGateResult {
   userId: string;
   clinicId: string | null;
   isImpersonating: boolean;
+  /** The effective role — PATIENT while an admin is impersonating one. */
+  role: string;
+  /**
+   * The row this gate already loaded, with `PATIENT_ACCESS_SELECT` plus the
+   * clinic and the consent date. Handed back so a route that needs the same
+   * thing — `/api/patient/access` is the obvious one, and it is the most
+   * called route in the portal — does not pay for it twice.
+   */
+  patient: any;
 }
 
 export interface PatientGateOptions {
@@ -57,18 +70,20 @@ export async function patientGate(options: PatientGateOptions = {}): Promise<Gua
     return { response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   }
 
+  const base = {
+    userId: effective.userId,
+    clinicId: patient.clinicId ?? null,
+    isImpersonating: !!effective.isImpersonating,
+    role: effective.role,
+    patient,
+  };
+
   // Consent and plan are things a patient has. Staff calling a route that
   // both sides share (medical screening, for one) has neither, and refusing
   // them here would break the admin over a rule that was never about them —
   // their own authorisation is the route's, and it already ran.
   if (patient.role !== "PATIENT") {
-    return {
-      gate: {
-        userId: effective.userId,
-        clinicId: patient.clinicId ?? null,
-        isImpersonating: !!effective.isImpersonating,
-      },
-    };
+    return { gate: base };
   }
 
   if (!options.skipConsent && !patient.consentAcceptedAt) {
@@ -101,11 +116,5 @@ export async function patientGate(options: PatientGateOptions = {}): Promise<Gua
     }
   }
 
-  return {
-    gate: {
-      userId: effective.userId,
-      clinicId: patient.clinicId ?? null,
-      isImpersonating: !!effective.isImpersonating,
-    },
-  };
+  return { gate: base };
 }

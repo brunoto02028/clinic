@@ -1,3 +1,4 @@
+import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
@@ -8,6 +9,10 @@ export const dynamic = "force-dynamic";
 // Converts PENDING_PATIENT appointments → CONFIRMED for this patient.
 // Optional body { protocolId } confirms only that protocol's sessions.
 export async function POST(req: NextRequest) {
+  // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
+  const __gate = await patientGate({ module: "mod_appointments" });
+  if (__gate.response) return __gate.response;
+
   try {
     const effective = await getEffectiveUser();
     if (!effective || effective.role !== "PATIENT") {
