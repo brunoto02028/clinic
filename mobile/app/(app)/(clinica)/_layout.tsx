@@ -11,7 +11,11 @@ export default function ClinicaLayout() {
           // anterior — e a rota anterior é um grupo, então aparecia
           // literalmente "(tabs)" na tela do paciente. A seta sozinha diz o
           // que precisa dizer (achado no iPhone, 24/09/2026).
-          headerBackTitle: "",
+          // `headerBackTitle: ""` não esconde nada: o iOS trata a string vazia como
+        // ausente e cai no nome da rota anterior — que é o nome do GRUPO, daí o
+        // paciente lendo "(tabs)" e "(clinica)" no botão de voltar. A
+        // documentação do próprio native-stack manda usar isto:
+        headerBackButtonDisplayMode: "minimal" as const,
         }}
       />
     </ModuleGuard>
