@@ -7,7 +7,8 @@
 // these mixed in with their self-measured ones, unchanged from today.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HeartPulse, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
+import Link from "next/link";
+import { HeartPulse, Inbox, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +75,39 @@ const CLASS_COLOR: Record<BPClassification, string> = {
 type FormState = { dateTime: string; systolic: string; diastolic: string; heartRate: string; notes: string };
 const emptyForm = (): FormState => ({ dateTime: getZonedDateTimeLocalString(new Date()), systolic: "", diastolic: "", heartRate: "", notes: "" });
 
+/**
+ * Leituras do manguito da clínica que ainda não têm dono.
+ *
+ * Sem janela de medição aberta, a leitura não é chutada num prontuário — vai
+ * para a caixa de entrada. Certo. Só que quem está olhando o histórico deste
+ * paciente não vê nada disso: mede, não aparece, e conclui que sumiu.
+ * Aconteceu com o próprio Bruno em 24/09/2026.
+ *
+ * O badge no menu já conta, mas não diz o que é nem onde está.
+ */
+function useUnassignedCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    const ler = async () => {
+      try {
+        const res = await fetch("/api/admin/measurements/unassigned", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (vivo) setCount(Number(data?.count ?? 0));
+      } catch {
+        // Silêncio: é um aviso auxiliar, não pode derrubar a tela de pressão.
+      }
+    };
+    ler();
+    // A leitura demora o tempo do Wi-Fi do manguito. Quem acabou de medir está
+    // olhando a tela agora.
+    const t = setInterval(ler, 15000);
+    return () => { vivo = false; clearInterval(t); };
+  }, []);
+  return count;
+}
+
 function useReadings(patientId: string) {
   const [items, setItems] = useState<BPReading[] | null>(null);
   const [error, setError] = useState(false);
@@ -98,6 +132,7 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
   const isPt = String(locale).toLowerCase().startsWith("pt");
   const t = T[isPt ? "pt" : "en"];
   const { items, error: loadError, reload } = useReadings(patientId);
+  const esperando = useUnassignedCount();
 
   const [form, setForm] = useState<FormState>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);

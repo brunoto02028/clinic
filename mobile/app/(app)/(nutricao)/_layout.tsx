@@ -8,7 +8,10 @@ export default function NutricaoLayout() {
         // então o header entra só com a seta — sem repetir o nome.
         headerShown: true,
         headerTitle: "",
-        headerBackTitle: "",
+        // String vazia em `headerBackTitle` não esconde nada: o iOS a trata
+        // como ausente e cai no nome da rota anterior, que é o nome de um
+        // grupo — com parênteses, na tela do paciente.
+        headerBackButtonDisplayMode: "minimal" as const,
         headerStyle: { backgroundColor: "#F5F4F1" },
         headerTintColor: "#20242D",
         headerShadowVisible: false,

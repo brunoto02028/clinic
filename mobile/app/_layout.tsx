@@ -9,6 +9,7 @@ import { useAuth } from "@/store/auth";
 import { wireAppFocus, wireNetwork } from "@/lib/app-focus";
 import { wireAppLock } from "@/lib/app-lock";
 import { PrivacyCover } from "@/components/PrivacyCover";
+import { applyUpdateOnLaunch } from "@/lib/app-updates";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -46,6 +47,13 @@ export default function RootLayout() {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  // Busca e aplica o update na MESMA abertura. O padrão do expo-updates é
+  // aplicar só na seguinte, o que faz quem testa abrir, ver tudo igual e
+  // concluir que a correção não foi feita — custou horas em 24/09/2026.
+  useEffect(() => {
+    void applyUpdateOnLaunch();
+  }, []);
 
   // Traduz "o app voltou ao primeiro plano" em "revalide o que está na tela".
   // Sem isto, o que a clínica muda só aparece quando o paciente fecha e abre

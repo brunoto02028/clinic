@@ -4,6 +4,7 @@ import { Stack, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
+import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 import { useTheme } from "@/theme/useTheme";
 import { fetchProfile, updateProfile } from "@/api/profile";
 import { useLang, t as tr } from "@/lib/i18n";
@@ -127,15 +128,11 @@ export default function ProfileEdit() {
       />
 
       <View style={{ gap: 24 }}>
-        {/* Avatar */}
-        <View style={{ alignItems: "center" }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: t.colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="person" size={40} color={t.colors.textMuted} />
-          </View>
-          {/* A camera badge sat here with no onPress: it gave touch feedback
-              and did nothing. Same pattern removed from the home screen's
-              "Directions". It comes back when there is an upload to run. */}
-        </View>
+        {/* O selo de câmera voltou, agora com o que fazer: havia um aqui sem
+            `onPress`, que dava resposta ao toque e não fazia nada. A foto
+            estreou na aba de perfil e o Bruno veio procurá-la aqui — que é
+            onde qualquer pessoa procuraria. */}
+        <ProfilePhotoPicker />
 
         {/* Form */}
         <Card>

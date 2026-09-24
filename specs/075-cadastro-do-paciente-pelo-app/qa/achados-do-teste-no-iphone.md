@@ -495,3 +495,59 @@ antes, no achado 2. Os dois não vêm juntos de graça.
 Com o voltar funcionando e nomeado, a falta da barra pode deixar de incomodar — e aí não se mexe
 em 18 telas à toa. Se ainda incomodar, a recomendação é a **B**, que não desfaz o que foi
 ganho hoje.
+
+---
+
+## 19. O update chegava uma abertura tarde demais para ser acreditado
+
+24/09/2026, à noite. O Bruno testou o build 9 e reportou que o botão de voltar continuava dizendo
+"(tabs)" e que a foto não estava em "Editar perfil". Eu tinha publicado as duas correções por OTA
+minutos antes.
+
+**Conferi o encanamento inteiro antes de mexer em código**, e estava todo certo:
+
+```
+canal do build 9   : production
+branch publicado   : production
+runtime do build 9 : 7e4f203ed4f28cf69568fc153d8ad3acec2e553c
+runtime do update  : 7e4f203ed4f28cf69568fc153d8ad3acec2e553c   (igual)
+updates.url        : presente, projectId correto
+runtimeVersion     : { policy: "fingerprint" }
+```
+
+**A causa é o padrão do `expo-updates`:** ele baixa numa abertura e aplica **na seguinte**. Para o
+paciente isso é o certo — ninguém quer o app recarregando na cara. Para quem testa é o pior
+default possível: abre, vê tudo igual, conclui que a correção não foi feita. Aconteceu **duas
+vezes no mesmo dia** e custou horas caçando um bug já corrigido.
+
+**Corrigido:** `src/lib/app-updates.ts` verifica na abertura e recarrega na hora quando há
+novidade. Não entra em laço — depois de recarregar não há mais o que buscar. Nunca lança e nunca
+bloqueia a inicialização: falhar em atualizar não é falhar em funcionar.
+
+**E o mais útil:** o perfil agora mostra **qual versão está rodando**. `Updates.isEmbeddedLaunch`
+é a resposta honesta — verdadeiro significa que o JavaScript veio dentro do binário e nenhum
+update foi aplicado. Nem eu nem o Bruno precisamos adivinhar isso de novo, e é a primeira coisa
+que o suporte vai perguntar a um paciente.
+
+### Lição de método
+
+Eu passei o dia oscilando entre "o update não chegou" e "meu conserto não funciona" sem ter como
+distinguir os dois. **A instrumentação valia mais que o conserto seguinte.**
+
+---
+
+## 20. Varredura do módulo da clínica (limpa)
+
+Feita enquanto o Bruno testava, 24/09/2026:
+
+| o que procurei | resultado |
+|---|---|
+| termos proibidos ("physiotherapist", "fisioterapeuta", "Rehab") | **nenhum** — as correções do achado 11 pegaram tudo |
+| `router.replace` matando o botão voltar | 2, **ambos legítimos** (depois de confirmar agendamento, voltar ao formulário seria errado) |
+| telas sem tradução | 3 falsos positivos — `messages`, `consent` e `(tabs)/profile` têm os dois idiomas |
+| telas com header sem título | **nenhuma** |
+
+**Observação menor, não corrigida:** `messages.tsx` e `consent.tsx` reimplementam a escolha de
+idioma (`preferredLocale?.startsWith("pt")`) em vez de usar `useLang()`. Leem a fonte certa, então
+não é defeito — mas são três implementações da mesma decisão, e foi uma divergência dessas que
+fez quinze telas mostrarem português para quem tinha `en-GB` (ver o comentário em `lib/i18n.ts`).

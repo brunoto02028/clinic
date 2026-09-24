@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { View, Pressable, Alert, ActivityIndicator, Platform } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as ImagePicker from "expo-image-picker";
+import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Avatar, ListItem, Button, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
@@ -12,7 +10,9 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { CLINIC_ONLY } from "@/lib/feature-flags";
 import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
-import { uploadProfilePhoto, removeProfilePhoto } from "@/api/profile-photo";
+import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
+import Constants from "expo-constants";
+import { runningVersion } from "@/lib/app-updates";
 
 export interface ProfileSection {
   /** English canonical, Portuguese alongside — this menu was English-only, so
@@ -36,8 +36,6 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
   const bio = useBiometricCapability();
-  const qc = useQueryClient();
-  const [photoBusy, setPhotoBusy] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -50,93 +48,6 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
 
   const fullName = profile ? `${profile.firstName} ${profile.lastName}` : user?.name ?? "";
   const email = profile?.email ?? user?.email ?? "";
-
-  /**
-   * Trocar a foto.
-   *
-   * Recorte quadrado obrigatório (`aspect: [1, 1]`): o avatar é redondo em
-   * toda tela onde aparece, e sem o recorte uma foto deitada entraria
-   * esticada. O pedido de permissão vem antes de abrir a galeria, senão o
-   * iOS devolve "cancelado" e a tela parece ter ignorado o toque.
-   */
-  const pickPhoto = async (source: "camera" | "gallery") => {
-    const permission =
-      source === "camera"
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        tr(lang, { en: "Permission needed", pt: "Permissão necessária" }),
-        tr(lang, { en: "Allow access to continue.", pt: "Permita o acesso para continuar." })
-      );
-      return;
-    }
-
-    const options = { quality: 0.8, allowsEditing: true, aspect: [1, 1] as [number, number] };
-    const result =
-      source === "camera"
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
-    if (result.canceled || !result.assets[0]) return;
-
-    setPhotoBusy(true);
-    try {
-      const asset = result.assets[0];
-      await uploadProfilePhoto(asset.uri, asset.mimeType ?? "image/jpeg");
-      await qc.invalidateQueries({ queryKey: ["profile"] });
-    } catch {
-      Alert.alert(
-        tr(lang, { en: "Error", pt: "Erro" }),
-        tr(lang, { en: "We could not save that photo.", pt: "Não foi possível salvar essa foto." })
-      );
-    } finally {
-      setPhotoBusy(false);
-    }
-  };
-
-  const dropPhoto = async () => {
-    setPhotoBusy(true);
-    try {
-      await removeProfilePhoto();
-      await qc.invalidateQueries({ queryKey: ["profile"] });
-    } catch {
-      Alert.alert(
-        tr(lang, { en: "Error", pt: "Erro" }),
-        tr(lang, { en: "We could not remove the photo.", pt: "Não foi possível remover a foto." })
-      );
-    } finally {
-      setPhotoBusy(false);
-    }
-  };
-
-  const openPhotoMenu = () => {
-    const options: Array<{ text: string; onPress?: () => void; style?: "cancel" | "destructive" }> = [
-      { text: tr(lang, { en: "Take photo", pt: "Tirar foto" }), onPress: () => void pickPhoto("camera") },
-      { text: tr(lang, { en: "Choose from library", pt: "Escolher da galeria" }), onPress: () => void pickPhoto("gallery") },
-    ];
-    if (profile?.profileImageUrl) {
-      options.push({
-        text: tr(lang, { en: "Remove photo", pt: "Remover foto" }),
-        onPress: () => void dropPhoto(),
-        style: "destructive",
-      });
-    }
-    // O Android aceita no máximo três botões num Alert e descarta o quarto em
-    // silêncio — com foto no perfil seriam quatro. Então lá o cancelar sai da
-    // lista e vira o gesto do sistema, com `cancelable` ligado **na mão**: o
-    // React Native passa `cancelable: false` por padrão, e sem este quarto
-    // argumento o Android bloqueia o toque fora E o botão voltar — o paciente
-    // com foto ficaria presto no menu, obrigado a escolher uma das três ações.
-    if (Platform.OS !== "android") {
-      options.push({ text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" });
-    }
-    Alert.alert(
-      tr(lang, { en: "Profile photo", pt: "Foto de perfil" }),
-      undefined,
-      options,
-      { cancelable: true }
-    );
-  };
 
   const handleSwitchModule = () => {
     clearModule();
@@ -164,25 +75,7 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
       <View style={{ gap: 16 }}>
         <Card>
           <View style={{ alignItems: "center", gap: 10, paddingVertical: 8 }}>
-            <Pressable
-              onPress={openPhotoMenu}
-              disabled={photoBusy}
-              accessibilityRole="button"
-              accessibilityLabel={tr(lang, { en: "Change profile photo", pt: "Trocar foto de perfil" })}
-              testID="profile-photo"
-              style={{ alignItems: "center" }}
-            >
-              <Avatar label={initials} uri={profile?.profileImageUrl} round size={56} />
-              {/* O avatar era só um desenho: nada dizia que dava para tocar.
-                  Esta linha é o convite. */}
-              {photoBusy ? (
-                <ActivityIndicator size="small" style={{ marginTop: 6 }} />
-              ) : (
-                <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 6, fontSize: 10.5 }}>
-                  {tr(lang, { en: "Change photo", pt: "Trocar foto" })}
-                </Text>
-              )}
-            </Pressable>
+            <ProfilePhotoPicker size={56} />
             <View style={{ alignItems: "center" }}>
               <Text variant="subtitle" testID="profile-name">
                 {fullName}
@@ -237,6 +130,31 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
         )}
 
         <Button title={tr(lang, { en: "Sign out", pt: "Sair" })} variant="ghost" onPress={handleLogout} size="md" />
+
+        {/* Qual versão está rodando de fato.
+            Existe para responder sem adivinhação a pergunta que custou horas
+            em 24/09/2026: "o update chegou?". `embedded` verdadeiro significa
+            que o app roda o JavaScript que veio dentro do binário — nenhum
+            update aplicado. Também é o que o suporte vai pedir quando um
+            paciente disser que algo não funciona. */}
+        {(() => {
+          const v = runningVersion(Constants.expoConfig?.version ?? "?");
+          return (
+            <Text
+              variant="caption"
+              color={t.colors.textMuted}
+              style={{ textAlign: "center", fontSize: 10, marginTop: 4 }}
+              testID="running-version"
+            >
+              {`v${v.app}`}
+              {v.embedded
+                ? ` · ${tr(lang, { en: "build only", pt: "só o build" })}`
+                : v.updateId
+                ? ` · ${tr(lang, { en: "update", pt: "update" })} ${v.updateId}`
+                : ""}
+            </Text>
+          );
+        })()}
       </View>
     </Screen>
   );
