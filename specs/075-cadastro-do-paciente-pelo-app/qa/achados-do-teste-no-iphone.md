@@ -93,3 +93,43 @@ usadas pelo cadastro por Google — nada além disso as preenche.
 foto é dado pessoal e sai junto com o resto.
 
 **Decisão pendente:** fazer agora ou depois que o Bruno terminar a rodada de revisão no aparelho.
+
+
+---
+
+## 9. Varredura das 63 telas — todas têm saída
+
+Depois das correções 2 e 7, varri **todas** as telas do app procurando as que não têm header,
+nem `router.back`, nem logout. Sobraram 15, e todas são legítimas:
+
+- **raízes de aba** (clínica, BA, lab) — a barra de abas é a navegação, e voltar dali seria sair
+  do módulo, que é o que a seta do header faz;
+- **telas de entrada** (`login`, `register`, `forgot-password`, `index`) — as três últimas têm
+  "voltar para entrar" escrito no conteúdo;
+- **`booking-confirmed`** — tem "Voltar para Saúde";
+- **`dev/ui`** — tela de desenvolvimento, não chega ao paciente.
+
+Ou seja: **não sobrou beco sem saída**. Era o que o Bruno pediu para revisar por inteiro.
+
+---
+
+## 10. Face ID — pedido, e exige build
+
+**O que ele resolve, e o que não resolve:** o app já guarda a sessão no cofre do iPhone
+(`expo-secure-store`), então o paciente **já não digita senha toda vez**. Face ID não economiza
+digitação — ele põe uma **tranca** em cima. O ganho é num app de saúde que fica desbloqueado no
+celular: quem pega o aparelho não abre o prontuário sem o rosto do dono.
+
+**Custo:** `expo-local-authentication` é módulo **nativo**. Não está instalado, e instalar exige
+**build novo** — que agora só sai com autorização explícita
+([[feedback_build-so-com-autorizacao]]).
+
+**Decisão pendente:** opção no perfil (desligado por padrão) ou obrigatório? A sugestão é
+opcional: obrigar tranca quem não tem Face ID configurado no aparelho.
+
+**Plano, quando autorizado:**
+1. `expo-local-authentication` + uma preferência no perfil, guardada localmente.
+2. Na abertura do app, se a preferência estiver ligada e houver sessão salva, pedir o rosto antes
+   de restaurar — falhou, cai no login normal com senha, que nunca deixa de existir.
+3. Nunca substituir a senha: Face ID é do aparelho, e a conta precisa continuar acessível de
+   qualquer outro.
