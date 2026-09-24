@@ -36,6 +36,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
+import { NonEmergencyNotice } from "@/components/patient/non-emergency-notice";
 import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
 
 interface BPReading {
@@ -1520,6 +1521,10 @@ export default function BloodPressurePage() {
         </div>
 
         <ProfessionalReviewBanner descriptionKey="review.descriptionBP" />
+
+        {/* Quem mede a própria pressão e vê um número alto precisa saber, na
+            mesma tela, que ninguém está olhando em tempo real (T-13). */}
+        <NonEmergencyNotice />
 
         {/* PPG Report (after camera measurement) */}
         

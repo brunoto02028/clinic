@@ -7,6 +7,7 @@ import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { LoadFailure } from "@/components/LoadFailure";
+import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { formatDate } from "@/lib/format";
 import {
   fetchBloodPressure,
@@ -182,6 +183,10 @@ export default function BloodPressureScreen() {
             />
           </View>
         </Card>
+
+        {/* Quem acabou de ver um número alto precisa saber, aqui, que ninguém
+            está olhando em tempo real (activity 074, T-13). */}
+        <NonEmergencyNotice />
 
         {/* History */}
         <View style={{ gap: 8 }}>

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Watch, Activity, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
 import { OW_PROVIDERS } from "@/lib/open-wearables";
 import { ConnectDeviceCard } from "@/components/wearables/connect-device-card";
 import { SleepSummary } from "@/components/wearables/sleep-summary";
 import { RecoveryCard } from "@/components/wearables/recovery-card";
 import { ActivityCard } from "@/components/wearables/activity-card";
+import { NonEmergencyNotice } from "@/components/patient/non-emergency-notice";
 
 /**
  * Connected devices and what they measured, on a page of their own.
@@ -87,7 +89,29 @@ export default function DevicesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const [disconnected, setDisconnected] = useState<{ provider: string; url: string | null } | null>(null);
+  const [disconnected, setDisconnected] = useState<{ provider: string; url: string | null; subscriptionsRevoked: boolean | null } | null>(null);
+  // Whether this patient has said they read the non-emergency notice
+  // (activity 074, T-13). `null` = not asked yet; nothing is gated until the
+  // answer arrives, so a slow request never looks like a refusal.
+  const [noticeAccepted, setNoticeAccepted] = useState<boolean | null>(null);
+  const [accepting, setAccepting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/patient/monitoring-consent")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setNoticeAccepted(d ? !!d.accepted : null))
+      .catch(() => setNoticeAccepted(null));
+  }, []);
+
+  const acceptNotice = async () => {
+    setAccepting(true);
+    try {
+      const res = await fetch("/api/patient/monitoring-consent", { method: "POST" });
+      if (res.ok) setNoticeAccepted(true);
+    } finally {
+      setAccepting(false);
+    }
+  };
 
   const handleConnect = (providerKey: string) => {
     window.location.href = "/api/wearables/connect/" + providerKey;
@@ -105,11 +129,11 @@ export default function DevicesPage() {
     // "disconnected" that quietly leaves access standing is the kind of thing
     // a patient is right to be angry about.
     const data = await res.json().catch(() => ({}));
-    setDisconnected(
-      data?.providerRevokeUrl
-        ? { provider: providerKey, url: data.providerRevokeUrl }
-        : { provider: providerKey, url: null }
-    );
+    setDisconnected({
+      provider: providerKey,
+      url: data?.providerRevokeUrl ?? null,
+      subscriptionsRevoked: data?.subscriptionsRevoked ?? null,
+    });
     load();
   };
 
@@ -160,21 +184,54 @@ export default function DevicesPage() {
         </div>
       </div>
 
+      {/* O aviso fica antes de tudo nesta tela: é aqui que o paciente conecta
+          um aparelho e passa a esperar que alguém esteja olhando. Enquanto ele
+          não disser que leu, conectar fica bloqueado — e o servidor recusa
+          também, não só a tela. */}
+      <NonEmergencyNotice />
+
+      {noticeAccepted === false && (
+        <div className="rounded-lg border border-ba1-health/40 bg-ba1-health/5 p-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs">
+            {isPt
+              ? "Confirme que você leu o aviso acima para conectar um aparelho."
+              : "Confirm you have read the notice above to connect a device."}
+          </p>
+          <Button size="sm" onClick={acceptNotice} disabled={accepting}>
+            {accepting
+              ? (isPt ? "Registrando…" : "Recording…")
+              : (isPt ? "Li e entendi" : "I have read and understood")}
+          </Button>
+        </div>
+      )}
+
       {disconnected && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
           <p className="text-sm font-medium">
             {isPt ? "Desconectado." : "Disconnected."}
           </p>
+          {/* Só afirma que as notificações pararam quando elas pararam mesmo.
+              O QA pegou esta frase sendo exibida depois de as quatro
+              revogações falharem com 401 — é exatamente a promessa falsa que
+              esta tarefa existe para evitar. */}
           <p className="text-xs text-muted-foreground">
-            {isPt
-              ? "Apagamos as chaves de acesso e paramos as notificações. O histórico já sincronizado continua no seu prontuário."
-              : "We deleted the access keys and stopped the notifications. Data already synced stays in your record."}
+            {disconnected.subscriptionsRevoked === false
+              ? isPt
+                ? "Apagamos as chaves de acesso aqui, mas não conseguimos cancelar as notificações do fabricante — o token já não era mais válido. O histórico já sincronizado continua no seu prontuário."
+                : "We deleted the access keys here, but we could not cancel the manufacturer's notifications — the token was no longer valid. Data already synced stays in your record."
+              : isPt
+                ? "Apagamos as chaves de acesso e paramos as notificações. O histórico já sincronizado continua no seu prontuário."
+                : "We deleted the access keys and stopped the notifications. Data already synced stays in your record."}
           </p>
           {disconnected.url && (
             <p className="text-xs text-muted-foreground">
-              {isPt
-                ? "Para retirar a autorização também do lado do fabricante, faça isso na sua conta: "
-                : "To withdraw the authorisation at the manufacturer as well, do it in your account: "}
+              {disconnected.subscriptionsRevoked === false
+                ? isPt
+                  ? "Por isso, retire a autorização na sua conta do fabricante — é o que interrompe tudo: "
+                  : "So please withdraw the authorisation in your manufacturer account — that is what stops it for good: "
+                : isPt
+                  ? "Para retirar a autorização também do lado do fabricante, faça isso na sua conta: "
+                  : "To withdraw the authorisation at the manufacturer as well, do it in your account: "}
               <a href={disconnected.url} target="_blank" rel="noreferrer" className="underline">
                 {disconnected.url}
               </a>
@@ -208,7 +265,21 @@ export default function DevicesPage() {
                   provider={provider}
                   connected={!!conn}
                   lastSync={conn?.lastSyncedAt || undefined}
-                  onConnect={() => handleConnect(provider.key)}
+                  onConnect={() => {
+                    // A recusa do servidor é a que vale; isto só evita mandar
+                    // o paciente para o provedor para voltar com um erro.
+                    if (noticeAccepted === false) return;
+                    handleConnect(provider.key);
+                  }}
+                  // Um botão que parece ativo e não faz nada é pior que um
+                  // desabilitado: o paciente clica, nada acontece, e ele acha
+                  // que o app está quebrado (achado do QA da T-13).
+                  connectDisabled={noticeAccepted === false}
+                  connectDisabledReason={
+                    isPt
+                      ? "Confirme que você leu o aviso acima"
+                      : "Confirm you have read the notice above"
+                  }
                   onDisconnect={() => handleDisconnect(provider.key)}
                   onSync={() => handleSync(provider.key)}
                 />

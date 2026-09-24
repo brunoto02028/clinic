@@ -3,8 +3,13 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Spinner, Card } from "@/components/ui";
+import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { useTheme } from "@/theme/useTheme";
-import { fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS } from "@/api/wearables";
+import {
+  fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS,
+  fetchMonitoringConsent, acceptMonitoringConsent,
+} from "@/api/wearables";
+import { Button } from "@/components/ui";
 import { useLang, t as tr } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { PlanGate } from "@/components/PlanGate";
@@ -49,6 +54,20 @@ function WearablesScreen() {
 
   const connectedProviders = new Set((connections || []).map((c) => c.provider.toLowerCase()));
 
+  // The patient says once that they read the non-emergency notice before the
+  // first device is connected (activity 074, T-13). The server refuses without
+  // it; asking here means the refusal never has to happen.
+  const { data: consent } = useQuery({
+    queryKey: ["monitoring-consent"],
+    queryFn: fetchMonitoringConsent,
+    retry: false,
+  });
+  const acceptMut = useMutation({
+    mutationFn: acceptMonitoringConsent,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["monitoring-consent"] }),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
+  });
+
   const connectMut = useMutation({
     mutationFn: fetchConnectUrl,
     onSuccess: (url) => Linking.openURL(url),
@@ -66,6 +85,26 @@ function WearablesScreen() {
     <Screen scroll testID="wearables-screen">
       <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Devices", pt: "Dispositivos" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 20 }}>
+        {/* Conectar um aparelho é o momento em que o paciente passa a esperar
+            que alguém esteja olhando (activity 074, T-13). */}
+        <NonEmergencyNotice />
+
+        {consent && !consent.accepted && (
+          <Card>
+            <Text variant="caption" style={{ marginBottom: 8 }}>
+              {tr(lang, {
+                en: "Confirm you have read the notice above to connect a device.",
+                pt: "Confirme que você leu o aviso acima para conectar um aparelho.",
+              })}
+            </Text>
+            <Button
+              title={tr(lang, { en: "I have read and understood", pt: "Li e entendi" })}
+              onPress={() => acceptMut.mutate()}
+              loading={acceptMut.isPending}
+            />
+          </Card>
+        )}
+
         {returnMsg && (
           <Card accent={connected === "1" ? "health" : "work"}>
             <Text variant="caption" color={connected === "1" ? t.colors.ok : t.colors.bad}>
@@ -191,12 +230,15 @@ function WearablesScreen() {
                   ) : (
                     <Pressable
                       onPress={() => connectMut.mutate(p.key)}
-                      disabled={connectMut.isPending}
+                      // A recusa que vale é a do servidor; isto evita mandar o
+                      // paciente para o provedor só para voltar com um erro.
+                      disabled={connectMut.isPending || (!!consent && !consent.accepted)}
                       style={{
                         paddingHorizontal: 16,
                         paddingVertical: 8,
                         borderRadius: 8,
-                        backgroundColor: t.colors.primary,
+                        backgroundColor: consent && !consent.accepted ? t.colors.surfaceMuted : t.colors.primary,
+                        opacity: consent && !consent.accepted ? 0.6 : 1,
                       }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>

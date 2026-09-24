@@ -4,6 +4,7 @@ import { sendAdminAlert } from "@/lib/admin-alert-email";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import { getBpThresholds, classify } from "@/lib/automation/bp-thresholds";
 import { getExerciseBpLimits, evaluateClearance } from "@/lib/automation/exercise-bp";
+import { noticeFor } from "@/lib/non-emergency-notice";
 
 /**
  * What happens after a blood-pressure reading is stored, whoever stored it.
@@ -81,8 +82,15 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
         classification,
         portalUrl: `${BASE}/dashboard/blood-pressure`,
       },
-      plainMessage: `🚨 HYPERTENSIVE CRISIS: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. Call 999/112 or go to A&E now.`,
-      plainMessagePt: `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. Ligue 999/112 ou vá ao pronto-socorro agora.`,
+      // O aviso vai junto também aqui. Uma mensagem curta que manda ir ao
+      // pronto-socorro e não diz que ninguém está de plantão deste lado deixa
+      // a pessoa esperando uma resposta nossa (T-13).
+      plainMessage:
+        `🚨 HYPERTENSIVE CRISIS: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. ` +
+        `Call 999/112 or go to A&E now. ${noticeFor("en-GB").short}`,
+      plainMessagePt:
+        `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. ` +
+        `Ligue 999/112 ou vá ao pronto-socorro agora. ${noticeFor("pt-BR").short}`,
     }).catch((err) => console.error("[bp-alerts] patient notification error:", err));
   }
 

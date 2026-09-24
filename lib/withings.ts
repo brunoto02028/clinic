@@ -66,6 +66,15 @@ async function wFetch(url: string, body: Record<string, string>): Promise<any> {
   return json.body;
 }
 
+/**
+ * One authenticated call to their API, for the readers that live in their own
+ * file (lib/withings-vitals.ts). Same contract as everything else here: a 200
+ * carrying `status != 0` is a failure and throws.
+ */
+export async function withingsRawCall(path: string, body: Record<string, string>): Promise<any> {
+  return wFetch(`${API}${path}`, body);
+}
+
 interface Tokens {
   accessToken: string;
   refreshToken: string;

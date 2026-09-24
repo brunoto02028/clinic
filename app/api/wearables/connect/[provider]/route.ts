@@ -6,6 +6,7 @@ import { getEffectiveUser } from '@/lib/get-effective-user';
 import { OW_PROVIDERS, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 import { signWearableState } from '@/lib/wearable-state';
 import { getSessionStaffActor } from '@/lib/tenant-access';
+import { NON_EMERGENCY_NOTICE_VERSION } from '@/lib/non-emergency-notice';
 import { withingsAuthorizeUrl, withingsConfigured, WITHINGS_SCOPE } from '@/lib/withings';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
@@ -67,6 +68,28 @@ export async function GET(
       );
     }
     clinicScope = true;
+  }
+
+  // A patient connecting their own device says first that they read the
+  // non-emergency notice (activity 074, T-13). It is the moment the product
+  // starts measuring them and they start assuming someone is watching — the
+  // moment to be explicit that nobody is watching continuously. Staff
+  // connecting the clinic's own cuff is a different act and is not gated.
+  if (!clinicScope) {
+    const accepted = await prisma.consentLog.findFirst({
+      where: {
+        patientId: userId,
+        action: "MONITORING_NOTICE_ACCEPTED",
+        termsVersion: NON_EMERGENCY_NOTICE_VERSION,
+      },
+      select: { id: true },
+    });
+    if (!accepted) {
+      const message = 'Please read and accept the monitoring notice before connecting a device.';
+      return asJson
+        ? NextResponse.json({ error: message, code: 'notice_not_accepted' }, { status: 403 })
+        : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=notice_not_accepted`);
+    }
   }
 
   // Anything could be put in the path and it was passed through to the

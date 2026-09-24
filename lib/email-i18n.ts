@@ -1,4 +1,6 @@
 // ─── Email i18n — Bilingual templates (EN-GB / PT-BR) ───
+import { noticeFor } from '@/lib/non-emergency-notice';
+
 export function isPt(locale: string) { return locale === 'pt-BR' || locale.startsWith('pt'); }
 
 // Brand palette — matches the public site's `.public-site` theme (app/globals.css):
@@ -256,21 +258,32 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           P('This record has been saved for audit and legal compliance purposes.','12px','#9ca3af'),
     },
 
+    // Only ever sent in a hypertensive crisis (activity 074: everything below
+    // that reaches the clinic, not the patient). The copy used to open with
+    // "contact your GP if this reading persists", which is the right thing to
+    // say about a stage-1 reading and the wrong thing to say to someone at
+    // 190/125 — the app's own push already told them to go to A&E. The two now
+    // say the same thing, and the footer says what the clinic does and does
+    // not watch (T-13).
     BP_HIGH_ALERT: {
       subject: pt ? '⚠️ Alerta de Pressão Arterial — {{patientName}}' : '⚠️ Blood Pressure Alert — {{patientName}}',
       body: pt
         ? H('Alerta de Pressão Arterial ⚠️') +
           P(`${hi} {{patientName}}, a sua leitura de pressão arterial mais recente requer atenção.`) +
           C('#fef2f2','#fecaca', R('Leitura','{{bpReading}}')+R('Data','{{readingDate}}')+R('Classificação','{{classification}}')) +
-          P('Por favor, contacte o seu médico de família ou profissional de saúde se esta leitura for persistente ou se sentir sintomas como dores de cabeça, tonturas ou dificuldade em respirar.') +
-          C('#fef2f2','#fecaca','<p style="color:#991b1b;font-size:13px;margin:0;">🚨 <strong>Em caso de emergência, ligue 999 imediatamente.</strong></p>') +
-          B('{{portalUrl}}','Ver as Minhas Leituras →')
+          P('Esta leitura é alta o suficiente para precisar de atenção médica <strong>agora</strong>, não depois. Procure atendimento de urgência.') +
+          C('#fef2f2','#fecaca','<p style="color:#991b1b;font-size:13px;margin:0;">🚨 <strong>Ligue 999 (ou a emergência local) agora, ou vá ao pronto-socorro.</strong></p>') +
+          B('{{portalUrl}}','Ver as Minhas Leituras →') +
+          // Do arquivo do aviso, não copiado: a versão que o paciente aceitou
+          // se refere àquele texto, e duas cópias divergem na primeira edição.
+          P(noticeFor('pt-BR').short,'12px','#6b7280')
         : H('Blood Pressure Alert ⚠️') +
           P(`${hi} {{patientName}}, your most recent blood pressure reading requires attention.`) +
           C('#fef2f2','#fecaca', R('Reading','{{bpReading}}')+R('Date','{{readingDate}}')+R('Classification','{{classification}}')) +
-          P('Please contact your GP or healthcare provider if this reading persists or if you experience symptoms such as headaches, dizziness, or difficulty breathing.') +
-          C('#fef2f2','#fecaca','<p style="color:#991b1b;font-size:13px;margin:0;">🚨 <strong>In case of emergency, call 999 immediately.</strong></p>') +
-          B('{{portalUrl}}','View My Readings →'),
+          P('This reading is high enough to need medical attention <strong>now</strong>, not later. Please seek urgent care.') +
+          C('#fef2f2','#fecaca','<p style="color:#991b1b;font-size:13px;margin:0;">🚨 <strong>Call 999 now, or go to A&E.</strong></p>') +
+          B('{{portalUrl}}','View My Readings →') +
+          P(noticeFor('en-GB').short,'12px','#6b7280'),
     },
 
     MEMBERSHIP_CREATED: {

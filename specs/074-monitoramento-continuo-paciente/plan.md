@@ -132,12 +132,12 @@ removido quando o provedor diz que morreu — token zumbi é a causa clássica d
 | T-5 | Preferências de notificação do paciente | pendente |
 | T-6 | Relatório consolidado do paciente (tela) | ✅ concluída |
 | T-7 | Exportação do relatório em PDF | ✅ concluída |
-| T-8 | Sync Withings completo: SpO2, HRV, temperatura, FC intraday, ECG | pendente |
+| T-8 | Sync Withings completo: SpO2, HRV, temperatura, FC intraday, ECG | ✅ concluída (ECG **não** verificado) |
 | T-9 | Webhook da Withings para medidas novas | ✅ concluída |
-| T-10 | Desconectar revogando o acesso na Withings | 🟡 feita, QA pendente |
+| T-10 | Desconectar revogando o acesso na Withings | ✅ concluída |
 | T-11 | Bloqueio da sessão por pressão pré-exercício (200/110) | ✅ concluída |
 | T-12 | Módulos e permissões por plano de assinatura | pendente |
-| T-13 | Aviso de não emergência no app | pendente |
+| T-13 | Aviso de não emergência no app | ✅ concluída (telas do app aguardam build) |
 | T-14 | Dispositivo da clínica: sessão de medição e atribuição da leitura | ✅ concluída |
 | T-15 | Botão "Medir pressão" na ficha e caixa de entrada de não atribuídas | ✅ concluída |
 

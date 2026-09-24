@@ -147,11 +147,11 @@ export const WINDOW_DAYS = 30;
 export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
-  opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep"> } = {}
-): Promise<{ bloodPressure: number; activityDays: number; sleepNights: number }> {
+  opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals"> } = {}
+): Promise<{ bloodPressure: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number }> {
   const token = await withingsAccessToken(connection);
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const kinds = opts.kinds ?? ["bp", "activity", "sleep"];
+  const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals"];
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
 
   // A clinic device measures patients, not its owner: steps and sleep from it
@@ -159,7 +159,7 @@ export async function ingestWithings(
   // open measurement session names. So it reads blood pressure only, and each
   // reading goes through attribution instead of straight into a record.
   const forClinic = connection.isClinicDevice === true;
-  const wanted: Array<"bp" | "activity" | "sleep"> = forClinic ? ["bp"] : kinds;
+  const wanted: Array<"bp" | "activity" | "sleep" | "vitals"> = forClinic ? ["bp"] : kinds;
 
   const [bp, activity, sleep] = await Promise.all([
     wanted.includes("bp") ? withingsBloodPressure(token, since, opts.until) : Promise.resolve([]),
@@ -192,6 +192,52 @@ export async function ingestWithings(
       activeMinutes: a.activeMinutes,
     });
   }
+  // SpO2, temperature and heart rate (activity 074, T-8). One row per day,
+  // like everything else the screens draw. A metric the account does not have
+  // stays absent — `upsertPoint` writes only the fields it is given, so a day
+  // with SpO2 and no temperature does not overwrite anything with a zero.
+  let vitalsDays = 0;
+  let ecgRecords = 0;
+  if (wanted.includes("vitals")) {
+    try {
+      const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
+      const vitals = await withingsVitals(token, since, opts.until);
+      for (const day of vitalsByDay(vitals)) {
+        const fields: Record<string, unknown> = { rawPayload: JSON.stringify({ samples: day.samples }) };
+        if (day.spo2 !== undefined) fields.spo2 = day.spo2;
+        if (day.bodyTemperature !== undefined) fields.bodyTemperature = day.bodyTemperature;
+        // Não há coluna para temperatura de pele, e ela não é temperatura
+        // corporal — vai para o payload em vez de ser pedida e jogada fora.
+        if (day.skinTemperature !== undefined) {
+          fields.rawPayload = JSON.stringify({ samples: day.samples, skinTemperature: day.skinTemperature });
+        }
+        if (day.restingHr !== undefined) fields.restingHr = day.restingHr;
+        await upsertPoint(userId, connection.id, "VITALS", day.dataDate, fields);
+        vitalsDays++;
+      }
+
+      // The fact that an ECG happened and what the device concluded — never the
+      // trace, and never our reading of it.
+      const ecg = await withingsEcg(token, since, opts.until);
+      for (const rec of ecg) {
+        const dataDate = rec.recordedAt.toISOString().split("T")[0];
+        await upsertPoint(userId, connection.id, "ECG", dataDate, {
+          restingHr: rec.heartRate ?? undefined,
+          rawPayload: JSON.stringify({
+            afibClassification: rec.afibClassification,
+            signalId: rec.signalId,
+            recordedAt: rec.recordedAt.toISOString(),
+          }),
+        });
+        ecgRecords++;
+      }
+    } catch (e: any) {
+      // An account without these metrics must not cost the patient their blood
+      // pressure, sleep and activity, which are already saved by this point.
+      console.error("[withings-ingest] vitals failed:", e?.message);
+    }
+  }
+
   for (const n of sleep) {
     await upsertPoint(userId, connection.id, "SLEEP", n.dataDate, {
       sleepDuration: n.sleepDuration,
@@ -209,5 +255,11 @@ export async function ingestWithings(
     data: { lastSyncedAt: new Date(), status: "CONNECTED" },
   });
 
-  return { bloodPressure: bpSaved, activityDays: activity.length, sleepNights: sleep.length };
+  return {
+    bloodPressure: bpSaved,
+    activityDays: activity.length,
+    sleepNights: sleep.length,
+    vitalsDays,
+    ecgRecords,
+  };
 }
