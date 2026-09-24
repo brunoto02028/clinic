@@ -1,6 +1,6 @@
 # T-10: Confirmar que a assinatura existe, em vez de torcer
 
-**Status:** pendente · **Depende de:** nenhuma
+**Status:** em revisão · **Depende de:** nenhuma
 
 ## Objetivo
 Que "conectado" queira dizer "vai receber", e não "a autorização deu certo".

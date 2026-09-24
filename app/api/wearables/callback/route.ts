@@ -1,14 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import { subscribeAndRecord } from '@/lib/withings-subscriptions';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyWearableState } from '@/lib/wearable-state';
 import {
   withingsExchangeCode,
   saveWithingsTokens,
-  withingsSubscribe,
-  withingsCallbackUrl,
-  WITHINGS_APPLI,
 } from '@/lib/withings';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
@@ -94,18 +92,22 @@ export async function GET(request: NextRequest) {
       );
       await saveWithingsTokens(connection.id, tokens);
 
-      // Ask Withings to tell us when a measurement is taken (T-9). Failing
-      // here must not fail the connection: the patient is standing in front of
-      // a redirect, the data still arrives on the scheduled sync, and a
-      // subscription can be created later. It is logged, not hidden.
-      const callbackUrl = withingsCallbackUrl();
-      await Promise.all(
-        [WITHINGS_APPLI.BLOOD_PRESSURE, WITHINGS_APPLI.WEIGHT, WITHINGS_APPLI.ACTIVITY, WITHINGS_APPLI.SLEEP].map((appli) =>
-          withingsSubscribe(tokens.accessToken, callbackUrl, appli).catch((err) =>
-            console.error(`[wearables/callback] notify subscribe appli=${appli}:`, err?.message)
-          )
-        )
+      // Ask Withings to tell us when a measurement is taken (T-9), and then
+      // ask it what it actually agreed to send (075, T-10). Failing here must
+      // not fail the connection: the patient is standing in front of a
+      // redirect and a subscription can be created later. What changed is that
+      // the outcome is now written on the connection instead of into a log —
+      // a device that was authorised and silent used to look exactly like one
+      // that was working.
+      const outcome = await subscribeAndRecord(
+        { id: connection.id, accessToken: null, refreshToken: null, tokenExpiresAt: null },
+        tokens.accessToken
       );
+      if (outcome.missing.length) {
+        console.error(
+          `[wearables/callback] Withings did not confirm appli=${outcome.missing.join(",")} for connection ${connection.id}`
+        );
+      }
     }
   } catch (e: any) {
     console.error('[wearables/callback] exchange failed:', e?.message);

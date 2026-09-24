@@ -1,3 +1,4 @@
+import { deliveryState } from "@/lib/withings-subscriptions";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -50,7 +51,13 @@ export async function GET() {
         },
         wearableConnections: {
           where: { status: "CONNECTED" },
-          select: { provider: true, lastSyncedAt: true, terraUserId: true },
+          select: {
+            provider: true,
+            lastSyncedAt: true,
+            terraUserId: true,
+            notifyConfirmedAppli: true,
+            notifyCheckedAt: true,
+          },
           take: 3,
         },
         wearableDataPoints: {
@@ -101,7 +108,13 @@ export async function GET() {
         alerts,
         activeProtocol,
         checkInCount: checks.length,
-        wearableConnections: p.wearableConnections || [],
+        // A clínica precisa ver o mesmo que o paciente vê: "conectado" dizia
+        // só que a autorização deu certo, e um aparelho autorizado e mudo
+        // parecia igual a um funcionando (atividade 075, T-10).
+        wearableConnections: (p.wearableConnections || []).map((c: any) => ({
+          ...c,
+          delivery: deliveryState(c),
+        })),
         latestWearable: p.wearableDataPoints?.[0] || null,
       };
     });

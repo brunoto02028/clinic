@@ -7,7 +7,7 @@ import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { useTheme } from "@/theme/useTheme";
 import {
   fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS,
-  fetchMonitoringConsent, acceptMonitoringConsent,
+  fetchMonitoringConsent, acceptMonitoringConsent, resubscribeWithings,
 } from "@/api/wearables";
 import { Button } from "@/components/ui";
 import { useLang, t as tr } from "@/lib/i18n";
@@ -49,6 +49,29 @@ function WearablesScreen() {
         pt: "Sincronização iniciada. Os dados serão atualizados em breve.",
       }),
     ),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
+  });
+
+  // Pedir de novo, sem refazer a autorização: os tokens já são nossos, o que
+  // faltou foi a Withings aceitar mandar. Antes disto o único remédio era
+  // desconectar e autorizar tudo outra vez.
+  const resubMut = useMutation({
+    mutationFn: resubscribeWithings,
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["wearable-connections"] });
+      Alert.alert(
+        tr(lang, { en: "Device", pt: "Aparelho" }),
+        res.delivery === "receiving"
+          ? tr(lang, {
+              en: "Done — Withings will send your measurements now.",
+              pt: "Pronto — a Withings vai enviar suas medições agora.",
+            })
+          : tr(lang, {
+              en: "Withings still has not confirmed. Your clinic has been able to see this.",
+              pt: "A Withings ainda não confirmou. Sua clínica consegue ver isso.",
+            })
+      );
+    },
     onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
@@ -155,6 +178,11 @@ function WearablesScreen() {
             {OW_PROVIDERS.map((p) => {
               const isConnected = connectedProviders.has(p.key);
               const conn = (connections || []).find((c) => c.provider.toLowerCase() === p.key);
+              // "Conectado" só dizia que a autorização deu certo. Se a Withings
+              // não confirmou o envio, o aparelho está autorizado e mudo — e
+              // pintar isso de verde era a parte pior do problema.
+              const delivery = conn?.delivery;
+              const silent = isConnected && (delivery === "silent" || delivery === "partial");
 
               return (
                 <View
@@ -164,10 +192,14 @@ function WearablesScreen() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: 16,
-                    backgroundColor: isConnected ? t.colors.okSoft : t.colors.surfaceMuted,
+                    backgroundColor: silent
+                      ? t.colors.warnSoft
+                      : isConnected
+                      ? t.colors.okSoft
+                      : t.colors.surfaceMuted,
                     borderRadius: t.radius.lg,
                     borderWidth: 1,
-                    borderColor: isConnected ? t.colors.ok : t.colors.border,
+                    borderColor: silent ? t.colors.warn : isConnected ? t.colors.ok : t.colors.border,
                   }}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -181,11 +213,42 @@ function WearablesScreen() {
                           {tr(lang, { en: "Last sync", pt: "Último sync" })}: {formatDate(conn.lastSyncedAt, lang)}
                         </Text>
                       )}
+                      {silent && (
+                        <Text variant="caption" color={t.colors.warn} style={{ marginTop: 2, maxWidth: 190 }}>
+                          {delivery === "silent"
+                            ? tr(lang, {
+                                en: "Authorised, but not sending measurements yet.",
+                                pt: "Autorizado, mas ainda não está enviando medições.",
+                              })
+                            : tr(lang, {
+                                en: "Sending only part of your measurements.",
+                                pt: "Enviando só parte das suas medições.",
+                              })}
+                        </Text>
+                      )}
                     </View>
                   </View>
 
                   {isConnected ? (
                     <View style={{ flexDirection: "row", gap: 8 }}>
+                      {silent && p.key === "withings" && (
+                        <Pressable
+                          onPress={() => resubMut.mutate()}
+                          disabled={resubMut.isPending}
+                          testID="wearables-resubscribe"
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                            backgroundColor: t.colors.warn,
+                            opacity: resubMut.isPending ? 0.6 : 1,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                            {resubMut.isPending ? "..." : tr(lang, { en: "Fix", pt: "Corrigir" })}
+                          </Text>
+                        </Pressable>
+                      )}
                       <Pressable
                         onPress={() => syncMut.mutate(p.key)}
                         disabled={syncMut.isPending}

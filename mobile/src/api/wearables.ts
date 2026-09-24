@@ -1,11 +1,24 @@
 import { apiFetch } from "./client";
 
+/**
+ * `status` only ever said whether the authorisation worked. `delivery` says
+ * whether anything is actually coming — the two are different questions, and
+ * a device can be authorised and silent (activity 075, T-10).
+ *
+ *  - `receiving`  Withings confirmed it will send all four kinds
+ *  - `partial`    it confirmed some; something is missing
+ *  - `silent`     it confirmed none. Authorised, and sending nothing.
+ *  - `unchecked`  connected before this existed; nobody has asked yet
+ */
+export type WearableDelivery = "receiving" | "partial" | "silent" | "unchecked";
+
 export interface WearableConnection {
   id: string;
   provider: string;
   status: string;
   lastSyncedAt: string | null;
   createdAt: string;
+  delivery?: WearableDelivery;
 }
 
 export interface WearableDataPoint {
@@ -42,6 +55,14 @@ export async function syncProvider(provider: string) {
     method: "POST",
     body: JSON.stringify({ provider }),
   });
+}
+
+/** Asks Withings again to send us measurements. The OAuth is not repeated. */
+export async function resubscribeWithings() {
+  return apiFetch<{ confirmed: number[]; missing: number[]; delivery: WearableDelivery }>(
+    "/api/wearables/resubscribe",
+    { method: "POST" }
+  );
 }
 
 export async function disconnectProvider(provider: string) {

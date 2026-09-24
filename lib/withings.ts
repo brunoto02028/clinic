@@ -353,6 +353,51 @@ export async function withingsListSubscriptions(accessToken: string, appli: numb
   return body?.profiles ?? [];
 }
 
+/** The four kinds we ask for, in one place so the check and the subscribe agree. */
+export const WITHINGS_APPLI_WE_WANT: number[] = [
+  WITHINGS_APPLI.BLOOD_PRESSURE,
+  WITHINGS_APPLI.WEIGHT,
+  WITHINGS_APPLI.ACTIVITY,
+  WITHINGS_APPLI.SLEEP,
+];
+
+/**
+ * Asks Withings what it has actually agreed to send us.
+ *
+ * Subscribing is best-effort on purpose — failing it would drop a connection
+ * while the patient is standing in front of a redirect — so the answer has to
+ * be read back rather than assumed. Until this existed, `withingsListSubscriptions`
+ * sat in this file unused and "connected" meant only that the authorisation
+ * worked (activity 075, T-10).
+ *
+ * A kind counts as confirmed only when OUR callback is in their list: their
+ * `list` is per account, and another integration's subscription is not ours.
+ *
+ * Never throws. A check that fails is "we do not know", which is recorded as
+ * an empty result, not as a promise that data is coming.
+ */
+export async function confirmWithingsSubscriptions(
+  accessToken: string,
+  callbackUrl: string,
+  appliList: number[] = WITHINGS_APPLI_WE_WANT
+): Promise<number[]> {
+  const confirmed: number[] = [];
+  await Promise.all(
+    appliList.map(async (appli) => {
+      try {
+        const profiles = await withingsListSubscriptions(accessToken, appli);
+        const ours = profiles.some(
+          (p: any) => typeof p?.callbackurl === "string" && p.callbackurl.replace(/\/$/, "") === callbackUrl.replace(/\/$/, "")
+        );
+        if (ours) confirmed.push(appli);
+      } catch (err: any) {
+        console.error(`[withings] subscription check failed appli=${appli}:`, err?.message);
+      }
+    })
+  );
+  return confirmed.sort((a, b) => a - b);
+}
+
 /** Where Withings should call us. Public, HTTPS, and the same for every clinic. */
 export function withingsCallbackUrl(): string {
   const base = process.env.NEXTAUTH_URL || "https://bpr.clinic";

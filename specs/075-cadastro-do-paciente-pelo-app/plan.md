@@ -43,7 +43,7 @@ ela a submissão é rejeitada.
 | T-7 | Preparar a submissão à App Store | pendente |
 | T-8 | Entrar com Google e com Apple *(opcional — só se você quiser)* | pendente |
 | T-9 | Conectar o aparelho logo depois do cadastro | pendente |
-| T-10 | Confirmar que a assinatura existe, em vez de torcer | pendente |
+| T-10 | Confirmar que a assinatura existe, em vez de torcer | em revisão |
 | T-11 | A rede de segurança, e alguém que perceba o silêncio | pendente |
 
 ## Decisões do Bruno (24/09/2026)
