@@ -66,3 +66,30 @@ não está disponível para aquela conta.
 
 O "Sair" existia só no ramo de quem não tem nenhum módulo. Quem tinha módulos que não abriam
 ficava numa tela com três portas e nenhuma saída. Agora está nos dois ramos.
+
+
+---
+
+## 6. A foto de perfil não pode ser trocada — porque não existe
+
+**Pedido do Bruno**, e é funcionalidade, não ajuste.
+
+**O que existe hoje:** o avatar no perfil são as **iniciais do nome**, desenhadas
+(`ModuleProfile.tsx:73`). Não há foto de paciente em lugar nenhum do app, e não há rota no
+servidor que aceite uma. As colunas `profileImageUrl` e `profileImagePath` existem no `User` e são
+usadas pelo cadastro por Google — nada além disso as preenche.
+
+**O que precisa:**
+
+1. **Armazenamento** — reusar o pipeline de mídia do R2 (`lib/exercise-media.ts`), que já valida
+   tipo e tamanho (`ALLOWED_THUMBNAIL_TYPES`, `MAX_THUMBNAIL_BYTES`). Não inventar um segundo jeito
+   de guardar arquivo.
+2. **Rotas** — `POST` e `DELETE` em `/api/patient/profile/photo`, com o gate de paciente.
+3. **App** — tocar no avatar abre o seletor; o `expo-image-picker` já está instalado e já é usado
+   na tela de documentos.
+4. **Web** — a mesma coisa no `/dashboard/profile`. Foto que aparece num canal aparece no outro.
+
+**Já coberto:** o encerramento de conta (`lib/account-closure.ts`) já zera as duas colunas — uma
+foto é dado pessoal e sai junto com o resto.
+
+**Decisão pendente:** fazer agora ou depois que o Bruno terminar a rodada de revisão no aparelho.
