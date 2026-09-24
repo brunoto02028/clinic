@@ -763,10 +763,10 @@ export default function PatientProfilePage() {
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/admin/patients"); }}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
+        <div className="flex-1 basis-72 min-w-[18rem] overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-6 w-6 text-primary" /></div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold truncate">{p.firstName} {p.lastName}</h1>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
                 <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{p.email}</span></span>
@@ -776,9 +776,11 @@ export default function PatientProfilePage() {
             </div>
           </div>
         </div>
-        {/* `min-w-0`: a barra de medição, aberta, é muito mais larga que o
-            botão que a abriu, e sem isto ela transbordava por cima do nome do
-            paciente em vez de empurrar o cabeçalho. */}
+        {/* A barra de medição, aberta, é muito mais larga que o botão que a
+            abriu. O bloco do paciente acima tem um piso de largura (`basis-72`)
+            justamente para que este grupo não tenha para onde crescer e caia
+            para a linha de baixo — antes ele espremia o nome até zero e o texto
+            transbordava por baixo da barra. */}
         <div className="flex items-center gap-1.5 flex-wrap min-w-0 max-w-full">
           {/* Only renders when this clinic has a cuff connected (activity 074,
               T-15); it asks the API and draws nothing otherwise. */}
