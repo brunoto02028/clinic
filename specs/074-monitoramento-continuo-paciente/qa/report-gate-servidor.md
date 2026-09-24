@@ -103,7 +103,18 @@ anteriores: nenhuma sessão de paciente, nenhum dado criado, nenhum paciente rea
 | Backfill de `clinicId` | `nothing to fill` (já tinha rodado) |
 | **Backfill de consentimento** | `[backfill-consent] nothing to fill` |
 
-A última linha é a que responde a pergunta que importava: **nenhum paciente em produção tinha
+**Segunda rodada, depois do code review** — deploy do PR #100, build `1.0.1790241944629`
+(24/09, 09:25 UTC), **23 verificações, 0 falhas**:
+
+| Verificação | Resultado |
+|---|---|
+| 12 rotas com gate + as 9 que o review achou sem gate | 307, nenhuma 500 |
+| `/api/patient/change-email/confirm` **sem sessão** | **400** (token inválido) — não 401/307: a rota voltou a ser pública, que é o ponto |
+| `/api/auth/forgot-password` anônima | 200 com resposta neutra — a tela nova do app depende dela |
+| Backfill com o filtro novo | `[backfill-consent] nothing to fill` |
+| Schema | `already in sync` |
+
+A linha do backfill é a que responde a pergunta que importava: **nenhum paciente em produção tinha
 aceitado só pela triagem**. Ninguém precisou ser carregado, e ninguém ficou trancado pela divisão
 entre as duas colunas. O script fica no boot de qualquer forma, porque o caminho existe.
 
