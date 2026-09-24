@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { OW_PROVIDERS, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 import { signWearableState } from '@/lib/wearable-state';
+import { getSessionStaffActor } from '@/lib/tenant-access';
 import { withingsAuthorizeUrl, withingsConfigured, WITHINGS_SCOPE } from '@/lib/withings';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
@@ -35,6 +36,38 @@ export async function GET(
   const { provider } = await params;
   const userId = effectiveUser.userId;
   const asJson = request.nextUrl.searchParams.get('format') === 'json';
+
+  // Connecting the clinic's own cuff rather than a personal device
+  // (activity 074, T-14). Staff only, and the scope is signed into the state:
+  // whoever comes back from the provider cannot claim to be a clinic device by
+  // adding a query parameter.
+  const wantsClinicDevice = request.nextUrl.searchParams.get('clinic') === '1';
+  let clinicScope = false;
+  if (wantsClinicDevice) {
+    const actor = await getSessionStaffActor(request);
+    if (!actor || !actor.clinicId) {
+      return NextResponse.json({ error: 'Only clinic staff can connect a clinic device' }, { status: 403 });
+    }
+    // The connection is keyed by (user, provider), so connecting the clinic's
+    // cuff on an account that already has a personal one would convert that
+    // one: their own steps and sleep would stop syncing and their own blood
+    // pressure would start going through session attribution. Refuse, and say
+    // what to do instead.
+    const personal = await (prisma as any).wearableConnection.findFirst({
+      where: { userId, provider: provider.toUpperCase(), isClinicDevice: false, status: { not: 'DISCONNECTED' } },
+      select: { id: true },
+    });
+    if (personal) {
+      return NextResponse.json(
+        {
+          error: 'This account already has a personal connection to this provider. Use a dedicated clinic account for the shared device.',
+          errorPt: 'Esta conta já tem uma conexão pessoal com este provedor. Use uma conta da clínica, dedicada, para o aparelho compartilhado.',
+        },
+        { status: 409 }
+      );
+    }
+    clinicScope = true;
+  }
 
   // Anything could be put in the path and it was passed through to the
   // aggregator and, later, stored as a connection's provider.
@@ -86,7 +119,7 @@ export async function GET(
       }
     }
 
-    const state = signWearableState(userId, asJson ? 'app' : 'web', provider);
+    const state = signWearableState(userId, asJson ? 'app' : 'web', provider, clinicScope ? 'clinic' : 'self');
     // Withings signs the redirect URI into the authorisation request and
     // checks it again at the token exchange, so it must not carry the state —
     // that travels in `state`, which they echo back untouched.

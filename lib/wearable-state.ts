@@ -24,22 +24,32 @@ function sign(payload: string): string {
   return createHmac("sha256", stateSecret()).update(payload).digest("base64url");
 }
 
+/**
+ * `self` is the ordinary case: a patient connecting their own device.
+ * `clinic` is a cuff the clinic owns, connected by a staff member, whose
+ * readings are attributed by measurement session (activity 074, T-14). It is
+ * signed in rather than passed as a query parameter for the same reason the
+ * provider is: a value the callback trusts must be one this server minted.
+ */
+export type WearableScope = "self" | "clinic";
+
 export function signWearableState(
   userId: string,
   source: "web" | "app",
-  provider: string
+  provider: string,
+  scope: WearableScope = "self"
 ): string {
   // The provider is signed in too. Without it the callback took whatever
   // `?provider=` said and wrote that, so one valid state could mark a
   // connection to a device the patient never authorised.
-  const payload = `${userId}.${source}.${provider.toLowerCase()}.${Date.now() + STATE_TTL_MS}`;
+  const payload = `${userId}.${source}.${provider.toLowerCase()}.${scope}.${Date.now() + STATE_TTL_MS}`;
   return `${Buffer.from(payload).toString("base64url")}.${sign(payload)}`;
 }
 
 /** The userId and origin a state proves, or null if it proves nothing. */
 export function verifyWearableState(
   state: string | null | undefined
-): { userId: string; source: "web" | "app"; provider: string } | null {
+): { userId: string; source: "web" | "app"; provider: string; scope: WearableScope } | null {
   if (!state) return null;
   const dot = state.lastIndexOf(".");
   if (dot <= 0) return null;
@@ -53,8 +63,14 @@ export function verifyWearableState(
   }
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
 
-  const [userId, source, provider, expiresAt] = payload.split(".");
+  const parts = payload.split(".");
+  // A state minted before the scope existed has four parts; it is a patient's
+  // own connection, which is what every one of them was.
+  const [userId, source, provider] = parts;
+  const scope = (parts.length === 5 ? parts[3] : "self") as WearableScope;
+  const expiresAt = parts[parts.length - 1];
   if (!userId || !provider || (source !== "web" && source !== "app")) return null;
+  if (scope !== "self" && scope !== "clinic") return null;
   if (!Number(expiresAt) || Number(expiresAt) < Date.now()) return null;
-  return { userId, source, provider };
+  return { userId, source, provider, scope };
 }

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       userWhere.clinicId = effectiveClinicId;
     }
 
-    const [unreadMessagePatients, answeredQPatients] = await Promise.all([
+    const [unreadMessagePatients, answeredQPatients, unassignedMeasurements] = await Promise.all([
       prisma.user.findMany({
         where: {
           ...userWhere,
@@ -45,6 +45,14 @@ export async function GET(request: NextRequest) {
         },
         select: { id: true },
       }),
+      // Readings from the clinic's cuff waiting for someone to say whose they
+      // are (activity 074, T-15). They are in nobody's record until then, so
+      // the count has to be visible without opening the screen.
+      effectiveClinicId
+        ? (prisma as any).unassignedMeasurement.count({
+            where: { clinicId: effectiveClinicId, assignedAt: null, discardedAt: null },
+          })
+        : Promise.resolve(0),
     ]);
 
     const patientIds = new Set<string>([
@@ -56,9 +64,10 @@ export async function GET(request: NextRequest) {
       pendingPatients: patientIds.size,
       unreadMessages: unreadMessagePatients.length,
       answeredQuestions: answeredQPatients.length,
+      unassignedMeasurements,
     });
   } catch (error) {
     console.error("Error fetching pending count:", error);
-    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0 });
+    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0 });
   }
 }

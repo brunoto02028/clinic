@@ -87,16 +87,29 @@ export default function DevicesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [disconnected, setDisconnected] = useState<{ provider: string; url: string | null } | null>(null);
+
   const handleConnect = (providerKey: string) => {
     window.location.href = "/api/wearables/connect/" + providerKey;
   };
 
   const handleDisconnect = async (providerKey: string) => {
-    await fetch("/api/wearables/disconnect", {
+    const res = await fetch("/api/wearables/disconnect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider: providerKey }),
     });
+    // What disconnecting does and does not do, said plainly (activity 074,
+    // T-10): we drop the tokens and stop the notifications, but only the
+    // account holder can remove the authorisation at the provider. A
+    // "disconnected" that quietly leaves access standing is the kind of thing
+    // a patient is right to be angry about.
+    const data = await res.json().catch(() => ({}));
+    setDisconnected(
+      data?.providerRevokeUrl
+        ? { provider: providerKey, url: data.providerRevokeUrl }
+        : { provider: providerKey, url: null }
+    );
     load();
   };
 
@@ -146,6 +159,29 @@ export default function DevicesPage() {
           </p>
         </div>
       </div>
+
+      {disconnected && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+          <p className="text-sm font-medium">
+            {isPt ? "Desconectado." : "Disconnected."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {isPt
+              ? "Apagamos as chaves de acesso e paramos as notificações. O histórico já sincronizado continua no seu prontuário."
+              : "We deleted the access keys and stopped the notifications. Data already synced stays in your record."}
+          </p>
+          {disconnected.url && (
+            <p className="text-xs text-muted-foreground">
+              {isPt
+                ? "Para retirar a autorização também do lado do fabricante, faça isso na sua conta: "
+                : "To withdraw the authorisation at the manufacturer as well, do it in your account: "}
+              <a href={disconnected.url} target="_blank" rel="noreferrer" className="underline">
+                {disconnected.url}
+              </a>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Devices */}
       <Card className="border-ba1-health/20">

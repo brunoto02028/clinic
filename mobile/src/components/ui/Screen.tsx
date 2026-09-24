@@ -11,12 +11,32 @@ export interface ScreenProps {
   testID?: string;
 }
 
+/**
+ * The widest a column of content gets, whatever the screen.
+ *
+ * `supportsTablet: true` means the app installs on iPad and runs at the
+ * tablet's own resolution, not in a scaled phone window — and nothing here
+ * consulted the screen size, so every one of the 27 screens stretched a line
+ * of text past a thousand pixels. This is not an iPad *design* (that is two
+ * columns, and a different navigation model); it is the difference between a
+ * comfortable reading column and a phone inflated to fill a tablet.
+ *
+ * 560 rather than a typographic 65ch: cards, rows of chips and the exercise
+ * list all live in this column too, and they need more room than prose does.
+ */
+const MAX_CONTENT_WIDTH = 560;
+
 export function Screen({ children, scroll, padded = true, style, testID }: ScreenProps) {
   const t = useTheme();
   const inner: ViewStyle = {
     flex: scroll ? undefined : 1,
     padding: padded ? t.spacing.lg : 0,
     backgroundColor: t.colors.background,
+    // On a phone this is inert: the screen is narrower than the cap, and
+    // `alignSelf: center` on a full-width box changes nothing.
+    width: "100%",
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: "center",
   };
 
   return (

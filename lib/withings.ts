@@ -149,6 +149,20 @@ export interface WithingsBpReading {
   diastolic: number;
   heartRate: number | null;
   measuredAt: Date;
+  /**
+   * Withings' own id for the measure group (`grpid`).
+   *
+   * The deduplication key. Matching on the timestamp alone was enough while
+   * one account meant one patient and one sync path; with the webhook (T-9)
+   * the same measure arrives twice, and with a shared clinic cuff (T-14) two
+   * different people can be measured in the same second.
+   *
+   * Null when they did not send one. It used to be synthesised from the
+   * timestamp and the values, which on a shared cuff makes two people measured
+   * in the same second with the same numbers look like one measurement — and
+   * the second one was then dropped with no trace. An absent id is absent.
+   */
+  measureId: string | null;
 }
 
 /** Withings measure types, from their `getmeas` documentation. */
@@ -166,7 +180,8 @@ const TYPE_HEART_RATE = 11;
  */
 export async function withingsBloodPressure(
   accessToken: string,
-  since: Date
+  since: Date,
+  until?: Date
 ): Promise<WithingsBpReading[]> {
   const body = await wFetch(`${API}/measure`, {
     action: "getmeas",
@@ -174,7 +189,9 @@ export async function withingsBloodPressure(
     meastypes: [TYPE_SYSTOLIC, TYPE_DIASTOLIC, TYPE_HEART_RATE].join(","),
     category: "1", // real measurements, not user objectives
     startdate: String(Math.floor(since.getTime() / 1000)),
-    enddate: String(Math.floor(Date.now() / 1000)),
+    // A notification names the window it is about; asking for exactly that
+    // window keeps the webhook path cheap on an account with years of history.
+    enddate: String(Math.floor((until ?? new Date()).getTime() / 1000)),
   });
 
   const readings: WithingsBpReading[] = [];
@@ -192,6 +209,7 @@ export async function withingsBloodPressure(
       diastolic: Math.round(diastolic),
       heartRate: heartRate != null ? Math.round(heartRate) : null,
       measuredAt: new Date(Number(group.date) * 1000),
+      measureId: group.grpid != null ? String(group.grpid) : null,
     });
   }
   return readings;
@@ -276,4 +294,58 @@ export async function withingsSleep(
       restingHr: typeof d.hr_average === "number" ? d.hr_average : null,
     };
   });
+}
+
+/**
+ * Withings notifications ("notify"), so a measurement arrives when it is taken.
+ *
+ * `appli` is the kind of data: 1 weight, 4 blood pressure, 16 activity,
+ * 44 sleep. We subscribe per kind, because Withings does.
+ *
+ * Their API answers `status: 0` for an already-existing subscription as well
+ * as for a new one, so subscribing twice is safe and there is no need to list
+ * first — which matters, because the connect flow must not fail over this.
+ */
+export const WITHINGS_APPLI = { WEIGHT: 1, BLOOD_PRESSURE: 4, ACTIVITY: 16, SLEEP: 44 } as const;
+
+export async function withingsSubscribe(
+  accessToken: string,
+  callbackUrl: string,
+  appli: number
+): Promise<void> {
+  await wFetch(`${API}/notify`, {
+    action: "subscribe",
+    access_token: accessToken,
+    callbackurl: callbackUrl,
+    appli: String(appli),
+    comment: "BPR Clinic",
+  });
+}
+
+export async function withingsRevokeSubscription(
+  accessToken: string,
+  callbackUrl: string,
+  appli: number
+): Promise<void> {
+  await wFetch(`${API}/notify`, {
+    action: "revoke",
+    access_token: accessToken,
+    callbackurl: callbackUrl,
+    appli: String(appli),
+  });
+}
+
+export async function withingsListSubscriptions(accessToken: string, appli: number): Promise<any[]> {
+  const body = await wFetch(`${API}/notify`, {
+    action: "list",
+    access_token: accessToken,
+    appli: String(appli),
+  });
+  return body?.profiles ?? [];
+}
+
+/** Where Withings should call us. Public, HTTPS, and the same for every clinic. */
+export function withingsCallbackUrl(): string {
+  const base = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+  return `${base.replace(/\/$/, "")}/api/wearables/withings/webhook`;
 }

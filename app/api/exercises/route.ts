@@ -4,6 +4,7 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
+import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,15 @@ export async function PATCH(req: NextRequest) {
         },
       },
     });
+
+    // Same gate as the protocol items: the block has to exist on the server,
+    // or it is only a disabled button (activity 074, T-11).
+    if (!existing) {
+      const gate = await isTrainingBlockedToday(userId, dateStr);
+      if (gate.blocked) {
+        return NextResponse.json(trainingBlockedResponse(gate), { status: 409 });
+      }
+    }
 
     if (existing) {
       await (prisma as any).exerciseCompletionLog.delete({ where: { id: existing.id } });

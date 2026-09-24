@@ -485,6 +485,10 @@ model Clinic {
   // Automation engine (activity 072)
   alerts           Alert[]
   automationRules  AutomationRule[]
+  // Clinic-device measurement (activity 074, T-14)
+  wearableConnections    WearableConnection[]
+  measurementSessions    ClinicMeasurementSession[]
+  unassignedMeasurements UnassignedMeasurement[]
   outboundMessages OutboundMessage[]
   automationRuns   AutomationRun[]
 
@@ -736,6 +740,13 @@ model User {
   patientInvoicesPaidBy          PatientInvoice[]          @relation("PatientInvoicesPaidBy")
   bloodPressureReadings          BloodPressureReading[]    @relation("PatientBPReadings")
   bloodPressureReadingsRecorded  BloodPressureReading[]    @relation("StaffBPReadings")
+  // Clinic-device measurement (activity 074, T-14)
+  measurementSessions            ClinicMeasurementSession[] @relation("PatientMeasurementSessions")
+  measurementSessionsOpened      ClinicMeasurementSession[] @relation("StaffOpenedMeasurementSessions")
+  measurementSessionsCancelled   ClinicMeasurementSession[] @relation("StaffCancelledMeasurementSessions")
+  measurementsAssignedToMe       UnassignedMeasurement[]    @relation("PatientAssignedMeasurements")
+  measurementsAssigned           UnassignedMeasurement[]    @relation("StaffAssignedMeasurements")
+  measurementsDiscarded          UnassignedMeasurement[]    @relation("StaffDiscardedMeasurements")
   bpReminderEnabled              Boolean                   @default(false)
   serviceAccessRecords           ServiceAccess[]           @relation("PatientServiceAccess")
   serviceAccessGranted           ServiceAccess[]           @relation("ServiceAccessGranter")
@@ -4389,6 +4400,15 @@ model EmailAccount {
 enum BloodPressureMethod {
   MANUAL
   CAMERA_PPG
+  // A cuff owned by the clinic, attributed through a measurement session
+  // (activity 074, T-14) rather than by who owns the account.
+  CLINIC_DEVICE
+}
+
+enum BpSource {
+  PATIENT_DEVICE
+  CLINIC_DEVICE
+  MANUAL
 }
 
 // ============================================
@@ -4445,9 +4465,26 @@ model BloodPressureReading {
   confidence Float? // 0-1 confidence score for camera readings
   ppgSignal  Json? // Raw PPG signal data for analysis
 
+  // Withings' own id for the measure group (`grpid`), on readings that came
+  // from a device (activity 074, T-9). The webhook and the scheduled sync both
+  // deliver the same measurement, and matching on the timestamp alone stopped
+  // being enough the moment two people could be measured on one cuff in the
+  // same second (T-14). Null for anything a person typed.
+  withingsMeasureId String?
+
+  // Where the reading came from and what it was for (activity 074, T-14).
+  // Mixed together in one history, "measured at home" and "measured before the
+  // session in the clinic" are different facts, and the therapist reading the
+  // list cannot tell them apart without this.
+  source           BpSource            @default(MANUAL)
+  context          MeasurementContext  @default(HOME)
+  // The session owns the link (its `readingId`); this is only the way back.
+  clinicSession    ClinicMeasurementSession?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([patientId, withingsMeasureId])
   @@index([patientId])
   @@index([clinicId])
   @@index([measuredAt])
@@ -6612,12 +6649,127 @@ model WearableConnection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dataPoints WearableDataPoint[]
+  // A clinic-owned device (activity 074, T-14): one Withings account on the
+  // reception desk, measuring many patients. The connection still belongs to
+  // the staff member who authorised it — `userId` is not nullable, and a
+  // fictional patient would show up as a patient — but it is marked, tied to
+  // the clinic, and its readings are attributed by measurement session rather
+  // than to its owner.
+  isClinicDevice Boolean @default(false)
+  clinicId       String?
+  clinic         Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  deviceLabel    String? // "BPM Connect — reception"
+
+  dataPoints         WearableDataPoint[]
+  measurementSessions ClinicMeasurementSession[]
+  unassignedMeasurements UnassignedMeasurement[]
 
   @@unique([userId, provider])
+  // Uma conta de provedor pertence a uma conexão só — a regra está certa, mas o
+  // índice único ficou FORA deste deploy de propósito. Em produção o schema é
+  // aplicado por `prisma db push` no start, e o `|| echo warning` do start.sh
+  // engole a falha: se houver duas linhas com o mesmo `providerUserId`, o push
+  // aborta inteiro e o container sobe **sem** as tabelas novas, com deploy
+  // verde e rotas dando 500. Volta assim que eu conferir duplicatas em prod.
+  // Enquanto isso, a rota de conexão recusa o caso no código.
   @@index([userId])
   @@index([terraUserId])
   @@index([owUserId])
+  @@index([clinicId, isClinicDevice])
+}
+
+enum MeasurementContext {
+  PRE_SESSION
+  POST_SESSION
+  HOME
+  OTHER
+}
+
+enum ClinicSessionStatus {
+  OPEN
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+/**
+ * A three-minute window in which a reading from the clinic's device belongs to
+ * one named patient (activity 074, T-14).
+ *
+ * The device knows nothing about patients; this is the only thing that decides
+ * whose record a measurement enters. A reading that matches no window — or
+ * more than one — goes to UnassignedMeasurement instead of being guessed at.
+ */
+model ClinicMeasurementSession {
+  id        String @id @default(cuid())
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User   @relation("PatientMeasurementSessions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  connectionId String
+  connection   WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  context   MeasurementContext  @default(PRE_SESSION)
+  status    ClinicSessionStatus @default(OPEN)
+
+  openedById String
+  openedBy   User   @relation("StaffOpenedMeasurementSessions", fields: [openedById], references: [id], onDelete: Cascade)
+  openedAt   DateTime @default(now())
+  expiresAt  DateTime
+
+  cancelledById String?
+  cancelledBy   User?   @relation("StaffCancelledMeasurementSessions", fields: [cancelledById], references: [id], onDelete: SetNull)
+  closedAt      DateTime?
+
+  readingId String?               @unique
+  reading   BloodPressureReading? @relation(fields: [readingId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([connectionId, status])
+  @@index([clinicId, status])
+  @@index([expiresAt])
+}
+
+/**
+ * A reading from the clinic's device that matched no measurement session.
+ *
+ * It exists because the alternative is guessing. The therapist assigns it from
+ * an inbox, or discards it with a reason; until then it is in nobody's record.
+ */
+model UnassignedMeasurement {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  connectionId String
+  connection   WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  systolic  Int
+  diastolic Int
+  heartRate Int?
+  measuredAt DateTime
+  receivedAt DateTime @default(now())
+  withingsMeasureId String?
+  raw        Json?
+
+  assignedPatientId String?
+  assignedPatient   User?   @relation("PatientAssignedMeasurements", fields: [assignedPatientId], references: [id], onDelete: SetNull)
+  assignedById      String?
+  assignedBy        User?   @relation("StaffAssignedMeasurements", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt        DateTime?
+
+  discardedById String?
+  discardedBy   User?   @relation("StaffDiscardedMeasurements", fields: [discardedById], references: [id], onDelete: SetNull)
+  discardedAt   DateTime?
+  discardReason String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([connectionId, withingsMeasureId])
+  @@index([clinicId, assignedAt, discardedAt])
 }
 
 model WearableDataPoint {

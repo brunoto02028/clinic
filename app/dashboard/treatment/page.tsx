@@ -101,6 +101,10 @@ export default function PatientTreatmentPage() {
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
   const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
+  // Whether today's session opens at all (activity 074, T-11). Null means the
+  // question has not been answered yet — which is not the same as "clear", so
+  // nothing is drawn until it is.
+  const [clearance, setClearance] = useState<any | null>(null);
   const [confirmingSchedule, setConfirmingSchedule] = useState(false);
   const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
   const [showChangeRequest, setShowChangeRequest] = useState(false);
@@ -145,6 +149,16 @@ export default function PatientTreatmentPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Silent on failure, like the two fetches around it: a clearance check that
+  // did not answer must not block a patient whose pressure nobody measured.
+  // The block comes from a reading above the limit, never from our own outage.
+  const fetchClearance = useCallback(async () => {
+    try {
+      const res = await fetch("/api/patient/exercise-clearance");
+      if (res.ok) setClearance(await res.json());
+    } catch {}
   }, []);
 
   const fetchPendingAppointments = useCallback(async () => {
@@ -212,7 +226,7 @@ export default function PatientTreatmentPage() {
     }
   };
 
-  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); fetchPrescriptions(); }, [fetchProtocols, fetchPendingAppointments, fetchPrescriptions]);
+  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); fetchPrescriptions(); fetchClearance(); }, [fetchProtocols, fetchPendingAppointments, fetchPrescriptions, fetchClearance]);
 
   const handleToggleItem = async (itemId: string, completed: boolean) => {
     try {
@@ -420,7 +434,9 @@ export default function PatientTreatmentPage() {
         </div>
       )}
 
-      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={handlePlayVideo} isPt={isPt} />
+      {clearance?.blocked && <ExerciseBlockBanner clearance={clearance} isPt={isPt} onRecheck={fetchClearance} />}
+
+      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={handlePlayVideo} isPt={isPt} blocked={!!clearance?.blocked} />
 
       {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
       {pendingAppointments.length > 0 && !scheduleConfirmed && (
@@ -670,6 +686,7 @@ export default function PatientTreatmentPage() {
                     onSaveNote={handleSaveNote}
                     onPlayVideo={handlePlayVideo}
                     protocolStartDate={effectiveStartDate}
+                    blocked={!!clearance?.blocked}
                   />
                 );
               })}
@@ -688,6 +705,7 @@ export default function PatientTreatmentPage() {
         prescriptions={standaloneRx}
         onToggleLog={handleTogglePrescriptionLog}
         onPlayVideo={handlePlayVideo}
+        blocked={!!clearance?.blocked}
       />
 
       {/* Video Modal */}
@@ -858,11 +876,13 @@ function countMarkedInWindow(logs: any[] | undefined, days: Date[]): number {
   return count;
 }
 
-function DayStrip({ days, marked, onToggleDate, isPt }: {
+function DayStrip({ days, marked, onToggleDate, isPt, blocked }: {
   days: Date[];
   marked: Set<string>;
   onToggleDate: (dateStr: string) => void;
   isPt: boolean;
+  /** Blood pressure stops today's session (activity 074, T-11). */
+  blocked?: boolean;
 }) {
   const todayStr = toDateStr(new Date());
   const dayLabels = isPt ? WEEKDAY_LETTER_PT : WEEKDAY_LETTER_EN;
@@ -873,16 +893,25 @@ function DayStrip({ days, marked, onToggleDate, isPt }: {
         const dateStr = toDateStr(d);
         const isFuture = dateStr > todayStr;
         const isMarked = marked.has(dateStr);
+        // QA found the block was only on the card above: the same exercise
+        // could be ticked here, on today's circle, with the banner still on
+        // screen. Today only — the block is about today's session, and a
+        // patient correcting last Tuesday is not training.
+        const blockedToday = !!blocked && dateStr === todayStr && !isMarked;
         return (
           <button
             key={dateStr}
-            disabled={isFuture}
+            disabled={isFuture || blockedToday}
             onClick={() => onToggleDate(dateStr)}
-            title={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
+            title={
+              blockedToday
+                ? isPt ? "Bloqueado hoje pela sua pressão" : "Blocked today by your blood pressure"
+                : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })
+            }
             className={`h-7 w-7 rounded-full text-[10px] font-semibold flex items-center justify-center border transition-colors shrink-0 ${
               isMarked
                 ? "bg-ba1-ok text-white border-ba1-ok"
-                : isFuture
+                : isFuture || blockedToday
                   ? "border-muted text-muted-foreground/40 cursor-not-allowed"
                   : "border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary"
             }`}
@@ -895,7 +924,7 @@ function DayStrip({ days, marked, onToggleDate, isPt }: {
   );
 }
 
-function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, weekCompleted, onToggle, onToggleLog, onSaveNote, onPlayVideo, protocolStartDate }: {
+function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, weekCompleted, onToggle, onToggleLog, onSaveNote, onPlayVideo, protocolStartDate, blocked }: {
   startWeek: number;
   endWeek: number | null;
   isCurrentWeek: boolean;
@@ -907,6 +936,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
   onSaveNote: (itemId: string, notes: string) => Promise<void>;
   onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
   protocolStartDate: string;
+  blocked?: boolean;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -1000,6 +1030,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                           marked={new Set((item.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)))}
                           onToggleDate={(dateStr) => onToggleLog(item.id, dateStr)}
                           isPt={isPt}
+                          blocked={blocked}
                         />
                       </div>
                     )}
@@ -1083,6 +1114,54 @@ function NoteField({ initialValue, onSave, isPt }: {
   );
 }
 
+// ─── Blood pressure blocking today's session (activity 074, T-11) ───
+//
+// Above the clinic's training limit the session does not open. The patient is
+// told the reading, the time, and what to do — not just that something is
+// locked. The wording stays inside what a therapist may say: rest, measure
+// again, and if it persists this is for a doctor. No diagnosis, no advice on
+// medication.
+function ExerciseBlockBanner({ clearance, isPt, onRecheck }: {
+  clearance: any;
+  isPt: boolean;
+  onRecheck: () => void;
+}) {
+  const r = clearance.reading;
+  const l = clearance.limits;
+  const measured = r ? new Date(r.measuredAt).toLocaleTimeString(isPt ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+  return (
+    <div className="border-2 border-destructive/40 bg-destructive/5 rounded-xl p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <AlertCircle className="h-5 w-5 text-destructive" />
+        <h3 className="font-semibold text-destructive">
+          {isPt ? "Hoje não vamos treinar" : "No training today"}
+        </h3>
+      </div>
+      <p className="text-sm">
+        {isPt
+          ? `Sua pressão às ${measured} foi ${r?.systolic}/${r?.diastolic} mmHg, acima do limite de ${l?.blockSystolic}/${l?.blockDiastolic} que usamos para liberar o exercício.`
+          : `Your reading at ${measured} was ${r?.systolic}/${r?.diastolic} mmHg, above the ${l?.blockSystolic}/${l?.blockDiastolic} limit we use to clear exercise.`}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {isPt
+          ? "Descanse sentado por 5 minutos e meça de novo. Se continuar alto, fale com seu médico. Seu terapeuta já foi avisado."
+          : "Rest seated for 5 minutes and measure again. If it stays high, speak to your doctor. Your therapist has been notified."}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {isPt
+          ? "Com dor no peito, falta de ar ou tontura, ligue para a emergência. Este aplicativo não é serviço de emergência."
+          : "With chest pain, breathlessness or dizziness, call the emergency services. This app is not an emergency service."}
+      </p>
+      <div className="flex gap-2 pt-1">
+        <a href="/dashboard/blood-pressure">
+          <Button size="sm" variant="outline">{isPt ? "Registrar nova medida" : "Log a new reading"}</Button>
+        </a>
+        <Button size="sm" variant="ghost" onClick={onRecheck}>{isPt ? "Verificar de novo" : "Check again"}</Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Today Card (activity 43) — everything due today in one place, from ───
 // both current-week protocol items and standalone prescriptions, with a
 // much bigger tap target than the day-strip circle below.
@@ -1105,11 +1184,12 @@ type TodayTask = {
   doneToday: boolean;
 };
 
-function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
+function TodayCard({ tasks, onToggle, onPlayVideo, isPt, blocked }: {
   tasks: TodayTask[];
   onToggle: (task: TodayTask) => void;
   onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
   isPt: boolean;
+  blocked?: boolean;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -1131,14 +1211,24 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
       <CardContent className="p-4 pt-2 space-y-2">
         {tasks.map((task) => (
           <div key={task.key} className={`rounded-lg border p-3 flex items-start gap-3 ${task.doneToday ? "bg-ba1-ok/5 border-ba1-ok/20" : "bg-card"}`}>
+            {/* Blocked by blood pressure (T-11): the session does not open, so
+                the one control that starts it is off. An item already marked
+                stays togglable — undoing a mistaken tick is not training. */}
             <button
               onClick={() => onToggle(task)}
+              disabled={blocked && !task.doneToday}
               className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${
                 task.doneToday
                   ? "bg-ba1-ok border-ba1-ok text-white"
-                  : "border-ba1-health text-ba1-health hover:bg-ba1-health/10"
+                  : blocked
+                    ? "border-muted-foreground/30 text-muted-foreground/40 cursor-not-allowed"
+                    : "border-ba1-health text-ba1-health hover:bg-ba1-health/10"
               }`}
-              title={isPt ? "Marcar como feito hoje" : "Mark as done today"}
+              title={
+                blocked && !task.doneToday
+                  ? isPt ? "Bloqueado hoje pela sua pressão" : "Blocked today by your blood pressure"
+                  : isPt ? "Marcar como feito hoje" : "Mark as done today"
+              }
             >
               <CheckCircle2 className="h-6 w-6" />
             </button>
@@ -1170,10 +1260,11 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
 // WeekSection, but windowed on the last 7 rolling days instead of a
 // protocol-anchored calendar week (these have no startWeek/endWeek).
 
-function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
+function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo, blocked }: {
   prescriptions: any[];
   onToggleLog: (prescriptionId: string, dateStr: string) => void;
   onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
+  blocked?: boolean;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -1219,7 +1310,7 @@ function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
 
               <div>
                 <p className="text-[10px] text-muted-foreground mt-2">{isPt ? "Marque os dias que fez:" : "Mark the days you did it:"}</p>
-                <DayStrip days={days} marked={marked} onToggleDate={(dateStr) => onToggleLog(p.id, dateStr)} isPt={isPt} />
+                <DayStrip days={days} marked={marked} onToggleDate={(dateStr) => onToggleLog(p.id, dateStr)} isPt={isPt} blocked={blocked} />
               </div>
             </div>
           );

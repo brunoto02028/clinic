@@ -102,6 +102,12 @@ const publicRoutes = [
   '/api/foot-scans/session',
   '/api/webhooks',
   '/api/wearables/webhook',
+  // Withings calls this one itself, with no session and no signature of ours
+  // (activity 074, T-9). Safe behind the gate would mean never called: they
+  // verify the URL before accepting a subscription, and a redirect to /login
+  // fails that check silently. The route trusts nothing in the body — every
+  // value is re-read from Withings with our own token.
+  '/api/wearables/withings/webhook',
   '/clinics',
   '/test',
   '/preview',

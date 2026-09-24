@@ -3,7 +3,8 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { fetchPrescriptions, completeExercise } from "@/api/exercises";
+import { fetchPrescriptions, completeExercise, fetchExerciseClearance } from "@/api/exercises";
+import { ExerciseBlockCard } from "@/components/ExerciseBlockCard";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
@@ -32,6 +33,11 @@ function ExerciseDetailScreen() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
+  });
+  const { data: clearance } = useQuery({
+    queryKey: ["exercise-clearance"],
+    queryFn: fetchExerciseClearance,
+    retry: false,
   });
 
   const completeMutation = useMutation({
@@ -233,15 +239,21 @@ function ExerciseDetailScreen() {
             </Card>
           ) : null}
 
-          {/* Complete button */}
-          <Button
-            title={completeMutation.isPending
-              ? tr(lang, { en: "Recording...", pt: "Registrando..." })
-              : tr(lang, { en: "Mark as done", pt: "Marcar como concluído" })}
-            onPress={() => completeMutation.mutate()}
-            loading={completeMutation.isPending}
-            icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}
-          />
+          {/* Complete button — off while blood pressure blocks today's session
+              (activity 074, T-11), with the reason above it rather than a
+              button that simply does nothing. */}
+          {clearance?.blocked ? (
+            <ExerciseBlockCard clearance={clearance} />
+          ) : (
+            <Button
+              title={completeMutation.isPending
+                ? tr(lang, { en: "Recording...", pt: "Registrando..." })
+                : tr(lang, { en: "Mark as done", pt: "Marcar como concluído" })}
+              onPress={() => completeMutation.mutate()}
+              loading={completeMutation.isPending}
+              icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}
+            />
+          )}
 
           {/* Therapist notes */}
           {rx.notes ? (
