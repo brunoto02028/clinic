@@ -1,0 +1,252 @@
+### pages: 6
+### info: {"PDFFormatVersion":"1.3","IsAcroFormPresent":false,"IsXFAPresent":false,"Producer":"jsPDF 4.2.1","CreationDate":"D:20260923233727+01'00'"}
+### text start ###
+
+
+QA Report Clinic T6
+RELATÓRIO DO PACIENTE
+Gerado em: 23 de set. de 2026
+Qa TestPatient
+qa-t6-patient@example.com  ·  Data de nascimento: 12 de abr. de 1985
+Período: 25 de jun. de 2026 - 23 de set. de 2026 (90 dias)
+44Dias com exercício registrado (de 90 dias)90Check-ins60Leituras de pressão (12 em ou acima de 130/80)
+5Consultas3Notas clínicas45Dias com dado de wearable
+Pressão arterial
+148
+126
+104
+82
+60
+Limiar de alerta 130
+26 de jun. de 2026  ->  22 de set. de 2026
+DataLeituraPulsoMétodo
+26/06/2026, 09:30132/84 mmHg62 bpmCAMERA_PPG
+27/06/2026, 09:30113/71 mmHg63 bpmMANUAL
+29/06/2026, 09:30114/72 mmHg64 bpmMANUAL
+30/06/2026, 09:30115/73 mmHg65 bpmCAMERA_PPG
+02/07/2026, 09:30116/74 mmHg66 bpmMANUAL
+03/07/2026, 09:30137/85 mmHg67 bpmMANUAL
+05/07/2026, 09:30118/76 mmHg68 bpmCAMERA_PPG
+06/07/2026, 09:30119/70 mmHg69 bpmMANUAL
+08/07/2026, 09:30120/71 mmHg70 bpmMANUAL
+09/07/2026, 09:30112/72 mmHg71 bpmCAMERA_PPG
+11/07/2026, 09:30135/86 mmHg72 bpmMANUAL
+12/07/2026, 09:30114/74 mmHg73 bpmMANUAL
+14/07/2026, 09:30115/75 mmHg74 bpmCAMERA_PPG
+15/07/2026, 09:30116/76 mmHg75 bpmMANUAL
+17/07/2026, 09:30117/70 mmHg76 bpmMANUAL
+18/07/2026, 09:30133/87 mmHg62 bpmCAMERA_PPG
+20/07/2026, 09:30119/72 mmHg63 bpmMANUAL
+21/07/2026, 09:30120/73 mmHg64 bpmMANUAL
+23/07/2026, 09:30112/74 mmHg65 bpmCAMERA_PPG
+24/07/2026, 09:30113/75 mmHg66 bpmMANUAL
+26/07/2026, 09:30138/84 mmHg67 bpmMANUAL
+27/07/2026, 09:30115/70 mmHg68 bpmCAMERA_PPG
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 1/6
+
+DataLeituraPulsoMétodo
+29/07/2026, 09:30116/71 mmHg69 bpmMANUAL
+30/07/2026, 09:30117/72 mmHg70 bpmMANUAL
+01/08/2026, 09:30118/73 mmHg71 bpmCAMERA_PPG
+02/08/2026, 09:30136/85 mmHg72 bpmMANUAL
+04/08/2026, 09:30120/75 mmHg73 bpmMANUAL
+05/08/2026, 09:30112/76 mmHg74 bpmCAMERA_PPG
+07/08/2026, 09:30113/70 mmHg75 bpmMANUAL
+08/08/2026, 09:30114/71 mmHg76 bpmMANUAL
+10/08/2026, 09:30134/86 mmHg62 bpmCAMERA_PPG
+11/08/2026, 09:30116/73 mmHg63 bpmMANUAL
+13/08/2026, 09:30117/74 mmHg64 bpmMANUAL
+14/08/2026, 09:30118/75 mmHg65 bpmCAMERA_PPG
+16/08/2026, 09:30119/76 mmHg66 bpmMANUAL
+17/08/2026, 09:30132/87 mmHg67 bpmMANUAL
+19/08/2026, 09:30112/71 mmHg68 bpmCAMERA_PPG
+20/08/2026, 09:30113/72 mmHg69 bpmMANUAL
+22/08/2026, 09:30114/73 mmHg70 bpmMANUAL
+23/08/2026, 09:30115/74 mmHg71 bpmCAMERA_PPG
+25/08/2026, 09:30137/84 mmHg72 bpmMANUAL
+26/08/2026, 09:30117/76 mmHg73 bpmMANUAL
+28/08/2026, 09:30118/70 mmHg74 bpmCAMERA_PPG
+29/08/2026, 09:30119/71 mmHg75 bpmMANUAL
+31/08/2026, 09:30120/72 mmHg76 bpmMANUAL
+01/09/2026, 09:30135/85 mmHg62 bpmCAMERA_PPG
+03/09/2026, 09:30113/74 mmHg63 bpmMANUAL
+04/09/2026, 09:30114/75 mmHg64 bpmMANUAL
+06/09/2026, 09:30115/76 mmHg65 bpmCAMERA_PPG
+07/09/2026, 09:30116/70 mmHg66 bpmMANUAL
+09/09/2026, 09:30133/86 mmHg67 bpmMANUAL
+10/09/2026, 09:30118/72 mmHg68 bpmCAMERA_PPG
+12/09/2026, 09:30119/73 mmHg69 bpmMANUAL
+13/09/2026, 09:30120/74 mmHg70 bpmMANUAL
+15/09/2026, 09:30112/75 mmHg71 bpmCAMERA_PPG
+16/09/2026, 09:30138/87 mmHg72 bpmMANUAL
+18/09/2026, 09:30114/70 mmHg73 bpmMANUAL
+19/09/2026, 09:30115/71 mmHg74 bpmCAMERA_PPG
+21/09/2026, 09:30116/72 mmHg75 bpmMANUAL
+22/09/2026, 09:30117/73 mmHg76 bpmMANUAL
+Exercícios
+Semana deItens concluídos
+22 de jun. de 20261
+29 de jun. de 20264
+06 de jul. de 20266
+13 de jul. de 20264
+20 de jul. de 20265
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 2/6
+
+Semana deItens concluídos
+27 de jul. de 20264
+03 de ago. de 20265
+10 de ago. de 20264
+17 de ago. de 20266
+24 de ago. de 20264
+31 de ago. de 20265
+07 de set. de 20264
+14 de set. de 20265
+21 de set. de 20262
+Exercícios prescritosconcluídos
+QA Quad Set (3x12)0
+QA Heel Slide (3x12)0
+Check-ins diários
+DataDorHumorEnergiaSono
+26 de jun. de 20267/105/58/109/10
+27 de jun. de 20266/104/57/108/10
+28 de jun. de 20265/103/56/107/10
+29 de jun. de 20264/102/55/106/10
+30 de jun. de 20263/101/54/105/10
+01 de jul. de 20262/105/53/104/10
+02 de jul. de 20267/104/59/109/10
+03 de jul. de 20266/103/58/108/10
+04 de jul. de 20265/102/57/107/10
+05 de jul. de 20264/101/56/106/10
+06 de jul. de 20263/105/55/105/10
+07 de jul. de 20262/104/54/104/10
+08 de jul. de 20267/103/53/109/10
+09 de jul. de 20266/102/59/108/10
+10 de jul. de 20265/101/58/107/10
+11 de jul. de 20264/105/57/106/10
+12 de jul. de 20263/104/56/105/10
+13 de jul. de 20262/103/55/104/10
+14 de jul. de 20267/102/54/109/10
+15 de jul. de 20266/101/53/108/10
+16 de jul. de 20265/105/59/107/10
+17 de jul. de 20264/104/58/106/10
+18 de jul. de 20263/103/57/105/10
+19 de jul. de 20262/102/56/104/10
+20 de jul. de 20267/101/55/109/10
+21 de jul. de 20266/105/54/108/10
+22 de jul. de 20265/104/53/107/10
+23 de jul. de 20264/103/59/106/10
+24 de jul. de 20263/102/58/105/10
+25 de jul. de 20262/101/57/104/10
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 3/6
+
+DataDorHumorEnergiaSono
+26 de jul. de 20267/105/56/109/10
+27 de jul. de 20266/104/55/108/10
+28 de jul. de 20265/103/54/107/10
+29 de jul. de 20264/102/53/106/10
+30 de jul. de 20263/101/59/105/10
+31 de jul. de 20262/105/58/104/10
+01 de ago. de 20267/104/57/109/10
+02 de ago. de 20266/103/56/108/10
+03 de ago. de 20265/102/55/107/10
+04 de ago. de 20264/101/54/106/10
+05 de ago. de 20263/105/53/105/10
+06 de ago. de 20262/104/59/104/10
+07 de ago. de 20267/103/58/109/10
+08 de ago. de 20266/102/57/108/10
+09 de ago. de 20265/101/56/107/10
+10 de ago. de 20264/105/55/106/10
+11 de ago. de 20263/104/54/105/10
+12 de ago. de 20262/103/53/104/10
+13 de ago. de 20267/102/59/109/10
+14 de ago. de 20266/101/58/108/10
+15 de ago. de 20265/105/57/107/10
+16 de ago. de 20264/104/56/106/10
+17 de ago. de 20263/103/55/105/10
+18 de ago. de 20262/102/54/104/10
+19 de ago. de 20267/101/53/109/10
+20 de ago. de 20266/105/59/108/10
+21 de ago. de 20265/104/58/107/10
+22 de ago. de 20264/103/57/106/10
+23 de ago. de 20263/102/56/105/10
+24 de ago. de 20262/101/55/104/10
+25 de ago. de 20267/105/54/109/10
+26 de ago. de 20266/104/53/108/10
+27 de ago. de 20265/103/59/107/10
+28 de ago. de 20264/102/58/106/10
+29 de ago. de 20263/101/57/105/10
+30 de ago. de 20262/105/56/104/10
+31 de ago. de 20267/104/55/109/10
+01 de set. de 20266/103/54/108/10
+02 de set. de 20265/102/53/107/10
+03 de set. de 20264/101/59/106/10
+04 de set. de 20263/105/58/105/10
+05 de set. de 20262/104/57/104/10
+06 de set. de 20267/103/56/109/10
+07 de set. de 20266/102/55/108/10
+08 de set. de 20265/101/54/107/10
+09 de set. de 20264/105/53/106/10
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 4/6
+
+DataDorHumorEnergiaSono
+10 de set. de 20263/104/59/105/10
+11 de set. de 20262/103/58/104/10
+12 de set. de 20267/102/57/109/10
+13 de set. de 20266/101/56/108/10
+14 de set. de 20265/105/55/107/10
+15 de set. de 20264/104/54/106/10
+16 de set. de 20263/103/53/105/10
+17 de set. de 20262/102/59/104/10
+18 de set. de 20267/101/58/109/10
+19 de set. de 20266/105/57/108/10
+20 de set. de 20265/104/56/107/10
+21 de set. de 20264/103/55/106/10
+22 de set. de 20263/102/54/105/10
+23 de set. de 20262/101/53/104/10
+Medidas de evolução
+DataEVAFAAM AVDFAAM EsporteFunção
+05 de jul. de 20268503040
+30 de jul. de 20266584252
+24 de ago. de 20264665464
+18 de set. de 20262746676
+Consultas
+DataTipoStatusTerapeuta
+10/07/2026, 11:00PhysiotherapyCOMPLETEDQa TherapistA
+25/07/2026, 11:00Sports MassageCOMPLETEDQa TherapistA
+09/08/2026, 11:00PhysiotherapyCOMPLETEDQa TherapistA
+03/09/2026, 11:00Sports MassageCOMPLETEDQa TherapistA
+20/09/2026, 11:00PhysiotherapyCOMPLETEDQa TherapistA
+Notas clínicas
+09 de ago. de 2026  -  Qa TherapistA
+S: QA subjective 3: patient reports gradual improvement.
+O: QA objective 3: knee flexion 120 degrees, no effusion.
+A: QA assessment 3: progressing as expected.
+P: QA plan 3: continue loading programme.
+25 de jul. de 2026  -  Qa TherapistA
+S: QA subjective 2: patient reports gradual improvement.
+O: QA objective 2: knee flexion 120 degrees, no effusion.
+A: QA assessment 2: progressing as expected.
+P: QA plan 2: continue loading programme.
+10 de jul. de 2026  -  Qa TherapistA
+S: QA subjective 1: patient reports gradual improvement.
+O: QA objective 1: knee flexion 120 degrees, no effusion.
+A: QA assessment 1: progressing as expected.
+P: QA plan 1: continue loading programme.
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 5/6
+
+Protocolos de tratamento
+Protocolos de tratamentoitensconcluídos
+QA Knee Rehabilitation Protocol30
+Triagem
+Queixa principal: Right knee pain after running
+Nota da dor: 6/10
+Sinais de alerta: Dor noturna, Tontura / equilíbrio
+Dados de wearable
+Passos371.260
+Sono médio7.1 h
+FC de repouso média57 bpm
+VFC média53 ms
+SpO2 média96%
+FontesGARMIN
+Este relatório relata o que foi registrado. Não tira conclusão nem faz diagnóstico.Página 6/6
+### text end ###

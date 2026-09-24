@@ -3,7 +3,8 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
-import { fetchPrescriptions } from "@/api/exercises";
+import { fetchPrescriptions, fetchExerciseClearance } from "@/api/exercises";
+import { ExerciseBlockCard } from "@/components/ExerciseBlockCard";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
@@ -21,6 +22,13 @@ function ExercisesScreen() {
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
+  });
+  // A failed check is not a block: the patient whose pressure nobody measured
+  // must not be stopped by our own outage. Only a real reading blocks.
+  const { data: clearance } = useQuery({
+    queryKey: ["exercise-clearance"],
+    queryFn: fetchExerciseClearance,
+    retry: false,
   });
 
   return (
@@ -42,6 +50,12 @@ function ExercisesScreen() {
           </View>
         )}
       </View>
+
+      {clearance?.blocked ? (
+        <View style={{ marginBottom: 12 }}>
+          <ExerciseBlockCard clearance={clearance} />
+        </View>
+      ) : null}
 
       {isLoading ? (
         <Spinner center />

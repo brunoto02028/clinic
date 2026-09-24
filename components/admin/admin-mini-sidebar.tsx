@@ -42,6 +42,10 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
   const [pendingPatients, setPendingPatients] = useState(0);
+  // Readings from the clinic's cuff nobody has claimed yet (activity 074,
+  // T-15). They are in no patient's record until someone assigns them, so the
+  // count belongs where it is seen without looking for it.
+  const [unassignedMeasurements, setUnassignedMeasurements] = useState(0);
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
   const { data: session } = useSession();
@@ -73,6 +77,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (data?.pendingPatients !== undefined) setPendingPatients(data.pendingPatients);
+          if (data?.unassignedMeasurements !== undefined) setUnassignedMeasurements(data.unassignedMeasurements);
         })
         .catch(() => {});
     };
@@ -248,9 +253,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
                 <span className={labelClass}>{relabel(isPt ? section.labelPt : section.label)}</span>
-                {section.key === "patients" && pendingPatients > 0 && (
+                {section.key === "patients" && pendingPatients + unassignedMeasurements > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 flex-shrink-0">
-                    {pendingPatients > 9 ? "9+" : pendingPatients}
+                    {pendingPatients + unassignedMeasurements > 9 ? "9+" : pendingPatients + unassignedMeasurements}
                   </span>
                 )}
               </button>

@@ -92,6 +92,107 @@ indistinguível de falha.
 | 7.4 | UI | Nome do arquivo | Identifica paciente e período |
 | 7.5 | API | Verificar que nada foi enviado | Nenhum e-mail, nenhuma `OutboundMessage` criada |
 
+## T-8 — Sync Withings completo
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 8.1 | API | Conta com SpO2, HRV e temperatura | Os três chegam ao banco |
+| 8.2 | API | Conta sem nenhum deles | O resto sincroniza, sem erro |
+| 8.3 | API | Métrica ausente | Aparece como ausente, nunca como zero |
+| 8.4 | API | Token expirado no meio do sync | Renova e continua (o refresh gira a cada uso) |
+
+## T-9 — Webhook da Withings
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 9.1 | API | Notificação válida de conexão conhecida | A medida entra em segundos |
+| 9.2 | API | `userid` desconhecido | 200 `{"status":0}` e nada gravado |
+| 9.3 | API | `GET`/`HEAD` na URL do webhook | 200 (a Withings verifica antes de inscrever) |
+| 9.4 | API | A mesma notificação duas vezes | Uma linha só |
+| 9.5 | API | Medida que o sync agendado também traz | Uma linha só (dedup por `grpid`) |
+| 9.6 | API | Linha antiga sem `grpid`, mesmo horário | Reconhecida e completada, não duplicada |
+| 9.7 | API | Conexão desconectada | 200 e nada gravado |
+| 9.8 | API | Token inválido na conexão notificada | 200, erro no log, servidor de pé |
+| 9.9 | API | Rota fora do gate de sessão | Sem 307 para /login |
+
+## T-10 — Desconectar
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 10.1 | API | Desconectar uma conexão Withings | Tokens **apagados** do banco, não só status |
+| 10.2 | API | Inscrições de notificação | Canceladas; nada chega depois |
+| 10.3 | API | Falha ao cancelar inscrição | Desconecta assim mesmo, com log |
+| 10.4 | UI | Tela do paciente após desconectar | Diz o que foi feito e o que só ele pode fazer, com o link |
+| 10.5 | API | Histórico já sincronizado | Continua no prontuário |
+
+## T-11 — Bloqueio pré-exercício
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 11.1 | API | 205/112 há 10 min | `BLOCKED`; alerta à clínica |
+| 11.2 | API | A mesma leitura de 3 h atrás | `NO_RECENT_READING`, não bloqueia |
+| 11.3 | API | 150/95 recente | `CLEAR` |
+| 11.4 | API | Exatamente 200/110 | Não bloqueia ("acima de" é acima) |
+| 11.5 | API | 170/105 (bloqueia treino, não é crise) | Clínica avisada, **paciente não** |
+| 11.6 | UI | Tela de treino bloqueada (web e app) | Banner com valor, hora e orientação; marcar desabilitado |
+| 11.7 | UI | Item já marcado com bloqueio ativo | Continua desmarcável |
+| 11.8 | UI | `/admin/automation` | Os quatro limites editáveis; 600/400 recusado nos dois idiomas |
+| 11.9 | UI | Preview da regra de exercício | Fala de leitura, não de "missing activities" |
+| 11.10 | API | Editar uma regra de PA | Não altera a outra |
+
+## T-12 — Planos
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 12.1 | UI | Paciente no Essencial | Não vê pressão, no app nem na web |
+| 12.2 | UI | Upgrade | Libera sem novo login |
+| 12.3 | UI | Downgrade | Esconde, não apaga |
+| 12.4 | UI | Override do admin | Manda mais que o plano |
+
+## T-13 — Aviso de não emergência
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 13.1 | UI | Telas de dispositivos e de pressão | O aviso aparece |
+| 13.2 | API | Rodapé de alerta (e-mail e push) | O aviso vai junto |
+| 13.3 | UI | Primeiro aparelho sem aceite | Não conecta |
+| 13.4 | API | Aceite registrado | `ConsentLog` com data e versão do texto |
+| 13.5 | UI | Inglês e português | Bilíngue, inglês primeiro, sem "Rehab" |
+
+## T-14 — Dispositivo da clínica (atribuição)
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 14.1 | API | Sessão aberta e medida dentro da janela | Entra no prontuário do paciente, `method=CLINIC_DEVICE`, `recordedById` = quem abriu |
+| 14.2 | API | Medida 10 min depois de expirar | Vai para `UnassignedMeasurement`; nenhum prontuário tocado |
+| 14.3 | API | Duas sessões cuja janela contém a medida | Vai para a caixa de entrada, não para um palpite |
+| 14.4 | API | Abrir segunda sessão no mesmo aparelho | A primeira é fechada, com `closedById` |
+| 14.5 | API | Mesma medida por webhook e por sync | Uma linha só |
+| 14.6 | API | Medida de aparelho da clínica A com sessão aberta na clínica B | Não atribui; fica não atribuída na clínica A |
+| 14.7 | API | Horário da medida anterior ao `openedAt` | Não atribui (a janela é fechada nos dois lados) |
+| 14.8 | API | `AuditLog` após abrir e após atribuir | Duas entradas, com paciente, leitura e autor |
+| 14.9 | API | Abrir sessão como staff de outra clínica | 403/404 |
+| 14.10 | API | Medida com o mesmo `grpid` por webhook e por sync | Uma linha (dedup por `withingsMeasureId`) |
+| 14.11 | API | Medida 20s antes do `openedAt` | Atribui (a folga de 30s da spec) |
+| 14.12 | API | Conectar conta Withings já ligada a outro paciente | Recusado, com mensagem clara |
+| 14.13 | API | Paciente com aparelho próprio mede em casa | `PATIENT_DEVICE` / `HOME`, como hoje |
+| 14.14 | API | Sessão aberta e não usada, consultada depois de 3 min | Status `EXPIRED`, sem cron
+
+## T-15 — Botão e caixa de entrada
+
+| # | Tipo | Cenário | Esperado |
+|---|---|---|---|
+| 15.1 | UI | Clínica sem aparelho configurado | O botão não aparece |
+| 15.2 | UI | Abrir sessão e medir | A leitura aparece na ficha sem recarregar |
+| 15.3 | UI | Deixar expirar | A tela diz que expirou e oferece abrir de novo |
+| 15.4 | UI | Atribuir da caixa de entrada | Vai para o paciente escolhido; some da caixa; consta no `AuditLog` |
+| 15.5 | UI | Descartar sem motivo | Recusado; com motivo, some sem entrar em prontuário |
+| 15.6 | UI | Badge de contagem | Bate com o número de não atribuídas da clínica |
+| 15.7 | UI | Inglês e português | Bilíngue, inglês primeiro |
+| 15.8 | UI | Sair da tela com a sessão aberta | O polling para (conferir na aba de rede) |
+| 15.9 | UI | Histórico do paciente (admin, web e app) | Cada leitura mostra origem e contexto |
+| 15.10 | API | Paciente logado chamando as rotas de staff | Recusado, sem dado no corpo |
+
 ---
 
 ## Regressão obrigatória ao final

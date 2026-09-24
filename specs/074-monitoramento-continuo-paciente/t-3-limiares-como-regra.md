@@ -1,6 +1,6 @@
 # T-3: Limiares de pressão como `AutomationRule`
 
-**Status:** pendente
+**Status:** ✅ concluída
 **Depende de:** nenhuma
 
 ## Objetivo

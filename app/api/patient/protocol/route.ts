@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
+import { isTrainingBlockedToday, trainingBlockedResponse } from "@/lib/exercise-gate";
 
 export const dynamic = "force-dynamic";
 
@@ -171,6 +172,17 @@ export async function POST(req: NextRequest) {
     const existing = await (prisma as any).exerciseCompletionLog.findUnique({
       where: { protocolItemId_patientId_completedDate: { protocolItemId: itemId, patientId: effectiveUser.userId, completedDate } },
     });
+
+    // Blood pressure over the clinic's training limit stops today's session
+    // (activity 074, T-11). Checked here as well as on screen, because QA
+    // ticked the exercise on the day strip with the block banner still up.
+    // Unmarking stays allowed: undoing a tick is not training.
+    if (!existing) {
+      const gate = await isTrainingBlockedToday(effectiveUser.userId, dateStr);
+      if (gate.blocked) {
+        return NextResponse.json(trainingBlockedResponse(gate), { status: 409 });
+      }
+    }
 
     if (existing) {
       await (prisma as any).exerciseCompletionLog.delete({ where: { id: existing.id } });

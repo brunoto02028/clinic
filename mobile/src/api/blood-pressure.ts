@@ -8,7 +8,9 @@ import { apiFetch } from "./client";
  * A patient who uses the app rather than the browser simply could not record a
  * reading, which is the one number this clinic wants a daily series of.
  */
-export type BloodPressureMethod = "MANUAL" | "CAMERA_PPG";
+export type BloodPressureMethod = "MANUAL" | "CAMERA_PPG" | "CLINIC_DEVICE";
+export type BloodPressureSource = "PATIENT_DEVICE" | "CLINIC_DEVICE" | "MANUAL";
+export type MeasurementContext = "PRE_SESSION" | "POST_SESSION" | "HOME" | "OTHER";
 
 export interface BloodPressureReading {
   id: string;
@@ -20,6 +22,9 @@ export interface BloodPressureReading {
   measuredAt: string;
   /** Set when a clinician logged it; null means the patient measured it. */
   recordedById: string | null;
+  /** Where it came from and what it was for (activity 074, T-14). */
+  source?: BloodPressureSource | null;
+  context?: MeasurementContext | null;
 }
 
 /** No catch: an empty list means no readings, never a failed request. */

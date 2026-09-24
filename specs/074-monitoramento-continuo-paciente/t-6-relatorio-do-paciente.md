@@ -1,6 +1,6 @@
 # T-6: Relatório consolidado do paciente (tela)
 
-**Status:** pendente
+**Status:** ✅ concluída
 **Depende de:** nenhuma
 
 ## Objetivo

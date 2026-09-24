@@ -43,7 +43,9 @@ interface BPReading {
   systolic: number;
   diastolic: number;
   heartRate: number | null;
-  method: "MANUAL" | "CAMERA_PPG";
+  method: "MANUAL" | "CAMERA_PPG" | "CLINIC_DEVICE";
+  source?: "PATIENT_DEVICE" | "CLINIC_DEVICE" | "MANUAL" | null;
+  context?: "PRE_SESSION" | "POST_SESSION" | "HOME" | "OTHER" | null;
   notes: string | null;
   confidence: number | null;
   ppgSignal?: any;
@@ -1849,9 +1851,25 @@ export default function BloodPressurePage() {
                                   {r.ppgSignal.rhythm === "POSSIBLE_AFIB" ? "AFib?" : r.ppgSignal.rhythm === "TACHYCARDIA" ? "Tachy" : r.ppgSignal.rhythm === "BRADYCARDIA" ? "Brady" : "Irreg"}
                                 </Badge>
                               )}
+                              {/* Readings taken on the clinic's cuff sit in the
+                                  same list as the ones taken at home, so the
+                                  patient is told which is which. */}
                               <Badge variant="outline" className="text-[8px]">
-                                {r.method === "CAMERA_PPG" ? "PPG" : "Manual"}
+                                {r.source === "CLINIC_DEVICE"
+                                  ? (locale === "pt-BR" ? "Na clínica" : "At the clinic")
+                                  : r.source === "PATIENT_DEVICE"
+                                    ? (locale === "pt-BR" ? "Aparelho" : "Device")
+                                    : r.method === "CAMERA_PPG" ? "PPG" : "Manual"}
                               </Badge>
+                              {r.source === "CLINIC_DEVICE" && r.context && r.context !== "OTHER" && (
+                                <Badge variant="outline" className="text-[8px] text-muted-foreground">
+                                  {r.context === "PRE_SESSION"
+                                    ? (locale === "pt-BR" ? "antes" : "before")
+                                    : r.context === "POST_SESSION"
+                                      ? (locale === "pt-BR" ? "depois" : "after")
+                                      : (locale === "pt-BR" ? "em casa" : "at home")}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-0.5">

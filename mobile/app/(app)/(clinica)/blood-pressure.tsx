@@ -217,10 +217,20 @@ export default function BloodPressureScreen() {
                       </Text>
                       <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
                         {formatDate(r.measuredAt, lang)}
-                        {/* Who took it matters to the patient reading the list. */}
-                        {r.recordedById
+                        {/* Where it was taken, and — when it was the clinic's
+                            own cuff — whether it was before or after the
+                            session. Home and clinic readings share this list,
+                            so the patient is told which is which. */}
+                        {r.source === "CLINIC_DEVICE" || r.recordedById
                           ? ` · ${tr(lang, { en: "taken at the clinic", pt: "medida na clínica" })}`
-                          : ""}
+                          : r.source === "PATIENT_DEVICE"
+                            ? ` · ${tr(lang, { en: "from your device", pt: "do seu aparelho" })}`
+                            : ""}
+                        {r.source === "CLINIC_DEVICE" && r.context === "PRE_SESSION"
+                          ? ` (${tr(lang, { en: "before the session", pt: "antes da sessão" })})`
+                          : r.source === "CLINIC_DEVICE" && r.context === "POST_SESSION"
+                            ? ` (${tr(lang, { en: "after the session", pt: "depois da sessão" })})`
+                            : ""}
                       </Text>
                     </View>
                     <View style={{ backgroundColor: band.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>

@@ -1,6 +1,6 @@
 # T-7: Exportação do relatório em PDF
 
-**Status:** pendente
+**Status:** ✅ concluída
 **Depende de:** T-6
 
 ## Objetivo
