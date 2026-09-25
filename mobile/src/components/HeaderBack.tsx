@@ -1,31 +1,54 @@
 import { Pressable } from "react-native";
+import { useNavigation, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { goBackOr } from "@/lib/go-back";
+import { PATIENT_HOME } from "@/lib/go-back";
 
 /**
- * O botão de voltar do app, no lugar do nativo.
+ * O botão de voltar do app.
  *
- * O nativo foi diagnosticado errado três vezes em 24/09/2026 — primeiro o
- * rótulo ("(tabs)"), depois a propriedade certa para escondê-lo, e no fim ele
- * aparecia e **não navegava**. Cada rodada custou um build ou um update e
- * terminou com o Bruno preso na mesma tela.
+ * Este botão foi consertado errado três vezes em 24/09/2026 — o rótulo, depois
+ * a propriedade que o esconde, depois um botão próprio. O terceiro falhou por
+ * um motivo que eu deveria ter visto: ele chamava `router.back()` por dentro.
+ * Se `router.back()` é a coisa que não funciona, envolvê-la num botão novo não
+ * muda nada; troca a embalagem, não o conteúdo.
  *
- * O problema de fundo é que o comportamento do botão nativo não é nosso: quem
- * decide se ele responde, e para onde, é o navegador. Quando não responde, não
- * há erro, não há log, não há nada — só um toque que não faz nada.
+ * A diferença que importa, e que eu não estava usando: **`router.back()` age no
+ * roteador raiz; `navigation.goBack()` age no navegador que é dono desta
+ * tela.** Numa árvore com Stack dentro de Stack dentro de abas, esses dois não
+ * apontam para o mesmo lugar. Esta tela vive no Stack do módulo, e é a esse
+ * Stack que o pedido precisa chegar.
  *
- * Este é nosso. Chama `goBackOr()`, que volta quando há para onde e vai para a
- * casa do paciente quando não há. **O toque sempre faz alguma coisa** — que é
- * a única garantia que importa para quem está com dor segurando o telefone.
+ * A ordem aqui é deliberada, do mais específico ao mais garantido:
  *
- * `hitSlop` de 12: o alvo desenhado tem 40pt e o mínimo da Apple é 44.
+ * 1. `navigation.goBack()` — o navegador desta tela, se ele tiver para onde;
+ * 2. `router.back()` — o roteador raiz, caso a pilha esteja acima;
+ * 3. `router.replace(casa)` — que não depende de histórico nenhum.
+ *
+ * O terceiro passo é o que garante que **o toque sempre faz alguma coisa**.
+ * Nenhum dos três pode falhar em silêncio, que era o problema original: um
+ * botão que não responde, sem erro, sem log, sem nada.
  */
 export function HeaderBack({ tint = "#20242D" }: { tint?: string }) {
+  const navigation = useNavigation();
+
+  const voltar = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(PATIENT_HOME as never);
+  };
+
   return (
     <Pressable
-      onPress={() => goBackOr()}
+      onPress={voltar}
       accessibilityRole="button"
       accessibilityLabel="Back"
+      // O alvo desenhado tem 40pt e o mínimo da Apple é 44.
       hitSlop={12}
       testID="header-back"
       style={({ pressed }) => ({
