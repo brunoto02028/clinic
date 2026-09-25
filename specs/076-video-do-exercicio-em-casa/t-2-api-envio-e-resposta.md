@@ -1,6 +1,6 @@
 # T-2: API — paciente envia, clínica lê e responde
 
-**Status:** pendente
+**Status:** implementada, aguarda QA
 **Depende de:** T-1
 
 ## Objetivo
