@@ -5,10 +5,21 @@ import { getClinicWaiting, waitingEmailBlock } from "@/lib/clinic-waiting";
 import { buildDailyAdherenceEmail, REPORT_ACTION } from "@/lib/daily-adherence-email";
 import { sendEmail } from "@/lib/email";
 import { logAudit } from "@/lib/system-logger";
+import { getAdminNotificationEmail } from "@/lib/admin-notify-email";
 
 export const dynamic = "force-dynamic";
 
-const REPORT_TO = "admin@bpr.clinic";
+/**
+ * Para onde o relatório vai — **por tenant**, nunca um endereço fixo.
+ *
+ * Era `const REPORT_TO = "admin@bpr.clinic"`, e o laço abaixo percorre todas as
+ * clínicas ativas: o relatório do estúdio do Emanuel, com o nome dos alunos
+ * dele no corpo, caía na caixa da BPR. São produtos diferentes dentro do mesmo
+ * sistema, e um não lê a caixa do outro.
+ *
+ * `getAdminNotificationEmail` já resolve isso e recusa, por desenho, devolver o
+ * endereço do tenant padrão para um tenant que não seja ele.
+ */
 
 // Ação própria para a falha, e de propósito diferente de REPORT_ACTION: o
 // dedupe procura REPORT_ACTION, então um dia que falhou continua elegível na
@@ -19,7 +30,7 @@ const REPORT_FAILED_ACTION = "DAILY_ADHERENCE_REPORT_FAILED";
 // specs/049-relatorio-adesao-diaria): e-mails the clinic a completed/missing
 // summary. Split out from /api/cron/daily-adherence (17/09/2026) so this can
 // stay on an automatic schedule while patient-facing reminders stay
-// manual-only — this route never touches a patient, only sends to REPORT_TO.
+// manual-only — this route never touches a patient, only the clinic's own inbox.
 // Call via cron: curl -X POST https://bpr.clinic/api/cron/daily-report?key=SECRET
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
@@ -35,7 +46,12 @@ export async function POST(req: NextRequest) {
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
 
-  const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  // Só clínicas. Este é o relatório de adesão clínica — um estúdio de personal
+  // é outro produto, com outra rotina, e nada dele passa por aqui.
+  const clinics = await prisma.clinic.findMany({
+    where: { isActive: true, type: "CLINIC" },
+    select: { id: true, name: true },
+  });
 
   const results: { clinicId: string; completed: number; missing: number; waiting: number; reportSent: boolean }[] = [];
 
@@ -68,7 +84,8 @@ export async function POST(req: NextRequest) {
       // `success:false`. Registrar isso como "e-mailed" era pior que perder o
       // e-mail: o dedupe acima lê exatamente essa linha, então o dia perdido
       // nunca seria retentado e nada diria que faltou.
-      const enviado = await sendEmail({ to: REPORT_TO, subject, html });
+      const destino = await getAdminNotificationEmail(clinic.id);
+      const enviado = await sendEmail({ to: destino, subject, html });
       await logAudit({
         userId: "system",
         userEmail: "",
