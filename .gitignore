@@ -53,3 +53,6 @@ Skills/clinical-evidence-report/clinic-resources.json
 
 # QA scratch — proofs, logs, payloads and schema snapshots, never shipped
 .qa-tmp/
+
+# Build dirs que os agentes de QA criam para nao brigar pelo .next
+.next-*

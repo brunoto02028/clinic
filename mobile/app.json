@@ -21,8 +21,8 @@
       "bundleIdentifier": "com.bpr.clinic",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic.",
-        "NSPhotoLibraryUsageDescription": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
+        "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document or record a short video of an exercise for your therapist to review.",
+        "NSPhotoLibraryUsageDescription": "BPR needs access to your photos so you can attach a document or report to your record, or send your therapist a video of an exercise you did at home.",
         "NSPhotoLibraryAddUsageDescription": "BPR saves a copy of documents you download from your clinical record."
       }
     },
@@ -58,8 +58,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
-          "cameraPermission": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic."
+          "photosPermission": "BPR needs access to your photos so you can attach a document or report to your record, or send your therapist a video of an exercise you did at home.",
+          "cameraPermission": "BPR uses the camera so you can photograph a document or record a short video of an exercise for your therapist to review.",
+          "microphonePermission": "BPR uses the microphone only while you record a video of your exercise, so your therapist hears what you say about it. Nothing is recorded otherwise."
         }
       ],
       "expo-video"
