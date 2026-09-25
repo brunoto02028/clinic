@@ -41,7 +41,7 @@ const RULES = [
     actionData: {
       priority: 'MEDIUM',
       titleEn: '{missingItems} activities missed today',
-      titlePt: '{missingItems} atividades nao feitas hoje',
+      titlePt: '{missingItems} atividades não feitas hoje',
     },
     channels: ['INTERNAL'],
     active: true,
@@ -60,7 +60,7 @@ const RULES = [
     actionData: {
       priority: 'HIGH',
       titleEn: 'Blood pressure {systolic}/{diastolic} mmHg',
-      titlePt: 'Pressao arterial {systolic}/{diastolic} mmHg',
+      titlePt: 'Pressão arterial {systolic}/{diastolic} mmHg',
     },
     channels: ['INTERNAL'],
     active: true,
@@ -79,7 +79,7 @@ const RULES = [
     actionData: {
       priority: 'HIGH',
       titleEn: 'Session blocked — blood pressure {systolic}/{diastolic} mmHg',
-      titlePt: 'Sessao bloqueada — pressao {systolic}/{diastolic} mmHg',
+      titlePt: 'Sessão bloqueada — pressão {systolic}/{diastolic} mmHg',
     },
     channels: ['INTERNAL'],
     active: true,

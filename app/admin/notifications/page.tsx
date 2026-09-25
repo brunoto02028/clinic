@@ -47,6 +47,11 @@ export default function NotificationsPage() {
   // Composer state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // A segunda versão. Inglês é a língua primária: é o que se escreve primeiro e
+  // o que todo paciente recebe quando isto fica vazio. Quem tem pt-BR no perfil
+  // recebe esta.
+  const [titlePt, setTitlePt] = useState("");
+  const [contentPt, setContentPt] = useState("");
   const [audience, setAudience] = useState<"all" | "selected">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -147,6 +152,8 @@ export default function NotificationsPage() {
           content,
           audience,
           patientIds: audience === "selected" ? Array.from(selectedIds) : [],
+          titlePt: titlePt.trim() || null,
+          contentPt: contentPt.trim() || null,
           scheduledFor: schedule && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
           pushNotify,
         }),
@@ -162,6 +169,8 @@ export default function NotificationsPage() {
       });
       setTitle("");
       setContent("");
+      setTitlePt("");
+      setContentPt("");
       setSelectedIds(new Set());
       setSchedule(false);
       setScheduledFor("");
@@ -214,17 +223,42 @@ export default function NotificationsPage() {
           <CardTitle className="text-sm">New Notification</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input
-            placeholder="Title (e.g. Schedule change next week)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Textarea
-            placeholder="Write the notification…"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[100px]"
-          />
+          <div className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              English
+            </span>
+            <Input
+              placeholder="Title (e.g. Schedule change next week)"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setPreview(null); }}
+            />
+            <Textarea
+              placeholder="Write the notification…"
+              value={content}
+              onChange={(e) => { setContent(e.target.value); setPreview(null); }}
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* Opcional de propósito. Obrigar as duas versões toda vez significa,
+              na prática, não escrever — e uma mensagem em inglês que a pessoa
+              talvez leia é melhor que silêncio. */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Português <span className="font-normal normal-case">— optional; pt-BR patients get this one</span>
+            </span>
+            <Input
+              placeholder="Título (ex.: Mudança de horário na próxima semana)"
+              value={titlePt}
+              onChange={(e) => { setTitlePt(e.target.value); setPreview(null); }}
+            />
+            <Textarea
+              placeholder="Escreva o aviso…"
+              value={contentPt}
+              onChange={(e) => { setContentPt(e.target.value); setPreview(null); }}
+              className="min-h-[100px]"
+            />
+          </div>
 
           {/* Audience selector */}
           <div className="flex items-center gap-2">
@@ -355,8 +389,24 @@ export default function NotificationsPage() {
             <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
               <p className="text-xs font-medium text-muted-foreground">This is what goes out:</p>
               <div className="rounded-lg border border-border bg-background p-3">
-                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">English</p>
+                <p className="text-sm font-semibold mt-1">{title}</p>
                 <p className="text-sm whitespace-pre-wrap mt-1">{content}</p>
+              </div>
+              {/* As duas versões na prévia: é aqui que se percebe que o
+                  português ficou para trás depois de uma edição no inglês. */}
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Português</p>
+                {contentPt.trim() ? (
+                  <>
+                    <p className="text-sm font-semibold mt-1">{titlePt || title}</p>
+                    <p className="text-sm whitespace-pre-wrap mt-1">{contentPt}</p>
+                  </>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground mt-1">
+                    Not written — pt-BR patients will get the English version.
+                  </p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 In the app for <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
