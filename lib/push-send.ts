@@ -95,9 +95,14 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
 
   // O mesmo portão que segura e-mail em QA. Sem ele, um teste manda notificação
   // para o celular de gente de verdade — e push não tem desfazer.
-  if (!outboundAllowed(userIds.join(","))) {
+  // `outboundAllowed` compara item a item; passar a string juntada comparava
+  // contra "id1,id2,id3" e nenhum paciente de teste podia entrar na allowlist
+  // num envio com mais de um destinatário.
+  if (!outboundAllowed(userIds)) {
     logSunk("push", userIds.join(","), payload.title);
-    return { sent: aparelhos.length, failed: 0, deactivated: 0 };
+    // `sent: 0` porque nada saiu. Dizer "3 enviados" com zero chamadas de rede
+    // faria o painel prometer o que não aconteceu.
+    return { sent: 0, failed: 0, deactivated: 0, error: "outbound_blocked" };
   }
 
   const resultado = vazio();
