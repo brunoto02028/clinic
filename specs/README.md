@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **076**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **077**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > Existem **duas pastas `074-…`** (`074-cadastro-paciente-no-admin` e
 > `074-monitoramento-continuo-paciente`) — colisão de numeração entre
@@ -98,7 +98,8 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [062](062-guia-permissoes-padrao-idioma-lembretes/) | Guia da consulta domiciliar, permissões padrão e idioma dos lembretes | ✅ |
 | [063](063-historico-evidencia-checkin-semanal/) | Histórico de relatórios de evidência clínica + check-in semanal de dor/função (passivo) | ✅ |
 | [064](064-gravacao-robusta-consultas-diarizacao/) | Gravação robusta de consultas ao vivo (multi-hora) com distinção de voz (diarização, AssemblyAI) | ⏸ |
-| [074](074-cadastro-paciente-no-admin/) | Cadastro do paciente visível/editável no admin | 🟡 plano em aprovação |
+| [074](074-cadastro-paciente-no-admin/) | Cadastro do paciente visível/editável no admin | ✅ |
+| [075](075-miniaturas-prescricao-video/) | Miniaturas dos vídeos ao prescrever exercícios pro paciente | 🟡 plano em aprovação |
 
 ## App mobile
 

@@ -1,8 +1,8 @@
 "use client";
 
 // Lists exercises prescribed to this patient — view, edit sets/reps/frequency, and remove.
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Dumbbell, Play, Pencil, Trash2, Save, X, FileVideo, FolderPlus, Folder } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Loader2, Dumbbell, Play, Pencil, Trash2, Save, X, FileVideo, FolderPlus, Folder, LayoutGrid, ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,43 @@ interface FolderNode {
   totalExerciseCount?: number;
 }
 
+/** What the thumbnail grid needs from a folder's videos (activity 075). */
+interface FolderVideo {
+  id: string;
+  name: string;
+  thumbnailUrl: string | null;
+  defaultSets: number | null;
+  defaultReps: number | null;
+  defaultHoldSec: number | null;
+  defaultRestSec: number | null;
+}
+
+/**
+ * A category that holds exactly one folder of the same name is the same
+ * shelf listed twice — that is what put "Advanced Core / Advanced Core"
+ * one under the other in the picker. Collapse those into a single row.
+ *
+ * The row that survives is the **category**, not the child: a category can
+ * also hold videos of its own (deleting a category promotes its folders and
+ * they keep their videos — see the exercise-folders DELETE), and a row
+ * pointing at the child would leave those with no way in, counted but
+ * unreachable. The category id loses nothing, because both asking for a
+ * folder's videos and prescribing one already reach its children.
+ *
+ * Categories with several folders, or with a folder named differently, are
+ * left exactly as they are — nothing is ever hidden from this list.
+ */
+function collapseMirroredCategory(category: FolderNode): { row: FolderNode; children: FolderNode[] } {
+  const children = category.children ?? [];
+  const onlyChild = children.length === 1 ? children[0] : null;
+  const mirrors =
+    onlyChild && onlyChild.name.trim().toLowerCase() === category.name.trim().toLowerCase();
+  if (mirrors) {
+    return { row: category, children: [] };
+  }
+  return { row: category, children };
+}
+
 export default function PatientExercisesTab({ patientId }: { patientId: string }) {
   const { toast } = useToast();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -66,6 +103,16 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
   const [folderFrequency, setFolderFrequency] = useState("");
   const [folderNotes, setFolderNotes] = useState("");
   const [prescribing, setPrescribing] = useState(false);
+
+  // Second view of the same dialog: the videos inside one folder, as
+  // thumbnails, to prescribe a few instead of the whole shelf (activity
+  // 075). `browsing` being set is what switches the dialog over.
+  const [browsing, setBrowsing] = useState<{ id: string; name: string } | null>(null);
+  const [videos, setVideos] = useState<FolderVideo[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [videosError, setVideosError] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const browsingRef = useRef<string | null>(null);
 
   const fetchPrescriptions = useCallback(async () => {
     setLoading(true);
@@ -89,6 +136,12 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     setChosenFolder(null);
     setFolderFrequency("");
     setFolderNotes("");
+    setBrowsing(null);
+    setPicked([]);
+    setVideos([]);
+    setVideosError("");
+    setLoadingVideos(false);
+    browsingRef.current = null;
     if (tree.length > 0) return;
     setLoadingTree(true);
     try {
@@ -100,6 +153,16 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     } finally {
       setLoadingTree(false);
     }
+  };
+
+  // Prescribing the same folder twice is a normal thing to do, and silence
+  // about the skipped ones reads as a bug — so both paths (whole folder and
+  // hand-picked videos) report the same three numbers.
+  const reportPrescribed = (label: string, data: any) => {
+    const parts = [`${data.count} exercise${data.count === 1 ? "" : "s"} prescribed`];
+    if (data.restored > 0) parts.push(`${data.restored} back from an archived plan`);
+    if (data.skipped > 0) parts.push(`${data.skipped} already prescribed`);
+    toast({ description: `${label}: ${parts.join(", ")}.` });
   };
 
   const prescribeFolder = async () => {
@@ -119,17 +182,75 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to prescribe");
 
-      // Say plainly what happened: prescribing the same folder twice is a
-      // normal thing to do, and silence about the skipped ones reads as a bug.
-      const parts = [`${data.count} exercise${data.count === 1 ? "" : "s"} prescribed`];
-      if (data.restored > 0) parts.push(`${data.restored} back from an archived plan`);
-      if (data.skipped > 0) parts.push(`${data.skipped} already prescribed`);
-      toast({ description: `${chosenFolder.name}: ${parts.join(", ")}.` });
-
+      reportPrescribed(chosenFolder.name, data);
       setPickerOpen(false);
       fetchPrescriptions();
     } catch (err: any) {
       toast({ description: err.message || "Failed to prescribe folder.", variant: "destructive" });
+    } finally {
+      setPrescribing(false);
+    }
+  };
+
+  const browseFolder = async (folder: { id: string; name: string }) => {
+    setBrowsing(folder);
+    setPicked([]);
+    setVideos([]);
+    setVideosError("");
+    setLoadingVideos(true);
+    // A slow answer for a folder left behind must not land in the grid of
+    // the one now on screen: the ids are real, so prescribing from it would
+    // quietly send the wrong videos.
+    browsingRef.current = folder.id;
+    try {
+      const res = await fetch(`/api/admin/exercises?folderId=${encodeURIComponent(folder.id)}&all=true`);
+      const data = await res.json();
+      if (browsingRef.current !== folder.id) return;
+      if (!res.ok) throw new Error(data.error || "Failed to load videos");
+      setVideos(Array.isArray(data.exercises) ? data.exercises : []);
+    } catch (err: any) {
+      if (browsingRef.current !== folder.id) return;
+      // A blank grid would read as "this folder is empty", which is a
+      // different thing entirely from "we could not ask".
+      setVideosError(err?.message || "Could not load this folder's videos.");
+    } finally {
+      if (browsingRef.current === folder.id) setLoadingVideos(false);
+    }
+  };
+
+  // Unlike the folder path, the API does not fill in each exercise's own
+  // defaults for a hand-picked list — it writes what it is given. The grid
+  // already has them, so it sends them, and a video prescribed here lands
+  // with the same sets and reps it would have had inside a whole folder.
+  const prescribePicked = async () => {
+    if (!browsing || picked.length === 0) return;
+    setPrescribing(true);
+    try {
+      const chosen = videos.filter((v) => picked.includes(v.id));
+      const res = await fetch("/api/admin/exercise-prescriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          exercises: chosen.map((v) => ({
+            exerciseId: v.id,
+            sets: v.defaultSets,
+            reps: v.defaultReps,
+            holdSeconds: v.defaultHoldSec,
+            restSeconds: v.defaultRestSec,
+          })),
+          frequency: folderFrequency || null,
+          notes: folderNotes || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to prescribe");
+
+      reportPrescribed(browsing.name, data);
+      setPickerOpen(false);
+      fetchPrescriptions();
+    } catch (err: any) {
+      toast({ description: err.message || "Failed to prescribe videos.", variant: "destructive" });
     } finally {
       setPrescribing(false);
     }
@@ -200,16 +321,78 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
 
   const picker = (
     <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Prescribe a folder</DialogTitle>
+          <DialogTitle>{browsing ? browsing.name : "Prescribe exercises"}</DialogTitle>
           <DialogDescription>
-            Every active exercise in the folder is prescribed at once, using each one&apos;s own
-            default sets and reps. Exercises this patient already has are skipped.
+            {browsing
+              ? "Pick the videos to prescribe. Each one keeps its own default sets and reps. Videos this patient already has are skipped."
+              : "Choose a folder to prescribe all of it at once, or open it to pick single videos. Exercises this patient already has are skipped."}
           </DialogDescription>
         </DialogHeader>
 
-        {loadingTree ? (
+        {/* ── The videos inside one folder ── */}
+        {browsing ? (
+          loadingVideos ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : videosError ? (
+            <p className="py-8 text-center text-sm text-destructive">{videosError}</p>
+          ) : videos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No videos in this folder.
+            </p>
+          ) : (
+            <div className="max-h-[45vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {videos.map((v) => {
+                  const on = picked.includes(v.id);
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setPicked((prev) => (on ? prev.filter((id) => id !== v.id) : [...prev, v.id]))
+                      }
+                      className={`group relative overflow-hidden rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        on ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      {/* spans, not divs/ps: this is all inside a button */}
+                      <span className="flex aspect-video items-center justify-center bg-muted">
+                        {v.thumbnailUrl ? (
+                          <img
+                            src={v.thumbnailUrl}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <FileVideo className="h-7 w-7 text-muted-foreground/40" />
+                        )}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded border ${
+                          on
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-white/70 bg-black/40"
+                        }`}
+                      >
+                        {on && <Check className="h-3 w-3" />}
+                      </span>
+                      <span className="block truncate px-2 py-1.5 text-xs" title={v.name}>
+                        {v.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        ) : loadingTree ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
@@ -219,43 +402,49 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           </p>
         ) : (
           <div className="max-h-[45vh] overflow-y-auto space-y-3 pr-1">
-            {tree.map((category) => (
-              <div key={category.id}>
-                <FolderRow
-                  label={category.name}
-                  count={category.totalExerciseCount ?? category.exerciseCount}
-                  isCategory
-                  selected={chosenFolder?.id === category.id}
-                  onSelect={() =>
-                    setChosenFolder({
-                      id: category.id,
-                      name: category.name,
-                      count: category.totalExerciseCount ?? category.exerciseCount,
-                    })
-                  }
-                />
-                <div className="ml-4 mt-1 space-y-1">
-                  {(category.children ?? []).map((child) => (
-                    <FolderRow
-                      key={child.id}
-                      label={child.name}
-                      count={child.exerciseCount}
-                      selected={chosenFolder?.id === child.id}
-                      onSelect={() =>
-                        setChosenFolder({ id: child.id, name: child.name, count: child.exerciseCount })
-                      }
-                    />
-                  ))}
+            {tree.map((category) => {
+              const { row, children } = collapseMirroredCategory(category);
+              const rowCount = row.totalExerciseCount ?? row.exerciseCount;
+              return (
+                <div key={category.id}>
+                  <FolderRow
+                    label={row.name}
+                    count={rowCount}
+                    isCategory
+                    selected={chosenFolder?.id === row.id}
+                    onSelect={() => setChosenFolder({ id: row.id, name: row.name, count: rowCount })}
+                    onBrowse={() => browseFolder({ id: row.id, name: row.name })}
+                  />
+                  {children.length > 0 && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {children.map((child) => (
+                        <FolderRow
+                          key={child.id}
+                          label={child.name}
+                          count={child.exerciseCount}
+                          selected={chosenFolder?.id === child.id}
+                          onSelect={() =>
+                            setChosenFolder({ id: child.id, name: child.name, count: child.exerciseCount })
+                          }
+                          onBrowse={() => browseFolder({ id: child.id, name: child.name })}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {chosenFolder && chosenFolder.count > 0 && (
+        {((chosenFolder && chosenFolder.count > 0 && !browsing) || (browsing && picked.length > 0)) && (
           <div className="space-y-2 border-t pt-3">
             <Input
-              placeholder="Frequency for the whole folder (e.g. 3x per week)"
+              placeholder={
+                browsing
+                  ? "Frequency for the selected videos (e.g. 3x per week)"
+                  : "Frequency for the whole folder (e.g. 3x per week)"
+              }
               value={folderFrequency}
               onChange={(e) => setFolderFrequency(e.target.value)}
               className="text-sm"
@@ -270,21 +459,44 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setPickerOpen(false)} disabled={prescribing}>
-            Cancel
-          </Button>
-          <Button
-            onClick={prescribeFolder}
-            disabled={!chosenFolder || chosenFolder.count === 0 || prescribing}
-            className="gap-2"
-          >
-            {prescribing && <Loader2 className="h-4 w-4 animate-spin" />}
-            {chosenFolder
-              ? chosenFolder.count === 0
-                ? "Folder is empty"
-                : `Prescribe ${chosenFolder.count}`
-              : "Select a folder"}
-          </Button>
+          {browsing ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBrowsing(null);
+                  setPicked([]);
+                  setVideosError("");
+                }}
+                disabled={prescribing}
+                className="gap-1.5"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to folders
+              </Button>
+              <Button onClick={prescribePicked} disabled={picked.length === 0 || prescribing} className="gap-2">
+                {prescribing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {picked.length === 0 ? "Select videos" : `Prescribe ${picked.length} selected`}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setPickerOpen(false)} disabled={prescribing}>
+                Cancel
+              </Button>
+              <Button
+                onClick={prescribeFolder}
+                disabled={!chosenFolder || chosenFolder.count === 0 || prescribing}
+                className="gap-2"
+              >
+                {prescribing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {chosenFolder
+                  ? chosenFolder.count === 0
+                    ? "Folder is empty"
+                    : `Prescribe ${chosenFolder.count}`
+                  : "Select a folder"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -296,7 +508,7 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
         {prescriptions.length} exercise{prescriptions.length === 1 ? "" : "s"} prescribed
       </p>
       <Button size="sm" onClick={openPicker} className="gap-1.5">
-        <FolderPlus className="h-4 w-4" /> Add folder
+        <FolderPlus className="h-4 w-4" /> Add exercises
       </Button>
     </div>
   );
@@ -309,7 +521,8 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           <Dumbbell className="h-10 w-10 text-muted-foreground/20 mb-3" />
           <p className="text-sm text-muted-foreground">No exercises prescribed yet.</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Use &ldquo;Add folder&rdquo; above to prescribe a whole set at once.
+            Use &ldquo;Add exercises&rdquo; above to prescribe a whole folder, or open one to pick
+            single videos.
           </p>
         </div>
         {picker}
@@ -412,28 +625,50 @@ function FolderRow({
   selected,
   isCategory,
   onSelect,
+  onBrowse,
 }: {
   label: string;
   count: number;
   selected: boolean;
   isCategory?: boolean;
   onSelect: () => void;
+  onBrowse: () => void;
 }) {
   const empty = count === 0;
+  // Two targets, so the row is a div: selecting the folder for a bulk
+  // prescription and opening it to pick videos are different intentions,
+  // and a button inside a button is invalid HTML anyway.
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={empty}
-      className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
+    <div
+      className={`w-full flex items-center gap-1 rounded-lg border pl-3 pr-1.5 py-1 transition-colors ${
         selected ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"
-      } ${empty ? "opacity-50 cursor-not-allowed" : ""}`}
+      } ${empty ? "opacity-50" : ""}`}
     >
-      <Folder className={`h-4 w-4 shrink-0 ${isCategory ? "text-primary" : "text-muted-foreground"}`} />
-      <span className={`flex-1 truncate text-sm ${isCategory ? "font-semibold" : ""}`}>{label}</span>
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {empty ? "empty" : `${count} video${count === 1 ? "" : "s"}`}
-      </span>
-    </button>
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={empty}
+        aria-pressed={selected}
+        title={empty ? undefined : `Prescribe all ${count} of "${label}"`}
+        className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
+      >
+        <Folder className={`h-4 w-4 shrink-0 ${isCategory ? "text-primary" : "text-muted-foreground"}`} />
+        <span className={`flex-1 truncate text-sm ${isCategory ? "font-semibold" : ""}`}>{label}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {empty ? "empty" : `${count} video${count === 1 ? "" : "s"}`}
+        </span>
+      </button>
+      {!empty && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBrowse}
+          className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+          title="See the videos in this folder"
+        >
+          <LayoutGrid className="h-3.5 w-3.5" /> View
+        </Button>
+      )}
+    </div>
   );
 }

@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
   const clinicId = await resolveClinicId(session);
   const bodyRegion = searchParams.get("bodyRegion");
   const difficulty = searchParams.get("difficulty");
+  // One folder's contents, for the thumbnail grid that prescribes single
+  // videos from the patient's own record (activity 075).
+  const folderId = searchParams.get("folderId");
   const search = searchParams.get("search") || "";
   const translated = searchParams.get("translated"); // "yes" | "no"
   const sort = searchParams.get("sort") || "recent"; // recent | name | region
@@ -42,7 +45,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
   }
 
+  // clinicId is already in the where, so a folder from another clinic
+  // intersects to nothing rather than leaking its contents.
   const where: any = { isActive: true, clinicId };
+  if (folderId) {
+    // A category keeps its videos in child folders, so asking for one by id
+    // has to reach them too — otherwise the row says "20 videos" and opening
+    // it shows nothing. This is the same reading of "a folder" that
+    // prescribing one already uses (see exercise-prescriptions POST).
+    const children = await prisma.exerciseFolder.findMany({
+      where: { parentId: folderId, clinicId },
+      select: { id: true },
+    });
+    where.folderId = { in: [folderId, ...children.map((c) => c.id)] };
+  }
   if (bodyRegion && bodyRegion !== "ALL") where.bodyRegion = bodyRegion;
   if (difficulty && difficulty !== "ALL") where.difficulty = difficulty;
   if (translated === "yes") where.namePt = { not: null };

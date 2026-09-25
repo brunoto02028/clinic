@@ -153,6 +153,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Patient and at least one exercise are required" }, { status: 400 });
     }
 
+    // Every id in the list has to be this clinic's. The folder path resolves
+    // its own ids under `clinicId` and passes trivially; a hand-picked list
+    // arrives straight from the browser, and without this check an id from
+    // another clinic's library was prescribed to one's own patient — the
+    // video then really did reach her. Another tenant's exercise answers
+    // exactly like one that does not exist, so its existence isn't revealed
+    // (same rule as lib/staff-patient-access.ts).
+    if (exercises.some((ex: any) => typeof ex?.exerciseId !== "string" || !ex.exerciseId)) {
+      return NextResponse.json({ error: "Every exercise needs an exerciseId" }, { status: 400 });
+    }
+    // Deduplicated on purpose: the same id twice is a harmless request, not a
+    // reason to refuse one.
+    const requestedIds = Array.from(new Set(exercises.map((ex: any) => ex.exerciseId as string)));
+    const owned = await prisma.exercise.findMany({
+      where: { id: { in: requestedIds }, clinicId },
+      select: { id: true },
+    });
+    if (owned.length !== requestedIds.length) {
+      return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
+    }
+
     // Verify patient exists
     const patient = await prisma.user.findFirst({
       where: { id: patientId, clinicId, role: "PATIENT" },
@@ -205,11 +226,20 @@ export async function POST(req: NextRequest) {
             reps: ex.reps || null,
             holdSeconds: ex.holdSeconds || null,
             restSeconds: ex.restSeconds || null,
-            frequency: ex.frequency || null,
-            notes: ex.notes || null,
             // Per exercise, falling back to one given for the whole request:
             // prescribing a set under a single group is the common case, and
             // requiring it to be repeated on every entry invites drift.
+            //
+            // frequency and notes only had that fallback on the folder path,
+            // which copies them onto every entry itself. A caller sending a
+            // hand-picked list with one frequency for the batch — which is
+            // exactly what the thumbnail grid does — had both silently
+            // dropped (activity 075 QA, scenario 17).
+            //
+            // Empty means inherit, here as for displayGroup: an entry cannot
+            // say "no frequency at all" against a batch that sets one.
+            frequency: ex.frequency || frequency || null,
+            notes: ex.notes || notes || null,
             displayGroup: ex.displayGroup || displayGroup || null,
             startDate: ex.startDate ? new Date(ex.startDate) : new Date(),
             endDate: ex.endDate ? new Date(ex.endDate) : null,
