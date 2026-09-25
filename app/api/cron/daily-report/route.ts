@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
+import { getClinicWaiting, waitingEmailBlock } from "@/lib/clinic-waiting";
 import { buildDailyAdherenceEmail, REPORT_ACTION } from "@/lib/daily-adherence-email";
 import { sendEmail } from "@/lib/email";
 import { logAudit } from "@/lib/system-logger";
@@ -31,11 +32,16 @@ export async function POST(req: NextRequest) {
 
   const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
 
-  const results: { clinicId: string; completed: number; missing: number; reportSent: boolean }[] = [];
+  const results: { clinicId: string; completed: number; missing: number; waiting: number; reportSent: boolean }[] = [];
 
   for (const clinic of clinics) {
     const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
-    if (completed.length === 0 && missing.length === 0) continue; // nothing scheduled anywhere today
+    const waiting = await getClinicWaiting(clinic.id);
+
+    // Antes bastava não haver exercício agendado para o dia passar em silêncio
+    // — e um vídeo do paciente podia ficar esperando sem ninguém ser avisado.
+    // Agora o silêncio exige as duas coisas: nada agendado **e** nada parado.
+    if (completed.length === 0 && missing.length === 0 && waiting.total === 0) continue;
 
     const reportAlreadySent = !force && await prisma.auditLog.findFirst({
       where: { entityId: clinic.id, action: REPORT_ACTION, createdAt: { gte: dayStart } },
@@ -43,12 +49,17 @@ export async function POST(req: NextRequest) {
     });
     let reportSent = false;
     if (!reportAlreadySent) {
-      const html = await buildDailyAdherenceEmail(clinic.name, clinic.id, completed, missing, now);
-      await sendEmail({
-        to: REPORT_TO,
-        subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
-        html,
-      });
+      const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+      const html = await buildDailyAdherenceEmail(
+        clinic.name, clinic.id, completed, missing, now,
+        waitingEmailBlock(waiting, baseUrl)
+      );
+      // O assunto diz o que espera ação, porque é o que decide se o e-mail é
+      // aberto hoje ou amanhã.
+      const subject = waiting.total > 0
+        ? `${clinic.name}: ${waiting.total} waiting for you · ${completed.length} completed, ${missing.length} missing`
+        : `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`;
+      await sendEmail({ to: REPORT_TO, subject, html });
       await logAudit({
         userId: "system",
         userEmail: "",
@@ -57,11 +68,18 @@ export async function POST(req: NextRequest) {
         entity: "Clinic",
         entityId: clinic.id,
         description: `Daily adherence report e-mailed for ${clinic.name}`,
+        metadata: { waiting: waiting.total, exerciseVideos: waiting.exerciseVideos },
       });
       reportSent = true;
     }
 
-    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, reportSent });
+    results.push({
+      clinicId: clinic.id,
+      completed: completed.length,
+      missing: missing.length,
+      waiting: waiting.total,
+      reportSent,
+    });
   }
 
   return NextResponse.json({ results });
