@@ -408,8 +408,12 @@ export default function NotificationsPage() {
                   </p>
                 )}
               </div>
+              {/* A prévia dizia só "no app", e o servidor manda e-mail/WhatsApp
+                  para todos por padrão — a linha que contava isso ficava
+                  abaixo do botão, em cinza de 10px (QA de 25/09, R5). */}
               <p className="text-xs text-muted-foreground">
                 In the app for <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
+                , and by e-mail or WhatsApp as each one prefers
                 {pushNotify ? (
                   preview.devices > 0 ? (
                     <> · on the phone of <strong>{preview.devices}</strong> device{preview.devices === 1 ? "" : "s"}</>

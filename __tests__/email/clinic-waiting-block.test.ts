@@ -18,12 +18,17 @@ const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
     unreadMessages: 0,
     unassignedMeasurements: 0,
     patientsWithoutExercises: 0,
+    messagesAwaitingApproval: 0,
     ...over,
   };
   return {
     ...w,
     total:
-      w.exerciseVideos + w.unreadMessages + w.unassignedMeasurements + w.patientsWithoutExercises,
+      w.exerciseVideos +
+      w.unreadMessages +
+      w.unassignedMeasurements +
+      w.patientsWithoutExercises +
+      w.messagesAwaitingApproval,
   };
 };
 

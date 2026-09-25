@@ -35,11 +35,18 @@ export interface ClinicWaiting {
    * clínica alguém que ainda não é dela.
    */
   patientsWithoutExercises: number;
+  /**
+   * Mensagens que a automação escreveu e ninguém aprovou.
+   *
+   * O bloco se chama "Waiting for you" e a aba do painel também — e a fila não
+   * aparecia em nenhum dos dois. Ela enchia em silêncio (QA de 25/09, R6).
+   */
+  messagesAwaitingApproval: number;
   total: number;
 }
 
 export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting> {
-  const [exerciseVideos, unreadMessages, unassignedMeasurements, patientsWithoutExercises] = await Promise.all([
+  const [exerciseVideos, unreadMessages, unassignedMeasurements, patientsWithoutExercises, messagesAwaitingApproval] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
       where: { clinicId, reviewedAt: null },
     }),
@@ -59,6 +66,9 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
         receivedExercises: { none: { isActive: true } },
       },
     }),
+    (prisma as any).outboundMessage.count({
+      where: { clinicId, status: "AWAITING_APPROVAL" },
+    }),
   ]);
 
   return {
@@ -66,7 +76,13 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     unreadMessages,
     unassignedMeasurements,
     patientsWithoutExercises,
-    total: exerciseVideos + unreadMessages + unassignedMeasurements + patientsWithoutExercises,
+    messagesAwaitingApproval,
+    total:
+      exerciseVideos +
+      unreadMessages +
+      unassignedMeasurements +
+      patientsWithoutExercises +
+      messagesAwaitingApproval,
   };
 }
 
@@ -99,6 +115,7 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
           ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
           ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
           ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}
+          ${linha("message waiting for your approval", "messages waiting for your approval", waiting.messagesAwaitingApproval, "/admin/outbox")}
         </table>
       </td></tr>
     </table>`;

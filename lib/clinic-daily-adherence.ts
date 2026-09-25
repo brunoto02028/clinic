@@ -6,6 +6,8 @@ import { ADHERENCE_CONFIG } from "@/lib/adherence-config";
 export interface PatientSummary {
   patientId: string;
   name: string;
+  /** A língua do paciente — quem enfileira o lembrete precisa dela na hora. */
+  preferredLocale: string | null;
   missingItems: ExpectedItem[];
 }
 
@@ -22,7 +24,7 @@ export async function getClinicDailyAdherence(clinicId: string, date: Date): Pro
       role: "PATIENT",
       protocolsAsPatient: { some: { status: "SENT_TO_PATIENT" } },
     },
-    select: { id: true, firstName: true, lastName: true },
+    select: { id: true, firstName: true, lastName: true, preferredLocale: true },
   });
 
   const completed: PatientSummary[] = [];
@@ -35,6 +37,7 @@ export async function getClinicDailyAdherence(clinicId: string, date: Date): Pro
       const summary: PatientSummary = {
         patientId: patient.id,
         name: `${patient.firstName} ${patient.lastName}`,
+        preferredLocale: patient.preferredLocale ?? null,
         missingItems: adherence.expected.filter((e) => !adherence.completed.some((c) => c.id === e.id)),
       };
       (adherence.allDone ? completed : missing).push(summary);

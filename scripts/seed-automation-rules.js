@@ -84,6 +84,24 @@ const RULES = [
     channels: ['INTERNAL'],
     active: true,
   },
+  {
+    code: 'WEARABLE_SILENCE',
+    name: 'Aparelho em silencio',
+    description: 'O relogio parou de enviar e ninguem percebeu',
+    // Existia so em prisma/seed-automation-rules.ts, que producao nunca roda:
+    // o container executa este .js. A regra nascia ausente no ar (QA, R8).
+    scope: 'DEVICE_SILENCE',
+    trigger: 'THRESHOLD',
+    condition: { silentDays: 5 },
+    active: true,
+    channels: ['INTERNAL'],
+    action: 'CREATE_ALERT',
+    actionData: {
+      priority: 'MEDIUM',
+      titleEn: 'Device has sent nothing for {days} days',
+      titlePt: 'Aparelho não envia nada há {days} dias',
+    },
+  },
 ];
 
 async function main() {
