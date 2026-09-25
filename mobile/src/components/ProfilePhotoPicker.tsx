@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Avatar, Text } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
+import { explainDeniedPermission } from "@/lib/ask-permission";
 import { fetchProfile } from "@/api/profile";
 import { uploadProfilePhoto, removeProfilePhoto } from "@/api/profile-photo";
 
@@ -39,10 +40,10 @@ export function ProfilePhotoPicker({ size = 80 }: { size?: number }) {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        tr(lang, { en: "Permission needed", pt: "Permissão necessária" }),
-        tr(lang, { en: "Allow access to continue.", pt: "Permita o acesso para continuar." })
-      );
+      // "Permita o acesso para continuar" não dizia ONDE, e o iOS só pergunta
+      // uma vez: depois de negada, todo toque voltava para o mesmo aviso sem
+      // saída.
+      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang);
       return;
     }
 

@@ -12,6 +12,7 @@ import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { API_URL } from "@/api/config";
 import { tokenStorage } from "@/lib/secure-storage";
+import { explainDeniedPermission } from "@/lib/ask-permission";
 
 async function uploadDocument(uri: string, fileName: string, mimeType: string) {
   const formData = new FormData();
@@ -70,10 +71,7 @@ function DocumentsScreen() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(
-        tr(lang, { en: "Permission needed", pt: "Permissão necessária" }),
-        tr(lang, { en: "Allow access to continue.", pt: "Permita o acesso para continuar." }),
-      );
+      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang);
       return;
     }
 
