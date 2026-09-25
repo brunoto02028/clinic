@@ -40,6 +40,23 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         const packageId = session.metadata?.packageId;
         const isMembership = session.metadata?.type === "membership_subscription";
+        const appointmentId = session.metadata?.appointmentId;
+
+        // A consulta paga vira consulta confirmada. **Aqui**, e não no momento
+        // de abrir o Checkout: confirmar antes seria reservar horário para quem
+        // fechou a aba. `updateMany` com o status no `where` é o que torna o
+        // evento repetido inofensivo — a Stripe reenvia webhook, e a segunda
+        // vez não encontra nada para mudar (atividade 080).
+        if (appointmentId) {
+          const r = await prisma.appointment.updateMany({
+            where: { id: appointmentId, status: "PENDING" },
+            data: { status: "CONFIRMED" },
+          });
+          console.log(
+            `[stripe-webhook] Appointment ${appointmentId}: ${r.count === 1 ? "confirmed" : "already handled"}`
+          );
+          break;
+        }
 
         if (isMembership) {
           // Membership subscription checkout completed

@@ -13,6 +13,8 @@ import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant
 import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
+import { bookingOptionsFor } from "@/lib/booking-options";
+import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
 export async function GET(request: NextRequest) {
@@ -191,9 +193,34 @@ export async function POST(request: NextRequest) {
     // booking on a patient's behalf may still set one.
     const staffPriceNum = price === undefined || price === null || price === "" ? NaN : Number(price);
     const staffPrice = Number.isFinite(staffPriceNum) && staffPriceNum >= 0 ? staffPriceNum : null;
+
+    // Qual porta o paciente está atravessando: primeira consulta, sessão do
+    // pacote que ele já comprou, ou sessão extra. É o servidor que decide, pela
+    // mesma função que responde à tela — a tela prometendo um preço e o
+    // servidor cobrando outro é o defeito que isto impede (atividade 080).
+    const opcao = isPatient ? await bookingOptionsFor(patientId) : null;
+    if (opcao && !opcao.kind) {
+      return NextResponse.json(
+        {
+          error:
+            opcao.blockedReason === "screening_required"
+              ? "Complete your medical screening before booking."
+              : "This account is not linked to a clinic",
+          errorPt:
+            opcao.blockedReason === "screening_required"
+              ? "Preencha sua triagem antes de marcar."
+              : "Esta conta não está ligada a uma clínica",
+          code: opcao.blockedReason,
+        },
+        { status: 409 }
+      );
+    }
+
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
-      : await patientBookingPrice(actor.clinicId);
+      : opcao
+        ? opcao.price
+        : await patientBookingPrice(actor.clinicId);
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -205,8 +232,19 @@ export async function POST(request: NextRequest) {
         treatmentType,
         notes: notes || null,
         price: resolvedPrice,
-        paymentMethod: resolvedPaymentMethod,
-        status: resolvedPaymentMethod === "IN_PERSON" ? "CONFIRMED" : "PENDING",
+        // A sessão do pacote não gera cobrança: ela já foi paga quando o
+        // paciente comprou o pacote.
+        paymentMethod: opcao?.kind === "PACKAGE_SESSION" ? "IN_PERSON" : resolvedPaymentMethod,
+        kind: opcao ? opcao.kind : "CLINIC_BOOKED",
+        // O vínculo é o que permite devolver a sessão no cancelamento. Um
+        // contador solto não sabe qual consulta gastou qual sessão.
+        patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,
+        status:
+          opcao?.kind === "PACKAGE_SESSION"
+            ? "CONFIRMED"
+            : resolvedPaymentMethod === "IN_PERSON"
+              ? "CONFIRMED"
+              : "PENDING",
       },
       include: {
         patient: {
@@ -231,6 +269,13 @@ export async function POST(request: NextRequest) {
     // Lead-magnet attribution (P3): log a "booked" event if this patient's
     // email was previously captured via an article lead-magnet.
     logBookedEventForEmail(appointment.patient.email).catch(() => {});
+
+    // O contador do pacote volta a bater com a realidade. Recontado, não
+    // somado: um `increment` erra para sempre no dia em que uma linha some por
+    // fora, e neste sistema a clínica apaga consulta.
+    if (appointment.patientPackageId) {
+      await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
+    }
 
     // O toque no ombro — **só quando quem marcou foi a clínica**. Paciente que
     // acabou de marcar a própria consulta na tela não precisa que o celular

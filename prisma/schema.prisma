@@ -26,6 +26,22 @@ enum TenantType {
   PERSONAL_TRAINER
 }
 
+enum ExtraSessionPayment {
+  AT_BOOKING
+  INVOICE
+}
+
+enum AppointmentKind {
+  /// Paciente novo, depois da triagem. Paga no ato.
+  FIRST_CONSULTATION
+  /// Sai do pacote que o paciente ja comprou. Consome uma sessao.
+  PACKAGE_SESSION
+  /// Pacote esgotado ou inexistente. Preco avulso.
+  EXTRA_SESSION
+  /// A clinica marcou. Quem marcou decide o preco; nada e cobrado sozinho.
+  CLINIC_BOOKED
+}
+
 enum AppointmentStatus {
   PENDING
   PENDING_PATIENT
@@ -357,6 +373,14 @@ model Clinic {
   // explicit opt-in. The manual per-patient "Send now" button is never
   // gated by this — only the unattended cron is.
   dailyRemindersEnabled Boolean @default(false)
+  /**
+   * Como a sessao extra e cobrada — a que o paciente marca com o pacote
+   * esgotado. `INVOICE` por padrao: e o mais proximo do que a clinica faz
+   * hoje, e cobrar antecipado de quem ja esta em tratamento cria atrito sem
+   * reduzir risco. A primeira consulta nao passa por aqui: ela sempre paga no
+   * ato, porque ali nao existe relacao nenhuma ainda (atividade 080).
+   */
+  extraSessionPayment ExtraSessionPayment @default(INVOICE)
 
   // Baseline module/permission grant every new PATIENT of this clinic starts
   // with (act.62) — same key vocabulary as User.moduleOverrides
@@ -1096,6 +1120,16 @@ model Appointment {
   dateTime        DateTime
   duration        Int               @default(60) // Duration in minutes
   treatmentType   String
+  /**
+   * Que tipo de marcacao isto e — decidido pelo servidor, nunca pelo cliente.
+   *
+   * Sem isto, primeira consulta, sessao de pacote e sessao extra eram a mesma
+   * linha, e a clinica so distinguia pelo preco que alguem digitou.
+   */
+  kind            AppointmentKind   @default(CLINIC_BOOKED)
+  /** O pacote que pagou por esta consulta, quando foi um. */
+  patientPackageId String?
+  patientPackage   PatientPackage?  @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
   status          AppointmentStatus @default(PENDING)
   mode            AppointmentMode   @default(IN_PERSON)
   paymentMethod   PaymentMethod     @default(ONLINE)
@@ -5059,7 +5093,16 @@ model PatientPackage {
   currency        String               @default("GBP")
   startDate       DateTime?
   endDate         DateTime?
+  /**
+   * Quantas sessoes ja foram usadas.
+   *
+   * Existia e **ninguem incrementava**: zero leitores e zero escritores em
+   * `app/`, `lib/` e `components/`. Um pacote de 10 nao limitava nada. A
+   * verdade agora sao as consultas ligadas em `appointments`; esta coluna e
+   * mantida em dia para parar de mentir a quem a ler.
+   */
   sessionsUsed    Int                  @default(0)
+  appointments    Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
+import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import {
@@ -171,6 +172,13 @@ async function handleUpdate(
         },
       },
     });
+
+    // Cancelar devolve a sessão ao pacote; `NO_SHOW` não devolve, porque o
+    // horário foi perdido de verdade. `syncSessionsUsed` reconta, então os dois
+    // casos saem certos sem ninguém somar nem subtrair.
+    if (appointment.patientPackageId) {
+      await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
+    }
 
     // Idem: o cancelamento feito pelo próprio paciente não vira notificação
     // para ele. `userRole` é o mesmo que decide, acima, o que ele pode mudar.
