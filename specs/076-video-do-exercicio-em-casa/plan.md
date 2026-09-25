@@ -63,8 +63,8 @@ treina a abrir.
 |-----|------|--------|
 | T-1 | modelo e armazenamento do envio de exercício | QA reprovou (F1) → corrigido, aguarda re-QA |
 | T-2 | API: paciente envia, clínica lê e responde | **concluída** — QA aprovado (30 cenários) |
-| T-3 | app: gravar e enviar o vídeo do exercício | implementada, aguarda teste no aparelho |
-| T-4 | app: anexo na conversa (ligar no que já existe) | QA reprovou → corrigido, aguarda teste no aparelho |
+| T-3 | app: gravar e enviar o vídeo do exercício | implementada + player, aguarda teste no aparelho |
+| T-4 | app: anexo na conversa (ligar no que já existe) | completa (foto **e PDF**), aguarda teste no aparelho |
 | T-5 | admin: fila de revisão e resposta do terapeuta | QA reprovou (F2, F3) → F3 corrigida, **F2 aguarda decisão** |
 | T-6 | aviso por resumo diário, não por evento | QA aprovou com ressalvas (F4, F5, F6) → corrigidas, aguarda re-QA |
 
@@ -103,6 +103,22 @@ linha por envio dentro do `/admin/outbox`; ou uma tela própria de fila.
 
 T-1 → T-2 sustentam todo o resto. T-3 e T-5 são as duas pontas do mesmo fluxo e só fazem sentido
 juntas. T-4 é independente e a mais barata. T-6 depende de T-2 existir.
+
+## O que entrou junto do build (25/09, autorizado pelo Bruno)
+
+Duas dependências nativas, porque cada uma deixada de fora custaria **outro build**:
+
+- **`expo-document-picker`** — fecha a T-4: o PDF na conversa. O servidor já aceitava
+  `application/pdf` (`lib/patient-documents-shared.ts`), era só o app que não mandava.
+- **`expo-video`** — o paciente **assiste ao que mandou**. Antes disso quem gravava o próprio
+  exercício não conseguia conferir se pegou o movimento inteiro, nem rever a execução ao lado da
+  correção. O arquivo é privado, então o player leva o `Authorization` no cabeçalho da fonte
+  (`mobile/src/components/SubmissionVideo.tsx`) — a rota resolve bearer por `getEffectiveUser`.
+
+E o `EXPO_PUBLIC_SHOW_LAB=false` passou a morar no `eas.json`, no perfil `production`. Uma
+variável do shell **não chega** ao servidor da EAS, que é onde o bundle é montado; medido: sem a
+variável o bundle sai com `SHOW_LAB = true`, com ela sai `false`, e a própria EAS confirma
+*"Environment variables loaded from the 'production' build profile 'env' configuration"*.
 
 ## Suposições — precisam do seu aval
 
