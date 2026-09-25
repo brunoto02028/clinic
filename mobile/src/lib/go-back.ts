@@ -19,6 +19,12 @@ import { router } from "expo-router";
 export const PATIENT_HOME = "/(app)/(clinica)/(tabs)";
 
 export function goBackOr(fallback: string = PATIENT_HOME): void {
+  // `router.back()` age no roteador **raiz**. Numa árvore com Stack dentro de
+  // Stack dentro de abas, quem tem a pilha desta tela costuma ser o navegador
+  // mais próximo — por isso o botão do cabeçalho usa `navigation.goBack()` e
+  // só cai aqui depois. Quem chama esta função de dentro de uma tela (o envio
+  // da avaliação, a porta do PlanGate) não tem esse navegador à mão, então
+  // aqui a ordem é: tentar o roteador, e garantir a casa.
   if (router.canGoBack()) {
     router.back();
     return;

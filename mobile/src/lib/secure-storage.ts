@@ -68,3 +68,17 @@ export const lockPreference = {
     else await removeItem(LOCK_KEY);
   },
 };
+
+/**
+ * Guardar uma coisa pequena no aparelho, por chave.
+ *
+ * O cofre já existia para os tokens e para a preferência da tranca; isto só
+ * abre a mesma porta para quem precisa de uma chave própria — evitando somar
+ * `AsyncStorage`, que é dependência nativa e exigiria build novo por causa de
+ * um lembrete de cinco minutos.
+ */
+export const deviceStore = {
+  get: (key: string) => getItem(key),
+  set: (key: string, value: string) => setItem(key, value),
+  remove: (key: string) => removeItem(key),
+};

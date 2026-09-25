@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FlatList, Linking, Pressable, View, Platform, Alert } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, usePathname} from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -12,6 +12,7 @@ import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { API_URL } from "@/api/config";
 import { tokenStorage } from "@/lib/secure-storage";
+import { explainDeniedPermission } from "@/lib/ask-permission";
 
 async function uploadDocument(uri: string, fileName: string, mimeType: string) {
   const formData = new FormData();
@@ -32,6 +33,7 @@ async function uploadDocument(uri: string, fileName: string, mimeType: string) {
 
 function DocumentsScreen() {
   const lang = useLang();
+  const caminho = usePathname();
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
@@ -70,10 +72,7 @@ function DocumentsScreen() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(
-        tr(lang, { en: "Permission needed", pt: "Permissão necessária" }),
-        tr(lang, { en: "Allow access to continue.", pt: "Permita o acesso para continuar." }),
-      );
+      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang, caminho);
       return;
     }
 

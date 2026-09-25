@@ -1,10 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable } from "react-native";
-import { Stack } from "expo-router";
+import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable, Alert, Image, Linking } from "react-native";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Stack, usePathname } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
-import { fetchMessages, sendMessage, markMessagesRead, type ClinicMessage } from "@/api/messages";
+import { Text, Card, Input, Button, Spinner } from "@/components/ui";
+import {
+  fetchMessages,
+  sendMessage,
+  markMessagesRead,
+  attachmentIsImage,
+  attachmentHref,
+  ATTACHMENT_MAX_BYTES,
+  type ClinicMessage,
+  type OutgoingAttachment,
+} from "@/api/messages";
+import * as ImagePicker from "expo-image-picker";
+import { explainDeniedPermission } from "@/lib/ask-permission";
+import { t as tr } from "@/lib/i18n";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -23,6 +37,7 @@ const UI = {
     placeholder: "Write a message…",
     send: "Send",
     sendFailed: "Your message was not sent. Try again.",
+    attachment: "Attachment",
     notice: "Notice",
   },
   pt: {
@@ -36,6 +51,7 @@ const UI = {
     placeholder: "Escreva uma mensagem…",
     send: "Enviar",
     sendFailed: "Sua mensagem não foi enviada. Tente de novo.",
+    attachment: "Anexo",
     notice: "Aviso",
   },
 } as const;
@@ -53,8 +69,13 @@ function formatWhen(iso: string, lang: "en" | "pt"): string {
 
 function MessagesScreen() {
   const t = useTheme();
+  // A altura do header, que o teclado precisa descontar. O módulo ganhou
+  // header em 24/09/2026 e sem isto o campo ficava atrás do teclado.
+  const headerHeight = useHeaderHeight();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
+  const [anexo, setAnexo] = useState<OutgoingAttachment | null>(null);
+  const caminho = usePathname();
   const scrollRef = useRef<ScrollView>(null);
 
   const { data: profile, error } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
@@ -78,15 +99,115 @@ function MessagesScreen() {
   }, [messages.length]);
 
   const send = useMutation({
-    mutationFn: () => sendMessage(draft.trim()),
+    mutationFn: () => sendMessage(draft.trim(), anexo),
     onSuccess: () => {
       setDraft("");
+      setAnexo(null);
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
   });
 
+  /**
+   * Anexar uma imagem.
+   *
+   * O servidor já aceitava anexo — só o app não mandava. Aqui vai imagem;
+   * **vídeo não**, e não por limitação técnica: vídeo de exercício tem lugar
+   * próprio, preso ao exercício, senão em duas semanas a conversa vira uma
+   * pilha de vídeos sem contexto (atividade 076).
+   *
+   * PDF depende do `expo-document-picker`, que é dependência nativa e exige
+   * build — fica para o próximo.
+   */
+  const anexarImagem = async (origem: "camera" | "galeria") => {
+    const permissao =
+      origem === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissao.granted) {
+      explainDeniedPermission(permissao, origem === "camera" ? "camera" : "library", lang, caminho);
+      return;
+    }
+
+    const opcoes = { quality: 0.8 as const, mediaTypes: ImagePicker.MediaTypeOptions.Images };
+    const r =
+      origem === "camera"
+        ? await ImagePicker.launchCameraAsync(opcoes)
+        : await ImagePicker.launchImageLibraryAsync(opcoes);
+    if (r.canceled || !r.assets[0]) return;
+
+    const a = r.assets[0];
+    // Barrado aqui, o arquivo grande não sobe só para voltar recusado — numa
+    // rede de celular isso é meio minuto de espera para nada.
+    //
+    // `fileSize` nem sempre vem: foto tirada na hora e item do iCloud chegam
+    // sem ele. Com `?? 0` a comparação era sempre falsa e o arquivo subia
+    // inteiro para voltar 400 — e o único retorno na tela era "não foi
+    // possível enviar". Sem o tamanho, a verificação fica com o servidor, que
+    // é quem sempre soube; o que mudou é que agora a razão dele aparece.
+    if (a.fileSize != null && a.fileSize > ATTACHMENT_MAX_BYTES) {
+      Alert.alert(
+        tr(lang, { en: "Image too large", pt: "Imagem muito grande" }),
+        tr(lang, { en: "The limit is 25 MB.", pt: "O limite é 25 MB." })
+      );
+      return;
+    }
+
+    setAnexo({
+      uri: a.uri,
+      name: a.fileName ?? `foto-${Date.now()}.jpg`,
+      mimeType: a.mimeType ?? "image/jpeg",
+    });
+  };
+
+  const escolherAnexo = () => {
+    Alert.alert(
+      tr(lang, { en: "Attach", pt: "Anexar" }),
+      undefined,
+      [
+        { text: tr(lang, { en: "Take photo", pt: "Tirar foto" }), onPress: () => void anexarImagem("camera") },
+        { text: tr(lang, { en: "Choose photo", pt: "Escolher foto" }), onPress: () => void anexarImagem("galeria") },
+        // Vídeo não entra na conversa — ele tem lugar próprio, preso ao
+        // exercício. Sem esta linha, quem quisesse mandar um abria o menu, não
+        // achava a opção, e não recebia pista nenhuma de onde ela está.
+        {
+          text: tr(lang, { en: "Exercise video…", pt: "Vídeo do exercício…" }),
+          onPress: () =>
+            Alert.alert(
+              tr(lang, { en: "Exercise videos", pt: "Vídeos do exercício" }),
+              tr(lang, {
+                en: "Send those from the exercise itself, so your therapist sees which one it is. Open Exercises and pick the exercise.",
+                pt: "Envie pelo próprio exercício, assim seu terapeuta sabe qual é. Abra Exercícios e escolha o exercício.",
+              })
+            ),
+        },
+        ...(Platform.OS === "android" ? [] : [{ text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" as const }]),
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
-    <Screen testID="messages-screen">
+    /**
+     * Aqui a raiz é o `KeyboardAvoidingView`, não o `Screen`.
+     *
+     * Enfiado dentro do `Screen`, ele ficava abaixo de um `SafeAreaView` e de
+     * um `padding` — ou seja, a base dele não era a base da janela, e a conta
+     * de quanto o teclado cobre saía errada por essa diferença. O campo ficava
+     * atrás do teclado, e a pessoa digitava sem ver o que digitava. Tentei
+     * consertar com `keyboardVerticalOffset` e **piorei**: o campo sumiu de
+     * vez, porque o deslocamento diminui a compensação em vez de aumentá-la.
+     *
+     * Com o KAV na raiz, `keyboardVerticalOffset={headerHeight}` passa a ser o
+     * que a documentação do React Navigation manda: o header é a única coisa
+     * acima dele. A margem de baixo volta como `SafeAreaView edges={["bottom"]}`
+     * em volta do campo, que é onde ela precisa estar numa tela de conversa.
+     */
+    <KeyboardAvoidingView
+      testID="messages-screen"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={headerHeight}
+      style={{ flex: 1, backgroundColor: t.colors.background }}
+    >
       <Stack.Screen
         options={{
           headerShown: true,
@@ -96,11 +217,7 @@ function MessagesScreen() {
           headerShadowVisible: false,
         }}
       />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <View style={{ flex: 1, gap: 12 }}>
+      <View style={{ flex: 1, gap: 12, padding: 16 }}>
           <View>
             {/* `ui.title` repeated `ui.header` word for word — the screen read
                 "Messages Messages". The header keeps the name. */}
@@ -122,6 +239,9 @@ function MessagesScreen() {
             <ScrollView
               ref={scrollRef}
               style={{ flex: 1 }}
+              // Sem isto, o primeiro toque com o teclado aberto só fecha o
+              // teclado — tocar em "Enviar" exigia dois toques.
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ gap: 10, paddingBottom: 8 }}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
             >
@@ -163,6 +283,48 @@ function MessagesScreen() {
                       <Text variant="body" color={mine ? "#FFFFFF" : t.colors.text} style={{ lineHeight: 20 }}>
                         {m.content}
                       </Text>
+
+                      {/* O anexo. A imagem aparece; o resto vira uma linha com
+                          o nome, que abre fora do app. A URL vem assinada pelo
+                          servidor — `/api/files` não aceita o bearer do app. */}
+                      {m.attachmentUrl && (
+                        attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
+                          <Pressable
+                            onPress={() => {
+                              const href = attachmentHref(m);
+                              if (href) void Linking.openURL(href).catch(() => {});
+                            }}
+                            accessibilityRole="imagebutton"
+                            accessibilityLabel={m.attachmentName ?? ui.attachment}
+                            style={{ marginTop: 8 }}
+                          >
+                            <Image
+                              source={{ uri: attachmentHref(m)! }}
+                              style={{ width: 200, height: 200, borderRadius: 12, backgroundColor: t.colors.surfaceMuted }}
+                              resizeMode="cover"
+                            />
+                          </Pressable>
+                        ) : (
+                          <Pressable
+                            onPress={() => {
+                              const href = attachmentHref(m);
+                              if (href) void Linking.openURL(href).catch(() => {});
+                            }}
+                            accessibilityRole="button"
+                            hitSlop={8}
+                            style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}
+                          >
+                            <Ionicons name="document-outline" size={16} color={mine ? "#FFFFFF" : t.colors.text} />
+                            <Text
+                              variant="caption"
+                              color={mine ? "#FFFFFF" : t.colors.text}
+                              style={{ textDecorationLine: "underline", flexShrink: 1 }}
+                            >
+                              {m.attachmentName ?? ui.attachment}
+                            </Text>
+                          </Pressable>
+                        )
+                      )}
                       <Text
                         variant="caption"
                         color={mine ? "rgba(255,255,255,0.75)" : t.colors.textMuted}
@@ -178,7 +340,48 @@ function MessagesScreen() {
             </ScrollView>
           )}
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
+          {/* O que vai junto, antes de ir. Sem isto o anexo some da vista
+              entre escolher e enviar, e ninguém confere o que anexou. */}
+          {anexo && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderRadius: 12, backgroundColor: t.colors.surfaceMuted }}>
+              <Image source={{ uri: anexo.uri }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+              <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1 }} numberOfLines={1}>
+                {anexo.name}
+              </Text>
+              <Pressable
+                onPress={() => setAnexo(null)}
+                accessibilityRole="button"
+                accessibilityLabel={tr(lang, { en: "Remove attachment", pt: "Remover anexo" })}
+                hitSlop={10}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={18} color={t.colors.textSecondary} />
+              </Pressable>
+            </View>
+          )}
+
+          <SafeAreaView edges={["bottom"]} style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
+            {/* Anexar. Imagem por enquanto: PDF depende de uma dependência
+                nativa e do próximo build. */}
+            <Pressable
+              onPress={escolherAnexo}
+              disabled={send.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={tr(lang, { en: "Attach", pt: "Anexar" })}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                width: 46,
+                height: 46,
+                borderRadius: 23,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 4,
+                opacity: pressed ? 0.6 : 1,
+                backgroundColor: t.colors.surfaceMuted,
+              })}
+            >
+              <Ionicons name="add" size={22} color={t.colors.text} />
+            </Pressable>
             <View style={{ flex: 1 }}>
               <Input
                 value={draft}
@@ -189,7 +392,7 @@ function MessagesScreen() {
             </View>
             <Pressable
               onPress={() => send.mutate()}
-              disabled={!draft.trim() || send.isPending}
+              disabled={(!draft.trim() && !anexo) || send.isPending}
               style={({ pressed }) => ({
                 width: 46,
                 height: 46,
@@ -197,22 +400,23 @@ function MessagesScreen() {
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 4,
-                opacity: !draft.trim() || send.isPending ? 0.4 : 1,
+                opacity: (!draft.trim() && !anexo) || send.isPending ? 0.4 : 1,
                 backgroundColor: pressed ? t.colors.healthSoft : t.colors.health,
               })}
             >
               <Ionicons name="send" size={18} color="#FFFFFF" />
             </Pressable>
-          </View>
+          </SafeAreaView>
 
           {send.isError && (
             <Text variant="caption" color={t.colors.danger} style={{ textAlign: "center" }}>
-              {ui.sendFailed}
+              {/* A razão do servidor, quando ele dá uma: "arquivo muito
+                  grande" é acionável, "não foi possível enviar" não é. */}
+              {(send.error as any)?.message || ui.sendFailed}
             </Text>
           )}
-        </View>
-      </KeyboardAvoidingView>
-    </Screen>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
