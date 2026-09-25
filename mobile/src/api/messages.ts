@@ -1,4 +1,5 @@
-import { apiFetch } from "./client";
+import { apiFetch, apiUpload } from "./client";
+import { API_URL } from "./config";
 
 /**
  * The patient's thread with the clinic — the channel the web calls "Messages"
@@ -19,6 +20,15 @@ export interface ClinicMessage {
   attachmentUrl: string | null;
   attachmentName: string | null;
   attachmentType: string | null;
+  /**
+   * A URL que o **app** consegue abrir.
+   *
+   * `attachmentUrl` aponta para `/api/files/[id]`, que aceita cookie ou token
+   * assinado — nunca o bearer do app. A web já está autenticada por cookie; o
+   * celular precisa do token, e é o servidor quem o assina, por mensagem e por
+   * paciente.
+   */
+  attachmentOpenUrl: string | null;
   readAt: string | null;
   createdAt: string;
   sender: { firstName: string; lastName: string; role: string } | null;
@@ -43,11 +53,53 @@ export async function fetchMessages(): Promise<ClinicMessage[]> {
   return Array.isArray(res) ? res : [];
 }
 
-export async function sendMessage(content: string): Promise<ClinicMessage> {
-  return apiFetch<ClinicMessage>("/api/patient/messages", {
-    method: "POST",
-    body: JSON.stringify({ content }),
-  });
+export interface OutgoingAttachment {
+  uri: string;
+  name: string;
+  mimeType: string;
+}
+
+/**
+ * Manda a mensagem, com anexo quando houver.
+ *
+ * O servidor já aceitava anexo desde antes — `ClinicMessage` tem os campos, a
+ * rota lê multipart, e o arquivo vira documento do paciente. O app é que só
+ * mandava texto. Aqui é ligar uma ponta na outra.
+ *
+ * Mensagem só com anexo é válida: o servidor aceita, e põe o nome do arquivo
+ * como conteúdo.
+ */
+export async function sendMessage(
+  content: string,
+  attachment?: OutgoingAttachment | null
+): Promise<ClinicMessage> {
+  if (!attachment) {
+    return apiFetch<ClinicMessage>("/api/patient/messages", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  const form = new FormData();
+  form.append("content", content);
+  form.append("file", {
+    uri: attachment.uri,
+    name: attachment.name,
+    type: attachment.mimeType,
+  } as any);
+  return apiUpload<ClinicMessage>("/api/patient/messages", form);
+}
+
+/** Imagens e PDF, até 25 MB — os mesmos limites que o servidor aplica. */
+export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+
+export function attachmentIsImage(type: string | null): boolean {
+  return !!type && type.startsWith("image/");
+}
+
+/** A URL absoluta do anexo, para abrir ou desenhar. */
+export function attachmentHref(m: ClinicMessage): string | null {
+  return m.attachmentOpenUrl ? `${API_URL}${m.attachmentOpenUrl}` : null;
 }
 
 /** Marks every staff message as read. The server scopes it to the caller. */

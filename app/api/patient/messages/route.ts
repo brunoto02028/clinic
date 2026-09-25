@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { saveChatAttachment } from "@/lib/chat-attachment";
+import { signFileToken } from "@/lib/file-access-token";
 import { sendEmail } from "@/lib/email";
 import { patientGate } from "@/lib/patient-gate";
 
@@ -35,7 +36,22 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json(messages);
+  // O anexo é servido por `/api/files/[id]`, que aceita **cookie ou token
+  // assinado** — nunca o bearer do app. A web já está autenticada por cookie e
+  // abre direto; o app precisa do token na URL, exatamente como a tela de
+  // documentos já faz (`openUrl`). Sem isto o anexo existe, aparece no
+  // registro, e o paciente não consegue abrir no celular.
+  const comLink = messages.map((m: any) => {
+    const docId = typeof m.attachmentUrl === "string"
+      ? m.attachmentUrl.match(/\/api\/files\/([^/?]+)/)?.[1] ?? null
+      : null;
+    return {
+      ...m,
+      attachmentOpenUrl: docId ? `/api/files/${docId}?t=${signFileToken(docId, userId)}` : null,
+    };
+  });
+
+  return NextResponse.json(comLink);
 }
 
 // POST — patient sends a reply to the clinic
