@@ -22,6 +22,7 @@ import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admi
 import { BloodPressureTab } from "@/components/admin/blood-pressure-tab";
 import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
+import PatientWellbeingChart from "@/components/admin/patient-wellbeing-chart";
 import AutomationRuns from "@/components/patients/automation-runs";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
@@ -2258,7 +2259,12 @@ export default function PatientProfilePage() {
           <AutomationRuns patientId={patientId} />
         </TabsContent>
 
-        <TabsContent value="atividade" className="mt-4">
+        <TabsContent value="atividade" className="mt-4 space-y-4">
+          {/* A tendência primeiro, o feed depois. O check-in diário respondia
+              "como você está hoje?" e ia parar no meio de uploads e mensagens,
+              onde a única pergunta que ele existe para responder — está
+              melhorando? — não tinha onde ser respondida. */}
+          <PatientWellbeingChart patientId={patientId} />
           <PatientActivityTab patientId={patientId} />
         </TabsContent>
 

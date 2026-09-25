@@ -19,6 +19,7 @@ const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
     unassignedMeasurements: 0,
     patientsWithoutExercises: 0,
     messagesAwaitingApproval: 0,
+    patientsInPain: 0,
     ...over,
   };
   return {
@@ -28,7 +29,8 @@ const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
       w.unreadMessages +
       w.unassignedMeasurements +
       w.patientsWithoutExercises +
-      w.messagesAwaitingApproval,
+      w.messagesAwaitingApproval +
+      w.patientsInPain,
   };
 };
 
@@ -72,5 +74,30 @@ describe("waitingEmailBlock", () => {
     expect(html).toContain("https://bpr.clinic/admin/measurements/inbox");
     // nenhum nome, nenhum id, nenhuma chave de armazenamento
     expect(html).not.toMatch(/storageKey|exercise-submissions\/|r2\.dev|cloudflarestorage/);
+  });
+});
+
+describe("waitingEmailBlock — dor alta e fila de aprovação", () => {
+  it("dor alta da semana aparece, no singular e no plural", () => {
+    const um = waitingEmailBlock(espera({ patientsInPain: 1 }), "https://bpr.clinic");
+    expect(um).toContain("patient reporting severe pain this week");
+
+    const varios = waitingEmailBlock(espera({ patientsInPain: 3 }), "https://bpr.clinic");
+    expect(varios).toContain("patients reporting severe pain this week");
+  });
+
+  it("mensagem parada na fila de aprovação aparece", () => {
+    const html = waitingEmailBlock(espera({ messagesAwaitingApproval: 2 }), "https://bpr.clinic");
+    expect(html).toContain("messages waiting for your approval");
+    expect(html).toContain("https://bpr.clinic/admin/outbox");
+  });
+
+  it("nem a dor nem a fila levam nome de paciente", () => {
+    const html = waitingEmailBlock(
+      espera({ patientsInPain: 2, messagesAwaitingApproval: 1 }),
+      "https://bpr.clinic"
+    );
+    // contagem e link, como todo o resto do bloco
+    expect(html).not.toMatch(/@|painLevel|patientId/);
   });
 });
