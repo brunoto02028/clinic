@@ -46,6 +46,28 @@ prontuario. A porta automatica e o caminho comum, nao a unica entrada.
 | T-2 | o servidor decide a porta pelo estado do paciente | implementada, aguarda QA |
 | T-3 | o app mostra uma porta so, com o texto certo | pendente |
 | T-4 | a clinica anula quando quiser: cortesia, isencao, marcar por fora | pendente |
+| T-5 | a agenda configuravel: janelas por dia, tipo, capacidade e excecoes | motor e API prontos; falta a tela |
+
+## T-5 — a agenda vira configuracao, nao codigo (25/09/2026)
+
+O Bruno pediu para poder montar a agenda no painel e isso refletir no app de cada paciente, sem
+depender de mim para cada regra. O que ele descreveu nao cabia no modelo: `TherapistAvailability`
+tem `@@unique([therapistId, dayOfWeek])` — **uma unica janela por dia** — e a rota de horarios
+apaga o slot inteiro na primeira marcacao, capacidade 1 sempre.
+
+Agora a semana e um conjunto de janelas. Cada uma diz o dia, a faixa, **o que atende**
+(`CONSULTATION` ou `TREATMENT`), **quantos cabem** (1 a 5) e de quanto em quanto abre horario. Mais
+excecoes por data, para feriado, ferias e expediente curto.
+
+**Uma agenda so, duas naturezas de janela.** Consulta e tratamento disputam a mesma sala e a mesma
+pessoa: dois calendarios separados deixariam as duas coisas no mesmo horario sem avisar, e o erro
+apareceria na terca-feira, com gente na porta. Por isso sobreposicao e recusada no servidor.
+
+**Fallback, nao substituicao.** Quem nao configurou janela nenhuma continua regido pelo modelo
+antigo. Ninguem acorda sem agenda porque o modelo mudou.
+
+A capacidade e de quem esta na sala **ao mesmo tempo**: janela de 14h as 18h com capacidade 4 sao
+4 pessoas as 14h e outras 4 as 15h. O paciente ve "restam 2 vagas" — **nunca quem sao as outras**.
 
 T-1 e a fundacao — sem consumo de sessao, as outras tres nao tem o que decidir.
 

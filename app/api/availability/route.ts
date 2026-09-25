@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor } from "@/lib/tenant-access";
 import { findTherapist } from "@/lib/appointment-access";
+import { slotsForDate, hasConfiguredSchedule } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay, zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 // GET: Fetch available time slots for a given date
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
       );
     }
     const targetTherapistId = therapist.id;
+    const clinicIdForSchedule = actor!.clinicId!;
 
     // Blocked day (holiday, absence, training...) takes precedence over the weekly schedule
     const block = await (prisma as any).therapistBlock.findFirst({
@@ -92,6 +94,30 @@ export async function GET(request: NextRequest) {
       const h = Math.floor(m / 60);
       const min = m % 60;
       allSlots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
+    }
+
+    // A agenda configurada pela clínica manda. Quem ainda não configurou
+    // janela nenhuma continua regido pelo modelo antigo, logo abaixo — é
+    // fallback, não substituição: ninguém acorda sem agenda porque o modelo
+    // mudou (atividade 080, T-5).
+    if (await hasConfiguredSchedule(clinicIdForSchedule, targetTherapistId)) {
+      const pedido = request.nextUrl.searchParams.get("kind");
+      const kind = pedido === "CONSULTATION" || pedido === "TREATMENT" ? pedido : undefined;
+
+      const slots = await slotsForDate(clinicIdForSchedule, targetTherapistId, dayStart, {
+        kind,
+        nowMinutes: dateStr === getZonedDateString() ? getZonedMinutesOfDay() : null,
+      });
+
+      return NextResponse.json({
+        // A tela antiga espera uma lista de horas; a nova quer a capacidade
+        // junto. Os dois formatos saem daqui para nenhum cliente quebrar.
+        slots: slots.map((s) => s.time),
+        detailedSlots: slots,
+        available: slots.length > 0,
+        therapistId: targetTherapistId,
+        configured: true,
+      });
     }
 
     // Get existing appointments for this date to exclude booked slots

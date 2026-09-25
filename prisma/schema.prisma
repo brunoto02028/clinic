@@ -420,6 +420,8 @@ model Clinic {
   subscription             Subscription?
   imageLibrary             ImageLibrary[]
   therapistAvailabilities  TherapistAvailability[]
+  scheduleWindows          ScheduleWindow[]
+  scheduleExceptions       ScheduleException[]
   therapistBlocks          TherapistBlock[]
   payments                 Payment[]
   treatmentTypes           TreatmentType[]
@@ -707,6 +709,8 @@ model User {
   soapNotesFor          SOAPNote[]              @relation("PatientNotes")
   payments              Payment[]
   therapistAvailability TherapistAvailability[]
+  scheduleWindows       ScheduleWindow[]        @relation("TherapistScheduleWindows")
+  scheduleExceptions    ScheduleException[]     @relation("TherapistScheduleExceptions")
   therapistBlocks       TherapistBlock[]        @relation("TherapistBlocks")
   articles              Article[]
   uploadedImages        ImageLibrary[]
@@ -1084,6 +1088,72 @@ model MedicalScreening {
 // ============================================
 // THERAPIST AVAILABILITY (Updated with clinicId)
 // ============================================
+
+/// Uma faixa da semana em que a clinica atende — e **o que** ela atende.
+///
+/// `TherapistAvailability` continua existindo e vale como antes para quem nao
+/// configurou nada: uma janela unica por dia, capacidade 1. Quem criar janelas
+/// aqui passa a ser regido por elas. E fallback, nao substituicao — ninguem
+/// acorda sem agenda porque o modelo mudou.
+///
+/// A capacidade e de **quem esta na sala ao mesmo tempo**: uma janela de 14h as
+/// 18h com capacidade 4 sao 4 pessoas as 14h e outras 4 as 15h, nao 4 na tarde
+/// inteira. Consulta nasce com 1 porque avaliacao e um a um; tratamento a
+/// clinica decide caso a caso (atividade 080, T-5).
+model ScheduleWindow {
+  id          String             @id @default(cuid())
+  clinicId    String
+  clinic      Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   User               @relation("TherapistScheduleWindows", fields: [therapistId], references: [id], onDelete: Cascade)
+
+  dayOfWeek   Int // 0 = domingo
+  startTime   String // "09:00"
+  endTime     String // "13:00"
+  kind        ScheduleWindowKind
+  /// Quantos cabem ao mesmo tempo, 1 a 5.
+  capacity    Int                @default(1)
+  /// De quanto em quanto um horario e oferecido.
+  slotMinutes Int                @default(60)
+  isActive    Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, therapistId, dayOfWeek])
+}
+
+/// O dia que foge da semana: feriado, ferias, ou um expediente mais curto.
+///
+/// Sem isto a agenda e puramente semanal e repetida — "nesta quinta so vou ate
+/// as 15h" nao tem onde ser dito, e a primeira vez que isso acontece alguem
+/// marca num horario que nao existe.
+model ScheduleException {
+  id          String  @id @default(cuid())
+  clinicId    String
+  clinic      Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  therapistId String?
+  therapist   User?   @relation("TherapistScheduleExceptions", fields: [therapistId], references: [id], onDelete: Cascade)
+
+  date   String // "YYYY-MM-DD"
+  /// Fechado o dia todo. Quando falso, `startTime`/`endTime` encurtam o dia.
+  closed Boolean @default(false)
+  startTime String?
+  endTime   String?
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([clinicId, therapistId, date])
+  @@index([clinicId, date])
+}
+
+enum ScheduleWindowKind {
+  /// Avaliacao e primeira consulta. Um a um.
+  CONSULTATION
+  /// Sessao de tratamento: pode ter mais de um paciente junto.
+  TREATMENT
+}
 
 model TherapistAvailability {
   id          String  @id @default(cuid())
