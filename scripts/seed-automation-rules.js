@@ -86,11 +86,13 @@ const RULES = [
   },
   {
     code: 'WEARABLE_SILENCE',
-    name: 'Aparelho em silencio',
-    description: 'O relogio parou de enviar e ninguem percebeu',
-    // Existia so em prisma/seed-automation-rules.ts, que producao nunca roda:
-    // o container executa este .js. A regra nascia ausente no ar (QA, R8).
-    scope: 'DEVICE_SILENCE',
+    name: 'Aparelho em silêncio',
+    // `description` e `scope` nao existem em AutomationRule — copiei os dois da
+    // copia .ts, onde sao contexto e nao colunas, e o seed estourou em
+    // producao com `Unknown argument 'description'`. Os quatro updates
+    // passaram e so o create novo falhou, entao o deploy ficou verde e a regra
+    // simplesmente nao existiu no ar. O guard esta em
+    // __tests__/automation/seed-rules-shape.test.ts.
     trigger: 'THRESHOLD',
     condition: { silentDays: 5 },
     active: true,
