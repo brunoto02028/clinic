@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
-import { OW_PROVIDERS, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
+import { OW_PROVIDERS, providerEnabled, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 import { signWearableState } from '@/lib/wearable-state';
 import { getSessionStaffActor } from '@/lib/tenant-access';
 import { NON_EMERGENCY_NOTICE_VERSION } from '@/lib/non-emergency-notice';
@@ -98,6 +98,16 @@ export async function GET(
     return asJson
       ? NextResponse.json({ error: 'Unknown provider' }, { status: 400 })
       : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=unknown_provider`);
+  }
+
+  // Um provedor que a clínica ainda não providenciou não começa fluxo nenhum.
+  // A tela já não o oferece; isto é para quem chega pela URL — e para o dia em
+  // que um cliente antigo, com a lista velha em cache, tentar de novo.
+  if (!providerEnabled(provider)) {
+    const message = 'This device is not available yet.';
+    return asJson
+      ? NextResponse.json({ error: message, errorPt: 'Este aparelho ainda não está disponível.', code: 'provider_disabled' }, { status: 503 })
+      : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=provider_disabled`);
   }
 
   const isDirect = provider.toLowerCase() === 'withings';

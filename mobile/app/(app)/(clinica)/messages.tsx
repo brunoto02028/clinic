@@ -18,6 +18,7 @@ import {
 } from "@/api/messages";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import { ImageViewer, openFileInApp } from "@/components/FileViewer";
 import { explainDeniedPermission } from "@/lib/ask-permission";
 import { t as tr } from "@/lib/i18n";
 import { fetchProfile } from "@/api/profile";
@@ -76,6 +77,7 @@ function MessagesScreen() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
   const [anexo, setAnexo] = useState<OutgoingAttachment | null>(null);
+  const [imagemAberta, setImagemAberta] = useState<{ uri: string; titulo: string } | null>(null);
   const caminho = usePathname();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -319,15 +321,17 @@ function MessagesScreen() {
                         {m.content}
                       </Text>
 
-                      {/* O anexo. A imagem aparece; o resto vira uma linha com
-                          o nome, que abre fora do app. A URL vem assinada pelo
-                          servidor — `/api/files` não aceita o bearer do app. */}
+                      {/* O anexo. A imagem aparece e amplia **aqui**; o PDF
+                          abre no navegador de dentro do app. A URL vem assinada
+                          pelo servidor — `/api/files` não aceita o bearer do
+                          app — e mandá-la para o Safari deixava um link de
+                          documento clínico no histórico de outro aplicativo. */}
                       {m.attachmentUrl && (
                         attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
                           <Pressable
                             onPress={() => {
                               const href = attachmentHref(m);
-                              if (href) void Linking.openURL(href).catch(() => {});
+                              if (href) setImagemAberta({ uri: href, titulo: m.attachmentName ?? ui.attachment });
                             }}
                             accessibilityRole="imagebutton"
                             accessibilityLabel={m.attachmentName ?? ui.attachment}
@@ -343,7 +347,7 @@ function MessagesScreen() {
                           <Pressable
                             onPress={() => {
                               const href = attachmentHref(m);
-                              if (href) void Linking.openURL(href).catch(() => {});
+                              if (href) void openFileInApp(href).catch(() => {});
                             }}
                             accessibilityRole="button"
                             hitSlop={8}
@@ -459,6 +463,12 @@ function MessagesScreen() {
             </Text>
           )}
       </View>
+
+      <ImageViewer
+        uri={imagemAberta?.uri ?? null}
+        title={imagemAberta?.titulo}
+        onClose={() => setImagemAberta(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

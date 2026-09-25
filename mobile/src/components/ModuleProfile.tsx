@@ -2,15 +2,11 @@ import { View } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Avatar, ListItem, Button, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Avatar, ListItem, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
-import { useModule } from "@/store/module";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { CLINIC_ONLY } from "@/lib/feature-flags";
-import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
-import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 import Constants from "expo-constants";
 import { runningVersion } from "@/lib/app-updates";
 
@@ -23,19 +19,24 @@ export interface ProfileSection {
 }
 
 /**
- * Shared profile tab used by every module (lab, clinica, ba).
+ * O menu do módulo (clinica, lab, ba).
  *
- * `sections` is how a module adds its own entries without this component
- * learning about them — the clinic needs somewhere to reach screens that have
- * no tab of their own, and lab and BA users must not see them.
+ * Era a aba "Perfil", e mostrava as duas coisas de uma vez: o cartão da conta
+ * em cima — foto grande, nome, e-mail — e, embaixo, as quatorze entradas da
+ * clínica mais as da conta mais o sair. Quem abria procurando o menu via o
+ * perfil; quem abria procurando o perfil recebia o menu inteiro junto.
+ *
+ * Agora esta tela é só o menu, e a conta é a **primeira linha** dele, compacta,
+ * levando para `/account`. É o padrão dos Ajustes do telefone, e é o que estava
+ * faltando: uma tela, um assunto.
+ *
+ * `sections` continua sendo como cada módulo acrescenta as próprias entradas
+ * sem este componente aprender sobre elas.
  */
 export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}) {
   const t = useTheme();
   const lang = useLang();
   const user = useAuth((s) => s.user);
-  const logout = useAuth((s) => s.logout);
-  const clearModule = useModule((s) => s.clearModule);
-  const bio = useBiometricCapability();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -49,19 +50,6 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
   const fullName = profile ? `${profile.firstName} ${profile.lastName}` : user?.name ?? "";
   const email = profile?.email ?? user?.email ?? "";
 
-  const handleSwitchModule = () => {
-    clearModule();
-    router.replace("/module-select");
-  };
-
-  const handleLogout = async () => {
-    clearModule();
-    await logout();
-    // Sign-in, not `/`: the root path is ambiguous (see app/(app)/_layout.tsx)
-    // and sending the signed-out user there froze the app.
-    router.replace("/login");
-  };
-
   if (isLoading) {
     return (
       <Screen testID="module-profile-screen">
@@ -74,17 +62,23 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
     <Screen scroll testID="module-profile-screen">
       <View style={{ gap: 16 }}>
         <Card>
-          <View style={{ alignItems: "center", gap: 10, paddingVertical: 8 }}>
-            <ProfilePhotoPicker size={56} />
-            <View style={{ alignItems: "center" }}>
-              <Text variant="subtitle" testID="profile-name">
-                {fullName}
-              </Text>
-              <Text variant="caption" color={t.colors.textMuted} testID="profile-email">
-                {email}
-              </Text>
-            </View>
-          </View>
+          <ListItem
+            title={fullName}
+            subtitle={email}
+            icon={
+              <Avatar
+                label={initials}
+                uri={profile?.profileImageUrl}
+                size={40}
+                round
+                pillar="health"
+              />
+            }
+            right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
+            onPress={() => router.push("/account")}
+            last
+            testID="account-row"
+          />
         </Card>
 
         {sections && sections.length > 0 && (
@@ -94,6 +88,7 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
                 key={s.href}
                 title={tr(lang, s.title)}
                 icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
+                right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
                 onPress={() => router.push(s.href as any)}
                 last={i === sections.length - 1}
               />
@@ -101,42 +96,13 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
           </Card>
         )}
 
-        <Card>
-          <ListItem
-            title={tr(lang, { en: "Edit profile", pt: "Editar perfil" })}
-            icon={<Ionicons name="person-outline" size={18} color={t.colors.text} />}
-            onPress={() => router.push("/profile-edit")}
-          />
-          <ListItem
-            title={tr(lang, { en: "Notifications", pt: "Notificações" })}
-            icon={<Ionicons name="notifications-outline" size={18} color={t.colors.text} />}
-            onPress={() => router.push("/notifications")}
-          />
-          <ListItem
-            title={tr(lang, { en: "Change password", pt: "Alterar senha" })}
-            icon={<Ionicons name="lock-closed-outline" size={18} color={t.colors.text} />}
-            onPress={() => router.push("/change-password")}
-            last={!bio || !bio.hasHardware}
-          />
-          {/* Num aparelho sem sensor a linha não existe, e aí quem fecha a
-              lista é "Alterar senha" — daí o `last` condicional acima. */}
-          {bio?.hasHardware && <BiometricLockRow cap={bio} last />}
-        </Card>
-
-        {/* Nothing to switch to in a clinic-only build, and the chooser it
-            opens is the screen that build exists to skip. */}
-        {!CLINIC_ONLY && (
-          <Button title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })} variant="ghost" onPress={handleSwitchModule} size="md" />
-        )}
-
-        <Button title={tr(lang, { en: "Sign out", pt: "Sair" })} variant="ghost" onPress={handleLogout} size="md" />
-
         {/* Qual versão está rodando de fato.
             Existe para responder sem adivinhação a pergunta que custou horas
             em 24/09/2026: "o update chegou?". `embedded` verdadeiro significa
             que o app roda o JavaScript que veio dentro do binário — nenhum
             update aplicado. Também é o que o suporte vai pedir quando um
-            paciente disser que algo não funciona. */}
+            paciente disser que algo não funciona. Fica no menu, e não na
+            conta, porque é aqui que o Bruno já sabe olhar. */}
         {(() => {
           const v = runningVersion(Constants.expoConfig?.version ?? "?");
           return (

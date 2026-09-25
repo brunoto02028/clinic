@@ -23,6 +23,14 @@ import { lockIsActive } from "@/lib/biometrics";
 export function PrivacyCover() {
   const [covered, setCovered] = useState(false);
   const armed = useRef(false);
+  // O app já esteve aberto alguma vez nesta execução?
+  //
+  // No iOS a abertura passa por `inactive` antes de `active`, e com a tranca
+  // armada isso pintava a cortina **escura** por um quadro em cima do splash
+  // claro — a piscada preta que aparecia ao abrir o app. A cortina existe para
+  // o print do multitarefa, que só faz sentido depois de a pessoa ter visto
+  // alguma coisa.
+  const jaEsteveAtivo = useRef(false);
 
   useEffect(() => {
     const refresh = () => {
@@ -34,13 +42,14 @@ export function PrivacyCover() {
 
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
+        jaEsteveAtivo.current = true;
         setCovered(false);
         refresh();
         return;
       }
       // `inactive` é onde o print é tirado (troca de app, central de controle).
       // Nada de `await` aqui.
-      if (armed.current) setCovered(true);
+      if (armed.current && jaEsteveAtivo.current) setCovered(true);
     });
     return () => sub.remove();
   }, []);

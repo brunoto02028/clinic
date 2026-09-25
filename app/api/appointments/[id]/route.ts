@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
+import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import {
@@ -172,6 +173,13 @@ async function handleUpdate(
       },
     });
 
+    // Cancelar devolve a sessão ao pacote; `NO_SHOW` não devolve, porque o
+    // horário foi perdido de verdade. `syncSessionsUsed` reconta, então os dois
+    // casos saem certos sem ninguém somar nem subtrair.
+    if (appointment.patientPackageId) {
+      await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
+    }
+
     // Idem: o cancelamento feito pelo próprio paciente não vira notificação
     // para ele. `userRole` é o mesmo que decide, acima, o que ele pode mudar.
     if (userRole !== "PATIENT") {
@@ -339,9 +347,24 @@ export async function DELETE(
       return accessErrorResponse(err);
     }
 
+    // Qual pacote pagou por ela, antes de a linha sumir: depois do `delete`
+    // não há como saber qual contador reajustar.
+    const apagada = await prisma.appointment.findUnique({
+      where: { id },
+      select: { patientPackageId: true },
+    });
+
     await prisma.appointment.delete({
       where: { id },
     });
+
+    // A razão de `syncSessionsUsed` recontar em vez de somar está escrita em
+    // `lib/package-sessions.ts` e cita exatamente este caso: "neste sistema
+    // linhas somem por fora (a clínica apaga uma consulta)". Faltava chamar
+    // justamente aqui (QA de 25/09, falha 6).
+    if (apagada?.patientPackageId) {
+      await syncSessionsUsed(apagada.patientPackageId).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

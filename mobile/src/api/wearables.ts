@@ -74,14 +74,23 @@ export async function disconnectProvider(provider: string) {
   });
 }
 
+/**
+ * `enabled` é se o paciente pode ser convidado a ligar **hoje**.
+ *
+ * Seis destes sete passavam por um agregador cuja credencial nunca foi
+ * configurada: a tela mostrava sete botões "Connect" e seis só podiam falhar.
+ * Ficam na lista porque cada um volta no dia em que a API dele estiver
+ * providenciada — ligar é este interruptor, aqui e no servidor
+ * (`lib/open-wearables.ts`), mais a credencial.
+ */
 export const OW_PROVIDERS = [
-  { key: "oura", name: "Oura Ring", icon: "💍" },
-  { key: "garmin", name: "Garmin", icon: "⌚" },
-  { key: "whoop", name: "Whoop", icon: "🏋️" },
-  { key: "fitbit", name: "Fitbit", icon: "📱" },
-  { key: "polar", name: "Polar", icon: "❄️" },
-  { key: "strava", name: "Strava", icon: "🚴" },
-  { key: "withings", name: "Withings", icon: "🩺" },
+  { key: "oura", name: "Oura Ring", icon: "💍", enabled: false },
+  { key: "garmin", name: "Garmin", icon: "⌚", enabled: false },
+  { key: "whoop", name: "Whoop", icon: "🏋️", enabled: false },
+  { key: "fitbit", name: "Fitbit", icon: "📱", enabled: false },
+  { key: "polar", name: "Polar", icon: "❄️", enabled: false },
+  { key: "strava", name: "Strava", icon: "🚴", enabled: false },
+  { key: "withings", name: "Withings", icon: "🩺", enabled: true },
 ] as const;
 
 /**

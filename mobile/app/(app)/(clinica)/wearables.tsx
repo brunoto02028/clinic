@@ -202,7 +202,10 @@ function WearablesScreen() {
                 </Text>
               </View>
             )}
-            {OW_PROVIDERS.map((p) => {
+            {/* Só o que a clínica providenciou de fato — mais qualquer aparelho
+                que este paciente já tenha ligado, para que uma conexão viva não
+                suma da tela por causa de um interruptor. */}
+            {OW_PROVIDERS.filter((p) => p.enabled || connectedProviders.has(p.key)).map((p) => {
               const isConnected = connectedProviders.has(p.key);
               const conn = (connections || []).find((c) => c.provider.toLowerCase() === p.key);
               // "Conectado" só dizia que a autorização deu certo. Se a Withings

@@ -1,4 +1,4 @@
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, Pressable, View, Image } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -113,6 +113,11 @@ function ExercisesScreen() {
               >
                 <Card>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    {/* A miniatura do exercício, quando existe. Dez linhas com
+                        o mesmo ícone de coração não distinguem "Advanced Core
+                        008" de "Advanced Core 009" — e é o que a pessoa precisa
+                        reconhecer para saber qual abrir. Com um play em cima,
+                        para dizer que há vídeo. */}
                     <View style={{
                       width: 44,
                       height: 44,
@@ -120,8 +125,31 @@ function ExercisesScreen() {
                       backgroundColor: t.colors.healthSoft,
                       alignItems: "center",
                       justifyContent: "center",
+                      overflow: "hidden",
                     }}>
-                      <Ionicons name={iconName as any} size={22} color={t.colors.health} />
+                      {item.exercise.thumbnailUrl ? (
+                        <>
+                          <Image
+                            source={{ uri: item.exercise.thumbnailUrl }}
+                            style={{ position: "absolute", width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                          {item.exercise.videoUrl ? (
+                            <View style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: 10,
+                              backgroundColor: "rgba(0,0,0,0.5)",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}>
+                              <Ionicons name="play" size={11} color="#FFFFFF" />
+                            </View>
+                          ) : null}
+                        </>
+                      ) : (
+                        <Ionicons name={iconName as any} size={22} color={t.colors.health} />
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{pick(lang, item.exercise.name, item.exercise.namePt)}</Text>

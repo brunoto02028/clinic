@@ -13,6 +13,10 @@ import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant
 import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
+import { bookingOptionsFor } from "@/lib/booking-options";
+import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
+import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
+import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
 export async function GET(request: NextRequest) {
@@ -191,9 +195,90 @@ export async function POST(request: NextRequest) {
     // booking on a patient's behalf may still set one.
     const staffPriceNum = price === undefined || price === null || price === "" ? NaN : Number(price);
     const staffPrice = Number.isFinite(staffPriceNum) && staffPriceNum >= 0 ? staffPriceNum : null;
+
+    // Qual porta o paciente está atravessando: primeira consulta, sessão do
+    // pacote que ele já comprou, ou sessão extra. É o servidor que decide, pela
+    // mesma função que responde à tela — a tela prometendo um preço e o
+    // servidor cobrando outro é o defeito que isto impede (atividade 080).
+    const opcao = isPatient ? await bookingOptionsFor(patientId) : null;
+    if (opcao && !opcao.kind) {
+      return NextResponse.json(
+        {
+          error:
+            opcao.blockedReason === "screening_required"
+              ? "Complete your medical screening before booking."
+              : "This account is not linked to a clinic",
+          errorPt:
+            opcao.blockedReason === "screening_required"
+              ? "Preencha sua triagem antes de marcar."
+              : "Esta conta não está ligada a uma clínica",
+          code: opcao.blockedReason,
+        },
+        { status: 409 }
+      );
+    }
+
+    // O horário escolhido tem de ser um dos que o servidor ofereceu. Sem isto,
+    // a capacidade e a janela viviam só na tela: um POST direto marcava a
+    // quinta pessoa num horário de quatro, ou um domingo às 03:00. A clínica
+    // continua podendo marcar fora — ela é quem abre exceção, e sabe que está
+    // abrindo (QA de 25/09).
+    // Data e hora **da clínica**, derivadas do instante que chegou. Ler
+      // `getHours()` daria a hora do servidor, e em produção ele está em UTC:
+      // o horário legítimo era recusado e um fora da janela, aceito
+      // (QA de 25/09, N1).
+    const quando = new Date(dateTime);
+    const diaDaClinica = getZonedDateString(quando);
+    const minutosDaClinica = getZonedMinutesOfDay(quando);
+    const hora = `${String(Math.floor(minutosDaClinica / 60)).padStart(2, "0")}:${String(minutosDaClinica % 60).padStart(2, "0")}`;
+
+    // A exceção é conferida **fora** do ramo da agenda nova: ela vale para
+    // qualquer modelo, e era justamente no dia regido pelo modelo antigo que o
+    // feriado não fechava nada (QA de 25/09, N10).
+    if (opcao?.kind) {
+      const excecaoDoDia = await exceptionForDate(actor.clinicId, selectedTherapistId, diaDaClinica);
+      // `applyException` compara faixas; aqui o que se tem é um instante, e
+      // comparar "HH:MM" como texto funciona porque o formato é fixo.
+      const dentro =
+        !excecaoDoDia ||
+        (!excecaoDoDia.closed &&
+          (!excecaoDoDia.startTime || hora >= excecaoDoDia.startTime) &&
+          (!excecaoDoDia.endTime || hora < excecaoDoDia.endTime));
+
+      if (excecaoDoDia?.closed || !dentro) {
+        return NextResponse.json(
+          {
+            error: "The clinic is not open then.",
+            errorPt: "A clínica não atende nesse horário.",
+            code: "clinic_closed",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId, diaDaClinica))) {
+      const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, diaDaClinica, {
+        kind: opcao.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT",
+      });
+
+      if (!oferecidos.some((s) => s.time === hora)) {
+        return NextResponse.json(
+          {
+            error: "That time is no longer available.",
+            errorPt: "Esse horário não está mais disponível.",
+            code: "slot_unavailable",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
-      : await patientBookingPrice(actor.clinicId);
+      : opcao
+        ? opcao.price
+        : await patientBookingPrice(actor.clinicId);
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -202,11 +287,48 @@ export async function POST(request: NextRequest) {
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
-        treatmentType,
+        // O tipo também é do servidor quando quem marca é o paciente: o
+        // `price` já era ignorado, e deixar o rótulo passar seria a mesma
+        // porta, mais estreita (QA de 25/09, falha 9).
+        treatmentType: opcao
+          ? opcao.kind === "FIRST_CONSULTATION"
+            ? "Initial Consultation"
+            : "Treatment Session"
+          : treatmentType,
         notes: notes || null,
         price: resolvedPrice,
-        paymentMethod: resolvedPaymentMethod,
-        status: resolvedPaymentMethod === "IN_PERSON" ? "CONFIRMED" : "PENDING",
+        // A sessão do pacote não gera cobrança: ela já foi paga quando o
+        // paciente comprou o pacote. E `paymentMethod` do corpo não decide
+        // nada quando quem marca é o paciente — nem para exigir pagamento,
+        // nem para dispensá-lo. A sessão faturada é `IN_PERSON` porque não há
+        // Checkout nenhum para ela: nascia `ONLINE` e `PENDING`, esperando um
+        // webhook que nunca vinha (QA de 25/09, N5).
+        paymentMethod: opcao
+          ? opcao.kind === "PACKAGE_SESSION"
+            ? "IN_PERSON"
+            : opcao.requiresPayment
+              ? "ONLINE"
+              : "IN_PERSON"
+          : resolvedPaymentMethod,
+        kind: opcao ? opcao.kind : "CLINIC_BOOKED",
+        // O vínculo é o que permite devolver a sessão no cancelamento. Um
+        // contador solto não sabe qual consulta gastou qual sessão.
+        patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,
+        // Quem exige pagamento nasce **pendente**, e nada que venha do corpo
+        // muda isso: `paymentMethod: "IN_PERSON"` mandado pelo paciente numa
+        // primeira consulta confirmava o horário sem cobrança nenhuma
+        // (QA de 25/09, falha 8). Quem confirma é o webhook.
+        // Quem marca pelo app: pendente só quando há pagamento a fazer. A
+        // sessão extra faturada fica confirmada — a cobrança entra na fatura,
+        // e deixá-la pendente à espera de um webhook inexistente era um
+        // horário preso para sempre.
+        status: opcao
+          ? opcao.requiresPayment
+            ? "PENDING"
+            : "CONFIRMED"
+          : resolvedPaymentMethod === "IN_PERSON"
+            ? "CONFIRMED"
+            : "PENDING",
       },
       include: {
         patient: {
@@ -231,6 +353,13 @@ export async function POST(request: NextRequest) {
     // Lead-magnet attribution (P3): log a "booked" event if this patient's
     // email was previously captured via an article lead-magnet.
     logBookedEventForEmail(appointment.patient.email).catch(() => {});
+
+    // O contador do pacote volta a bater com a realidade. Recontado, não
+    // somado: um `increment` erra para sempre no dia em que uma linha some por
+    // fora, e neste sistema a clínica apaga consulta.
+    if (appointment.patientPackageId) {
+      await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
+    }
 
     // O toque no ombro — **só quando quem marcou foi a clínica**. Paciente que
     // acabou de marcar a própria consulta na tela não precisa que o celular

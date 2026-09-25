@@ -91,14 +91,47 @@ export default function BookingForm() {
     fetchAvailableDates();
   }, [therapistsChecked, selectedTherapistId]);
 
+  // A mesma porta que o servidor vai usar para gravar. Esta tela lia
+  // `service-prices` e mostrava sempre o preço de CONSULTATION: um paciente em
+  // tratamento via £88,50 e era cobrado £44,25 — o defeito que
+  // `lib/booking-options.ts` existe para impedir (QA de 25/09, N4).
+  const [porta, setPorta] = useState<{
+    kind: string | null;
+    price: number;
+    currency: string;
+    requiresPayment: boolean;
+    sessionsRemaining: number | null;
+    sessionsIncluded: number | null;
+  } | null>(null);
+
+  /**
+   * `&kind=` para a agenda, derivado da porta que o servidor abriu.
+   *
+   * Primeira consulta só enxerga janela de consulta; sessão de pacote e extra,
+   * janela de tratamento. Sem isto, quem tinha pacote recebia horário de
+   * consulta e levava 409 ao confirmar (QA de 25/09, N12).
+   */
+  const janelaDoPaciente = !porta?.kind
+    ? ""
+    : porta.kind === "FIRST_CONSULTATION"
+      ? "&kind=CONSULTATION"
+      : "&kind=TREATMENT";
+
   useEffect(() => {
-    fetch("/api/patient/service-prices")
-      .then(r => r.json())
-      .then((data: any[]) => {
-        const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
-        if (consultation?.price) setConsultationPrice(consultation.price);
+    fetch("/api/patient/booking-options")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        setPorta(d);
+        if (typeof d?.price === "number") setConsultationPrice(d.price);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Sem a porta, a tela **não inventa preço**. O fallback anterior lia
+        // `service-prices` e mostrava sempre o de consulta: um paciente em
+        // tratamento via £88,50 e era cobrado £44,25 — exatamente o defeito
+        // que a porta existe para impedir (QA de 25/09, N11).
+        setPorta(null);
+        setConsultationPrice(null);
+      });
 
     fetch("/api/patient/membership/subscription")
       .then(r => r.json())
@@ -143,7 +176,10 @@ export default function BookingForm() {
     try {
       const results = await Promise.all(
         checks.map(date =>
-          fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`)
+          // O tipo de janela que **este** paciente pode marcar. Sem isto, quem
+          // tem pacote recebia horário de consulta e levava 409 ao confirmar
+          // (QA de 25/09, N12).
+          fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}${janelaDoPaciente}`)
             .then(r => r.json())
             .catch(() => ({ available: false }))
         )
@@ -161,7 +197,7 @@ export default function BookingForm() {
     setAvailableSlots([]);
     setSelectedTime("");
     try {
-      const res = await fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`);
+      const res = await fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}${janelaDoPaciente}`);
       const data = await res.json();
       setAvailableSlots(data?.slots ?? []);
     } catch {
@@ -191,12 +227,30 @@ export default function BookingForm() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed");
+      if (!res.ok) {
+        // A razão do servidor, na língua da pessoa. E quando o que falta é a
+        // triagem, o caminho é a triagem — não um "tente de novo" que nunca
+        // vai funcionar (QA de 25/09, N11).
+        if (data?.code === "screening_required") {
+          alert((isPt && data.errorPt) || data.error);
+          window.location.href = "/dashboard/screening";
+          return;
+        }
+        throw new Error((isPt && data?.errorPt) || data?.error || "Failed");
+      }
       setCreatedAppointmentId(data?.appointment?.id ?? "");
       setConfirmedPaymentMethod(data?.appointment?.paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE");
       setStep(3);
     } catch (err: any) {
-      alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to book appointment. Please try again.");
+      // A mensagem do servidor quando existe: "esse horário não está mais
+      // disponível" é acionável; "tente de novo" não é.
+      alert(
+        err?.message && err.message !== "Failed"
+          ? err.message
+          : isPt
+            ? "Falha ao criar consulta. Tente novamente."
+            : "Failed to book appointment. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -471,11 +525,44 @@ export default function BookingForm() {
                   <span className="text-muted-foreground">{isPt ? "Duração" : "Duration"}</span>
                   <span className="font-medium">60 {isPt ? "minutos" : "min"}</span>
                 </div>
-                {!hasActivePackage && consultationPrice != null && (
+                {porta?.kind === "PACKAGE_SESSION" ? (
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">{isPt ? "Sessão do seu pacote" : "Session from your package"}</span>
+                    <span className="font-bold text-primary">
+                      {porta.sessionsRemaining == null
+                        ? isPt ? "sem cobrança" : "no charge"
+                        : isPt
+                          ? `restam ${porta.sessionsRemaining} de ${porta.sessionsIncluded}`
+                          : `${porta.sessionsRemaining} of ${porta.sessionsIncluded} left`}
+                    </span>
+                  </div>
+                ) : porta?.kind ? (
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">
+                      {porta.kind === "FIRST_CONSULTATION"
+                        ? isPt ? "Primeira consulta" : "First consultation"
+                        : isPt ? "Sessão extra" : "Extra session"}
+                    </span>
+                    <span className="font-bold text-primary">
+                      £{porta.price.toFixed(2)}
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        {porta.requiresPayment
+                          ? isPt ? "pago ao marcar" : "paid when you book"
+                          : isPt ? "entra na fatura" : "on your invoice"}
+                      </span>
+                    </span>
+                  </div>
+                ) : !hasActivePackage && consultationPrice != null ? (
                   <div className="flex justify-between pt-2 border-t mt-2">
                     <span className="font-semibold">{isPt ? "Preço estimado" : "Estimated price"}</span>
                     <span className="font-bold text-primary">£{consultationPrice}</span>
                   </div>
+                ) : (
+                  <p className="pt-2 border-t mt-2 text-xs text-muted-foreground">
+                    {isPt
+                      ? "Sua clínica confirma o valor ao aprovar a consulta."
+                      : "Your clinic confirms the amount when it approves the appointment."}
+                  </p>
                 )}
               </div>
             )}

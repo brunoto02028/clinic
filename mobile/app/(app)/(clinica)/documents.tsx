@@ -4,6 +4,7 @@ import { Stack, usePathname} from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { DocumentThumb } from "@/components/DocumentThumb";
+import { ImageViewer, isImageFile, openFileInApp } from "@/components/FileViewer";
 import * as ImagePicker from "expo-image-picker";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchDocuments } from "@/api/documents";
@@ -39,6 +40,7 @@ function DocumentsScreen() {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
   const [uploading, setUploading] = useState(false);
+  const [imagemAberta, setImagemAberta] = useState<{ uri: string; titulo: string } | null>(null);
 
   // Same values as the web's DOC_TYPES (app/dashboard/documents/page.tsx). The
   // card was printing the enum key with underscores swapped for spaces, so a
@@ -183,7 +185,16 @@ function DocumentsScreen() {
                       return;
                     }
                     try {
-                      await Linking.openURL(url);
+                      // Imagem abre aqui, em tela cheia; PDF e o resto, no
+                      // navegador **de dentro** do app. Antes tudo ia para o
+                      // Safari, e o paciente saía do BPR para ver o próprio
+                      // exame — levando junto a URL assinada para o histórico
+                      // de um navegador que não é nosso.
+                      if (isImageFile(item.fileType, item.fileName)) {
+                        setImagemAberta({ uri: url, titulo: item.title || item.fileName });
+                      } else {
+                        await openFileInApp(url);
+                      }
                     } catch {
                       Alert.alert(
                         tr(lang, { en: "Document", pt: "Documento" }),
@@ -210,7 +221,13 @@ function DocumentsScreen() {
                           {DOC_TYPE_LABEL[item.documentType ?? "OTHER"] ?? tr(lang, { en: "Other", pt: "Outro" })}{item.documentDate ? ` · ${formatDate(item.documentDate, lang)}` : ""}
                         </Text>
                       </View>
-                      <Ionicons name="open-outline" size={16} color={t.colors.textMuted} />
+                      {/* O ícone diz para onde o toque leva: lupa quando abre
+                          aqui, seta quando abre o navegador interno. */}
+                      <Ionicons
+                        name={isImageFile(item.fileType, item.fileName) ? "expand-outline" : "open-outline"}
+                        size={16}
+                        color={t.colors.textMuted}
+                      />
                     </View>
                   </Card>
                 </Pressable>
@@ -219,6 +236,13 @@ function DocumentsScreen() {
           />
         )}
       </View>
+
+      {/* Em cima de tudo, para a imagem cobrir a tela inteira. */}
+      <ImageViewer
+        uri={imagemAberta?.uri ?? null}
+        title={imagemAberta?.titulo}
+        onClose={() => setImagemAberta(null)}
+      />
     </Screen>
   );
 }

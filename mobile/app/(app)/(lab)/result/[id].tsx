@@ -2,6 +2,7 @@ import { View, Linking, Alert } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
+import { openFileInApp } from "@/components/FileViewer";
 import { fetchLabOrder } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 
@@ -34,7 +35,8 @@ export default function LabResult() {
   const openReport = async () => {
     if (!reportUrl) return;
     try {
-      await Linking.openURL(reportUrl);
+      // O laudo também fica dentro do app (mesma razão dos documentos).
+      await openFileInApp(reportUrl);
     } catch {
       Alert.alert("Error", "Could not open the report.");
     }
