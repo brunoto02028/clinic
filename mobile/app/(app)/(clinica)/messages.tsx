@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
+import { Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { fetchMessages, sendMessage, markMessagesRead, type ClinicMessage } from "@/api/messages";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
@@ -90,7 +91,27 @@ function MessagesScreen() {
   });
 
   return (
-    <Screen testID="messages-screen">
+    /**
+     * Aqui a raiz é o `KeyboardAvoidingView`, não o `Screen`.
+     *
+     * Enfiado dentro do `Screen`, ele ficava abaixo de um `SafeAreaView` e de
+     * um `padding` — ou seja, a base dele não era a base da janela, e a conta
+     * de quanto o teclado cobre saía errada por essa diferença. O campo ficava
+     * atrás do teclado, e a pessoa digitava sem ver o que digitava. Tentei
+     * consertar com `keyboardVerticalOffset` e **piorei**: o campo sumiu de
+     * vez, porque o deslocamento diminui a compensação em vez de aumentá-la.
+     *
+     * Com o KAV na raiz, `keyboardVerticalOffset={headerHeight}` passa a ser o
+     * que a documentação do React Navigation manda: o header é a única coisa
+     * acima dele. A margem de baixo volta como `SafeAreaView edges={["bottom"]}`
+     * em volta do campo, que é onde ela precisa estar numa tela de conversa.
+     */
+    <KeyboardAvoidingView
+      testID="messages-screen"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={headerHeight}
+      style={{ flex: 1, backgroundColor: t.colors.background }}
+    >
       <Stack.Screen
         options={{
           headerShown: true,
@@ -100,21 +121,7 @@ function MessagesScreen() {
           headerShadowVisible: false,
         }}
       />
-      {/*
-        `keyboardVerticalOffset` faltava, e passou a importar quando o módulo
-        ganhou header (24/09/2026): sem contar a altura dele, o
-        KeyboardAvoidingView compensa de menos exatamente esse tanto, e o campo
-        fica atrás do teclado — a pessoa digita sem ver o que digita. É a mesma
-        queixa do achado 1, numa tela que escapou porque tem lista própria e
-        não usa o ramo com rolagem do `Screen`, que é onde o conserto geral
-        vive.
-      */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={headerHeight}
-        style={{ flex: 1 }}
-      >
-        <View style={{ flex: 1, gap: 12 }}>
+      <View style={{ flex: 1, gap: 12, padding: 16 }}>
           <View>
             {/* `ui.title` repeated `ui.header` word for word — the screen read
                 "Messages Messages". The header keeps the name. */}
@@ -195,7 +202,7 @@ function MessagesScreen() {
             </ScrollView>
           )}
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
+          <SafeAreaView edges={["bottom"]} style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
             <View style={{ flex: 1 }}>
               <Input
                 value={draft}
@@ -220,16 +227,15 @@ function MessagesScreen() {
             >
               <Ionicons name="send" size={18} color="#FFFFFF" />
             </Pressable>
-          </View>
+          </SafeAreaView>
 
           {send.isError && (
             <Text variant="caption" color={t.colors.danger} style={{ textAlign: "center" }}>
               {ui.sendFailed}
             </Text>
           )}
-        </View>
-      </KeyboardAvoidingView>
-    </Screen>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
