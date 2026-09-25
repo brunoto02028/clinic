@@ -1,6 +1,6 @@
 # T-3: App — gravar e enviar o vídeo do exercício
 
-**Status:** pendente
+**Status:** implementada, aguarda QA e teste no aparelho
 **Depende de:** T-2
 
 ## Objetivo
@@ -34,3 +34,15 @@ A permissão negada já tem saída para os Ajustes (`lib/ask-permission.ts`), fe
 - [ ] O envio mostra progresso e o resultado
 - [ ] Sem rede: falha explicada, com tentar de novo, sem perder o vídeo
 - [ ] O retorno do terapeuta aparece junto do envio
+
+
+## O que ficou para o próximo build
+
+**Tocar o vídeo dentro do app.** `expo-av` e `expo-video` não estão instalados e são nativos.
+
+Não faz falta no ciclo: quem precisa assistir é o **terapeuta**, e ele assiste no painel, onde a
+tag `<video>` do HTML resolve sem dependência nenhuma. O que o paciente precisa ver é que o vídeo
+chegou e o que responderam — e isso ele vê.
+
+Gravar já funciona sem build: o `expo-image-picker`, que já está instalado, abre a câmera de vídeo
+com `videoMaxDuration`, e é o **próprio gravador do sistema** que para no tempo combinado.

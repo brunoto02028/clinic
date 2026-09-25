@@ -7,6 +7,7 @@ import { fetchPrescriptions, completeExercise, fetchExerciseClearance } from "@/
 import { ExerciseBlockCard } from "@/components/ExerciseBlockCard";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
+import { ExerciseSubmissions } from "@/components/ExerciseSubmissions";
 import { useLang, pick, t as tr } from "@/lib/i18n";
 
 // The badge beside the exercise name. These were Portuguese-only, so an en-GB
@@ -272,6 +273,10 @@ function ExerciseDetailScreen() {
               ) : null}
             </Card>
           ) : null}
+
+          {/* Mostrar como faz em casa. É o que fecha o atendimento híbrido:
+              sem isto o terapeuta corrige uma execução que nunca viu. */}
+          <ExerciseSubmissions prescriptionId={rx.id} />
         </View>
       )}
     </Screen>
