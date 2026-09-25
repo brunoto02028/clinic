@@ -30,6 +30,8 @@ interface Broadcast {
   scheduledFor?: string | null;
   recipientCount: number;
   readCount: number;
+  pushSent?: number | null;
+  pushFailed?: number | null;
   recipients: { name: string; read: boolean }[];
   sentBy: string;
   createdAt: string;
@@ -300,11 +302,24 @@ export default function NotificationsPage() {
                   ? "bg-primary/15 border-primary/40 text-primary font-semibold"
                   : "border-border text-muted-foreground hover:border-primary/30"
               }`}
-              onClick={() => setSchedule(!schedule)}
+              onClick={() => {
+                // Agendar desmarca o push. Sem isto o estado continuava `true`,
+                // ia no corpo e o servidor o descartava — a pessoa saía
+                // achando que tinha armado o aviso no celular.
+                const ligando = !schedule;
+                setSchedule(ligando);
+                if (ligando) setPushNotify(false);
+                setPreview(null);
+              }}
             >
               <CalendarClock className="h-3.5 w-3.5" />
               {schedule ? "Scheduled for:" : "Schedule sending"}
             </button>
+            {schedule && (
+              <span className="text-[10px] text-muted-foreground">
+                A scheduled notice goes to the app only — no phone alert.
+              </span>
+            )}
             {schedule && (
               <Input
                 type="datetime-local"
@@ -422,6 +437,20 @@ export default function NotificationsPage() {
                   ) : (
                     <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 shrink-0">
                       {b.readCount}/{b.recipientCount} read
+                    </span>
+                  )}
+                  {/* O que aconteceu no celular. Antes isto vivia só no toast:
+                      recarregar a página perdia os números, e uma falha inteira
+                      do serviço não deixava rastro. */}
+                  {b.pushSent != null && (
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${
+                        b.pushFailed ? "bg-amber-500/15 text-amber-400" : "bg-sky-500/15 text-sky-400"
+                      }`}
+                      title={b.pushFailed ? `${b.pushFailed} did not go through` : undefined}
+                    >
+                      📱 {b.pushSent}
+                      {b.pushFailed ? ` · ${b.pushFailed} failed` : ""}
                     </span>
                   )}
                   <button

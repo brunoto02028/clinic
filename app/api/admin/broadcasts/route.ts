@@ -52,6 +52,10 @@ export async function GET(request: NextRequest) {
     })),
     sentBy: `${b.sentBy.firstName} ${b.sentBy.lastName}`,
     createdAt: b.createdAt,
+    // Nulo quando o aviso foi só no app. Dois broadcasts vinham
+    // indistinguíveis, e uma falha do serviço não deixava rastro nenhum.
+    pushSent: b.pushSent ?? null,
+    pushFailed: b.pushFailed ?? null,
   }));
 
   return NextResponse.json(result);
@@ -201,6 +205,15 @@ export async function POST(req: NextRequest) {
           url: "/(app)/(clinica)/messages",
         }
       );
+    }
+
+    // O resultado fica no registro, e não só no toast: recarregar a página
+    // perdia os números, e uma falha inteira do serviço não deixava rastro.
+    if (push) {
+      await (prisma as any).clinicBroadcast.update({
+        where: { id: broadcast.id },
+        data: { pushSent: push.sent, pushFailed: push.failed },
+      }).catch(() => {});
     }
 
     return NextResponse.json(

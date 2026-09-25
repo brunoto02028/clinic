@@ -86,6 +86,23 @@ export function pushConsulta(patientId: string, tipo: "marcada" | "remarcada" | 
   return avisar(patientId, textos, "/(app)/(clinica)/(tabs)/appointments");
 }
 
+/**
+ * A clínica criou uma ação para o paciente resolver.
+ *
+ * O título da tarefa é texto livre de quem a criou — "assinar consentimento
+ * para a infiltração no joelho" é um caso real. Ele não entra aqui.
+ */
+export function pushTarefa(patientId: string) {
+  return avisar(
+    patientId,
+    {
+      en: { title: "Your clinic", body: "There is something for you to do." },
+      pt: { title: "Sua clínica", body: "Há algo para você resolver." },
+    },
+    "/(app)/(clinica)/(tabs)"
+  );
+}
+
 /** Um documento ou plano foi compartilhado com o paciente. */
 export function pushDocumento(patientId: string) {
   return avisar(

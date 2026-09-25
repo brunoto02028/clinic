@@ -7113,6 +7113,10 @@ model ClinicBroadcast {
   scheduledFor   DateTime? // when set + status scheduled, dispatch at this time
   sentAt         DateTime?
   targetIds      String[]        @default([]) // patient ids for scheduled "selected" audience
+  // O resultado do aviso no celular. Sem isto ele so existia no toast: recarregar
+  // a pagina perdia os numeros, e uma falha inteira da Expo nao deixava rastro.
+  pushSent       Int?
+  pushFailed     Int?
   createdAt      DateTime        @default(now())
   messages       ClinicMessage[]
 

@@ -71,13 +71,35 @@ direito, seria o robô falando, e isso continua desligado até você dizer o con
 
 | T-N | nome | status |
 |-----|------|--------|
-| T-1 | o app pede permissão e registra o aparelho | pendente |
-| T-2 | a rota de registro aceita o bearer do app e guarda o token da Expo | pendente |
-| T-3 | o envio: Expo Push em lotes, com recibo e token morto desativado | pendente |
-| T-4 | painel: escrever o aviso geral, ver a prévia, saber quantos recebem, enviar | pendente |
-| T-5 | o aviso individual: as cinco ações da clínica que tocam o ombro do paciente | pendente |
-| T-6 | tocar na notificação abre a tela certa | pendente |
-| T-7 | o paciente desliga no próprio app | pendente |
+| T-1 | o app pede permissão e registra o aparelho | implementada, aguarda aparelho |
+| T-2 | a rota de registro aceita o bearer do app e guarda o token da Expo | **QA aprovado** (1 ressalva registrada) |
+| T-3 | o envio: Expo Push em lotes, com recibo e token morto desativado | **QA aprovado** |
+| T-4 | painel: escrever o aviso geral, ver a prévia, saber quantos recebem, enviar | QA reprovou (#2, #3) → corrigidas |
+| T-5 | o aviso individual: as ações da clínica que tocam o ombro do paciente | QA reprovou (#4, #5) → corrigidas |
+| T-6 | tocar na notificação abre a tela certa | implementada, aguarda aparelho |
+| T-7 | o paciente desliga no próprio app | servidor medido; tela aguarda aparelho |
+
+## QA de 25/09/2026 — `qa/report-servidor.md`
+
+Cinco defeitos, todos corrigidos no mesmo dia. O que mais importa:
+
+**O quinto ponto de push que eu não sabia que existia.** `app/api/admin/patient-tasks/route.ts`
+chamava `sendPushToUser` desde antes desta atividade — apontando para a API do Firebase
+desligada, ou seja, sem nunca chegar a lugar nenhum. **Ao fazer o push voltar a funcionar, eu o
+ativei**, e ele mandava o título da tarefa verbatim para a tela bloqueada ("Sign consent for the
+knee joint injection"), em português com paciente inglês, com deep link para uma rota da web que o
+app não tem. Agora passa por `pushTarefa`: texto neutro, idioma do paciente, rota do app.
+
+Lição que vale além desta atividade: **consertar um canal morto acorda todos os seus chamadores.**
+Antes de reviver um, listar quem o chama.
+
+Os outros quatro: `pushDocumento` existia e nunca era chamado; broadcast agendado com push marcado
+descartava o push em silêncio; o resultado do push não virava registro, só toast; e o envio dizia
+"3 enviados" quando o portão de QA tinha barrado tudo.
+
+A garantia central foi provada duas vezes — fecho transitivo dos imports das 16 rotas de cron
+(com controle positivo, para provar que o teste não estava cego) e execução real com `sink`:
+**nenhum cron alcança push.**
 
 T-1 e T-2 são o par que faz um aparelho existir — sem eles nada mais tem efeito. T-3 é o envio, e
 serve às duas metades. T-4 é a sua mão no botão; T-5 é a metade individual. T-6 e T-7 são o que

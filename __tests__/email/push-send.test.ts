@@ -118,12 +118,21 @@ describe("sendPushToUsers", () => {
     expect(r.sent).toBe(0);
   });
 
-  it("com o portão de saída fechado (QA), nada sai", async () => {
+  it("com o portão de saída fechado (QA), nada sai — e o resultado não mente", async () => {
     (outboundAllowed as jest.Mock).mockReturnValue(false);
 
-    await sendPushToUsers(["u1"], { title: "t", body: "b" });
+    const r = await sendPushToUsers(["u1"], { title: "t", body: "b" });
 
     expect(global.fetch).not.toHaveBeenCalled();
+    // Devolvia `sent: <número de aparelhos>` sem ter enviado nada, e o painel
+    // dizia "3 devices" com zero chamadas de rede.
+    expect(r.sent).toBe(0);
+    expect(r.error).toBe("outbound_blocked");
+  });
+
+  it("o portão recebe a lista, não a string juntada", async () => {
+    await sendPushToUsers(["u1", "u2"], { title: "t", body: "b" });
+    expect(outboundAllowed).toHaveBeenCalledWith(["u1", "u2"]);
   });
 
   it("lista vazia não vira chamada", async () => {
