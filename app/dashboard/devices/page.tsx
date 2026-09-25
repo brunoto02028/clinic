@@ -308,7 +308,12 @@ export default function DevicesPage() {
             }`}>{fixMsg.text}</div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {OW_PROVIDERS.map(provider => {
+            {/* Só o que a clínica providenciou de fato — mais qualquer aparelho
+                que este paciente já tenha ligado, para que uma conexão viva
+                nunca desapareça da tela por causa de um interruptor. */}
+            {OW_PROVIDERS.filter(p =>
+              p.enabled || connections.some(c => c.provider === p.key.toUpperCase())
+            ).map(provider => {
               const conn = connections.find(c => c.provider === provider.key.toUpperCase());
               return (
                 <ConnectDeviceCard

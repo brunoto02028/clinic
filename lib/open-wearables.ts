@@ -72,13 +72,31 @@ export async function owGetHealthScores(owUserId: string) {
  * `direct: true` means we speak to the provider ourselves rather than through
  * the aggregator — Withings is the only one that measures blood pressure, and
  * it has a public OAuth2 API instead of a partner agreement.
+ *
+ * `enabled` is whether the patient may be offered it **today**. Six of these
+ * seven went through an aggregator whose credentials
+ * (`OPEN_WEARABLES_API_URL` / `_API_KEY`) were never configured — not in
+ * `.env`, not in Coolify — so the screen showed seven "Connect" buttons of
+ * which six could only fail. A button that promises a door that is not there
+ * is worse than no button.
+ *
+ * The list stays whole because the route still validates provider keys against
+ * it, and because each one comes back the day its API is actually arranged.
+ * Turning one on is this flag plus its credentials — nothing else.
  */
 export const OW_PROVIDERS = [
-  { key: 'oura', name: 'Oura Ring', icon: '💍' },
-  { key: 'garmin', name: 'Garmin', icon: '⌚' },
-  { key: 'whoop', name: 'Whoop', icon: '🏋️' },
-  { key: 'fitbit', name: 'Fitbit', icon: '📱' },
-  { key: 'polar', name: 'Polar', icon: '❄️' },
-  { key: 'strava', name: 'Strava', icon: '🚴' },
-  { key: 'withings', name: 'Withings', icon: '🩺' },
+  { key: 'oura', name: 'Oura Ring', icon: '💍', enabled: false },
+  { key: 'garmin', name: 'Garmin', icon: '⌚', enabled: false },
+  { key: 'whoop', name: 'Whoop', icon: '🏋️', enabled: false },
+  { key: 'fitbit', name: 'Fitbit', icon: '📱', enabled: false },
+  { key: 'polar', name: 'Polar', icon: '❄️', enabled: false },
+  { key: 'strava', name: 'Strava', icon: '🚴', enabled: false },
+  { key: 'withings', name: 'Withings', icon: '🩺', enabled: true },
 ] as const;
+
+/** O que a tela pode oferecer. Só isto aparece para o paciente. */
+export const ENABLED_PROVIDERS = OW_PROVIDERS.filter((p) => p.enabled);
+
+export function providerEnabled(key: string): boolean {
+  return OW_PROVIDERS.some((p) => p.key === key.toLowerCase() && p.enabled);
+}
