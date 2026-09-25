@@ -22,8 +22,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const clinicFilter = request.nextUrl.searchParams.get("clinicId");
+    // Um `clinicId` na query só vale para quem enxerga todos os tenants. Antes
+    // ele era aceito de olhos fechados: um terapeuta da clínica B pedia
+    // `?clinicId=<clínica A>` e recebia as contagens da A — quantos vídeos e
+    // quantas mensagens estavam parados lá. São números sem nome, mas são
+    // números de outra clínica. Mesma família do `a04338cd`.
+    const clinicFilter = userRole === "SUPERADMIN" ? request.nextUrl.searchParams.get("clinicId") : null;
     const effectiveClinicId = clinicFilter || userClinicId;
+
+    // Staff sem clínica não é "staff de todas": sem um tenant para filtrar, a
+    // consulta abaixo contaria o banco inteiro.
+    if (!effectiveClinicId && userRole !== "SUPERADMIN") {
+      return NextResponse.json({
+        pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0,
+        unassignedMeasurements: 0, unreviewedSubmissions: 0,
+      });
+    }
 
     const userWhere: any = { role: "PATIENT" };
     if (effectiveClinicId && (userRole !== "SUPERADMIN" || clinicFilter)) {

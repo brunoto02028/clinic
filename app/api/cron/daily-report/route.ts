@@ -10,6 +10,11 @@ export const dynamic = "force-dynamic";
 
 const REPORT_TO = "admin@bpr.clinic";
 
+// Ação própria para a falha, e de propósito diferente de REPORT_ACTION: o
+// dedupe procura REPORT_ACTION, então um dia que falhou continua elegível na
+// próxima rodada.
+const REPORT_FAILED_ACTION = "DAILY_ADHERENCE_REPORT_FAILED";
+
 // POST /api/cron/daily-report — once a day (intended: 21h clinic time, see
 // specs/049-relatorio-adesao-diaria): e-mails the clinic a completed/missing
 // summary. Split out from /api/cron/daily-adherence (17/09/2026) so this can
@@ -59,18 +64,28 @@ export async function POST(req: NextRequest) {
       const subject = waiting.total > 0
         ? `${clinic.name}: ${waiting.total} waiting for you · ${completed.length} completed, ${missing.length} missing`
         : `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`;
-      await sendEmail({ to: REPORT_TO, subject, html });
+      // `sendEmail` não estoura quando o provedor recusa — devolve
+      // `success:false`. Registrar isso como "e-mailed" era pior que perder o
+      // e-mail: o dedupe acima lê exatamente essa linha, então o dia perdido
+      // nunca seria retentado e nada diria que faltou.
+      const enviado = await sendEmail({ to: REPORT_TO, subject, html });
       await logAudit({
         userId: "system",
         userEmail: "",
         userRole: "SYSTEM",
-        action: REPORT_ACTION,
+        action: enviado?.success ? REPORT_ACTION : REPORT_FAILED_ACTION,
         entity: "Clinic",
         entityId: clinic.id,
-        description: `Daily adherence report e-mailed for ${clinic.name}`,
-        metadata: { waiting: waiting.total, exerciseVideos: waiting.exerciseVideos },
+        description: enviado?.success
+          ? `Daily adherence report e-mailed for ${clinic.name}`
+          : `Daily adherence report FAILED to send for ${clinic.name}`,
+        metadata: {
+          waiting: waiting.total,
+          exerciseVideos: waiting.exerciseVideos,
+          ...(enviado?.success ? {} : { error: (enviado as any)?.error ?? "unknown" }),
+        },
       });
-      reportSent = true;
+      reportSent = !!enviado?.success;
     }
 
     results.push({

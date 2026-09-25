@@ -61,12 +61,45 @@ treina a abrir.
 
 | T-N | nome | status |
 |-----|------|--------|
-| T-1 | modelo e armazenamento do envio de exercício | implementada, aguarda QA |
-| T-2 | API: paciente envia, clínica lê e responde | implementada, aguarda QA |
-| T-3 | app: gravar e enviar o vídeo do exercício | implementada, aguarda QA |
+| T-1 | modelo e armazenamento do envio de exercício | QA reprovou (F1) → corrigido, aguarda re-QA |
+| T-2 | API: paciente envia, clínica lê e responde | **concluída** — QA aprovado (30 cenários) |
+| T-3 | app: gravar e enviar o vídeo do exercício | implementada, aguarda teste no aparelho |
 | T-4 | app: anexo na conversa (ligar no que já existe) | QA reprovou → corrigido, aguarda teste no aparelho |
-| T-5 | admin: fila de revisão e resposta do terapeuta | implementada, aguarda QA |
-| T-6 | aviso por resumo diário, não por evento | implementada, aguarda QA |
+| T-5 | admin: fila de revisão e resposta do terapeuta | QA reprovou (F2, F3) → F3 corrigida, **F2 aguarda decisão** |
+| T-6 | aviso por resumo diário, não por evento | QA aprovou com ressalvas (F4, F5, F6) → corrigidas, aguarda re-QA |
+
+## QA de 25/09/2026
+
+Relatórios: `qa/report-t-1-t-2-t-5-t-6.md` (local, dois tenants reais) e
+`qa/report-online-25-09.md` (produção, caixa-preta, commit `230bcd95`).
+
+Seis defeitos achados. Cinco corrigidos no mesmo dia:
+
+| | o que era | onde |
+|---|---|---|
+| **F1** | `.exe` renomeado para `.mp4` passava como vídeo do paciente | `lib/exercise-submission.ts` — o tipo agora vem dos bytes |
+| **F2** | o envio não aparece em "Waiting for you" | **aberta** — decisão do Bruno, ver abaixo |
+| **F3** | `?clinicId=` de outra clínica devolvia as contagens dela | `app/api/admin/pending-count/route.ts` — só SUPERADMIN passa `clinicId` |
+| **F4** | e-mail que falhou era gravado como "enviado", e o dia nunca era retentado | `app/api/cron/daily-report/route.ts` — ação própria para a falha |
+| **F5** | a prévia do admin já não era o e-mail que sai | `app/api/admin/adherence/preview-email/route.ts` |
+| **F6** | "1 exercise videos to watch" | `lib/clinic-waiting.ts` — singular e plural |
+
+Regressão protegida por teste: `__tests__/tenant/pending-count-clinic.test.ts`,
+`__tests__/exercises/exercise-submission-type.test.ts`,
+`__tests__/email/clinic-waiting-block.test.ts` (18 casos; os de tenant falham contra o código
+antigo — conferido).
+
+### F2 — em aberto, e é decisão de produto
+
+"Waiting for you" no admin é `/admin/outbox`, a fila da automação da atividade 072. Ela não
+conhece `ExerciseSubmission`. Hoje o badge do menu avisa que há um vídeo, e o vídeo só aparece
+**dentro do prontuário do paciente** — que foi exatamente onde o Bruno pediu para ser avisado
+(*"quando o vídeo chega quero ser notificado na área do paciente da Clinic"*, 25/09).
+
+O critério de QA vinha de antes dessa decisão. O que falta não é a tela: é **o caminho do badge
+até o paciente certo** — hoje ele diz "tem algo" e não diz de quem. Três saídas, da mais barata
+para a mais cara: o badge levar a `/admin/patients` já filtrado por quem tem vídeo esperando; uma
+linha por envio dentro do `/admin/outbox`; ou uma tela própria de fila.
 
 T-1 → T-2 sustentam todo o resto. T-3 e T-5 são as duas pontas do mesmo fluxo e só fazem sentido
 juntas. T-4 é independente e a mais barata. T-6 depende de T-2 existir.
