@@ -1,6 +1,6 @@
 # T-5: Admin — fila de revisão e resposta do terapeuta
 
-**Status:** pendente
+**Status:** implementada, aguarda QA
 **Depende de:** T-2
 
 ## Objetivo
