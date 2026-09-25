@@ -14,6 +14,7 @@ import {
 import ClinicMeasurementButton from "@/components/admin/clinic-measurement-button";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
+import ExerciseSubmissionsPanel from "@/components/admin/exercise-submissions-panel";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
@@ -2297,8 +2298,12 @@ export default function PatientProfilePage() {
         </TabsContent>
 
         {/* ── Tab: Exercícios ── */}
-        <TabsContent value="exercicios" className="mt-4">
+        <TabsContent value="exercicios" className="mt-4 space-y-6">
           <PatientExercisesTab patientId={patientId} />
+          {/* O vídeo que o paciente gravou em casa fica junto da prescrição,
+              que é onde ele significa alguma coisa — foi onde o Bruno pediu
+              para ser avisado, "para fazer a revisão e dar um retorno". */}
+          <ExerciseSubmissionsPanel patientId={patientId} />
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}

@@ -48,7 +48,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 // with no access-control headers at all and the patient could not book —
 // while /api/patient answered fine, which is what made it look like a bug in
 // the screen rather than in the allowlist.
-const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files'];
+const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files', '/api/exercise-submissions'];
 // CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
 // bearer (not cookie) auth means "*" doesn't expose any ambient session.
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';

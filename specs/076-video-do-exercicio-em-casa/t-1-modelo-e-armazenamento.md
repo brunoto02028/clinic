@@ -1,6 +1,6 @@
 # T-1: Modelo e armazenamento do envio de exercício
 
-**Status:** pendente
+**Status:** implementada, aguarda QA
 **Depende de:** nenhuma
 
 ## Objetivo

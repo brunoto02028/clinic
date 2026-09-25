@@ -483,14 +483,15 @@ model Clinic {
   clinicEquipment ClinicEquipment[]
 
   // Automation engine (activity 072)
-  alerts           Alert[]
-  automationRules  AutomationRule[]
+  alerts                 Alert[]
+  automationRules        AutomationRule[]
   // Clinic-device measurement (activity 074, T-14)
   wearableConnections    WearableConnection[]
   measurementSessions    ClinicMeasurementSession[]
   unassignedMeasurements UnassignedMeasurement[]
-  outboundMessages OutboundMessage[]
-  automationRuns   AutomationRun[]
+  outboundMessages       OutboundMessage[]
+  automationRuns         AutomationRun[]
+  exerciseSubmissions    ExerciseSubmission[]
 
   @@index([slug])
   @@index([isActive])
@@ -688,58 +689,58 @@ model User {
 
   // New relations for SaaS features
   footScans                      FootScan[]
-  ordersAsCustomer               Order[]                   @relation("CustomerOrders")
-  ordersAsProcessor              Order[]                   @relation("ProcessorOrders")
+  ordersAsCustomer               Order[]                    @relation("CustomerOrders")
+  ordersAsProcessor              Order[]                    @relation("ProcessorOrders")
   diagnosticFiles                DiagnosticFile[]
-  diagnosticFilesReviewed        DiagnosticFile[]          @relation("ReviewedFiles")
-  treatmentPlansAsPatient        TreatmentPlan[]           @relation("PatientPlans")
-  treatmentPlansAsTherapist      TreatmentPlan[]           @relation("TherapistPlans")
-  membershipsAsPatient           MembershipPlan[]          @relation("PatientMemberships")
-  socialPostsCreated             SocialPost[]              @relation("SocialPostCreator")
-  eduContentCreated              EducationContent[]        @relation("EduContentCreator")
-  eduAssignmentsGiven            EducationAssignment[]     @relation("EduAssigner")
-  eduAssignmentsReceived         EducationAssignment[]     @relation("EduPatient")
+  diagnosticFilesReviewed        DiagnosticFile[]           @relation("ReviewedFiles")
+  treatmentPlansAsPatient        TreatmentPlan[]            @relation("PatientPlans")
+  treatmentPlansAsTherapist      TreatmentPlan[]            @relation("TherapistPlans")
+  membershipsAsPatient           MembershipPlan[]           @relation("PatientMemberships")
+  socialPostsCreated             SocialPost[]               @relation("SocialPostCreator")
+  eduContentCreated              EducationContent[]         @relation("EduContentCreator")
+  eduAssignmentsGiven            EducationAssignment[]      @relation("EduAssigner")
+  eduAssignmentsReceived         EducationAssignment[]      @relation("EduPatient")
   eduProgress                    EducationProgress[]
-  bodyAssessmentsAsPatient       BodyAssessment[]          @relation("PatientBodyAssessments")
-  bodyAssessmentsAsTherapist     BodyAssessment[]          @relation("TherapistBodyAssessments")
-  exercisesCreated               Exercise[]                @relation("ExercisesCreated")
-  prescribedExercises            ExercisePrescription[]    @relation("PrescribedExercises")
-  receivedExercises              ExercisePrescription[]    @relation("ReceivedExercises")
-  trainerWorkouts                Workout[]                 @relation("TrainerWorkouts")
-  studentWorkouts                Workout[]                 @relation("StudentWorkouts")
-  studentWorkoutLogs             WorkoutLog[]              @relation("StudentWorkoutLogs")
-  trainerWorkoutTemplates        WorkoutTemplate[]         @relation("TrainerWorkoutTemplates")
-  studentAssessments             StudentAssessment[]       @relation("StudentAssessments")
-  trainerAssessments             StudentAssessment[]       @relation("TrainerAssessments")
-  studentAssessmentPhotos        AssessmentPhoto[]         @relation("StudentAssessmentPhotos")
-  studentMealPlans               MealPlan[]                @relation("StudentMealPlans")
-  trainerMealPlans               MealPlan[]                @relation("TrainerMealPlans")
-  studentMealLogs                MealLog[]                 @relation("StudentMealLogs")
-  trainerBillingPlans            BillingPlan[]             @relation("TrainerBillingPlans")
-  studentBillingSubscriptions    BillingSubscription[]     @relation("StudentBillingSubscriptions")
-  trainerBillingSubscriptions    BillingSubscription[]     @relation("TrainerBillingSubscriptions")
-  studentStripeCustomers         StudentStripeCustomer[]   @relation("StudentStripeCustomers")
-  trainerChallenges              Challenge[]               @relation("TrainerChallenges")
-  studentChallengeParticipations ChallengeParticipant[]    @relation("StudentChallengeParticipations")
-  diagnosesAsPatient             AIDiagnosis[]             @relation("PatientDiagnoses")
-  diagnosesAsTherapist           AIDiagnosis[]             @relation("TherapistDiagnoses")
-  protocolsAsPatient             TreatmentProtocol[]       @relation("PatientProtocols")
-  protocolsAsTherapist           TreatmentProtocol[]       @relation("TherapistProtocols")
-  exerciseCompletionLogs         ExerciseCompletionLog[]   @relation("ExerciseCompletionLogs")
-  evidenceReportsAsPatient       ClinicalEvidenceReport[]  @relation("PatientEvidenceReports")
-  evidenceReportsAsReviewer      ClinicalEvidenceReport[]  @relation("ReviewerEvidenceReports")
-  ambientRecordingsAsTherapist   AmbientRecordingSession[] @relation("AmbientRecordingTherapist")
-  ambientRecordingsAsPatient     AmbientRecordingSession[] @relation("AmbientRecordingPatient")
-  documentsAsPatient             PatientDocument[]         @relation("PatientDocuments")
-  documentsUploaded              PatientDocument[]         @relation("DocumentUploader")
-  packagesAsPatient              TreatmentPackage[]        @relation("PatientPackages")
-  voiceTranscriptions            VoiceTranscription[]      @relation("PatientTranscriptions")
-  emailMessages                  EmailMessage[]            @relation("PatientEmails")
-  patientInvoices                PatientInvoice[]          @relation("PatientInvoices")
-  patientInvoicesCreated         PatientInvoice[]          @relation("PatientInvoicesCreated")
-  patientInvoicesPaidBy          PatientInvoice[]          @relation("PatientInvoicesPaidBy")
-  bloodPressureReadings          BloodPressureReading[]    @relation("PatientBPReadings")
-  bloodPressureReadingsRecorded  BloodPressureReading[]    @relation("StaffBPReadings")
+  bodyAssessmentsAsPatient       BodyAssessment[]           @relation("PatientBodyAssessments")
+  bodyAssessmentsAsTherapist     BodyAssessment[]           @relation("TherapistBodyAssessments")
+  exercisesCreated               Exercise[]                 @relation("ExercisesCreated")
+  prescribedExercises            ExercisePrescription[]     @relation("PrescribedExercises")
+  receivedExercises              ExercisePrescription[]     @relation("ReceivedExercises")
+  trainerWorkouts                Workout[]                  @relation("TrainerWorkouts")
+  studentWorkouts                Workout[]                  @relation("StudentWorkouts")
+  studentWorkoutLogs             WorkoutLog[]               @relation("StudentWorkoutLogs")
+  trainerWorkoutTemplates        WorkoutTemplate[]          @relation("TrainerWorkoutTemplates")
+  studentAssessments             StudentAssessment[]        @relation("StudentAssessments")
+  trainerAssessments             StudentAssessment[]        @relation("TrainerAssessments")
+  studentAssessmentPhotos        AssessmentPhoto[]          @relation("StudentAssessmentPhotos")
+  studentMealPlans               MealPlan[]                 @relation("StudentMealPlans")
+  trainerMealPlans               MealPlan[]                 @relation("TrainerMealPlans")
+  studentMealLogs                MealLog[]                  @relation("StudentMealLogs")
+  trainerBillingPlans            BillingPlan[]              @relation("TrainerBillingPlans")
+  studentBillingSubscriptions    BillingSubscription[]      @relation("StudentBillingSubscriptions")
+  trainerBillingSubscriptions    BillingSubscription[]      @relation("TrainerBillingSubscriptions")
+  studentStripeCustomers         StudentStripeCustomer[]    @relation("StudentStripeCustomers")
+  trainerChallenges              Challenge[]                @relation("TrainerChallenges")
+  studentChallengeParticipations ChallengeParticipant[]     @relation("StudentChallengeParticipations")
+  diagnosesAsPatient             AIDiagnosis[]              @relation("PatientDiagnoses")
+  diagnosesAsTherapist           AIDiagnosis[]              @relation("TherapistDiagnoses")
+  protocolsAsPatient             TreatmentProtocol[]        @relation("PatientProtocols")
+  protocolsAsTherapist           TreatmentProtocol[]        @relation("TherapistProtocols")
+  exerciseCompletionLogs         ExerciseCompletionLog[]    @relation("ExerciseCompletionLogs")
+  evidenceReportsAsPatient       ClinicalEvidenceReport[]   @relation("PatientEvidenceReports")
+  evidenceReportsAsReviewer      ClinicalEvidenceReport[]   @relation("ReviewerEvidenceReports")
+  ambientRecordingsAsTherapist   AmbientRecordingSession[]  @relation("AmbientRecordingTherapist")
+  ambientRecordingsAsPatient     AmbientRecordingSession[]  @relation("AmbientRecordingPatient")
+  documentsAsPatient             PatientDocument[]          @relation("PatientDocuments")
+  documentsUploaded              PatientDocument[]          @relation("DocumentUploader")
+  packagesAsPatient              TreatmentPackage[]         @relation("PatientPackages")
+  voiceTranscriptions            VoiceTranscription[]       @relation("PatientTranscriptions")
+  emailMessages                  EmailMessage[]             @relation("PatientEmails")
+  patientInvoices                PatientInvoice[]           @relation("PatientInvoices")
+  patientInvoicesCreated         PatientInvoice[]           @relation("PatientInvoicesCreated")
+  patientInvoicesPaidBy          PatientInvoice[]           @relation("PatientInvoicesPaidBy")
+  bloodPressureReadings          BloodPressureReading[]     @relation("PatientBPReadings")
+  bloodPressureReadingsRecorded  BloodPressureReading[]     @relation("StaffBPReadings")
   // Clinic-device measurement (activity 074, T-14)
   measurementSessions            ClinicMeasurementSession[] @relation("PatientMeasurementSessions")
   measurementSessionsOpened      ClinicMeasurementSession[] @relation("StaffOpenedMeasurementSessions")
@@ -747,23 +748,23 @@ model User {
   measurementsAssignedToMe       UnassignedMeasurement[]    @relation("PatientAssignedMeasurements")
   measurementsAssigned           UnassignedMeasurement[]    @relation("StaffAssignedMeasurements")
   measurementsDiscarded          UnassignedMeasurement[]    @relation("StaffDiscardedMeasurements")
-  bpReminderEnabled              Boolean                   @default(false)
-  serviceAccessRecords           ServiceAccess[]           @relation("PatientServiceAccess")
-  serviceAccessGranted           ServiceAccess[]           @relation("ServiceAccessGranter")
-  patientPackages                PatientPackage[]          @relation("PatientPackageRecipient")
-  grantedPackages                PatientPackage[]          @relation("PatientPackageGranter")
+  bpReminderEnabled              Boolean                    @default(false)
+  serviceAccessRecords           ServiceAccess[]            @relation("PatientServiceAccess")
+  serviceAccessGranted           ServiceAccess[]            @relation("ServiceAccessGranter")
+  patientPackages                PatientPackage[]           @relation("PatientPackageRecipient")
+  grantedPackages                PatientPackage[]           @relation("PatientPackageGranter")
   consentAcceptedAt              DateTime?
   socialMediaConsentAt           DateTime?
-  preferredLocale                String                    @default("en-GB") // en-GB or pt-BR
-  communicationPreference        String                    @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
+  preferredLocale                String                     @default("en-GB") // en-GB or pt-BR
+  communicationPreference        String                     @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
   telegramChatId                 String? // Telegram chat_id for bot messages
-  consentLogs                    ConsentLog[]              @relation("PatientConsentLogs")
-  screeningEditApprovals         MedicalScreening[]        @relation("ScreeningEditApprover")
-  cancellationRequests           CancellationRequest[]     @relation("PatientCancellations")
-  processedCancellations         CancellationRequest[]     @relation("AdminCancellations")
-  patientSubscriptions           PatientSubscription[]     @relation("PatientSubscriptions")
-  whatsappMessages               WhatsAppMessage[]         @relation("PatientWhatsApp")
-  dailyCheckIns                  DailyCheckIn[]            @relation("PatientDailyCheckIns")
+  consentLogs                    ConsentLog[]               @relation("PatientConsentLogs")
+  screeningEditApprovals         MedicalScreening[]         @relation("ScreeningEditApprover")
+  cancellationRequests           CancellationRequest[]      @relation("PatientCancellations")
+  processedCancellations         CancellationRequest[]      @relation("AdminCancellations")
+  patientSubscriptions           PatientSubscription[]      @relation("PatientSubscriptions")
+  whatsappMessages               WhatsAppMessage[]          @relation("PatientWhatsApp")
+  dailyCheckIns                  DailyCheckIn[]             @relation("PatientDailyCheckIns")
 
   // BPR Journey
   patientProgress      PatientProgress?      @relation("PatientProgress")
@@ -856,12 +857,14 @@ model User {
   entitlements Entitlement[] @relation("UserEntitlements")
 
   // Automation engine (activity 072)
-  alerts                 Alert[]           @relation("PatientAlerts")
-  alertsAcknowledged     Alert[]           @relation("AlertsAcknowledged")
-  alertsResolved         Alert[]           @relation("AlertsResolved")
-  queuedMessages         OutboundMessage[] @relation("PatientQueuedMessages")
-  approvedQueuedMessages OutboundMessage[] @relation("ApprovedQueuedMessages")
-  automationRuns         AutomationRun[]   @relation("PatientAutomationRuns")
+  alerts                    Alert[]              @relation("PatientAlerts")
+  alertsAcknowledged        Alert[]              @relation("AlertsAcknowledged")
+  alertsResolved            Alert[]              @relation("AlertsResolved")
+  queuedMessages            OutboundMessage[]    @relation("PatientQueuedMessages")
+  approvedQueuedMessages    OutboundMessage[]    @relation("ApprovedQueuedMessages")
+  automationRuns            AutomationRun[]      @relation("PatientAutomationRuns")
+  exerciseSubmissions       ExerciseSubmission[] @relation("ExerciseSubmissions")
+  exerciseSubmissionReviews ExerciseSubmission[] @relation("ExerciseSubmissionReviews")
 
   @@index([clinicId])
   @@index([email])
@@ -3057,7 +3060,8 @@ model ExercisePrescription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  completionLogs ExerciseCompletionLog[]
+  completionLogs      ExerciseCompletionLog[]
+  exerciseSubmissions ExerciseSubmission[]
 
   @@index([clinicId])
   @@index([patientId])
@@ -4007,7 +4011,8 @@ model ProtocolItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  completionLogs ExerciseCompletionLog[]
+  completionLogs      ExerciseCompletionLog[]
+  exerciseSubmissions ExerciseSubmission[]
 
   @@index([protocolId])
   @@index([phase])
@@ -4023,6 +4028,59 @@ model ProtocolItem {
 // TreatmentProtocol) — both nullable so a Postgres unique index treats every
 // NULL as distinct, letting the two item types share one uniqueness rule
 // each without colliding on the other's null column.
+/// O paciente mostrando como faz o exercício em casa.
+///
+/// No atendimento híbrido ninguém vê a execução — o terapeuta corrige o que
+/// não viu. Um envio é um vídeo curto (ou uma foto, para postura e cicatriz)
+/// preso a **um paciente, um exercício e um dia**, que é a mesma identidade
+/// que o `ExerciseCompletionLog` já usa.
+///
+/// O arquivo mora no R2, não aqui: vídeo no banco infla backup e restauração.
+/// O que fica guardado é a **chave**, nunca a URL pública — é dado de saúde, e
+/// o acesso passa por rota autenticada.
+model ExerciseSubmission {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("ExerciseSubmissions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// Um dos dois aponta para o exercício. Prescrição avulsa ou item de
+  /// protocolo — o app manda o que tiver em mãos.
+  exercisePrescriptionId String?
+  exercisePrescription   ExercisePrescription? @relation(fields: [exercisePrescriptionId], references: [id], onDelete: Cascade)
+
+  protocolItemId String?
+  protocolItem   ProtocolItem? @relation(fields: [protocolItemId], references: [id], onDelete: Cascade)
+
+  /// VIDEO | PHOTO
+  kind String @default("VIDEO")
+
+  /// A chave no R2. Nunca uma URL — ver a nota acima.
+  storageKey      String
+  mimeType        String
+  sizeBytes       Int
+  durationSeconds Int?
+
+  submittedAt DateTime @default(now())
+
+  /// O retorno do terapeuta. Enquanto `reviewedAt` for nulo, o envio está na
+  /// fila da clínica.
+  reviewedById String?
+  reviewedBy   User?     @relation("ExerciseSubmissionReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNote   String?   @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId, submittedAt])
+  /// A fila da clínica é "ainda não revisados".
+  @@index([clinicId, reviewedAt])
+  @@index([exercisePrescriptionId])
+  @@index([protocolItemId])
+}
+
 model ExerciseCompletionLog {
   id             String        @id @default(cuid())
   protocolItemId String?
@@ -4331,37 +4389,37 @@ model EmailTemplate {
 }
 
 model EmailMessage {
-  id              String         @id @default(cuid())
-  messageId       String?        @unique // SMTP/IMAP message ID
-  direction       EmailDirection
-  folder          EmailFolder    @default(INBOX)
-  fromAddress     String
-  fromName        String?
-  toAddress       String
-  toName          String?
-  ccAddress       String?
-  subject         String
-  textBody        String?        @db.Text
-  htmlBody        String?        @db.Text
-  isRead          Boolean        @default(false)
-  isStarred       Boolean        @default(false)
-  isSpam          Boolean        @default(false)
-  spamScore       Float?
-  templateSlug    String? // Which template was used (for outbound)
-  attachmentsJson String?        @db.Text // Frozen [{filename, contentBase64}] — set for PENDING_APPROVAL items so "Approve & Send" sends exactly what was previewed
-  patientId       String?
-  patient         User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
-  clinicId        String?
+  id               String          @id @default(cuid())
+  messageId        String?         @unique // SMTP/IMAP message ID
+  direction        EmailDirection
+  folder           EmailFolder     @default(INBOX)
+  fromAddress      String
+  fromName         String?
+  toAddress        String
+  toName           String?
+  ccAddress        String?
+  subject          String
+  textBody         String?         @db.Text
+  htmlBody         String?         @db.Text
+  isRead           Boolean         @default(false)
+  isStarred        Boolean         @default(false)
+  isSpam           Boolean         @default(false)
+  spamScore        Float?
+  templateSlug     String? // Which template was used (for outbound)
+  attachmentsJson  String?         @db.Text // Frozen [{filename, contentBase64}] — set for PENDING_APPROVAL items so "Approve & Send" sends exactly what was previewed
+  patientId        String?
+  patient          User?           @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
+  clinicId         String?
   // Activity 072 — links a delivery e-mail back to the structured invoice
   // it carries. Nullable: most EmailMessage rows aren't an invoice at all,
   // and even an invoice email predating this activity has it backfilled
   // separately (scripts/backfill-patient-invoices.js), never assumed.
   patientInvoiceId String?
-  patientInvoice    PatientInvoice? @relation(fields: [patientInvoiceId], references: [id], onDelete: SetNull)
-  sentAt          DateTime?
-  receivedAt      DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  patientInvoice   PatientInvoice? @relation(fields: [patientInvoiceId], references: [id], onDelete: SetNull)
+  sentAt           DateTime?
+  receivedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([folder])
   @@index([direction])
@@ -4480,10 +4538,10 @@ model BloodPressureReading {
   // Mixed together in one history, "measured at home" and "measured before the
   // session in the clinic" are different facts, and the therapist reading the
   // list cannot tell them apart without this.
-  source           BpSource            @default(MANUAL)
-  context          MeasurementContext  @default(HOME)
+  source        BpSource                  @default(MANUAL)
+  context       MeasurementContext        @default(HOME)
   // The session owns the link (its `readingId`); this is only the way back.
-  clinicSession    ClinicMeasurementSession?
+  clinicSession ClinicMeasurementSession?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4556,8 +4614,8 @@ model PatientInvoice {
   // lib/patient-invoice-number.ts ONLY — never format one elsewhere.
   invoiceNumber String
 
-  clinicId String
-  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   patientId String
   patient   User   @relation("PatientInvoices", fields: [patientId], references: [id], onDelete: Cascade)
 
@@ -4577,8 +4635,8 @@ model PatientInvoice {
 
   // Origin — at most one of these two is set; neither set means a
   // standalone/ad-hoc invoice.
-  appointmentId          String?
-  patientSubscriptionId  String?
+  appointmentId         String?
+  patientSubscriptionId String?
 
   // Who generated it — null when a cron created it unattended.
   createdById String?
@@ -4599,8 +4657,8 @@ model PatientInvoice {
   // Income was otherwise invisible to every invoice payment, manual or
   // Stripe-automatic). Unique so a given invoice can never end up double
   // counted; null until paid.
-  financialEntryId String?          @unique
-  financialEntry   FinancialEntry?  @relation(fields: [financialEntryId], references: [id], onDelete: SetNull)
+  financialEntryId String?         @unique
+  financialEntry   FinancialEntry? @relation(fields: [financialEntryId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5693,8 +5751,8 @@ model FinancialEntry {
   supplierName String?
 
   // Recurring
-  isRecurring  Boolean @default(false)
-  recurringDay Int? // Day of month (1-31) for recurring entries
+  isRecurring     Boolean   @default(false)
+  recurringDay    Int? // Day of month (1-31) for recurring entries
   // Activity 073 — only meaningful on the "template" row (isRecurring:
   // true): the cron (app/api/cron/finance-recurring-entries) compares
   // this against the current month to decide whether it already
@@ -6690,8 +6748,8 @@ model WearableConnection {
   clinic         Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
   deviceLabel    String? // "BPM Connect — reception"
 
-  dataPoints         WearableDataPoint[]
-  measurementSessions ClinicMeasurementSession[]
+  dataPoints             WearableDataPoint[]
+  measurementSessions    ClinicMeasurementSession[]
   unassignedMeasurements UnassignedMeasurement[]
 
   @@unique([userId, provider])
@@ -6725,7 +6783,6 @@ enum ClinicSessionStatus {
 /**
  * A three-minute window in which a reading from the clinic's device belongs to
  * one named patient (activity 074, T-14).
- *
  * The device knows nothing about patients; this is the only thing that decides
  * whose record a measurement enters. A reading that matches no window — or
  * more than one — goes to UnassignedMeasurement instead of being guessed at.
@@ -6740,16 +6797,16 @@ model ClinicMeasurementSession {
   connectionId String
   connection   WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
-  context   MeasurementContext  @default(PRE_SESSION)
-  status    ClinicSessionStatus @default(OPEN)
+  context MeasurementContext  @default(PRE_SESSION)
+  status  ClinicSessionStatus @default(OPEN)
 
   openedById String
-  openedBy   User   @relation("StaffOpenedMeasurementSessions", fields: [openedById], references: [id], onDelete: Cascade)
+  openedBy   User     @relation("StaffOpenedMeasurementSessions", fields: [openedById], references: [id], onDelete: Cascade)
   openedAt   DateTime @default(now())
   expiresAt  DateTime
 
   cancelledById String?
-  cancelledBy   User?   @relation("StaffCancelledMeasurementSessions", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelledBy   User?     @relation("StaffCancelledMeasurementSessions", fields: [cancelledById], references: [id], onDelete: SetNull)
   closedAt      DateTime?
 
   readingId String?               @unique
@@ -6765,7 +6822,6 @@ model ClinicMeasurementSession {
 
 /**
  * A reading from the clinic's device that matched no measurement session.
- *
  * It exists because the alternative is guessing. The therapist assigns it from
  * an inbox, or discards it with a reason; until then it is in nobody's record.
  */
@@ -6777,22 +6833,22 @@ model UnassignedMeasurement {
   connectionId String
   connection   WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
-  systolic  Int
-  diastolic Int
-  heartRate Int?
-  measuredAt DateTime
-  receivedAt DateTime @default(now())
+  systolic          Int
+  diastolic         Int
+  heartRate         Int?
+  measuredAt        DateTime
+  receivedAt        DateTime @default(now())
   withingsMeasureId String?
-  raw        Json?
+  raw               Json?
 
   assignedPatientId String?
-  assignedPatient   User?   @relation("PatientAssignedMeasurements", fields: [assignedPatientId], references: [id], onDelete: SetNull)
+  assignedPatient   User?     @relation("PatientAssignedMeasurements", fields: [assignedPatientId], references: [id], onDelete: SetNull)
   assignedById      String?
-  assignedBy        User?   @relation("StaffAssignedMeasurements", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedBy        User?     @relation("StaffAssignedMeasurements", fields: [assignedById], references: [id], onDelete: SetNull)
   assignedAt        DateTime?
 
   discardedById String?
-  discardedBy   User?   @relation("StaffDiscardedMeasurements", fields: [discardedById], references: [id], onDelete: SetNull)
+  discardedBy   User?     @relation("StaffDiscardedMeasurements", fields: [discardedById], references: [id], onDelete: SetNull)
   discardedAt   DateTime?
   discardReason String?
 
