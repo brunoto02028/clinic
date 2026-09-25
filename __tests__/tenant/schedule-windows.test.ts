@@ -11,7 +11,7 @@
 jest.mock("@/lib/db", () => ({
   prisma: {
     scheduleWindow: { findMany: jest.fn(), count: jest.fn() },
-    scheduleException: { findFirst: jest.fn() },
+    scheduleException: { findMany: jest.fn() },
     appointment: { findMany: jest.fn() },
   },
 }));
@@ -33,7 +33,7 @@ const consulta = (hora: number, minuto = 0, duracao = 60) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  excecoes.findFirst.mockResolvedValue(null);
+  excecoes.findMany.mockResolvedValue([]);
   consultas.findMany.mockResolvedValue([]);
 });
 
@@ -120,7 +120,7 @@ describe("slotsForDate", () => {
 
 describe("windowsForDate — a exceção", () => {
   it("dia fechado não tem janela nenhuma", async () => {
-    excecoes.findFirst.mockResolvedValue({ closed: true });
+    excecoes.findMany.mockResolvedValue([{ therapistId: null, closed: true }]);
     janelas.findMany.mockResolvedValue([
       { startTime: "09:00", endTime: "17:00", kind: "CONSULTATION", capacity: 1, slotMinutes: 60 },
     ]);
@@ -129,7 +129,9 @@ describe("windowsForDate — a exceção", () => {
   });
 
   it("expediente mais curto apara a janela em vez de apagá-la", async () => {
-    excecoes.findFirst.mockResolvedValue({ closed: false, startTime: null, endTime: "15:00" });
+    excecoes.findMany.mockResolvedValue([
+      { therapistId: null, closed: false, startTime: null, endTime: "15:00" },
+    ]);
     janelas.findMany.mockResolvedValue([
       { startTime: "09:00", endTime: "13:00", kind: "CONSULTATION", capacity: 1, slotMinutes: 60 },
       { startTime: "14:00", endTime: "18:00", kind: "TREATMENT", capacity: 3, slotMinutes: 60 },
@@ -141,9 +143,30 @@ describe("windowsForDate — a exceção", () => {
   });
 
   it("a exceção do terapeuta vence a da clínica", async () => {
-    janelas.findMany.mockResolvedValue([]);
-    await windowsForDate("c", "t", QUINTA);
+    // Pedir isso ao banco com `orderBy therapistId desc` não funciona: no
+    // Postgres, DESC é NULLS FIRST, e a linha da clínica (nula) ganhava — um
+    // terapeuta de folga aparecia disponível (QA de 25/09, falha 5).
+    excecoes.findMany.mockResolvedValue([
+      { therapistId: null, closed: false, startTime: null, endTime: "10:00" },
+      { therapistId: "t", closed: true },
+    ]);
+    janelas.findMany.mockResolvedValue([
+      { startTime: "09:00", endTime: "17:00", kind: "CONSULTATION", capacity: 1, slotMinutes: 60 },
+    ]);
 
-    expect(excecoes.findFirst.mock.calls[0][0].orderBy).toEqual({ therapistId: "desc" });
+    // A do terapeuta fecha o dia; a da clínica só o encurtaria.
+    expect(await windowsForDate("c", "t", QUINTA)).toEqual([]);
+  });
+
+  it("a data consultada é o dia local, não o UTC", async () => {
+    // `toISOString()` numa meia-noite de Londres no horário de verão é 23:00
+    // UTC do dia anterior, e a exceção fechava o dia errado — um defeito que
+    // some sozinho no inverno (QA de 25/09, falha 3).
+    const meiaNoiteDeVerao = new Date(2026, 6, 15, 0, 0, 0);
+    janelas.findMany.mockResolvedValue([]);
+
+    await windowsForDate("c", "t", meiaNoiteDeVerao);
+
+    expect(excecoes.findMany.mock.calls[0][0].where.date).toBe("2026-07-15");
   });
 });

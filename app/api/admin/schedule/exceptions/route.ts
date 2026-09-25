@@ -49,24 +49,27 @@ export async function POST(req: NextRequest) {
     // folga de uma pessoa, e vence a da clínica na hora de resolver o dia.
     const therapistId = body?.therapistId || null;
 
-    const exception = await (prisma as any).scheduleException.upsert({
-      where: { clinicId_therapistId_date: { clinicId, therapistId, date: body.date } },
-      update: {
-        closed,
-        startTime: closed ? null : body.startTime || null,
-        endTime: closed ? null : body.endTime || null,
-        note: body.note || null,
-      },
-      create: {
-        clinicId,
-        therapistId,
-        date: body.date,
-        closed,
-        startTime: closed ? null : body.startTime || null,
-        endTime: closed ? null : body.endTime || null,
-        note: body.note || null,
-      },
+    const dados = {
+      closed,
+      startTime: closed ? null : body.startTime || null,
+      endTime: closed ? null : body.endTime || null,
+      note: body.note || null,
+    };
+
+    // `upsert` na chave composta não serve aqui: o Prisma recusa nulo em chave
+    // única, e nulo é justamente o caso principal — o feriado, que vale para a
+    // clínica toda. A tela nunca conseguiu salvar uma exceção sequer
+    // (QA de 25/09, falha 2).
+    const existente = await (prisma as any).scheduleException.findFirst({
+      where: { clinicId, therapistId, date: body.date },
+      select: { id: true },
     });
+
+    const exception = existente
+      ? await (prisma as any).scheduleException.update({ where: { id: existente.id }, data: dados })
+      : await (prisma as any).scheduleException.create({
+          data: { clinicId, therapistId, date: body.date, ...dados },
+        });
 
     return NextResponse.json({ exception }, { status: 201 });
   } catch (err) {

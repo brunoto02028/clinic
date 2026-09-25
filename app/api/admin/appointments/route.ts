@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
     let cortesiaPacoteId: string | null = null;
     if (courtesySession) {
       const pacote = await (prisma as any).patientPackage.findFirst({
-        where: { patientId, clinicId, paid: true, status: { in: ["PAID", "ACTIVE"] } },
+        // Mesmo engano de enum da `lib/package-sessions.ts` — ver o comentário lá.
+        where: { patientId, clinicId, paid: true, status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
         select: { id: true },
       });

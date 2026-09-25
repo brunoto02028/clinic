@@ -46,7 +46,13 @@ export async function activePackageFor(
       patientId,
       clinicId,
       paid: true,
-      status: { in: ["PAID", "ACTIVE"] },
+      // `PatientPackageStatus` é ACTIVE | EXPIRED | CANCELLED | PENDING_PAYMENT.
+      // Eu tinha escrito `{ in: ["PAID", "ACTIVE"] }`, copiado de
+      // `TreatmentPackage`, que é outro modelo e cujo status é String livre. O
+      // Prisma valida enum **na consulta**, então isto lançava com qualquer
+      // dado — e derrubava a marcação inteira do paciente. Os testes não
+      // pegaram porque mockam o `@/lib/db` (QA de 25/09, falha 1).
+      status: "ACTIVE",
       OR: [{ endDate: null }, { endDate: { gte: agora } }],
     },
     orderBy: { createdAt: "asc" },

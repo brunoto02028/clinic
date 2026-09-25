@@ -14,6 +14,7 @@ import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access"
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
+import { slotsForDate, hasConfiguredSchedule } from "@/lib/schedule";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
@@ -216,6 +217,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // O horário escolhido tem de ser um dos que o servidor ofereceu. Sem isto,
+    // a capacidade e a janela viviam só na tela: um POST direto marcava a
+    // quinta pessoa num horário de quatro, ou um domingo às 03:00. A clínica
+    // continua podendo marcar fora — ela é quem abre exceção, e sabe que está
+    // abrindo (QA de 25/09).
+    if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId))) {
+      const quando = new Date(dateTime);
+      const hora = `${String(quando.getHours()).padStart(2, "0")}:${String(quando.getMinutes()).padStart(2, "0")}`;
+      const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, quando, {
+        kind: opcao.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT",
+      });
+
+      if (!oferecidos.some((s) => s.time === hora)) {
+        return NextResponse.json(
+          {
+            error: "That time is no longer available.",
+            errorPt: "Esse horário não está mais disponível.",
+            code: "slot_unavailable",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
       : opcao
@@ -229,18 +254,35 @@ export async function POST(request: NextRequest) {
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
-        treatmentType,
+        // O tipo também é do servidor quando quem marca é o paciente: o
+        // `price` já era ignorado, e deixar o rótulo passar seria a mesma
+        // porta, mais estreita (QA de 25/09, falha 9).
+        treatmentType: opcao
+          ? opcao.kind === "FIRST_CONSULTATION"
+            ? "Initial Consultation"
+            : "Treatment Session"
+          : treatmentType,
         notes: notes || null,
         price: resolvedPrice,
         // A sessão do pacote não gera cobrança: ela já foi paga quando o
-        // paciente comprou o pacote.
-        paymentMethod: opcao?.kind === "PACKAGE_SESSION" ? "IN_PERSON" : resolvedPaymentMethod,
+        // paciente comprou o pacote. E `paymentMethod` do corpo não decide
+        // nada quando o servidor exige pagamento.
+        paymentMethod: opcao?.kind === "PACKAGE_SESSION"
+          ? "IN_PERSON"
+          : opcao?.requiresPayment
+            ? "ONLINE"
+            : resolvedPaymentMethod,
         kind: opcao ? opcao.kind : "CLINIC_BOOKED",
         // O vínculo é o que permite devolver a sessão no cancelamento. Um
         // contador solto não sabe qual consulta gastou qual sessão.
         patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,
-        status:
-          opcao?.kind === "PACKAGE_SESSION"
+        // Quem exige pagamento nasce **pendente**, e nada que venha do corpo
+        // muda isso: `paymentMethod: "IN_PERSON"` mandado pelo paciente numa
+        // primeira consulta confirmava o horário sem cobrança nenhuma
+        // (QA de 25/09, falha 8). Quem confirma é o webhook.
+        status: opcao?.requiresPayment
+          ? "PENDING"
+          : opcao?.kind === "PACKAGE_SESSION"
             ? "CONFIRMED"
             : resolvedPaymentMethod === "IN_PERSON"
               ? "CONFIRMED"

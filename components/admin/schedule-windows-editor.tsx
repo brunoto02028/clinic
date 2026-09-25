@@ -49,6 +49,11 @@ export default function ScheduleWindowsEditor() {
   const isPt = String(locale).toLowerCase().startsWith("pt");
   const { toast } = useToast();
 
+  // Sem escolher de quem é a agenda, um admin que não atende via os sete dias
+  // como "Not working" — configurando a própria agenda, que ninguém marca
+  // (QA de 25/09). O terapeuta continua caindo em si mesmo por padrão.
+  const [terapeutas, setTerapeutas] = useState<{ id: string; name: string }[]>([]);
+  const [terapeutaId, setTerapeutaId] = useState<string>("");
   const [windows, setWindows] = useState<Window[] | null>(null);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [salvando, setSalvando] = useState(false);
@@ -63,9 +68,25 @@ export default function ScheduleWindowsEditor() {
   });
   const [excecao, setExcecao] = useState({ date: "", closed: true, startTime: "", endTime: "", note: "" });
 
+  useEffect(() => {
+    fetch("/api/therapists", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        const lista = (d.therapists || d || []).map((t: any) => ({
+          id: t.id,
+          name: `${t.firstName ?? ""} ${t.lastName ?? ""}`.trim() || t.email,
+        }));
+        setTerapeutas(lista);
+      })
+      .catch(() => setTerapeutas([]));
+  }, []);
+
   const carregar = useCallback(async () => {
     try {
-      const r = await fetch("/api/admin/schedule", { cache: "no-store" });
+      const r = await fetch(
+        `/api/admin/schedule${terapeutaId ? `?therapistId=${terapeutaId}` : ""}`,
+        { cache: "no-store" }
+      );
       if (!r.ok) throw new Error(String(r.status));
       const d = await r.json();
       setWindows(d.windows || []);
@@ -77,7 +98,7 @@ export default function ScheduleWindowsEditor() {
         variant: "destructive",
       });
     }
-  }, [isPt, toast]);
+  }, [isPt, toast, terapeutaId]);
 
   useEffect(() => { void carregar(); }, [carregar]);
 
@@ -87,7 +108,7 @@ export default function ScheduleWindowsEditor() {
       const r = await fetch("/api/admin/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dayOfWeek, ...nova }),
+        body: JSON.stringify({ dayOfWeek, therapistId: terapeutaId || undefined, ...nova }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -167,6 +188,24 @@ export default function ScheduleWindowsEditor() {
               ? "Quantas quiser por dia. Consulta é um a um; tratamento pode ter mais de um paciente junto. A capacidade é de quem está na sala ao mesmo tempo — 14h às 18h com 4 são 4 pessoas às 14h e outras 4 às 15h."
               : "As many a day as you like. A consultation is one to one; treatment can hold more than one patient at once. Capacity is who is in the room at the same time — 14:00–18:00 with 4 is four people at 14:00 and another four at 15:00."}
           </p>
+          {terapeutas.length > 1 && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs text-muted-foreground">
+                {isPt ? "Agenda de:" : "Diary of:"}
+              </span>
+              <select
+                value={terapeutaId}
+                onChange={(e) => setTerapeutaId(e.target.value)}
+                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+              >
+                <option value="">{isPt ? "A minha" : "Mine"}</option>
+                {terapeutas.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {windows.length === 0 && (
             <p className="text-xs rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 mt-1">
               {isPt

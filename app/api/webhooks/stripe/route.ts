@@ -48,8 +48,18 @@ export async function POST(req: NextRequest) {
         // evento repetido inofensivo — a Stripe reenvia webhook, e a segunda
         // vez não encontra nada para mudar (atividade 080).
         if (appointmentId) {
+          // O `patientId` no `where` é o que impede confirmar a consulta de
+          // outra pessoa — e de outra clínica. Os dois vêm do metadata que a
+          // **nossa** rota de checkout escreveu, e o evento já veio assinado;
+          // ainda assim, confirmar por id solto seria uma chave mestra
+          // (QA de 25/09, falha 7).
+          const metaPatientId = session.metadata?.patientId;
           const r = await prisma.appointment.updateMany({
-            where: { id: appointmentId, status: "PENDING" },
+            where: {
+              id: appointmentId,
+              status: "PENDING",
+              ...(metaPatientId ? { patientId: metaPatientId } : {}),
+            },
             data: { status: "CONFIRMED" },
           });
           console.log(

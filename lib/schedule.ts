@@ -33,6 +33,17 @@ const minutos = (hhmm: string): number => {
 const hhmm = (min: number): string =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
+/**
+ * "YYYY-MM-DD" do **dia local**, e não do UTC.
+ *
+ * `toISOString().slice(0,10)` numa meia-noite de Londres no horário de verão é
+ * 23:00 UTC do dia anterior — e a exceção fechava o dia errado. A janela saía
+ * certa porque `getDay()` já lê a hora local; só a data estava deslocada, e o
+ * defeito some sozinho no inverno, que é o pior tipo (QA de 25/09, falha 3).
+ */
+const diaLocal = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 /** Duas janelas na mesma faixa seriam a mesma sala em dois usos. */
 export function overlaps(
   a: { startTime: string; endTime: string },
@@ -61,17 +72,23 @@ export async function windowsForDate(
   therapistId: string,
   date: Date
 ): Promise<ResolvedWindow[]> {
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = diaLocal(date);
 
-  const excecao = await (prisma as any).scheduleException.findFirst({
+  // A do terapeuta vence a da clínica. Não dá para pedir isso ao banco com
+  // `orderBy therapistId desc`: no Postgres, DESC é NULLS FIRST, e a linha da
+  // clínica (nula) ganhava — um terapeuta de folga aparecia disponível
+  // (QA de 25/09, falha 5). Duas linhas no máximo; a escolha é feita aqui.
+  const excecoes = await (prisma as any).scheduleException.findMany({
     where: {
       clinicId,
       date: dateStr,
-      // A exceção do terapeuta vence a da clínica; a da clínica vale para todos.
       OR: [{ therapistId }, { therapistId: null }],
     },
-    orderBy: { therapistId: "desc" },
   });
+  const excecao =
+    excecoes.find((e: any) => e.therapistId === therapistId) ??
+    excecoes.find((e: any) => e.therapistId === null) ??
+    null;
 
   if (excecao?.closed) return [];
 

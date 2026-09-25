@@ -347,9 +347,24 @@ export async function DELETE(
       return accessErrorResponse(err);
     }
 
+    // Qual pacote pagou por ela, antes de a linha sumir: depois do `delete`
+    // não há como saber qual contador reajustar.
+    const apagada = await prisma.appointment.findUnique({
+      where: { id },
+      select: { patientPackageId: true },
+    });
+
     await prisma.appointment.delete({
       where: { id },
     });
+
+    // A razão de `syncSessionsUsed` recontar em vez de somar está escrita em
+    // `lib/package-sessions.ts` e cita exatamente este caso: "neste sistema
+    // linhas somem por fora (a clínica apaga uma consulta)". Faltava chamar
+    // justamente aqui (QA de 25/09, falha 6).
+    if (apagada?.patientPackageId) {
+      await syncSessionsUsed(apagada.patientPackageId).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

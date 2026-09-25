@@ -16,6 +16,8 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
+import fs from "fs";
+import path from "path";
 import { prisma } from "@/lib/db";
 import { activePackageFor, syncSessionsUsed } from "@/lib/package-sessions";
 
@@ -76,7 +78,7 @@ describe("activePackageFor", () => {
     expect(where.patientId).toBe("paciente");
     expect(where.clinicId).toBe("clinica");
     expect(where.paid).toBe(true);
-    expect(where.status).toEqual({ in: ["PAID", "ACTIVE"] });
+    expect(where.status).toBe("ACTIVE");
     // vencido não serve, mesmo com sessão sobrando
     expect(JSON.stringify(where.OR)).toContain("endDate");
   });
@@ -88,6 +90,30 @@ describe("activePackageFor", () => {
     const statusContados = pacotes.findMany.mock.calls[0][0].select.appointments.where.status.in;
     expect(statusContados).toContain("NO_SHOW");
     expect(statusContados).not.toContain("CANCELLED");
+  });
+});
+
+describe("o status consultado existe no enum do schema", () => {
+  /**
+   * O defeito que derrubou a marcação inteira: eu consultava
+   * `status: { in: ["PAID", "ACTIVE"] }`, copiado de `TreatmentPackage` — outro
+   * modelo, cujo status é String livre. `PatientPackageStatus` não tem `PAID`,
+   * e o Prisma valida enum **na consulta**, então lançava com qualquer dado.
+   *
+   * Um mock de `@/lib/db` nunca pegaria isso: ele aceita qualquer objeto. Por
+   * isso este teste lê o **schema** e compara.
+   */
+  it("PatientPackageStatus não tem PAID, e a consulta não pode pedir por ele", () => {
+    const schema = fs.readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+    const bloco = schema.match(/enum PatientPackageStatus \{([\s\S]*?)\}/)?.[1] ?? "";
+    const valores = bloco.split("\n").map((l) => l.trim()).filter(Boolean);
+
+    expect(valores).toContain("ACTIVE");
+    expect(valores).not.toContain("PAID");
+
+    const fonte = fs.readFileSync(path.join(process.cwd(), "lib", "package-sessions.ts"), "utf8");
+    const consultados = [...fonte.matchAll(/status:\s*"([A-Z_]+)"/g)].map((m) => m[1]);
+    for (const v of consultados) expect(valores).toContain(v);
   });
 });
 
