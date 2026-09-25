@@ -104,6 +104,19 @@ export default function BookingForm() {
     sessionsIncluded: number | null;
   } | null>(null);
 
+  /**
+   * `&kind=` para a agenda, derivado da porta que o servidor abriu.
+   *
+   * Primeira consulta só enxerga janela de consulta; sessão de pacote e extra,
+   * janela de tratamento. Sem isto, quem tinha pacote recebia horário de
+   * consulta e levava 409 ao confirmar (QA de 25/09, N12).
+   */
+  const janelaDoPaciente = !porta?.kind
+    ? ""
+    : porta.kind === "FIRST_CONSULTATION"
+      ? "&kind=CONSULTATION"
+      : "&kind=TREATMENT";
+
   useEffect(() => {
     fetch("/api/patient/booking-options")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -112,15 +125,12 @@ export default function BookingForm() {
         if (typeof d?.price === "number") setConsultationPrice(d.price);
       })
       .catch(() => {
-        // Se a porta não responder, o preço antigo é melhor que nenhum — mas
-        // a tela deixa de prometer o que não sabe (ver abaixo).
-        fetch("/api/patient/service-prices")
-          .then((r) => r.json())
-          .then((data: any[]) => {
-            const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
-            if (consultation?.price) setConsultationPrice(consultation.price);
-          })
-          .catch(() => {});
+        // Sem a porta, a tela **não inventa preço**. O fallback anterior lia
+        // `service-prices` e mostrava sempre o de consulta: um paciente em
+        // tratamento via £88,50 e era cobrado £44,25 — exatamente o defeito
+        // que a porta existe para impedir (QA de 25/09, N11).
+        setPorta(null);
+        setConsultationPrice(null);
       });
 
     fetch("/api/patient/membership/subscription")
@@ -166,7 +176,10 @@ export default function BookingForm() {
     try {
       const results = await Promise.all(
         checks.map(date =>
-          fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`)
+          // O tipo de janela que **este** paciente pode marcar. Sem isto, quem
+          // tem pacote recebia horário de consulta e levava 409 ao confirmar
+          // (QA de 25/09, N12).
+          fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}${janelaDoPaciente}`)
             .then(r => r.json())
             .catch(() => ({ available: false }))
         )
@@ -184,7 +197,7 @@ export default function BookingForm() {
     setAvailableSlots([]);
     setSelectedTime("");
     try {
-      const res = await fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`);
+      const res = await fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}${janelaDoPaciente}`);
       const data = await res.json();
       setAvailableSlots(data?.slots ?? []);
     } catch {
@@ -214,12 +227,30 @@ export default function BookingForm() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed");
+      if (!res.ok) {
+        // A razão do servidor, na língua da pessoa. E quando o que falta é a
+        // triagem, o caminho é a triagem — não um "tente de novo" que nunca
+        // vai funcionar (QA de 25/09, N11).
+        if (data?.code === "screening_required") {
+          alert((isPt && data.errorPt) || data.error);
+          window.location.href = "/dashboard/screening";
+          return;
+        }
+        throw new Error((isPt && data?.errorPt) || data?.error || "Failed");
+      }
       setCreatedAppointmentId(data?.appointment?.id ?? "");
       setConfirmedPaymentMethod(data?.appointment?.paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE");
       setStep(3);
     } catch (err: any) {
-      alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to book appointment. Please try again.");
+      // A mensagem do servidor quando existe: "esse horário não está mais
+      // disponível" é acionável; "tente de novo" não é.
+      alert(
+        err?.message && err.message !== "Failed"
+          ? err.message
+          : isPt
+            ? "Falha ao criar consulta. Tente novamente."
+            : "Failed to book appointment. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -526,7 +557,13 @@ export default function BookingForm() {
                     <span className="font-semibold">{isPt ? "Preço estimado" : "Estimated price"}</span>
                     <span className="font-bold text-primary">£{consultationPrice}</span>
                   </div>
-                ) : null}
+                ) : (
+                  <p className="pt-2 border-t mt-2 text-xs text-muted-foreground">
+                    {isPt
+                      ? "Sua clínica confirma o valor ao aprovar a consulta."
+                      : "Your clinic confirms the amount when it approves the appointment."}
+                  </p>
+                )}
               </div>
             )}
 

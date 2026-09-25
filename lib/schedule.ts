@@ -74,6 +74,55 @@ export interface ResolvedWindow {
  * curto. Sem ela a agenda é puramente semanal e repetida, e a primeira vez que
  * a clínica fecha mais cedo alguém marca num horário que não existe.
  */
+export interface ResolvedException {
+  closed: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  note: string | null;
+}
+
+/**
+ * O feriado, a folga ou o expediente curto que vale **neste dia**.
+ *
+ * Vive fora de `windowsForDate` porque a exceção não é assunto da agenda nova:
+ * ela era lida só lá dentro, e num dia regido pelo modelo antigo o feriado era
+ * salvo, aparecia na lista com o dono certo, e **não fechava nada** — dava para
+ * marcar consulta no feriado e no dia de folga. Como ninguém tem janela
+ * configurada em produção, isso valia para todos os dias (QA de 25/09, N10).
+ *
+ * A do terapeuta vence a da clínica.
+ */
+export async function exceptionForDate(
+  clinicId: string,
+  therapistId: string,
+  dateStr: string
+): Promise<ResolvedException | null> {
+  const linhas = await (prisma as any).scheduleException.findMany({
+    where: { clinicId, date: dateStr, OR: [{ therapistId }, { therapistId: null }] },
+  });
+
+  return (
+    linhas.find((e: any) => e.therapistId === therapistId) ??
+    linhas.find((e: any) => e.therapistId === null) ??
+    null
+  );
+}
+
+/** O intervalo que sobra de uma faixa depois da exceção — ou `null` se nada sobra. */
+export function applyException(
+  janela: { startTime: string; endTime: string },
+  excecao: ResolvedException | null
+): { startTime: string; endTime: string } | null {
+  if (!excecao) return janela;
+  if (excecao.closed) return null;
+  if (!excecao.startTime && !excecao.endTime) return janela;
+
+  const inicio = excecao.startTime ? Math.max(minutos(janela.startTime), minutos(excecao.startTime)) : minutos(janela.startTime);
+  const fim = excecao.endTime ? Math.min(minutos(janela.endTime), minutos(excecao.endTime)) : minutos(janela.endTime);
+
+  return fim > inicio ? { startTime: hhmm(inicio), endTime: hhmm(fim) } : null;
+}
+
 export async function windowsForDate(
   clinicId: string,
   therapistId: string,
@@ -81,21 +130,7 @@ export async function windowsForDate(
   dateStr: string
 ): Promise<ResolvedWindow[]> {
 
-  // A do terapeuta vence a da clínica. Não dá para pedir isso ao banco com
-  // `orderBy therapistId desc`: no Postgres, DESC é NULLS FIRST, e a linha da
-  // clínica (nula) ganhava — um terapeuta de folga aparecia disponível
-  // (QA de 25/09, falha 5). Duas linhas no máximo; a escolha é feita aqui.
-  const excecoes = await (prisma as any).scheduleException.findMany({
-    where: {
-      clinicId,
-      date: dateStr,
-      OR: [{ therapistId }, { therapistId: null }],
-    },
-  });
-  const excecao =
-    excecoes.find((e: any) => e.therapistId === therapistId) ??
-    excecoes.find((e: any) => e.therapistId === null) ??
-    null;
+  const excecao = await exceptionForDate(clinicId, therapistId, dateStr);
 
   if (excecao?.closed) return [];
 

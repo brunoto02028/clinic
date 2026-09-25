@@ -14,7 +14,7 @@ import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access"
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
-import { slotsForDate, hasConfiguredSchedule } from "@/lib/schedule";
+import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
@@ -231,6 +231,31 @@ export async function POST(request: NextRequest) {
     const diaDaClinica = getZonedDateString(quando);
     const minutosDaClinica = getZonedMinutesOfDay(quando);
     const hora = `${String(Math.floor(minutosDaClinica / 60)).padStart(2, "0")}:${String(minutosDaClinica % 60).padStart(2, "0")}`;
+
+    // A exceção é conferida **fora** do ramo da agenda nova: ela vale para
+    // qualquer modelo, e era justamente no dia regido pelo modelo antigo que o
+    // feriado não fechava nada (QA de 25/09, N10).
+    if (opcao?.kind) {
+      const excecaoDoDia = await exceptionForDate(actor.clinicId, selectedTherapistId, diaDaClinica);
+      // `applyException` compara faixas; aqui o que se tem é um instante, e
+      // comparar "HH:MM" como texto funciona porque o formato é fixo.
+      const dentro =
+        !excecaoDoDia ||
+        (!excecaoDoDia.closed &&
+          (!excecaoDoDia.startTime || hora >= excecaoDoDia.startTime) &&
+          (!excecaoDoDia.endTime || hora < excecaoDoDia.endTime));
+
+      if (excecaoDoDia?.closed || !dentro) {
+        return NextResponse.json(
+          {
+            error: "The clinic is not open then.",
+            errorPt: "A clínica não atende nesse horário.",
+            code: "clinic_closed",
+          },
+          { status: 409 }
+        );
+      }
+    }
 
     if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId, diaDaClinica))) {
       const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, diaDaClinica, {
