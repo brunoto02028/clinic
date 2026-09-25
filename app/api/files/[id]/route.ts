@@ -55,7 +55,25 @@ export async function GET(
   } else {
   const role = (session!.user as any)?.role;
   if (STAFF_ROLES.includes(role)) {
-    // Staff previewing a patient still carries their staff session — allowed.
+    /**
+     * Equipe vê o arquivo — **da própria clínica**.
+     *
+     * Estava sem a segunda metade: qualquer sessão de staff abria o arquivo de
+     * qualquer paciente, de qualquer clínica da plataforma. Medido no QA de
+     * 25/09/2026, um terapeuta da clínica C lendo o anexo de um paciente da
+     * clínica T6 só com o cookie dele.
+     *
+     * Não era exposto enquanto só documentos passavam por aqui. Com o anexo de
+     * conversa (076 T-4), **toda foto que um paciente manda no chat** passa a
+     * passar por esta rota — o que transforma um furo estreito num aberto.
+     */
+    const staff = await prisma.user.findUnique({
+      where: { id: (session!.user as any).id },
+      select: { clinicId: true },
+    });
+    if (!staff?.clinicId || staff.clinicId !== doc.clinicId) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
   } else {
     // getEffectiveUser resolves impersonation headers the same way the rest of
     // the patient area does.

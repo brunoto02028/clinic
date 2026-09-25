@@ -138,7 +138,13 @@ function MessagesScreen() {
     const a = r.assets[0];
     // Barrado aqui, o arquivo grande não sobe só para voltar recusado — numa
     // rede de celular isso é meio minuto de espera para nada.
-    if ((a.fileSize ?? 0) > ATTACHMENT_MAX_BYTES) {
+    //
+    // `fileSize` nem sempre vem: foto tirada na hora e item do iCloud chegam
+    // sem ele. Com `?? 0` a comparação era sempre falsa e o arquivo subia
+    // inteiro para voltar 400 — e o único retorno na tela era "não foi
+    // possível enviar". Sem o tamanho, a verificação fica com o servidor, que
+    // é quem sempre soube; o que mudou é que agora a razão dele aparece.
+    if (a.fileSize != null && a.fileSize > ATTACHMENT_MAX_BYTES) {
       Alert.alert(
         tr(lang, { en: "Image too large", pt: "Imagem muito grande" }),
         tr(lang, { en: "The limit is 25 MB.", pt: "O limite é 25 MB." })
@@ -160,6 +166,20 @@ function MessagesScreen() {
       [
         { text: tr(lang, { en: "Take photo", pt: "Tirar foto" }), onPress: () => void anexarImagem("camera") },
         { text: tr(lang, { en: "Choose photo", pt: "Escolher foto" }), onPress: () => void anexarImagem("galeria") },
+        // Vídeo não entra na conversa — ele tem lugar próprio, preso ao
+        // exercício. Sem esta linha, quem quisesse mandar um abria o menu, não
+        // achava a opção, e não recebia pista nenhuma de onde ela está.
+        {
+          text: tr(lang, { en: "Exercise video…", pt: "Vídeo do exercício…" }),
+          onPress: () =>
+            Alert.alert(
+              tr(lang, { en: "Exercise videos", pt: "Vídeos do exercício" }),
+              tr(lang, {
+                en: "Send those from the exercise itself, so your therapist sees which one it is. Open Exercises and pick the exercise.",
+                pt: "Envie pelo próprio exercício, assim seu terapeuta sabe qual é. Abra Exercícios e escolha o exercício.",
+              })
+            ),
+        },
         ...(Platform.OS === "android" ? [] : [{ text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" as const }]),
       ],
       { cancelable: true }
@@ -390,7 +410,9 @@ function MessagesScreen() {
 
           {send.isError && (
             <Text variant="caption" color={t.colors.danger} style={{ textAlign: "center" }}>
-              {ui.sendFailed}
+              {/* A razão do servidor, quando ele dá uma: "arquivo muito
+                  grande" é acionável, "não foi possível enviar" não é. */}
+              {(send.error as any)?.message || ui.sendFailed}
             </Text>
           )}
       </View>

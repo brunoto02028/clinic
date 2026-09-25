@@ -9,8 +9,6 @@ import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
 
-console.log("[QA-T4-MARKER] worktree=app_clinic port=4031");
-
 // GET — patient's own message thread
 export async function GET(req: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
