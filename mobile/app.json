@@ -63,7 +63,8 @@
           "microphonePermission": "BPR uses the microphone only while you record a video of your exercise, so your therapist hears what you say about it. Nothing is recorded otherwise."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},
