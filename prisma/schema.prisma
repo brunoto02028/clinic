@@ -372,7 +372,7 @@ model Clinic {
   // owner reviews the reminder copy) never messages a patient without an
   // explicit opt-in. The manual per-patient "Send now" button is never
   // gated by this — only the unattended cron is.
-  dailyRemindersEnabled Boolean @default(false)
+  dailyRemindersEnabled Boolean             @default(false)
   /**
    * Como a sessao extra e cobrada — a que o paciente marca com o pacote
    * esgotado. `INVOICE` por padrao: e o mais proximo do que a clinica faz
@@ -380,7 +380,12 @@ model Clinic {
    * reduzir risco. A primeira consulta nao passa por aqui: ela sempre paga no
    * ato, porque ali nao existe relacao nenhuma ainda (atividade 080).
    */
-  extraSessionPayment ExtraSessionPayment @default(INVOICE)
+  extraSessionPayment   ExtraSessionPayment @default(INVOICE)
+  /// Quantos dias úteis a clínica promete para revisar um resultado de exame
+  /// antes de liberar ao paciente (081). É o prazo que a tela do paciente
+  /// escreve em "em revisão com o seu terapeuta" — sem prazo vira espera
+  /// aberta e gera mensagem.
+  labReviewDays         Int                 @default(2)
 
   // Baseline module/permission grant every new PATIENT of this clinic starts
   // with (act.62) — same key vocabulary as User.moduleOverrides
@@ -518,6 +523,7 @@ model Clinic {
   outboundMessages       OutboundMessage[]
   automationRuns         AutomationRun[]
   exerciseSubmissions    ExerciseSubmission[]
+  labOrders              LabOrder[]
 
   @@index([slug])
   @@index([isActive])
@@ -1101,11 +1107,11 @@ model MedicalScreening {
 /// inteira. Consulta nasce com 1 porque avaliacao e um a um; tratamento a
 /// clinica decide caso a caso (atividade 080, T-5).
 model ScheduleWindow {
-  id          String             @id @default(cuid())
+  id          String @id @default(cuid())
   clinicId    String
-  clinic      Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   therapistId String
-  therapist   User               @relation("TherapistScheduleWindows", fields: [therapistId], references: [id], onDelete: Cascade)
+  therapist   User   @relation("TherapistScheduleWindows", fields: [therapistId], references: [id], onDelete: Cascade)
 
   dayOfWeek   Int // 0 = domingo
   startTime   String // "09:00"
@@ -1135,9 +1141,9 @@ model ScheduleException {
   therapistId String?
   therapist   User?   @relation("TherapistScheduleExceptions", fields: [therapistId], references: [id], onDelete: Cascade)
 
-  date   String // "YYYY-MM-DD"
+  date      String // "YYYY-MM-DD"
   /// Fechado o dia todo. Quando falso, `startTime`/`endTime` encurtam o dia.
-  closed Boolean @default(false)
+  closed    Boolean @default(false)
   startTime String?
   endTime   String?
   note      String?
@@ -1187,29 +1193,30 @@ model Appointment {
   therapistId String
   therapist   User   @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
 
-  dateTime        DateTime
-  duration        Int               @default(60) // Duration in minutes
-  treatmentType   String
+  dateTime         DateTime
+  duration         Int               @default(60) // Duration in minutes
+  treatmentType    String
   /**
    * Que tipo de marcacao isto e — decidido pelo servidor, nunca pelo cliente.
-   *
    * Sem isto, primeira consulta, sessao de pacote e sessao extra eram a mesma
    * linha, e a clinica so distinguia pelo preco que alguem digitou.
    */
-  kind            AppointmentKind   @default(CLINIC_BOOKED)
-  /** O pacote que pagou por esta consulta, quando foi um. */
+  kind             AppointmentKind   @default(CLINIC_BOOKED)
+  /**
+   * O pacote que pagou por esta consulta, quando foi um.
+   */
   patientPackageId String?
-  patientPackage   PatientPackage?  @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
-  status          AppointmentStatus @default(PENDING)
-  mode            AppointmentMode   @default(IN_PERSON)
-  paymentMethod   PaymentMethod     @default(ONLINE)
-  videoRoomId     String? // For video consultations
-  videoRoomUrl    String? // Join URL for video call
-  notes           String?
-  price           Float             @default(60.00)
-  treatmentPlanId String?
-  treatmentPlan   TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
-  protocolId      String? // Links appointment to a TreatmentProtocol (soft reference)
+  patientPackage   PatientPackage?   @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
+  status           AppointmentStatus @default(PENDING)
+  mode             AppointmentMode   @default(IN_PERSON)
+  paymentMethod    PaymentMethod     @default(ONLINE)
+  videoRoomId      String? // For video consultations
+  videoRoomUrl     String? // Join URL for video call
+  notes            String?
+  price            Float             @default(60.00)
+  treatmentPlanId  String?
+  treatmentPlan    TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+  protocolId       String? // Links appointment to a TreatmentProtocol (soft reference)
 
   // Reminders
   reminderSent Boolean @default(false)
@@ -4832,6 +4839,11 @@ enum ConsentAction {
   // connecting their first health device (activity 074, T-13). Recorded with
   // the wording's version, so "which text did they agree to" has an answer.
   MONITORING_NOTICE_ACCEPTED
+  // The patient agreed to buy a laboratory test through the app (081, T-4):
+  // that a third-party laboratory receives their name, date of birth, address
+  // and sample, and that the result is informational and reviewed by their
+  // therapist before they see it. Versioned like the notice above.
+  LAB_TESTS_CONSENT_ACCEPTED
   CONSENT_WITHDRAWN
   DATA_ACCESS_REQUEST
   DATA_DELETION_REQUEST
@@ -5165,7 +5177,6 @@ model PatientPackage {
   endDate         DateTime?
   /**
    * Quantas sessoes ja foram usadas.
-   *
    * Existia e **ninguem incrementava**: zero leitores e zero escritores em
    * `app/`, `lib/` e `components/`. Um pacote de 10 nao limitava nada. A
    * verdade agora sao as consultas ligadas em `appointments`; esta coluna e
@@ -7593,6 +7604,12 @@ model LabOrder {
   patientId   String
   patient     User   @relation("PatientLabOrders", fields: [patientId], references: [id], onDelete: Cascade)
 
+  /// Qual clínica vendeu. Opcional no schema só para as linhas que já existem;
+  /// obrigatório em código (081). Sem isto o pedido não sabe de quem é a margem
+  /// e a equipe de uma clínica enxerga o de outra.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
   status   LabOrderStatus @default(BASKET)
   subtotal Float          @default(0)
   total    Float          @default(0)
@@ -7609,13 +7626,23 @@ model LabOrder {
   resultsUrl  String?
   resultsPdf  String?
 
+  /// O paciente só vê o resultado depois que a clínica libera (decisão do
+  /// Bruno, 25/09/2026). Quem liberou fica no AuditLog; aqui fica o quando e
+  /// o comentário que o paciente lê em cima dos valores, EN primeiro.
+  releasedToPatientAt DateTime?
+  releasedById        String?
+  releaseNote         String?   @db.Text
+  releaseNotePt       String?   @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items  LabOrderItem[]
-  events LabOrderEvent[]
+  items         LabOrderItem[]
+  events        LabOrderEvent[]
+  registrations LabTestRegistration[]
 
   @@index([patientId])
+  @@index([clinicId])
   @@index([status])
   @@map("lab_orders")
 }
@@ -7629,6 +7656,9 @@ model LabOrderItem {
   productName String
   quantity    Int        @default(1)
   unitPrice   Float
+  /// O custo no instante da venda. Preço muda; a margem de um pedido antigo
+  /// não pode mudar junto, senão a contabilidade mente.
+  unitCost    Float      @default(0)
   total       Float
 
   @@index([orderId])
@@ -7647,6 +7677,77 @@ model LabOrderEvent {
 
   @@index([orderId])
   @@map("lab_order_events")
+}
+
+/// Os estados da LML, um para um, sem tradução criativa. O nome deles é
+/// minúsculo (`awaiting_patient`); o mapa em lib/lab-registration-status.ts
+/// faz a ponte, e um teste lê este enum do schema para o mapa não divergir.
+enum LabRegistrationStatus {
+  AWAITING_PATIENT
+  PENDING
+  PENDING_AUTHENTICATION
+  SUCCESS
+  PARTIAL_RESULT
+  FAIL
+  PROCESSING_ERROR
+}
+
+/// O kit entre o despacho e o resultado (081). A LML separa o pedido (o kit
+/// físico) do registro (o kit ligado a uma pessoa): o registro nasce sem
+/// paciente e recebe um quando a pessoa registra o kit que chegou em casa.
+model LabTestRegistration {
+  id      String   @id @default(cuid())
+  orderId String
+  order   LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  lmlRegistrationId String? @unique
+  /// Nosso id do lado deles: idempotência nas chamadas e, na sandbox, o
+  /// valor mágico (`test:abnormal_high:<ref>`) que força um cenário.
+  foreignId         String  @unique
+
+  status            LabRegistrationStatus @default(AWAITING_PATIENT)
+  resultsReady      Boolean               @default(false)
+  assignedPatientAt DateTime?
+  trfUrl            String?
+  labelUrl          String?
+  /// O PDF no nosso storage — a URL assinada deles expira e não pode ser o
+  /// único caminho até um exame que a pessoa pagou.
+  resultsPdfPath    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  values LabResultValue[]
+
+  @@index([orderId])
+  @@index([status])
+  @@map("lab_test_registrations")
+}
+
+/// Um biomarcador com a faixa de referência (081). Guardar só o PDF faz disto
+/// uma loja; guardar o valor faz prontuário — a terceira ferritina na mesma
+/// linha do tempo das outras duas.
+model LabResultValue {
+  id             String              @id @default(cuid())
+  registrationId String
+  registration   LabTestRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  biomarker  String
+  value      Float?
+  /// Resultado qualitativo ("Negative", "Detected") quando não há número.
+  valueText  String?
+  unit       String?
+  minRange   Float?
+  maxRange   Float?
+  status     String?
+  outOfRange Boolean   @default(false)
+  measuredAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([registrationId, biomarker])
+  @@index([registrationId])
+  @@map("lab_result_values")
 }
 
 // ============================================

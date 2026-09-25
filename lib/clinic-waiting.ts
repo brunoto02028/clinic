@@ -49,6 +49,13 @@ export interface ClinicWaiting {
    * domingo, enterrada num feed de atividade, é a informação chegando tarde.
    */
   patientsInPain: number;
+  /**
+   * Resultado de exame que chegou do laboratório e ninguém liberou (081).
+   *
+   * O paciente só vê depois que a clínica olha — então o exame parado aqui é
+   * alguém esperando, e a tela dele diz "em revisão com o seu terapeuta".
+   */
+  labResultsAwaitingRelease: number;
   total: number;
 }
 
@@ -75,6 +82,7 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     patientsWithoutExercises,
     messagesAwaitingApproval,
     patientsInPain,
+    labResultsAwaitingRelease,
   ] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
       where: { clinicId, reviewedAt: null },
@@ -111,6 +119,9 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
         distinct: ["patientId"],
       })
       .then((r: { patientId: string }[]) => r.length),
+    (prisma as any).labOrder.count({
+      where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null },
+    }),
   ]);
 
   return {
@@ -120,13 +131,15 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     patientsWithoutExercises,
     messagesAwaitingApproval,
     patientsInPain,
+    labResultsAwaitingRelease,
     total:
       exerciseVideos +
       unreadMessages +
       unassignedMeasurements +
       patientsWithoutExercises +
       messagesAwaitingApproval +
-      patientsInPain,
+      patientsInPain +
+      labResultsAwaitingRelease,
   };
 }
 
@@ -161,6 +174,7 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
           ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}
           ${linha("message waiting for your approval", "messages waiting for your approval", waiting.messagesAwaitingApproval, "/admin/outbox")}
           ${linha("patient reporting severe pain this week", "patients reporting severe pain this week", waiting.patientsInPain, "/admin/patients")}
+          ${linha("lab result waiting for your review", "lab results waiting for your review", waiting.labResultsAwaitingRelease, "/admin/labs/orders")}
         </table>
       </td></tr>
     </table>`;

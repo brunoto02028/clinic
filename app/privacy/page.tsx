@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Database, Eye, Globe, Lock, UserCheck, Clock, Mail, ArrowLeft, Smartphone } from "lucide-react";
+import { Shield, Database, Eye, Globe, Lock, UserCheck, Clock, Mail, ArrowLeft, Smartphone, FlaskConical } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function PrivacyPolicyPage() {
@@ -193,11 +193,43 @@ export default function PrivacyPolicyPage() {
               : "Exercise videos and photos are health data and are treated like the rest of your record: access restricted to your clinic, encrypted in transit, and storage that only answers authenticated requests — the file's address on its own opens nothing."}</p>
           </Section>
 
-          {/* 7. Data Sharing */}
-          <Section icon={Globe} title={isPt ? "7. Compartilhamento de Dados" : "7. Data Sharing"}>
+          {/* 7. Laboratory tests (081) */}
+          <Section icon={FlaskConical} title={isPt ? "7. Exames de Laboratório" : "7. Laboratory Tests"}>
+            <p>{isPt
+              ? "Você pode comprar um exame de sangue pelo aplicativo — um kit de coleta em casa, por picada no dedo. Quando você faz isso:"
+              : "You can buy a blood test through the app — a home kit, collected by finger-prick. When you do:"}</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>{isPt ? "Quem analisa" : "Who analyses it"}</strong>{isPt
+                ? " — a London Medical Laboratory, um laboratório acreditado no Reino Unido. Ela é um processador independente e tem a própria política de privacidade."
+                : " — London Medical Laboratory, an accredited laboratory in the UK. It is an independent processor with its own privacy policy."}</li>
+              <li><strong>{isPt ? "O que vai para o laboratório" : "What the laboratory receives"}</strong>{isPt
+                ? " — seu nome, data de nascimento, endereço de entrega, telefone e a amostra que você posta. Nada além do necessário para despachar o kit e identificar a amostra."
+                : " — your name, date of birth, delivery address, phone number and the sample you post. Nothing beyond what is needed to dispatch the kit and identify the sample."}</li>
+              <li><strong>{isPt ? "O que volta" : "What comes back"}</strong>{isPt
+                ? " — o resultado, com os valores e as faixas de referência, e um laudo em PDF. Guardamos os dois no seu prontuário, com o mesmo tratamento dos outros dados de saúde."
+                : " — the result, with values and reference ranges, and a PDF report. We keep both in your record, treated like the rest of your health data."}</li>
+              <li><strong>{isPt ? "Quem vê primeiro" : "Who sees it first"}</strong>{isPt
+                ? " — o seu terapeuta. Ele revisa o resultado e escreve uma nota antes de ele aparecer para você. Até lá, o aplicativo diz que está em revisão."
+                : " — your therapist. They review the result and write a note before it appears to you. Until then, the app says it is being reviewed."}</li>
+              <li><strong>{isPt ? "O que o resultado é" : "What the result is"}</strong>{isPt
+                ? " — informação, não diagnóstico. Não substitui uma consulta."
+                : " — information, not a diagnosis. It does not replace a consultation."}</li>
+              <li><strong>{isPt ? "Idade" : "Age"}</strong>{isPt ? " — exames de laboratório são para maiores de 16 anos." : " — laboratory tests are for people aged 16 or over."}</li>
+              <li><strong>{isPt ? "Apagar" : "Deletion"}</strong>{isPt
+                ? " — você pode pedir que apaguemos um resultado do seu prontuário a qualquer momento. O laboratório mantém o registro dele pelo prazo que a lei exige."
+                : " — you can ask us to delete a result from your record at any time. The laboratory keeps its own record for the period the law requires."}</li>
+            </ul>
+            <p className="mt-3 text-xs italic">{isPt
+              ? "Você aceita isto uma vez, antes do primeiro pedido, e guardamos a versão do texto que você aceitou."
+              : "You agree to this once, before your first order, and we record which version of this text you agreed to."}</p>
+          </Section>
+
+          {/* 8. Data Sharing */}
+          <Section icon={Globe} title={isPt ? "8. Compartilhamento de Dados" : "8. Data Sharing"}>
             <p>{isPt ? "Podemos compartilhar seus dados com:" : "We may share your data with:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>{isPt ? "Processadores de pagamento (Stripe) para transações seguras" : "Payment processors (Stripe) for secure transactions"}</li>
+              <li>{isPt ? "London Medical Laboratory — análise de exames de sangue que você compra pelo aplicativo (seção 7)" : "London Medical Laboratory — analysis of blood tests you buy through the app (section 7)"}</li>
               <li>{isPt ? "Anthropic (Claude) — provedor de IA principal para análise clínica assistida e transcrição estruturada, sob Acordo de Processamento de Dados (DPA) com retenção zero de dados de treino" : "Anthropic (Claude) — our primary AI provider for AI-assisted clinical analysis and structured transcription, under a Data Processing Agreement (DPA) with zero data-retention for training"}</li>
               <li>{isPt ? "Groq — transcrição de áudio (fala-para-texto) para preenchimento por voz e outras funções de transcrição rápida" : "Groq — audio transcription (speech-to-text) for voice-fill and other fast-transcription features"}</li>
               <li>{isPt ? "AssemblyAI — transcrição de gravações de consultas (com o seu consentimento específico); o áudio original é excluído após a transcrição" : "AssemblyAI — transcription of consultation recordings (with your specific consent); the original audio is deleted after transcription"}</li>
@@ -215,7 +247,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 7. Data Retention */}
-          <Section icon={Clock} title={isPt ? "8. Retenção de Dados" : "8. Data Retention"}>
+          <Section icon={Clock} title={isPt ? "9. Retenção de Dados" : "9. Data Retention"}>
             <div className="space-y-2">
               {[
                 { type: isPt ? "Registros clínicos" : "Clinical records", period: isPt ? "8 anos após o último tratamento (diretrizes CSP/NHS)" : "8 years from last treatment (CSP/NHS guidelines)" },
@@ -234,7 +266,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 8. Your Rights */}
-          <Section icon={UserCheck} title={isPt ? "9. Seus Direitos" : "9. Your Rights"}>
+          <Section icon={UserCheck} title={isPt ? "10. Seus Direitos" : "10. Your Rights"}>
             <p>{isPt ? "Sob o UK GDPR, você tem os seguintes direitos:" : "Under the UK GDPR, you have the following rights:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>{isPt ? "Direito de acesso" : "Right of access"}</strong> — {isPt ? "Solicitar uma cópia dos seus dados pessoais" : "Request a copy of your personal data"}</li>
@@ -255,7 +287,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 9. Data Security */}
-          <Section icon={Lock} title={isPt ? "10. Segurança dos Dados" : "10. Data Security"}>
+          <Section icon={Lock} title={isPt ? "11. Segurança dos Dados" : "11. Data Security"}>
             <p>{isPt ? "Implementamos medidas técnicas e organizacionais apropriadas:" : "We implement appropriate technical and organisational measures:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>{isPt ? "Transmissão criptografada (TLS/SSL) em todas as páginas" : "Encrypted transmission (TLS/SSL) on all pages"}</li>
@@ -268,28 +300,28 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 10. Children */}
-          <Section icon={Shield} title={isPt ? "11. Crianças" : "11. Children"}>
+          <Section icon={Shield} title={isPt ? "12. Crianças" : "12. Children"}>
             <p>{isPt
               ? "Nossos serviços não são direcionados a menores de 16 anos. Não coletamos intencionalmente dados pessoais de crianças sem consentimento dos pais. Se você acredita que coletamos dados de uma criança, entre em contato imediatamente."
               : "Our services are not directed to children under 16. We do not knowingly collect personal data from children without parental consent. If you believe we have collected data from a child, please contact us immediately."}</p>
           </Section>
 
           {/* 11. International Transfers */}
-          <Section icon={Globe} title={isPt ? "12. Transferências Internacionais" : "12. International Data Transfers"}>
+          <Section icon={Globe} title={isPt ? "13. Transferências Internacionais" : "13. International Data Transfers"}>
             <p>{isPt
               ? "Seus dados podem ser processados por provedores de serviço localizados fora do Reino Unido (ex: Anthropic, Groq, AssemblyAI e Google para análise de IA e transcrição; Stripe para pagamentos — todos baseados nos EUA). Quando isso ocorrer, garantimos que salvaguardas apropriadas estejam em vigor, incluindo Cláusulas Contratuais Padrão (SCCs), o Adendo Internacional de Transferência de Dados do UK (IDTA), Acordos de Processamento de Dados (DPAs) ou adequação reconhecida pelo UK."
               : "Your data may be processed by service providers located outside the United Kingdom (e.g., Anthropic, Groq, AssemblyAI, and Google for AI analysis and transcription; Stripe for payments — all US-based). Where this occurs, we ensure appropriate safeguards are in place, including Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum (IDTA), Data Processing Agreements (DPAs), or UK adequacy recognition."}</p>
           </Section>
 
           {/* 12. Changes */}
-          <Section icon={Clock} title={isPt ? "13. Alterações nesta Política" : "13. Changes to This Policy"}>
+          <Section icon={Clock} title={isPt ? "14. Alterações nesta Política" : "14. Changes to This Policy"}>
             <p>{isPt
               ? "Podemos atualizar esta política periodicamente. Alterações significativas serão notificadas no site. A data \"Última atualização\" no topo indica quando foi revisada pela última vez."
               : "We may update this policy periodically. Significant changes will be notified on the website. The \"Last updated\" date at the top indicates when it was last revised."}</p>
           </Section>
 
           {/* 13. Complaints */}
-          <Section icon={Mail} title={isPt ? "13. Reclamações" : "13. Complaints"}>
+          <Section icon={Mail} title={isPt ? "15. Reclamações" : "15. Complaints"}>
             <p>{isPt
               ? "Se você tem preocupações sobre como tratamos seus dados pessoais, entre em contato conosco primeiro pelo WhatsApp ou pelo formulário em bpr.clinic. Se não estiver satisfeito com nossa resposta, você pode reclamar ao:"
               : "If you have concerns about how we handle your personal data, please contact us first via WhatsApp or the enquiry form at bpr.clinic. If you are not satisfied with our response, you may complain to the:"}</p>

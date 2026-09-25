@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0,
         unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0,
-        messagesAwaitingApproval: 0, patientsInPain: 0,
+        messagesAwaitingApproval: 0, patientsInPain: 0, labResultsAwaitingRelease: 0,
       });
     }
 
@@ -112,9 +112,10 @@ export async function GET(request: NextRequest) {
       patientsWithoutExercises,
       messagesAwaitingApproval: esperando?.messagesAwaitingApproval ?? 0,
       patientsInPain: esperando?.patientsInPain ?? 0,
+      labResultsAwaitingRelease: esperando?.labResultsAwaitingRelease ?? 0,
     });
   } catch (error) {
     console.error("Error fetching pending count:", error);
-    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0, messagesAwaitingApproval: 0, patientsInPain: 0 });
+    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0, messagesAwaitingApproval: 0, patientsInPain: 0, labResultsAwaitingRelease: 0 });
   }
 }

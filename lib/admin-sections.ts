@@ -266,6 +266,17 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         clinicalOnly: true,
       },
       {
+        // Exames de laboratório vendidos pelo app (081): catálogo com preço e
+        // margem, pedidos, e a fila de resultados esperando a revisão do
+        // terapeuta antes de o paciente ver.
+        key: "labs",
+        label: "Lab tests",
+        labelPt: "Exames",
+        href: "/admin/labs",
+        matchRoutes: ["/admin/labs"],
+        clinicalOnly: true,
+      },
+      {
         key: "exercises",
         label: "Exercises",
         labelPt: "Exercicios",
@@ -312,6 +323,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/protocols",
       "/admin/equipment",
       "/admin/clinical/rehab",
+      // Sem isto, /admin/labs caía na seção Schedule (QA da T-2, 081).
+      "/admin/labs",
     ],
   },
   {

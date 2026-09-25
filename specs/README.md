@@ -54,6 +54,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [070](070-app-paciente-clinica/) | App do paciente da clínica BPR (gating, identidade, porte da área web) | 🟡 em andamento |
 | [071](071-seguranca-api-mobile/) | Segurança da API mobile (catálogo aberto, GET que escreve, auth sem releitura) | 📋 planejada |
 | [074](074-monitoramento-continuo-paciente/) | Monitoramento contínuo: limiares como regra, relatório do paciente, webhook Withings, bloqueio pré-exercício, aparelho da clínica | 🟡 em andamento |
+| [081](081-exames-de-laboratorio-pelo-app/) | Exames de laboratório pelo app (London Medical Laboratory) — revenda com margem, kit de casa | 📋 aguardando aprovação |
 
 > **070 nasceu como 069** e foi renumerada em 22/09/2026: outra sessão criou `069-pressao-arterial-pelo-terapeuta` ao mesmo tempo, e aquela já estava no `main`. Commits anteriores à renumeração citam `069` e `specs/069-app-paciente-clinica`; a 071 era `070-seguranca-api-mobile`.
 

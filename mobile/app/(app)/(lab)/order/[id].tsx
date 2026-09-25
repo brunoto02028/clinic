@@ -2,96 +2,113 @@ import { View } from "react-native";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Button, Spinner, Pill } from "@/components/ui";
+import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { fetchLabOrder } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { stageCopy, STAGE_ORDER, COLLECTION_STEPS } from "@/lib/lab-stage-copy";
 
 const SAGE = "#65807B";
 const SAGE_FOG = "#E4EDE7";
+const AMBER = "#B8823A";
+const AMBER_BG = "#F5EFDD";
 
-const TIMELINE_STEPS = [
-  { status: "CONFIRMED", label: "Order confirmed" },
-  { status: "KIT_DISPATCHED", label: "Kit dispatched / collection arranged" },
-  { status: "SAMPLE_RECEIVED", label: "Sample received at lab" },
-  { status: "PROCESSING_LAB", label: "Processing" },
-  { status: "RESULTS_READY", label: "Results ready" },
-];
-
-const STATUS_ORDER = ["BASKET", "CONFIRMED", "KIT_DISPATCHED", "SAMPLE_RECEIVED", "PROCESSING_LAB", "RESULTS_READY"];
-
-function stepState(orderStatus: string, stepStatus: string): "done" | "active" | "pending" {
-  const orderIdx = STATUS_ORDER.indexOf(orderStatus);
-  const stepIdx = STATUS_ORDER.indexOf(stepStatus);
-  if (orderIdx < 0) return "pending";
-  if (stepIdx < orderIdx) return "done";
-  if (stepIdx === orderIdx) return "active";
-  return "pending";
-}
-
+/**
+ * O acompanhamento (081, T-3): onde o pedido está, com os estados de verdade —
+ * "kit a caminho", "registre seu kit", "amostra recebida", "no laboratório",
+ * "em revisão com o seu terapeuta" — e não uma barra genérica.
+ *
+ * Só um estágio pede a pessoa: registrar o kit. Ele fica em âmbar e com os
+ * passos na tela. O resultado só aparece depois que a clínica libera.
+ */
 export default function LabOrderTracking() {
   const t = useTheme();
+  const lang = useLang();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["lab-order", id],
     queryFn: () => fetchLabOrder(id),
     enabled: !!id,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   if (isLoading) return <Screen><Spinner center /></Screen>;
-  if (isError || !data) return <Screen><Text>Order not found.</Text></Screen>;
+  if (isError || !data) {
+    return <Screen><Text>{tr(lang, { en: "Order not found.", pt: "Pedido não encontrado." })}</Text></Screen>;
+  }
 
-  const isReady = data.status === "RESULTS_READY";
-  const isCancelled = data.status === "CANCELLED_LAB";
-  const testName = data.items?.[0]?.productName || "Lab order";
+  const o = data.order;
+  const copy = stageCopy(o.stage, lang, data.reviewDays);
+  const precisaDeVoce = o.stage === "register_kit" || o.stage === "collect_and_post";
+  const idx = STAGE_ORDER.indexOf(o.stage);
+  const testName = o.items.map((i) => i.productName).join(", ");
 
   return (
     <Screen scroll testID="lab-order-tracking-screen">
-      <Stack.Screen options={{
-        headerShown: true, title: `#${data.orderNumber}`,
-        headerStyle: { backgroundColor: t.colors.background },
-        headerTintColor: t.colors.text, headerShadowVisible: false,
-      }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: `#${o.orderNumber}`,
+          headerStyle: { backgroundColor: t.colors.background },
+          headerTintColor: t.colors.text,
+          headerShadowVisible: false,
+        }}
+      />
       <View style={{ gap: 14 }}>
-        <Card style={{ alignItems: "center", paddingVertical: 18 }}>
-          <Text variant="caption" color={t.colors.textMuted}>{testName}</Text>
-          <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", marginTop: 4 }}>
-            {isCancelled ? "Cancelled" : data.status.replace(/_/g, " ")}
-          </Text>
+        <Card style={{ backgroundColor: precisaDeVoce ? AMBER_BG : o.stage === "released" ? t.colors.okSoft : SAGE_FOG, borderWidth: 0 }} testID={`lab-stage-${o.stage}`}>
+          <Text variant="caption" color={t.colors.textSecondary}>{testName}</Text>
+          <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", marginTop: 4, color: precisaDeVoce ? AMBER : t.colors.text }}>{copy.title}</Text>
+          <Text variant="body" style={{ fontSize: 12, marginTop: 6, lineHeight: 18 }}>{copy.body}</Text>
         </Card>
 
-        {isCancelled ? (
-          <Card style={{ backgroundColor: t.colors.badSoft }}>
-            <Text variant="body" color={t.colors.bad} style={{ fontSize: 12 }}>
-              This order was cancelled. Contact the clinic if you believe this is a mistake.
-            </Text>
+        {o.stage === "register_kit" && (
+          <Card>
+            <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", marginBottom: 6 }}>{tr(lang, { en: "When the kit arrives", pt: "Quando o kit chegar" })}</Text>
+            {o.registration?.canRegister ? (
+              <Button
+                title={tr(lang, { en: "Register my kit", pt: "Registrar meu kit" })} variant="primary" size="lg" style={{ backgroundColor: SAGE }} testID="lab-register-kit"
+                onPress={() => router.push({ pathname: "/(app)/(lab)/order/[id]/register" as any, params: { id: o.id } })}
+              />
+            ) : (
+              <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }} color={t.colors.textSecondary}>
+                {tr(lang, {
+                  en: "Registration opens in this screen as soon as the laboratory confirms dispatch. Keep the kit sealed until then.",
+                  pt: "O registro abre nesta tela assim que o laboratório confirmar o envio. Mantenha o kit fechado até lá.",
+                })}
+              </Text>
+            )}
           </Card>
-        ) : (
+        )}
+
+        {(o.stage === "register_kit" || o.stage === "collect_and_post") && (
+          <Card>
+            <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", marginBottom: 10 }}>{tr(lang, { en: "How to collect", pt: "Como coletar" })}</Text>
+            {COLLECTION_STEPS.map((step, i) => (
+              <View key={i} style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
+                  <Text variant="caption" style={{ fontFamily: "Sora_600SemiBold", fontSize: 10 }}>{i + 1}</Text>
+                </View>
+                <Text variant="body" style={{ flex: 1, fontSize: 12, paddingTop: 3, lineHeight: 18 }}>{tr(lang, step)}</Text>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {o.stage !== "cancelled" && o.stage !== "basket" && (
           <Card style={{ paddingVertical: 18, paddingHorizontal: 20 }}>
             <View style={{ paddingLeft: 22 }}>
-              {TIMELINE_STEPS.map((step, idx) => {
-                const state = stepState(data.status, step.status);
-                const dotColor = state === "pending" ? "#DDE0E4" : SAGE;
-                const lineColor = state === "done" ? SAGE : "#DDE0E4";
-                const isLast = idx === TIMELINE_STEPS.length - 1;
+              {STAGE_ORDER.map((stage, i) => {
+                const state = i < idx ? "done" : i === idx ? "active" : "pending";
+                const dot = state === "pending" ? "#DDE0E4" : state === "active" && precisaDeVoce ? AMBER : SAGE;
+                const line = state === "done" ? SAGE : "#DDE0E4";
+                const last = i === STAGE_ORDER.length - 1;
                 return (
-                  <View key={step.status} style={{ position: "relative", paddingBottom: isLast ? 0 : 24 }}>
-                    <View style={{
-                      position: "absolute", left: -22, top: 2, width: 12, height: 12,
-                      borderRadius: 6, backgroundColor: dotColor,
-                      borderWidth: 2, borderColor: t.colors.background,
-                      ...(state === "active" ? { shadowColor: SAGE, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 4 } : {}),
-                    }} />
-                    {!isLast && (
-                      <View style={{
-                        position: "absolute", left: -17, top: 14, width: 2, height: "100%",
-                        backgroundColor: lineColor,
-                      }} />
-                    )}
-                    <Text variant="body" style={{
-                      fontFamily: "Sora_600SemiBold", fontSize: 12,
-                      color: state === "pending" ? t.colors.textMuted : t.colors.text,
-                    }}>{step.label}</Text>
+                  <View key={stage} style={{ position: "relative", paddingBottom: last ? 0 : 22 }}>
+                    <View style={{ position: "absolute", left: -22, top: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: dot, borderWidth: 2, borderColor: t.colors.background }} />
+                    {!last && <View style={{ position: "absolute", left: -17, top: 14, width: 2, height: "100%", backgroundColor: line }} />}
+                    <Text variant="body" style={{ fontFamily: "Sora_600SemiBold", fontSize: 12, color: state === "pending" ? t.colors.textMuted : t.colors.text }}>
+                      {stageCopy(stage, lang, data.reviewDays).title}
+                    </Text>
                   </View>
                 );
               })}
@@ -99,19 +116,18 @@ export default function LabOrderTracking() {
           </Card>
         )}
 
-        {isReady && (
-          <Button title="View result" variant="primary" size="lg"
-            onPress={() => router.push({ pathname: "/(app)/(lab)/result/[id]" as any, params: { id: data.id } })}
-            style={{ backgroundColor: SAGE }}
+        {o.stage === "released" && (
+          <Button
+            title={tr(lang, { en: "See my result", pt: "Ver meu resultado" })} variant="primary" size="lg" style={{ backgroundColor: SAGE }} testID="lab-see-result"
+            onPress={() => router.push({ pathname: "/(app)/(lab)/result/[id]" as any, params: { id: o.id } })}
           />
         )}
 
-        <Card style={{ backgroundColor: SAGE_FOG }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text variant="body" style={{ fontSize: 12 }}>Questions about the test?</Text>
-            <Pill label="Talk to clinic" variant="ok" />
-          </View>
-        </Card>
+        <Button
+          title={tr(lang, { en: "Ask your therapist", pt: "Falar com o terapeuta" })}
+          variant="ghost" size="md"
+          onPress={() => router.push("/(app)/(clinica)/messages" as any)}
+        />
       </View>
     </Screen>
   );
