@@ -68,3 +68,15 @@ describe("kindOf", () => {
     expect(kindOf("image/heic")).toBe("PHOTO");
   });
 });
+
+describe("sniffSubmissionType — PDF (achado A7)", () => {
+  it("reconhece PDF pelo cabeçalho", () => {
+    const pdf = Buffer.concat([Buffer.from("%PDF-1.4\n1 0 obj", "latin1"), Buffer.alloc(16)]);
+    expect(sniffSubmissionType(pdf)).toBe("application/pdf");
+  });
+
+  it("um executável renomeado para .pdf não vira PDF", () => {
+    const exe = Buffer.concat([Buffer.from("MZ\x90\x00", "latin1"), Buffer.alloc(32)]);
+    expect(sniffSubmissionType(exe)).toBeNull();
+  });
+});

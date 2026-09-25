@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { tokenStorage } from "@/lib/secure-storage";
 import { setOnAuthFailure, refreshSession, pendingRefresh } from "@/api/client";
 import { loginRequest, logoutRequest, registerRequest } from "@/api/auth";
+import { registrarParaPush, desregistrarPush } from "@/lib/push";
 import type { AuthUser } from "@/api/types";
 import { clearSessionCache } from "@/lib/query-client";
 import { lockIsActive, prompt as biometricPrompt } from "@/lib/biometrics";
@@ -106,6 +107,10 @@ export const useAuth = create<AuthState>((set) => ({
     // of whoever used this device last. See lib/query-client.ts.
     await clearSessionCache();
     set({ status: "authenticated", user: res.user });
+    // Depois do login, e não antes: a permissão do iOS é pedida **uma vez**, e
+    // um "não" dado na tela de abertura, antes de a pessoa saber o que o app é,
+    // não tem volta. Não bloqueia a entrada.
+    void registrarParaPush();
   },
 
   register: async (firstName, lastName, email, password, tenantSlug) => {
@@ -113,12 +118,16 @@ export const useAuth = create<AuthState>((set) => ({
     await tokenStorage.save(res.accessToken, res.refreshToken);
     await clearSessionCache();
     set({ status: "authenticated", user: res.user });
+    void registrarParaPush();
   },
 
   logout: async () => {
     // Wait for any in-flight rotation so we revoke the current token, not a
     // stale one (which would leave the freshly-issued refresh orphaned).
     await pendingRefresh()?.catch(() => {});
+    // Antes de derrubar o token: num celular emprestado, o aviso do paciente
+    // anterior apareceria na tela de outra pessoa.
+    await desregistrarPush();
     const refresh = await tokenStorage.getRefresh();
     if (refresh) await logoutRequest(refresh);
     await tokenStorage.clear();

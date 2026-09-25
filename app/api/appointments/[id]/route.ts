@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { pushConsulta } from "@/lib/push-notify";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import {
@@ -170,6 +171,15 @@ async function handleUpdate(
         },
       },
     });
+
+    // Idem: o cancelamento feito pelo próprio paciente não vira notificação
+    // para ele. `userRole` é o mesmo que decide, acima, o que ele pode mudar.
+    if (userRole !== "PATIENT") {
+      await pushConsulta(
+        appointment.patient.id,
+        body?.status === "CANCELLED" ? "cancelada" : "remarcada"
+      );
+    }
 
     // Send notification to patient about update/cancellation via preferred channel
     try {

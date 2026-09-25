@@ -10,6 +10,7 @@ import { wireAppFocus, wireNetwork } from "@/lib/app-focus";
 import { wireAppLock } from "@/lib/app-lock";
 import { PrivacyCover } from "@/components/PrivacyCover";
 import { LockOverlay } from "@/components/LockOverlay";
+import { PushRouter } from "@/components/PushRouter";
 import { applyUpdateOnLaunch } from "@/lib/app-updates";
 import { consumirOndeEstava } from "@/lib/return-to";
 import { router } from "expo-router";
@@ -100,6 +101,9 @@ export default function RootLayout() {
               navegação do paciente a cada duas horas... a cada dois minutos em
               segundo plano, na verdade. */}
           <LockOverlay />
+          {/* Na raiz porque o toque pode chegar com o app fechado, antes de
+              qualquer tela existir. */}
+          <PushRouter />
           {/* Por cima até da tranca: o print do multitarefa é tirado antes de
               qualquer coisa acontecer. */}
           <PrivacyCover />

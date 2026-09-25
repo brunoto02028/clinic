@@ -79,6 +79,11 @@ export function refuseSubmission(file: { type: string; size: number }, durationS
 export function sniffSubmissionType(buffer: Buffer): string | null {
   if (buffer.length < 12) return null;
 
+  // PDF, para o anexo de conversa poder usar o mesmo juiz (achado A7 do QA de
+  // 25/09: um `.exe` renomeado para `.pdf` era aceito e devolvido rotulado
+  // como PDF, porque a validacao lia o rotulo do cliente).
+  if (buffer.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
+
   if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
   if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
     return "image/png";

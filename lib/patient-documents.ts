@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { sniffSubmissionType } from "@/lib/exercise-submission";
 import { notifyNewClinicalDocument } from "@/lib/evidence-report";
 
 /**
@@ -38,6 +39,29 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
+  // O rótulo já foi conferido por quem chamou; aqui quem responde são os bytes.
+  // Um `.exe` renomeado para `.pdf` declarava `application/pdf`, era aceito, e
+  // depois servido de volta com `Content-Type: application/pdf` para quem
+  // abrisse (QA de 25/09, achado A7).
+  //
+  // A regra não é "o rótulo tem que bater": navegador e celular erram o rótulo
+  // com frequência (`image/jpg`, `application/octet-stream`), e recusar um
+  // arquivo legítimo é pior que o problema. A regra é **o conteúdo tem que ser
+  // aceitável**. Word, TXT e CSV não têm assinatura confiável e seguem pelo
+  // rótulo — nenhum deles executa ao abrir.
+  const tipoReal = sniffSubmissionType(bytes);
+  const conteudoReconhecido = !!tipoReal;
+  const conteudoAceitavel =
+    tipoReal && (tipoReal.startsWith("image/") || DOCUMENT_ALLOWED_TYPES.includes(tipoReal));
+  const rotuloExigeAssinatura =
+    file.type.startsWith("image/") || file.type === "application/pdf";
+
+  if ((conteudoReconhecido && !conteudoAceitavel) || (!conteudoReconhecido && rotuloExigeAssinatura)) {
+    throw Object.assign(new Error("That file is not what it says it is."), {
+      code: "type_mismatch",
+    });
+  }
+
   // Row first, then the URL: the URL contains the row's own id.
   const doc = await (prisma as any).patientDocument.create({
     data: {
@@ -46,7 +70,9 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
       uploadedById: meta.uploadedById,
       fileName: file.name,
       fileUrl: "",
-      fileType: file.type,
+      // O tipo que o arquivo **é**, quando dá para saber. Era o que o cliente
+      // disse, e é com ele que a rota de download responde depois.
+      fileType: tipoReal || file.type,
       fileSize: file.size,
       fileData: bytes.toString("base64"),
       documentType: meta.documentType || "OTHER",

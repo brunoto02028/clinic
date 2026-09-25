@@ -6,6 +6,7 @@ import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
+import { pushConsulta } from "@/lib/push-notify";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
@@ -230,6 +231,13 @@ export async function POST(request: NextRequest) {
     // Lead-magnet attribution (P3): log a "booked" event if this patient's
     // email was previously captured via an article lead-magnet.
     logBookedEventForEmail(appointment.patient.email).catch(() => {});
+
+    // O toque no ombro — **só quando quem marcou foi a clínica**. Paciente que
+    // acabou de marcar a própria consulta na tela não precisa que o celular
+    // dele vibre contando o que ele mesmo fez (077, T-5).
+    if (!isPatient) {
+      await pushConsulta(appointment.patient.id, "marcada");
+    }
 
     // Send confirmation to patient via their preferred channel
     try {
