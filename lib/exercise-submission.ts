@@ -65,6 +65,37 @@ export function refuseSubmission(file: { type: string; size: number }, durationS
   return null;
 }
 
+/**
+ * O tipo de verdade, lido dos primeiros bytes.
+ *
+ * `file.type` é o que o cliente **declarou** no multipart. Um `.exe` renomeado
+ * para `.mp4` declarava `video/mp4`, passava pela recusa e era guardado como
+ * vídeo do paciente — servido depois com `Content-Type: video/mp4` para quem
+ * abrisse. Quem responde agora são os bytes.
+ *
+ * Devolve `null` quando não reconhece nada — e não reconhecer é motivo de
+ * recusa, não de aceitar na dúvida.
+ */
+export function sniffSubmissionType(buffer: Buffer): string | null {
+  if (buffer.length < 12) return null;
+
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
+  }
+
+  // MP4, MOV e HEIC são todos caixas ISO-BMFF: o que os separa é a marca logo
+  // depois do `ftyp`.
+  if (buffer.subarray(4, 8).toString("latin1") === "ftyp") {
+    const marca = buffer.subarray(8, 12).toString("latin1").toLowerCase();
+    if (marca === "qt  ") return "video/quicktime";
+    if (["heic", "heix", "hevc", "hevx", "mif1", "msf1"].includes(marca)) return "image/heic";
+    return "video/mp4";
+  }
+
+  return null;
+}
+
 export function kindOf(mimeType: string): SubmissionKind {
   return VIDEO_EXT[(mimeType || "").toLowerCase()] ? "VIDEO" : "PHOTO";
 }
@@ -101,14 +132,27 @@ export async function storeExerciseSubmission(input: StoreSubmissionInput) {
   const recusa = refuseSubmission(file, durationSeconds);
   if (recusa) throw Object.assign(new Error(recusa.message), { code: recusa.code });
 
-  const kind = kindOf(file.type);
   // O nome tem a pasta do paciente — a separação por pessoa está no caminho,
   // não só na consulta. E o carimbo de tempo evita que um reenvio no mesmo
-  // segundo sobrescreva o anterior.
-  const key = `exercise-submissions/${patientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensionOf(file.type)}`;
+  // segundo sobrescreva o anterior. A extensão sai do tipo real, abaixo.
+  const key = `exercise-submissions/${patientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await uploadToR2(key, buffer, file.type);
+
+  // A recusa acima olhou o rótulo — barata, e evita ler 200 MB de um arquivo
+  // obviamente errado. Esta olha o conteúdo, e é ela que decide.
+  const tipoReal = sniffSubmissionType(buffer);
+  if (!tipoReal) {
+    throw Object.assign(new Error("Send a video (MP4 or MOV) or a photo (JPEG, PNG, HEIC)."), {
+      code: "unsupported_type",
+    });
+  }
+  const recusaReal = refuseSubmission({ type: tipoReal, size: buffer.length }, durationSeconds);
+  if (recusaReal) throw Object.assign(new Error(recusaReal.message), { code: recusaReal.code });
+
+  const kind = kindOf(tipoReal);
+  const chave = `${key}.${extensionOf(tipoReal)}`;
+  await uploadToR2(chave, buffer, tipoReal);
 
   try {
     return await (prisma as any).exerciseSubmission.create({
@@ -118,8 +162,8 @@ export async function storeExerciseSubmission(input: StoreSubmissionInput) {
         exercisePrescriptionId: exercisePrescriptionId || null,
         protocolItemId: protocolItemId || null,
         kind,
-        storageKey: key,
-        mimeType: file.type,
+        storageKey: chave,
+        mimeType: tipoReal,
         sizeBytes: buffer.length,
         durationSeconds: durationSeconds ?? null,
       },
@@ -130,7 +174,7 @@ export async function storeExerciseSubmission(input: StoreSubmissionInput) {
     });
   } catch (e) {
     // O arquivo subiu e o banco não registrou.
-    await deleteFromR2(key).catch(() => {});
+    await deleteFromR2(chave).catch(() => {});
     throw e;
   }
 }

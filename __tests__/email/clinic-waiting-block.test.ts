@@ -1,0 +1,53 @@
+/**
+ * @jest-environment node
+ *
+ * O bloco "Waiting for you" que viaja dentro do relatório diário.
+ *
+ * Duas regras que o e-mail não pode quebrar: nenhum dado clínico sai daqui
+ * (caixa de e-mail não é prontuário) e nada aparece quando não há nada — um
+ * resumo que chega vazio ensina a não abrir o próximo.
+ */
+
+jest.mock("@/lib/db", () => ({ prisma: {} }));
+
+import { waitingEmailBlock, type ClinicWaiting } from "@/lib/clinic-waiting";
+
+const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
+  const w = { exerciseVideos: 0, unreadMessages: 0, unassignedMeasurements: 0, ...over };
+  return { ...w, total: w.exerciseVideos + w.unreadMessages + w.unassignedMeasurements };
+};
+
+describe("waitingEmailBlock", () => {
+  it("some quando não há nada esperando", () => {
+    expect(waitingEmailBlock(espera(), "https://bpr.clinic")).toBe("");
+  });
+
+  it("fala no singular quando é um só", () => {
+    const html = waitingEmailBlock(espera({ exerciseVideos: 1, unreadMessages: 1, unassignedMeasurements: 1 }), "https://bpr.clinic");
+    expect(html).toContain("exercise video to watch");
+    expect(html).toContain("message from a patient");
+    expect(html).toContain("blood pressure reading to assign");
+    expect(html).not.toContain("exercise videos to watch");
+  });
+
+  it("fala no plural quando é mais de um", () => {
+    const html = waitingEmailBlock(espera({ exerciseVideos: 3, unreadMessages: 2 }), "https://bpr.clinic");
+    expect(html).toContain("exercise videos to watch");
+    expect(html).toContain("messages from patients");
+  });
+
+  it("omite a linha do que está zerado", () => {
+    const html = waitingEmailBlock(espera({ exerciseVideos: 2 }), "https://bpr.clinic");
+    expect(html).toContain("exercise videos to watch");
+    expect(html).not.toContain("message");
+    expect(html).not.toContain("blood pressure");
+  });
+
+  it("leva contagem e link, nunca o que está no vídeo", () => {
+    const html = waitingEmailBlock(espera({ exerciseVideos: 2, unassignedMeasurements: 1 }), "https://bpr.clinic");
+    expect(html).toContain("https://bpr.clinic/admin/patients");
+    expect(html).toContain("https://bpr.clinic/admin/measurements/inbox");
+    // nenhum nome, nenhum id, nenhuma chave de armazenamento
+    expect(html).not.toMatch(/storageKey|exercise-submissions\/|r2\.dev|cloudflarestorage/);
+  });
+});

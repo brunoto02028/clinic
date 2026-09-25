@@ -62,13 +62,13 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
 export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): string {
   if (waiting.total === 0) return "";
 
-  const linha = (rotulo: string, n: number, href: string) =>
+  const linha = (um: string, varios: string, n: number, href: string) =>
     n === 0
       ? ""
       : `<tr><td style="padding:10px 16px;border-bottom:1px solid #E4E3DF;">
            <a href="${baseUrl}${href}" style="color:#20242D;text-decoration:none;">
              <strong style="font-size:16px;">${n}</strong>
-             <span style="color:#5B616C;"> ${rotulo}</span>
+             <span style="color:#5B616C;"> ${n === 1 ? um : varios}</span>
            </a></td></tr>`;
 
   return `
@@ -76,9 +76,9 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
       <tr><td style="background-color:#F3ECDD;border-left:3px solid #826637;border-radius:8px;padding:14px 16px;">
         <p style="margin:0 0 8px;font-weight:700;color:#20242D;">Waiting for you</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${linha("exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
-          ${linha("messages from patients", waiting.unreadMessages, "/admin/patients")}
-          ${linha("blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
+          ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
+          ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
+          ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
         </table>
       </td></tr>
     </table>`;
