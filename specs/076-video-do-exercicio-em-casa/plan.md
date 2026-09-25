@@ -66,7 +66,7 @@ treina a abrir.
 | T-3 | app: gravar e enviar o vídeo do exercício | implementada, aguarda QA |
 | T-4 | app: anexo na conversa (ligar no que já existe) | QA reprovou → corrigido, aguarda teste no aparelho |
 | T-5 | admin: fila de revisão e resposta do terapeuta | implementada, aguarda QA |
-| T-6 | aviso por resumo diário, não por evento | pendente |
+| T-6 | aviso por resumo diário, não por evento | implementada, aguarda QA |
 
 T-1 → T-2 sustentam todo o resto. T-3 e T-5 são as duas pontas do mesmo fluxo e só fazem sentido
 juntas. T-4 é independente e a mais barata. T-6 depende de T-2 existir.

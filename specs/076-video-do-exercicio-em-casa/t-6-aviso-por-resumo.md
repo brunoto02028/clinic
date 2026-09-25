@@ -1,6 +1,6 @@
 # T-6: Aviso por resumo diário, não por evento
 
-**Status:** pendente
+**Status:** implementada, aguarda QA
 **Depende de:** T-2
 
 ## Objetivo
@@ -39,3 +39,39 @@ recebe e-mail quando há trabalho é uma caixa que se abre.
 - [ ] Cada clínica recebe só o que é dela
 - [ ] Item já visto não aparece no resumo seguinte
 - [ ] Falha de e-mail não derruba o cron
+
+
+## Desvio do plano, e por quê
+
+O plano previa um cron novo, `/api/cron/clinic-digest`. **Não foi feito assim.**
+
+Ao implementar, encontrei `/api/cron/daily-report`: a clínica **já recebe um e-mail por dia**,
+com a adesão dos pacientes, já agendado e já protegido contra envio duplicado. Criar um segundo
+seria exatamente a enxurrada que o Bruno pediu para evitar — duas notificações diárias em vez de
+uma.
+
+O resumo do que está esperando entrou **dentro** desse e-mail, como um bloco no topo, e o assunto
+passa a dizer quantos itens aguardam ação. Um e-mail por dia continua sendo um e-mail por dia.
+
+**Uma mudança de comportamento que veio junto:** o cron pulava a clínica quando não havia
+exercício agendado para o dia. Um vídeo do paciente podia ficar esperando sem ninguém ser
+avisado. Agora o silêncio exige as duas coisas — nada agendado **e** nada parado.
+
+## Evidência
+
+Cinco critérios, medidos:
+
+```
+OK   sem nada parado, o bloco fica vazio
+OK   video pendente aparece no resumo
+OK   o resumo nao carrega dado clinico
+OK   revisado some do resumo
+OK   cada clinica so conta o que e dela
+```
+
+## Nota de processo
+
+O prefixo `qa-t6-` que usei nos dados de teste **colidiu** com o de um QA anterior (atividade
+072), cujos usuários `qa-t6-*@example.com` continuam no banco local. A limpeza falhou por chave
+estrangeira até eu restringir aos meus (`@x.test`). Prefixo de dado de teste precisa incluir a
+atividade, não só a tarefa.
