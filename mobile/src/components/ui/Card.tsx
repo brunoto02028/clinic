@@ -13,6 +13,7 @@ import type { Pillar } from "@/theme/tokens";
 export type CardVariant = "default" | "highlight" | "elevated";
 
 export interface CardProps {
+  testID?: string;
   children: ReactNode;
   style?: ViewStyle;
   accent?: Pillar;
@@ -20,7 +21,7 @@ export interface CardProps {
   variant?: CardVariant;
 }
 
-export function Card({ children, style, accent, dark, variant = "default" }: CardProps) {
+export function Card({ children, style, accent, dark, variant = "default", testID }: CardProps) {
   const t = useTheme();
   const highlight = variant === "highlight";
   const elevated = variant === "elevated";
@@ -32,7 +33,7 @@ export function Card({ children, style, accent, dark, variant = "default" }: Car
   };
 
   return (
-    <View
+    <View testID={testID}
       style={[
         {
           backgroundColor: dark

@@ -20,6 +20,7 @@ const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
     patientsWithoutExercises: 0,
     messagesAwaitingApproval: 0,
     patientsInPain: 0,
+    labResultsAwaitingRelease: 0,
     ...over,
   };
   return {

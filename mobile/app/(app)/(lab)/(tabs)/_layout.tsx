@@ -2,9 +2,11 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
 import { Platform } from "react-native";
+import { useLang, t as tr } from "@/lib/i18n";
 
 export default function LabTabsLayout() {
   const t = useTheme();
+  const lang = useLang();
   return (
     <Tabs
       screenOptions={{
@@ -30,7 +32,7 @@ export default function LabTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Tests",
+          title: tr(lang, { en: "Tests", pt: "Exames" }),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "flask" : "flask-outline"} size={size} color={color} />
           ),
@@ -39,7 +41,7 @@ export default function LabTabsLayout() {
       <Tabs.Screen
         name="orders"
         options={{
-          title: "My Orders",
+          title: tr(lang, { en: "My orders", pt: "Pedidos" }),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "receipt" : "receipt-outline"} size={size} color={color} />
           ),

@@ -3,38 +3,41 @@ import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Pill } from "@/components/ui";
-import { fetchLabOrders, LabOrder } from "@/api/labs";
+import { fetchLabOrders, type LabOrder, type LabStage } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { stageCopy } from "@/lib/lab-stage-copy";
 
-const STATUS_PILL: Record<string, "warn" | "work" | "ok" | "bad" | "muted"> = {
-  BASKET: "muted",
-  CONFIRMED: "work",
-  KIT_DISPATCHED: "work",
-  SAMPLE_RECEIVED: "work",
-  PROCESSING_LAB: "work",
-  RESULTS_READY: "ok",
-  CANCELLED_LAB: "bad",
+/**
+ * Os pedidos (081, T-3), cada um com a posição em que está. O que precisa de
+ * você fica em âmbar; o resto fica quieto.
+ */
+const STAGE_PILL: Record<LabStage, "warn" | "work" | "ok" | "bad" | "muted"> = {
+  basket: "muted",
+  kit_preparing: "work",
+  register_kit: "warn",
+  collect_and_post: "warn",
+  at_lab: "work",
+  in_review: "work",
+  released: "ok",
+  cancelled: "bad",
 };
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export default function LabOrders() {
   const t = useTheme();
+  const lang = useLang();
+  const { data, isLoading, isError } = useQuery({ queryKey: ["lab-orders"], queryFn: fetchLabOrders });
+  const reviewDays = data?.reviewDays ?? 2;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["lab-orders"],
-    queryFn: fetchLabOrders,
-  });
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <Screen testID="lab-orders">
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "My Orders",
+          title: tr(lang, { en: "My orders", pt: "Meus pedidos" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -42,9 +45,9 @@ export default function LabOrders() {
       />
       <View style={{ gap: 16, flex: 1 }}>
         <View>
-          <Text variant="title">My Orders</Text>
+          <Text variant="title">{tr(lang, { en: "My orders", pt: "Meus pedidos" })}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-            Track your lab test orders
+            {tr(lang, { en: "Where each test is, and whether it needs you.", pt: "Onde cada exame está, e se precisa de você." })}
           </Text>
         </View>
 
@@ -54,48 +57,41 @@ export default function LabOrders() {
           <Card>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Ionicons name="alert-circle" size={20} color={t.colors.bad} />
-              <Text color={t.colors.bad}>Failed to load orders.</Text>
+              <Text color={t.colors.bad}>{tr(lang, { en: "We could not load your orders.", pt: "Não foi possível carregar os pedidos." })}</Text>
             </View>
           </Card>
-        ) : (data ?? []).length === 0 ? (
+        ) : (data?.orders ?? []).length === 0 ? (
           <View style={{ alignItems: "center", gap: 12, paddingVertical: 40 }}>
             <Ionicons name="clipboard-outline" size={48} color={t.colors.textMuted} />
-            <Text variant="subtitle" color={t.colors.textSecondary}>No orders yet</Text>
-            <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-              Your lab test orders will appear here
-            </Text>
+            <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No orders yet", pt: "Nenhum pedido ainda" })}</Text>
           </View>
         ) : (
           <FlatList
-            data={data}
+            data={data?.orders}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: 10 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }: { item: LabOrder }) => (
-              <Pressable onPress={() => router.push(`/(app)/(lab)/order/${item.id}`)}>
-                <Card>
-                  <View style={{ gap: 8 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <Text variant="label" style={{ fontWeight: "600" }}>
-                        #{item.orderNumber}
-                      </Text>
-                      <Pill
-                        label={item.status.replace(/_/g, " ")}
-                        variant={STATUS_PILL[item.status] ?? "muted"}
-                      />
+            renderItem={({ item }: { item: LabOrder }) => {
+              const copy = stageCopy(item.stage, lang, reviewDays);
+              return (
+                <Pressable onPress={() => router.push(`/(app)/(lab)/order/${item.id}`)} testID={`lab-order-${item.orderNumber}`}>
+                  <Card>
+                    <View style={{ gap: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <Text variant="label" style={{ fontWeight: "600", flex: 1 }} numberOfLines={1}>
+                          {item.items.map((i) => i.productName).join(", ")}
+                        </Text>
+                        <Pill label={copy.title} variant={STAGE_PILL[item.stage]} />
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <Text variant="caption" color={t.colors.textMuted}>#{item.orderNumber} · {formatDate(item.createdAt)}</Text>
+                        <Text variant="caption" color={t.colors.text} style={{ fontWeight: "700" }}>£{item.total.toFixed(2)}</Text>
+                      </View>
                     </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <Text variant="caption" color={t.colors.textMuted}>
-                        {formatDate(item.createdAt)}
-                      </Text>
-                      <Text variant="subtitle" color={t.colors.text} style={{ fontWeight: "700" }}>
-                        £{item.total.toFixed(2)}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              </Pressable>
-            )}
+                  </Card>
+                </Pressable>
+              );
+            }}
           />
         )}
       </View>
