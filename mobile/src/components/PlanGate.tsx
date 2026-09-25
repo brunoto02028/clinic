@@ -50,26 +50,46 @@ export function PlanGate({
 
   if (data.modules.includes(module)) return <>{children}</>;
 
+  /**
+   * Exercícios têm texto próprio, e o motivo é honestidade.
+   *
+   * "Não incluído no seu plano" soa como muro de vendas para quem acabou de
+   * criar a conta — e a verdade é outra: a clínica ainda não montou o programa
+   * dele. Desde a 078, prescrever um exercício **já libera** esta tela, então
+   * quem lê isto é exatamente quem ainda não foi atendido.
+   */
+  const ehExercicios = module === "mod_exercises";
+
   return (
     <Screen>
       <Card>
         <View style={{ alignItems: "center", gap: 12, paddingVertical: 32 }}>
           <Ionicons name="lock-closed-outline" size={36} color={theme.colors.textMuted} />
           <Text variant="subtitle" style={{ textAlign: "center" }}>
-            {t(lang, {
-              en: "Not included in your plan",
-              pt: "Não incluído no seu plano",
-            })}
+            {ehExercicios
+              ? t(lang, {
+                  en: "Your programme is not set up yet",
+                  pt: "Seu programa ainda não foi montado",
+                })
+              : t(lang, {
+                  en: "Not included in your plan",
+                  pt: "Não incluído no seu plano",
+                })}
           </Text>
           <Text
             variant="caption"
             color={theme.colors.textSecondary}
             style={{ textAlign: "center", lineHeight: 18 }}
           >
-            {t(lang, {
-              en: "Your clinic can add this to your plan. Ask them if you think this is wrong.",
-              pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
-            })}
+            {ehExercicios
+              ? t(lang, {
+                  en: "Your therapist puts your exercises here once your treatment is agreed. Nothing for you to do yet.",
+                  pt: "Seu terapeuta coloca seus exercícios aqui assim que o tratamento for definido. Nada a fazer por enquanto.",
+                })
+              : t(lang, {
+                  en: "Your clinic can add this to your plan. Ask them if you think this is wrong.",
+                  pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
+                })}
           </Text>
           {/* Uma tela que só diz "não" precisa de uma porta — e a porta não
               pode ser condicional. Estava dentro de `canGoBack()`, ou seja,

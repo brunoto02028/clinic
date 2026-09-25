@@ -13,8 +13,18 @@ jest.mock("@/lib/db", () => ({ prisma: {} }));
 import { waitingEmailBlock, type ClinicWaiting } from "@/lib/clinic-waiting";
 
 const espera = (over: Partial<ClinicWaiting> = {}): ClinicWaiting => {
-  const w = { exerciseVideos: 0, unreadMessages: 0, unassignedMeasurements: 0, ...over };
-  return { ...w, total: w.exerciseVideos + w.unreadMessages + w.unassignedMeasurements };
+  const w = {
+    exerciseVideos: 0,
+    unreadMessages: 0,
+    unassignedMeasurements: 0,
+    patientsWithoutExercises: 0,
+    ...over,
+  };
+  return {
+    ...w,
+    total:
+      w.exerciseVideos + w.unreadMessages + w.unassignedMeasurements + w.patientsWithoutExercises,
+  };
 };
 
 describe("waitingEmailBlock", () => {
@@ -41,6 +51,14 @@ describe("waitingEmailBlock", () => {
     expect(html).toContain("exercise videos to watch");
     expect(html).not.toContain("message");
     expect(html).not.toContain("blood pressure");
+  });
+
+  it("o app vazio de quem está em tratamento também espera pela clínica", () => {
+    const html = waitingEmailBlock(espera({ patientsWithoutExercises: 1 }), "https://bpr.clinic");
+    expect(html).toContain("patient in treatment with no exercises yet");
+
+    const varios = waitingEmailBlock(espera({ patientsWithoutExercises: 4 }), "https://bpr.clinic");
+    expect(varios).toContain("patients in treatment with no exercises yet");
   });
 
   it("leva contagem e link, nunca o que está no vídeo", () => {

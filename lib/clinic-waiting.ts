@@ -27,11 +27,19 @@ export interface ClinicWaiting {
   unreadMessages: number;
   /** Medições do manguito da clínica sem dono. */
   unassignedMeasurements: number;
+  /**
+   * Paciente em tratamento cujo app está vazio: nenhum exercício prescrito.
+   *
+   * Só conta quem **já é** paciente da clínica — tem pacote pago e ativo.
+   * Quem criou a conta e ainda não foi atendido não entra: seria cobrar da
+   * clínica alguém que ainda não é dela.
+   */
+  patientsWithoutExercises: number;
   total: number;
 }
 
 export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting> {
-  const [exerciseVideos, unreadMessages, unassignedMeasurements] = await Promise.all([
+  const [exerciseVideos, unreadMessages, unassignedMeasurements, patientsWithoutExercises] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
       where: { clinicId, reviewedAt: null },
     }),
@@ -41,13 +49,24 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     (prisma as any).unassignedMeasurement.count({
       where: { clinicId, assignedAt: null, discardedAt: null },
     }),
+    // O app vazio de quem já está em tratamento. Antes disto, a clínica só
+    // descobria abrindo o app do paciente — foi assim que apareceu (078).
+    prisma.user.count({
+      where: {
+        clinicId,
+        role: "PATIENT",
+        packagesAsPatient: { some: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } } },
+        receivedExercises: { none: { isActive: true } },
+      },
+    }),
   ]);
 
   return {
     exerciseVideos,
     unreadMessages,
     unassignedMeasurements,
-    total: exerciseVideos + unreadMessages + unassignedMeasurements,
+    patientsWithoutExercises,
+    total: exerciseVideos + unreadMessages + unassignedMeasurements + patientsWithoutExercises,
   };
 }
 
@@ -79,6 +98,7 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
           ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
           ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
           ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
+          ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}
         </table>
       </td></tr>
     </table>`;

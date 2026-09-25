@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     if (!effectiveClinicId && userRole !== "SUPERADMIN") {
       return NextResponse.json({
         pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0,
-        unassignedMeasurements: 0, unreviewedSubmissions: 0,
+        unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0,
       });
     }
 
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       userWhere.clinicId = effectiveClinicId;
     }
 
-    const [unreadMessagePatients, answeredQPatients, unassignedMeasurements, unreviewedSubmissions] = await Promise.all([
+    const [unreadMessagePatients, answeredQPatients, unassignedMeasurements, unreviewedSubmissions, patientsWithoutExercises] = await Promise.all([
       prisma.user.findMany({
         where: {
           ...userWhere,
@@ -76,6 +76,18 @@ export async function GET(request: NextRequest) {
             where: { clinicId: effectiveClinicId, reviewedAt: null },
           })
         : Promise.resolve(0),
+      // Paciente em tratamento com o app vazio (078). A clínica só descobria
+      // abrindo o app dele — foi assim que isto apareceu.
+      effectiveClinicId
+        ? prisma.user.count({
+            where: {
+              clinicId: effectiveClinicId,
+              role: "PATIENT",
+              packagesAsPatient: { some: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } } },
+              receivedExercises: { none: { isActive: true } },
+            },
+          })
+        : Promise.resolve(0),
     ]);
 
     const patientIds = new Set<string>([
@@ -89,9 +101,10 @@ export async function GET(request: NextRequest) {
       answeredQuestions: answeredQPatients.length,
       unassignedMeasurements,
       unreviewedSubmissions,
+      patientsWithoutExercises,
     });
   } catch (error) {
     console.error("Error fetching pending count:", error);
-    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0 });
+    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0 });
   }
 }
