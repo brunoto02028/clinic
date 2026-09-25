@@ -45,7 +45,7 @@ prontuario. A porta automatica e o caminho comum, nao a unica entrada.
 | T-1 | a sessao do pacote passa a ser consumida de verdade | implementada, aguarda QA |
 | T-2 | o servidor decide a porta pelo estado do paciente | implementada, aguarda QA |
 | T-3 | o app mostra uma porta so, com o texto certo | implementada, aguarda aparelho |
-| T-4 | a clinica anula quando quiser: cortesia, isencao, marcar por fora | pendente |
+| T-4 | a clinica anula quando quiser: cortesia, isencao, marcar por fora | servidor pronto; falta o botao na tela |
 | T-5 | a agenda configuravel: janelas por dia, tipo, capacidade e excecoes | implementada, aguarda QA |
 
 ## T-5 — a agenda vira configuracao, nao codigo (25/09/2026)

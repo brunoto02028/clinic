@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/system-logger";
+import { syncSessionsUsed } from "@/lib/package-sessions";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { notifyPatient } from "@/lib/notify-patient";
@@ -61,6 +63,11 @@ export async function POST(request: NextRequest) {
     const {
       patientId, dateTime, duration, treatmentType, notes, price,
       mode, videoRoomId, videoRoomUrl, treatmentPlanId, paymentMode, sendConfirmation,
+      // A porta automática é o caminho comum, não a única entrada. Uma regra
+      // com um caminho só vira empecilho no primeiro caso fora da curva — e
+      // numa clínica pequena o caso fora da curva é semanal (atividade 080,
+      // T-4).
+      courtesySession, waiveCharge, overrideReason,
     } = body;
     // Patient-facing e-mails (confirmation, screening reminder) go out at creation
     // unless the caller says `sendConfirmation: false` (activity 68: the admin form
@@ -92,16 +99,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    // Sessão de cortesia: sai do pacote do paciente mesmo com ele esgotado.
+    // O vínculo é o que faz a sessão aparecer no histórico dele como sessão, e
+    // não como consulta avulsa que a clínica esqueceu de cobrar.
+    let cortesiaPacoteId: string | null = null;
+    if (courtesySession) {
+      const pacote = await (prisma as any).patientPackage.findFirst({
+        where: { patientId, clinicId, paid: true, status: { in: ["PAID", "ACTIVE"] } },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      cortesiaPacoteId = pacote?.id ?? null;
+    }
+
+    const precoFinal = waiveCharge ? 0 : (price || 0);
+
     const appointment = await prisma.appointment.create({
       data: {
         clinicId,
         patientId,
         therapistId: userId!,
+        // Marcada pela clínica: quem marcou decide o preço, e nada é cobrado
+        // sozinho. Uma cortesia fica registrada como sessão de pacote, que é o
+        // que ela é para o paciente.
+        kind: cortesiaPacoteId ? "PACKAGE_SESSION" : "CLINIC_BOOKED",
+        patientPackageId: cortesiaPacoteId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
         treatmentType: treatmentType || "General Consultation",
         notes: notes || null,
-        price: price || 0,
+        price: precoFinal,
         mode: mode || "IN_PERSON",
         videoRoomId: videoRoomId || null,
         videoRoomUrl: videoRoomUrl || null,
@@ -112,6 +139,33 @@ export async function POST(request: NextRequest) {
         therapist: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // Cortesia e isenção são decisões, e decisão tem dono. Sem este registro,
+    // daqui a três meses ninguém sabe quem liberou nem por quê — e a pergunta
+    // aparece justamente quando a conta não fecha.
+    if (courtesySession || waiveCharge) {
+      await logAudit({
+        userId: userId!,
+        userEmail: "",
+        userRole: String(userRole),
+        action: courtesySession ? "APPOINTMENT_COURTESY_SESSION" : "APPOINTMENT_CHARGE_WAIVED",
+        entity: "Appointment",
+        entityId: appointment.id,
+        description: courtesySession
+          ? "Session granted from the patient's package outside its remaining count"
+          : "Appointment created with the charge waived",
+        metadata: {
+          patientId,
+          reason: overrideReason || null,
+          price: precoFinal,
+          patientPackageId: cortesiaPacoteId,
+        },
+      }).catch(() => {});
+    }
+
+    if (appointment.patientPackageId) {
+      await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
+    }
 
     // Lead-magnet attribution (P3): log a "booked" event if this patient's
     // email was previously captured via an article lead-magnet.
