@@ -92,6 +92,9 @@ COPY --from=builder /app/scripts/migrate-personal-trainer-colors.js ./scripts/mi
 COPY --from=builder /app/scripts/backfill-appointment-clinicid.js ./scripts/backfill-appointment-clinicid.js
 COPY --from=builder /app/scripts/seed-acl-protocol.js ./scripts/seed-acl-protocol.js
 COPY --from=builder /app/scripts/seed-automation-rules.js ./scripts/seed-automation-rules.js
+# Home-kit catalogue of the laboratory partner (081). The guard below fails the
+# build when start.sh runs a script this image does not carry — it just did.
+COPY --from=builder /app/scripts/seed-lab-products.js ./scripts/seed-lab-products.js
 COPY --from=builder /app/scripts/backfill-message-screening-clinicid.js ./scripts/backfill-message-screening-clinicid.js
 COPY --from=builder /app/scripts/backfill-consent-accepted-at.js ./scripts/backfill-consent-accepted-at.js
 COPY --from=builder /app/scripts/backfill-wearable-last-reading.js ./scripts/backfill-wearable-last-reading.js
