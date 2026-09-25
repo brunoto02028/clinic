@@ -61,10 +61,10 @@ treina a abrir.
 
 | T-N | nome | status |
 |-----|------|--------|
-| T-1 | modelo e armazenamento do envio de exercício | pendente |
+| T-1 | modelo e armazenamento do envio de exercício | implementada, aguarda QA |
 | T-2 | API: paciente envia, clínica lê e responde | pendente |
 | T-3 | app: gravar e enviar o vídeo do exercício | pendente |
-| T-4 | app: anexo na conversa (ligar no que já existe) | em andamento |
+| T-4 | app: anexo na conversa (ligar no que já existe) | QA reprovou → corrigido, aguarda teste no aparelho |
 | T-5 | admin: fila de revisão e resposta do terapeuta | pendente |
 | T-6 | aviso por resumo diário, não por evento | pendente |
 
