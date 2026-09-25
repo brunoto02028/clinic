@@ -3,6 +3,7 @@ import { FlatList, Linking, Pressable, View, Platform, Alert } from "react-nativ
 import { Stack, usePathname} from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { DocumentThumb } from "@/components/DocumentThumb";
 import * as ImagePicker from "expo-image-picker";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchDocuments } from "@/api/documents";
@@ -196,9 +197,13 @@ function DocumentsScreen() {
                 >
                   <Card>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: typeInfo.bg, alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons name={typeInfo.icon as any} size={22} color={typeInfo.color} />
-                      </View>
+                      <DocumentThumb
+                        uri={item.openUrl}
+                        isImage={(item.fileType || "").startsWith("image/")}
+                        icon={typeInfo.icon}
+                        color={typeInfo.color}
+                        bg={typeInfo.bg}
+                      />
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600" }}>{item.title || item.fileName}</Text>
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>

@@ -184,7 +184,7 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   const footerLogoUrl = escapeHtml(emailSafeLogoUrl(rawLogoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL);
   const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
-    ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
+    ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para falar com a gente, use os dados acima ou entre no seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
     : `This is an automated message &mdash; please do not reply to this email.<br>To contact us, use the details above or log in to your <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">patient portal</a>.`;
   // BPR's own physical address — only true for the default tenant. Every
   // other tenant either has no in-person location worth stating here or a

@@ -53,7 +53,7 @@ const RULES = [
       // English only: an alert is internal, and English is this product's
       // canonical language.
       titleEn: "{missingItems} activities missed today",
-      titlePt: "{missingItems} atividades nao feitas hoje",
+      titlePt: "{missingItems} atividades não feitas hoje",
     },
     channels: ["INTERNAL"],
     active: true,
@@ -84,7 +84,7 @@ const RULES = [
     actionData: {
       priority: "HIGH",
       titleEn: "Blood pressure {systolic}/{diastolic} mmHg",
-      titlePt: "Pressao arterial {systolic}/{diastolic} mmHg",
+      titlePt: "Pressão arterial {systolic}/{diastolic} mmHg",
     },
     channels: ["INTERNAL"],
     active: true,
@@ -111,7 +111,7 @@ const RULES = [
     actionData: {
       priority: "HIGH",
       titleEn: "Session blocked — blood pressure {systolic}/{diastolic} mmHg",
-      titlePt: "Sessao bloqueada — pressao {systolic}/{diastolic} mmHg",
+      titlePt: "Sessão bloqueada — pressão {systolic}/{diastolic} mmHg",
     },
     channels: ["INTERNAL"],
     active: true,
@@ -139,7 +139,7 @@ const RULES = [
     actionData: {
       priority: "MEDIUM",
       titleEn: "Device has sent nothing for {days} days",
-      titlePt: "Aparelho nao envia nada ha {days} dias",
+      titlePt: "Aparelho não envia nada há {days} dias",
     },
   },
 ];

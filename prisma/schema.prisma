@@ -7105,6 +7105,12 @@ model ClinicBroadcast {
   clinicId       String?
   title          String
   content        String          @db.Text
+  // A versao em portugues, opcional. Ingles e a lingua primaria e o que todo
+  // paciente recebe quando isto esta vazio; quem tem `preferredLocale` pt-BR
+  // recebe esta. Guardado aqui porque o registro precisa dizer o que **foi
+  // escrito**, e nao so o que cada paciente leu.
+  titlePt        String?
+  contentPt      String?         @db.Text
   sentById       String
   sentBy         User            @relation("SentBroadcasts", fields: [sentById], references: [id])
   audience       String          @default("all") // "all" | "selected"

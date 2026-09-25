@@ -17,6 +17,7 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
+jest.mock("@/lib/clinic-waiting", () => ({ getClinicWaiting: jest.fn(async () => ({ messagesAwaitingApproval: 0, patientsInPain: 0 })) }));
 jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
 
 import { NextRequest } from "next/server";
@@ -80,6 +81,9 @@ describe("GET /api/admin/pending-count", () => {
       answeredQuestions: 0,
       unassignedMeasurements: 0,
       unreviewedSubmissions: 0,
+      patientsWithoutExercises: 0,
+      messagesAwaitingApproval: 0,
+      patientsInPain: 0,
     });
     expect(users.findMany).not.toHaveBeenCalled();
     expect(envios.count).not.toHaveBeenCalled();

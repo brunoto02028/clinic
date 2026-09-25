@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getClinicWaiting } from "@/lib/clinic-waiting";
 
 // Lightweight endpoint for the admin sidebar badge — counts patients with
 // pending activity (unread chat messages or newly-answered questions),
@@ -35,7 +36,8 @@ export async function GET(request: NextRequest) {
     if (!effectiveClinicId && userRole !== "SUPERADMIN") {
       return NextResponse.json({
         pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0,
-        unassignedMeasurements: 0, unreviewedSubmissions: 0,
+        unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0,
+        messagesAwaitingApproval: 0, patientsInPain: 0,
       });
     }
 
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
       userWhere.clinicId = effectiveClinicId;
     }
 
-    const [unreadMessagePatients, answeredQPatients, unassignedMeasurements, unreviewedSubmissions] = await Promise.all([
+    const [unreadMessagePatients, answeredQPatients, unassignedMeasurements, unreviewedSubmissions, patientsWithoutExercises, esperando] = await Promise.all([
       prisma.user.findMany({
         where: {
           ...userWhere,
@@ -76,6 +78,24 @@ export async function GET(request: NextRequest) {
             where: { clinicId: effectiveClinicId, reviewedAt: null },
           })
         : Promise.resolve(0),
+      // Paciente em tratamento com o app vazio (078). A clínica só descobria
+      // abrindo o app dele — foi assim que isto apareceu.
+      effectiveClinicId
+        ? prisma.user.count({
+            where: {
+              clinicId: effectiveClinicId,
+              role: "PATIENT",
+              packagesAsPatient: { some: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } } },
+              receivedExercises: { none: { isActive: true } },
+            },
+          })
+        : Promise.resolve(0),
+      // O badge e o e-mail diário passam a contar a mesma coisa. Eram duas
+      // respostas para a mesma pergunta, e a fila de aprovação não aparecia em
+      // nenhuma das duas (QA de 25/09, R6).
+      effectiveClinicId
+        ? getClinicWaiting(effectiveClinicId)
+        : Promise.resolve(null),
     ]);
 
     const patientIds = new Set<string>([
@@ -89,9 +109,12 @@ export async function GET(request: NextRequest) {
       answeredQuestions: answeredQPatients.length,
       unassignedMeasurements,
       unreviewedSubmissions,
+      patientsWithoutExercises,
+      messagesAwaitingApproval: esperando?.messagesAwaitingApproval ?? 0,
+      patientsInPain: esperando?.patientsInPain ?? 0,
     });
   } catch (error) {
     console.error("Error fetching pending count:", error);
-    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0 });
+    return NextResponse.json({ pendingPatients: 0, unreadMessages: 0, answeredQuestions: 0, unassignedMeasurements: 0, unreviewedSubmissions: 0, patientsWithoutExercises: 0, messagesAwaitingApproval: 0, patientsInPain: 0 });
   }
 }

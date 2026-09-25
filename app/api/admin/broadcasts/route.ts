@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendPushToUsers, countPushDevices } from "@/lib/push-send";
+import { pickForPatient, groupByLang } from "@/lib/patient-language";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getActor, requireStaff, tenantWhere, accessErrorResponse, AccessError } from "@/lib/tenant-access";
 
@@ -100,6 +101,9 @@ export async function POST(req: NextRequest) {
 
     const {
       title, content, audience = "all", patientIds = [], notify = true, scheduledFor,
+      // A segunda versão. Inglês é a língua primária e o que todo mundo recebe
+      // quando isto vem vazio; quem tem `preferredLocale` pt-BR recebe esta.
+      titlePt = null, contentPt = null,
       // O aviso no celular. Desligado por omissão: push não tem desfazer, e o
       // caminho silencioso tem que ser o mais conservador.
       pushNotify = false,
@@ -120,6 +124,8 @@ export async function POST(req: NextRequest) {
           content: content.trim(),
           sentById: actor.userId,
           audience,
+          titlePt: titlePt?.trim() || null,
+          contentPt: contentPt?.trim() || null,
           status: "scheduled",
           scheduledFor: new Date(scheduledFor),
           targetIds: audience === "selected" ? patientIds : [],
@@ -137,7 +143,9 @@ export async function POST(req: NextRequest) {
     if (audience === "selected") where.id = { in: patientIds };
     const patients = await prisma.user.findMany({
       where,
-      select: { id: true },
+      // `preferredLocale` entra aqui porque o texto é escolhido por paciente,
+      // não por envio.
+      select: { id: true, preferredLocale: true },
     });
 
     if (!patients.length) {
@@ -153,24 +161,33 @@ export async function POST(req: NextRequest) {
         content: content.trim(),
         sentById: senderId,
         audience,
+        titlePt: titlePt?.trim() || null,
+        contentPt: contentPt?.trim() || null,
         recipientCount: patients.length,
         status: "sent",
         sentAt: new Date(),
       },
     });
 
-    // Fan-out: one ClinicMessage per recipient
+    // Fan-out: uma ClinicMessage por destinatário, **já na língua dele**.
+    // O texto resolvido é guardado em cada linha, e não escolhido na leitura:
+    // se o paciente trocar de idioma depois, a mensagem que ele recebeu
+    // continua sendo a que recebeu.
+    const bilingue = { title: title.trim(), content: content.trim(), titlePt, contentPt };
     await (prisma as any).clinicMessage.createMany({
-      data: patients.map((p) => ({
-        clinicId,
-        patientId: p.id,
-        senderId,
-        senderRole: "staff",
-        kind: "broadcast",
-        title: title.trim(),
-        content: content.trim(),
-        broadcastId: broadcast.id,
-      })),
+      data: patients.map((p) => {
+        const texto = pickForPatient(bilingue, p.preferredLocale);
+        return {
+          clinicId,
+          patientId: p.id,
+          senderId,
+          senderRole: "staff",
+          kind: "broadcast",
+          title: texto.title,
+          content: texto.content,
+          broadcastId: broadcast.id,
+        };
+      }),
     });
 
     // Notify each patient (email/WhatsApp per preference) — fire-and-forget
@@ -194,17 +211,32 @@ export async function POST(req: NextRequest) {
     // quando abrir (077, T-4).
     let push: { sent: number; failed: number; deactivated: number; error?: string } | null = null;
     if (pushNotify) {
-      push = await sendPushToUsers(
-        patients.map((p) => p.id),
-        {
-          title: title.trim(),
-          // O corpo é o texto do aviso, cortado. A notificação aparece na tela
-          // bloqueada, então aqui não entra nada além do que a clínica escolheu
-          // escrever para todo mundo ver.
-          body: content.trim().slice(0, 140),
-          url: "/(app)/(clinica)/messages",
-        }
-      );
+      // Dois envios, um por língua: o serviço da Expo leva um texto por lote, e
+      // mandar inglês para quem só lê português seria pior que não mandar.
+      const grupos = groupByLang(patients);
+      const enviar = (ids: string[], t: { title: string | null; content: string }) =>
+        ids.length === 0
+          ? Promise.resolve({ sent: 0, failed: 0, deactivated: 0 })
+          : sendPushToUsers(ids, {
+              title: t.title || title.trim(),
+              // O corpo é o texto do aviso, cortado. A notificação aparece na
+              // tela bloqueada, então aqui não entra nada além do que a clínica
+              // escolheu escrever para todo mundo ver.
+              body: t.content.slice(0, 140),
+              url: "/(app)/(clinica)/messages",
+            });
+
+      const [emIngles, emPortugues] = await Promise.all([
+        enviar(grupos.en.map((p) => p.id), pickForPatient(bilingue, "en-GB")),
+        enviar(grupos.pt.map((p) => p.id), pickForPatient(bilingue, "pt-BR")),
+      ]);
+
+      push = {
+        sent: emIngles.sent + emPortugues.sent,
+        failed: emIngles.failed + emPortugues.failed,
+        deactivated: emIngles.deactivated + emPortugues.deactivated,
+        error: emIngles.error || emPortugues.error,
+      };
     }
 
     // O resultado fica no registro, e não só no toast: recarregar a página

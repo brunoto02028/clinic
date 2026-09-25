@@ -94,6 +94,10 @@ const KNOWN_FACTS = ["missingItems"];
 const FACTS_BY_RULE: Record<string, string[]> = {
   BP_THRESHOLDS: ["systolic", "diastolic", "classification"],
   EXERCISE_BP_LIMITS: ["systolic", "diastolic"],
+  // Faltava, e o efeito era a regra recusar o texto que o próprio seed grava:
+  // mexer só no dropdown de prioridade devolvia
+  // `Unknown placeholder: {days}` (QA de 25/09, R4).
+  WEARABLE_SILENCE: ["days"],
 };
 function factsFor(code: string): string[] {
   return [...KNOWN_FACTS, ...(FACTS_BY_RULE[code] ?? [])];

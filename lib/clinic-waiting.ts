@@ -27,11 +27,55 @@ export interface ClinicWaiting {
   unreadMessages: number;
   /** Medições do manguito da clínica sem dono. */
   unassignedMeasurements: number;
+  /**
+   * Paciente em tratamento cujo app está vazio: nenhum exercício prescrito.
+   *
+   * Só conta quem **já é** paciente da clínica — tem pacote pago e ativo.
+   * Quem criou a conta e ainda não foi atendido não entra: seria cobrar da
+   * clínica alguém que ainda não é dela.
+   */
+  patientsWithoutExercises: number;
+  /**
+   * Mensagens que a automação escreveu e ninguém aprovou.
+   *
+   * O bloco se chama "Waiting for you" e a aba do painel também — e a fila não
+   * aparecia em nenhum dos dois. Ela enchia em silêncio (QA de 25/09, R6).
+   */
+  messagesAwaitingApproval: number;
+  /**
+   * Paciente que registrou **dor alta** nos últimos dias e ninguém olhou.
+   *
+   * O check-in existe para a clínica saber antes da próxima consulta. Dor 8 num
+   * domingo, enterrada num feed de atividade, é a informação chegando tarde.
+   */
+  patientsInPain: number;
   total: number;
 }
 
+/**
+ * Onde a dor deixa de ser ruído e vira motivo de olhar.
+ *
+ * 7 numa escala de 0 a 10 é o corte usual de "dor intensa" na prática clínica.
+ * Está aqui, com nome, para ser um número discutível — e não um `>= 7` solto no
+ * meio de uma consulta.
+ */
+export const DOR_ALTA = 7;
+/** Uma semana: dor de duas semanas atrás não é mais uma pendência de hoje. */
+const JANELA_DIAS = 7;
+
 export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting> {
-  const [exerciseVideos, unreadMessages, unassignedMeasurements] = await Promise.all([
+  const desde = new Date();
+  desde.setDate(desde.getDate() - JANELA_DIAS);
+  const desdeStr = desde.toISOString().slice(0, 10);
+
+  const [
+    exerciseVideos,
+    unreadMessages,
+    unassignedMeasurements,
+    patientsWithoutExercises,
+    messagesAwaitingApproval,
+    patientsInPain,
+  ] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
       where: { clinicId, reviewedAt: null },
     }),
@@ -41,13 +85,48 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     (prisma as any).unassignedMeasurement.count({
       where: { clinicId, assignedAt: null, discardedAt: null },
     }),
+    // O app vazio de quem já está em tratamento. Antes disto, a clínica só
+    // descobria abrindo o app do paciente — foi assim que apareceu (078).
+    prisma.user.count({
+      where: {
+        clinicId,
+        role: "PATIENT",
+        packagesAsPatient: { some: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } } },
+        receivedExercises: { none: { isActive: true } },
+      },
+    }),
+    (prisma as any).outboundMessage.count({
+      where: { clinicId, status: "AWAITING_APPROVAL" },
+    }),
+    // Pacientes distintos, não registros: três dias seguidos de dor alta é uma
+    // pessoa para olhar, não três pendências.
+    (prisma as any).dailyCheckIn
+      .findMany({
+        where: {
+          clinicId,
+          checkinDate: { gte: desdeStr },
+          painLevel: { gte: DOR_ALTA },
+        },
+        select: { patientId: true },
+        distinct: ["patientId"],
+      })
+      .then((r: { patientId: string }[]) => r.length),
   ]);
 
   return {
     exerciseVideos,
     unreadMessages,
     unassignedMeasurements,
-    total: exerciseVideos + unreadMessages + unassignedMeasurements,
+    patientsWithoutExercises,
+    messagesAwaitingApproval,
+    patientsInPain,
+    total:
+      exerciseVideos +
+      unreadMessages +
+      unassignedMeasurements +
+      patientsWithoutExercises +
+      messagesAwaitingApproval +
+      patientsInPain,
   };
 }
 
@@ -79,6 +158,9 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
           ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
           ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
           ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
+          ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}
+          ${linha("message waiting for your approval", "messages waiting for your approval", waiting.messagesAwaitingApproval, "/admin/outbox")}
+          ${linha("patient reporting severe pain this week", "patients reporting severe pain this week", waiting.patientsInPain, "/admin/patients")}
         </table>
       </td></tr>
     </table>`;
