@@ -30,7 +30,15 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 
-SplashScreen.preventAutoHideAsync();
+/**
+ * A cor que atravessa a abertura inteira: splash, o vão do carregamento, a
+ * raiz e a primeira tela. Qualquer diferença entre elas vira piscada.
+ */
+const FUNDO = "#F5F4F1";
+
+// Sem o `.catch`, uma rejeição aqui (o splash já ter se escondido sozinho)
+// vira promessa não tratada — e a tela pisca sem ninguém saber por quê.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 
 export default function RootLayout() {
@@ -87,14 +95,21 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    return null;
+    // `return null` deixava a janela **sem nada** enquanto as fontes carregam,
+    // e o que aparece nesse vão é o fundo do sistema — branco ou preto,
+    // conforme o tema do aparelho. Era uma das piscadas da abertura. Uma tela
+    // da cor do splash não se distingue do splash: a transição some.
+    return <View style={{ flex: 1, backgroundColor: FUNDO }} />;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <View style={{ flex: 1 }} onLayout={onReady}>
+        {/* A cor é explícita e igual à do splash. Sem ela, entre o splash
+            sumir e a primeira tela pintar, aparecia o fundo da janela — a
+            segunda piscada. */}
+        <View style={{ flex: 1, backgroundColor: FUNDO }} onLayout={onReady}>
           <Stack screenOptions={{ headerShown: false }} />
           {/* A tranca cobre o app em vez de navegar até ele. Como rota, ela
               trocava o <Stack> por um <Redirect> e destruía o histórico de
