@@ -156,6 +156,23 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           B('{{portalUrl}}','View My Results →'),
     },
 
+    PATIENT_INVITE: {
+      subject: pt
+        ? 'Sua conta na BPR está pronta — defina sua senha'
+        : 'Your BPR account is ready — set your password',
+      body: pt
+        ? H('Bem-vindo à BPR 👋') +
+          P(`${hi} {{patientName}}, sua clínica criou a sua conta. Falta só você escolher uma senha — ela é sua, e ninguém da clínica a conhece.`) +
+          B('{{resetUrl}}', 'Definir Minha Senha →') +
+          P('Com ela você entra no aplicativo e no site: vê seu plano, seus exercícios, suas medições e fala com a equipe.') +
+          P('Este link vale por 7 dias. Se expirar, use "Esqueceu sua senha?" na tela de entrada.', '12px', '#9ca3af')
+        : H('Welcome to BPR 👋') +
+          P(`${hi} {{patientName}}, your clinic has created your account. All that is left is choosing a password — it is yours, and nobody at the clinic knows it.`) +
+          B('{{resetUrl}}', 'Set My Password →') +
+          P('It signs you in to the app and the website: your plan, your exercises, your measurements, and a way to talk to the team.') +
+          P('This link is valid for 7 days. If it expires, use "Forgot your password?" on the sign-in screen.', '12px', '#9ca3af'),
+    },
+
     PASSWORD_RESET: {
       subject: pt ? 'Redefinição de senha — BPR Physical Rehabilitation 🔒' : 'Reset your password — BPR Physical Rehabilitation 🔒',
       body: pt

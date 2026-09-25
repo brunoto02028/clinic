@@ -53,7 +53,7 @@ const RULES = [
       // English only: an alert is internal, and English is this product's
       // canonical language.
       titleEn: "{missingItems} activities missed today",
-      titlePt: "{missingItems} atividades nao feitas hoje",
+      titlePt: "{missingItems} atividades não feitas hoje",
     },
     channels: ["INTERNAL"],
     active: true,
@@ -84,7 +84,7 @@ const RULES = [
     actionData: {
       priority: "HIGH",
       titleEn: "Blood pressure {systolic}/{diastolic} mmHg",
-      titlePt: "Pressao arterial {systolic}/{diastolic} mmHg",
+      titlePt: "Pressão arterial {systolic}/{diastolic} mmHg",
     },
     channels: ["INTERNAL"],
     active: true,
@@ -111,10 +111,36 @@ const RULES = [
     actionData: {
       priority: "HIGH",
       titleEn: "Session blocked — blood pressure {systolic}/{diastolic} mmHg",
-      titlePt: "Sessao bloqueada — pressao {systolic}/{diastolic} mmHg",
+      titlePt: "Sessão bloqueada — pressão {systolic}/{diastolic} mmHg",
     },
     channels: ["INTERNAL"],
     active: true,
+  },
+  {
+    code: "WEARABLE_SILENCE",
+    name: "Aparelho conectado que parou de enviar",
+    // Um aparelho pode parar de mandar sem nada quebrar: a assinatura expira,
+    // o paciente sai da conta Withings no celular, o manguito some da tomada.
+    // Nada disso gera erro em lugar nenhum — o dado simplesmente deixa de
+    // chegar, e a clínica só descobre quando vai procurar. O número fica aqui
+    // para poder mudar sem deploy: quem mede uma vez por semana não é quem
+    // mede todo dia (atividade 075, T-11).
+    trigger: "THRESHOLD",
+    condition: { silentDays: 5 },
+    active: true,
+    channels: ["INTERNAL"],
+    // Como em BP_THRESHOLDS: hoje **só o `condition` é lido** — o limiar pinta
+    // as duas telas de âmbar (/admin/biohacking e a caixa de medições) e não
+    // cria alerta nenhum. O texto abaixo é o que um alerta diria quando for
+    // ligado ao motor; enquanto isso, é configuração declarada, não alavanca
+    // ligada em nada. O interruptor `active`, esse sim, já vale: desligar a
+    // regra silencia os avisos (lib/wearable-silence.ts).
+    action: "CREATE_ALERT",
+    actionData: {
+      priority: "MEDIUM",
+      titleEn: "Device has sent nothing for {days} days",
+      titlePt: "Aparelho não envia nada há {days} dias",
+    },
   },
 ];
 

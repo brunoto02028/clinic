@@ -6,25 +6,7 @@ import { Screen, Text, Input, Button, Logo } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { AuthError } from "@/api/auth";
 import { useTheme } from "@/theme/useTheme";
-import { localeToLang, t as tr, type Lang } from "@/lib/i18n";
-
-/**
- * Which language to open the sign-in screen in.
- *
- * `useLang()` cannot answer here: it reads the patient's `preferredLocale`,
- * and before sign-in there is no patient. The device's own locale is the only
- * honest guess, and the switcher below lets the person override it.
- *
- * Read through `Intl`, which Hermes and every browser already provide, rather
- * than adding a localisation package for one string.
- */
-function deviceLang(): Lang {
-  try {
-    return localeToLang(Intl.DateTimeFormat().resolvedOptions().locale);
-  } catch {
-    return "en";
-  }
-}
+import { deviceLang, t as tr, type Lang } from "@/lib/i18n";
 
 export default function Login() {
   const t = useTheme();
@@ -47,8 +29,16 @@ export default function Login() {
       // one; the app printed the raw string under a Portuguese screen.
       const wrongCredentials =
         e instanceof AuthError && /invalid (email|e-mail)|credenc/i.test(e.message);
+      // O app é do paciente: uma conta da clínica é recusada na porta, e a
+      // recusa precisa dizer o que fazer em vez de parecer senha errada.
+      const clinicAccount = e instanceof AuthError && e.status === 403;
       setError(
-        wrongCredentials
+        clinicAccount
+          ? tr(lang, {
+              en: "The BPR app is for patients. This is a clinic account — please use bpr.clinic in your browser.",
+              pt: "O app da BPR é para pacientes. Esta é uma conta da clínica — use o bpr.clinic no navegador.",
+            })
+          : wrongCredentials
           ? tr(lang, { en: "Invalid email or password", pt: "E-mail ou senha incorretos" })
           : e instanceof AuthError
             ? e.message
@@ -63,13 +53,13 @@ export default function Login() {
   };
 
   return (
-    <Screen testID="login-screen">
+    <Screen scroll testID="login-screen">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ gap: 32, paddingVertical: 16 }}
       >
-        <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
-          <Logo tone="ink" height={56} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <View style={{ gap: 32 }}>
+          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}
           <View style={{ gap: 6 }}>
@@ -132,6 +122,19 @@ export default function Login() {
                 the road: the reset form lives on the website, and nothing here
                 said so. The address already typed and the chosen language go
                 along, so being locked out does not mean starting over. */}
+            {/* Até aqui o app abria numa tela de entrar e quem não tinha conta
+                não tinha caminho nenhum — a rota de cadastro existia e nenhuma
+                tela chamava. */}
+            <Pressable
+              onPress={() => router.push("/register")}
+              accessibilityRole="button"
+              testID="login-create-account"
+              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+            >
+              <Text variant="caption" color={t.colors.text} style={{ fontWeight: "600" }}>
+                {tr(lang, { en: "Create an account", pt: "Criar uma conta" })}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() =>
                 router.push({
@@ -141,7 +144,7 @@ export default function Login() {
               }
               accessibilityRole="button"
               testID="login-forgot-password"
-              style={{ alignSelf: "center", marginTop: 14, paddingVertical: 6, paddingHorizontal: 10 }}
+              style={{ alignSelf: "center", marginTop: 2, paddingVertical: 6, paddingHorizontal: 10 }}
             >
               <Text variant="caption" color={t.colors.textMuted}>
                 {tr(lang, { en: "Forgot your password?", pt: "Esqueceu sua senha?" })}

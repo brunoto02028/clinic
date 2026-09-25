@@ -95,7 +95,12 @@ export default function ModuleSelect() {
 
   const onSelect = (mod: AppModule) => {
     setActiveModule(mod.key);
-    router.replace(ROUTE_MAP[mod.key] as any);
+    // `push`, não `replace`: com `replace` o seletor saía da pilha e o módulo
+    // virava um beco — sem botão de voltar, sem trocar de área, e numa tela
+    // bloqueada ("não incluído no seu plano") sem saída nenhuma. A escolha
+    // automática logo acima continua com `replace`, que é o certo lá: voltar
+    // para um seletor de uma opção só não leva a lugar nenhum.
+    router.push(ROUTE_MAP[mod.key] as any);
   };
 
   // A failed lookup is not an empty entitlement list: without this the screen
@@ -301,6 +306,30 @@ export default function ModuleSelect() {
             </Pressable>
           ))}
         </View>
+
+        {/* O "Sair" existia só no ramo de quem não tem módulo nenhum, com um
+            comentário dizendo que sem ele a tela seria um beco sem saída. Era
+            verdade também aqui: quem tem módulos que não abrem — uma conta da
+            equipe da clínica entrando no app do paciente, por exemplo — ficava
+            preso nesta tela, sem nem conseguir deixar outra pessoa usar o
+            aparelho. Achado testando em produção, 24/09/2026. */}
+        <Pressable
+          onPress={() => logout()}
+          testID="module-select-signout"
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            alignSelf: "center",
+            marginTop: 32,
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            borderRadius: 12,
+            backgroundColor: pressed ? "#2A2E38" : "transparent",
+          })}
+        >
+          <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: "#8A8F9A" }}>
+            {tr(lang, { en: "Sign out", pt: "Sair" })}
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

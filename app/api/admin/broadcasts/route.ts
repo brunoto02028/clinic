@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { sendPushToUsers, countPushDevices } from "@/lib/push-send";
+import { pickForPatient, groupByLang } from "@/lib/patient-language";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getActor, requireStaff, tenantWhere, accessErrorResponse, AccessError } from "@/lib/tenant-access";
 
@@ -51,12 +53,40 @@ export async function GET(request: NextRequest) {
     })),
     sentBy: `${b.sentBy.firstName} ${b.sentBy.lastName}`,
     createdAt: b.createdAt,
+    // Nulo quando o aviso foi só no app. Dois broadcasts vinham
+    // indistinguíveis, e uma falha do serviço não deixava rastro nenhum.
+    pushSent: b.pushSent ?? null,
+    pushFailed: b.pushFailed ?? null,
   }));
 
   return NextResponse.json(result);
   } catch (err) {
     if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("[admin/broadcasts] GET error:", (err as any)?.message);
+    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
+  }
+}
+
+// GET ?devices=1 — quantos aparelhos receberiam agora. É o número que a prévia
+// mostra, e ele nunca é igual ao de pacientes: quem não instalou o app, ou
+// desligou o aviso, não está aqui. Mesma regra de tenant do resto do arquivo.
+export async function PATCH(req: NextRequest) {
+  try {
+    const actor = await getActor(req);
+    if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    requireStaff(actor);
+    const { clinicId } = tenantWhere(actor);
+
+    const { audience = "all", patientIds = [] } = await req.json().catch(() => ({}));
+    const where: any = { role: "PATIENT", clinicId };
+    if (audience === "selected") where.id = { in: patientIds };
+
+    const patients = await prisma.user.findMany({ where, select: { id: true } });
+    const devices = await countPushDevices(patients.map((p) => p.id));
+
+    return NextResponse.json({ patients: patients.length, devices });
+  } catch (err) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
     return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
   }
 }
@@ -69,7 +99,15 @@ export async function POST(req: NextRequest) {
     requireStaff(actor);
     const { clinicId } = tenantWhere(actor);
 
-    const { title, content, audience = "all", patientIds = [], notify = true, scheduledFor } = await req.json();
+    const {
+      title, content, audience = "all", patientIds = [], notify = true, scheduledFor,
+      // A segunda versão. Inglês é a língua primária e o que todo mundo recebe
+      // quando isto vem vazio; quem tem `preferredLocale` pt-BR recebe esta.
+      titlePt = null, contentPt = null,
+      // O aviso no celular. Desligado por omissão: push não tem desfazer, e o
+      // caminho silencioso tem que ser o mais conservador.
+      pushNotify = false,
+    } = await req.json();
     if (!title?.trim() || !content?.trim()) {
       return NextResponse.json({ error: "title and content required" }, { status: 400 });
     }
@@ -86,6 +124,8 @@ export async function POST(req: NextRequest) {
           content: content.trim(),
           sentById: actor.userId,
           audience,
+          titlePt: titlePt?.trim() || null,
+          contentPt: contentPt?.trim() || null,
           status: "scheduled",
           scheduledFor: new Date(scheduledFor),
           targetIds: audience === "selected" ? patientIds : [],
@@ -103,7 +143,9 @@ export async function POST(req: NextRequest) {
     if (audience === "selected") where.id = { in: patientIds };
     const patients = await prisma.user.findMany({
       where,
-      select: { id: true },
+      // `preferredLocale` entra aqui porque o texto é escolhido por paciente,
+      // não por envio.
+      select: { id: true, preferredLocale: true },
     });
 
     if (!patients.length) {
@@ -119,24 +161,33 @@ export async function POST(req: NextRequest) {
         content: content.trim(),
         sentById: senderId,
         audience,
+        titlePt: titlePt?.trim() || null,
+        contentPt: contentPt?.trim() || null,
         recipientCount: patients.length,
         status: "sent",
         sentAt: new Date(),
       },
     });
 
-    // Fan-out: one ClinicMessage per recipient
+    // Fan-out: uma ClinicMessage por destinatário, **já na língua dele**.
+    // O texto resolvido é guardado em cada linha, e não escolhido na leitura:
+    // se o paciente trocar de idioma depois, a mensagem que ele recebeu
+    // continua sendo a que recebeu.
+    const bilingue = { title: title.trim(), content: content.trim(), titlePt, contentPt };
     await (prisma as any).clinicMessage.createMany({
-      data: patients.map((p) => ({
-        clinicId,
-        patientId: p.id,
-        senderId,
-        senderRole: "staff",
-        kind: "broadcast",
-        title: title.trim(),
-        content: content.trim(),
-        broadcastId: broadcast.id,
-      })),
+      data: patients.map((p) => {
+        const texto = pickForPatient(bilingue, p.preferredLocale);
+        return {
+          clinicId,
+          patientId: p.id,
+          senderId,
+          senderRole: "staff",
+          kind: "broadcast",
+          title: texto.title,
+          content: texto.content,
+          broadcastId: broadcast.id,
+        };
+      }),
     });
 
     // Notify each patient (email/WhatsApp per preference) — fire-and-forget
@@ -154,8 +205,51 @@ export async function POST(req: NextRequest) {
       ).catch(() => {});
     }
 
+    // O toque no ombro de quem tem o app. Vai **depois** das mensagens: a
+    // mensagem é o registro, o push é só o aviso de que ela existe — e quem
+    // estava sem celular, sem app ou com o aviso desligado encontra tudo
+    // quando abrir (077, T-4).
+    let push: { sent: number; failed: number; deactivated: number; error?: string } | null = null;
+    if (pushNotify) {
+      // Dois envios, um por língua: o serviço da Expo leva um texto por lote, e
+      // mandar inglês para quem só lê português seria pior que não mandar.
+      const grupos = groupByLang(patients);
+      const enviar = (ids: string[], t: { title: string | null; content: string }) =>
+        ids.length === 0
+          ? Promise.resolve({ sent: 0, failed: 0, deactivated: 0 })
+          : sendPushToUsers(ids, {
+              title: t.title || title.trim(),
+              // O corpo é o texto do aviso, cortado. A notificação aparece na
+              // tela bloqueada, então aqui não entra nada além do que a clínica
+              // escolheu escrever para todo mundo ver.
+              body: t.content.slice(0, 140),
+              url: "/(app)/(clinica)/messages",
+            });
+
+      const [emIngles, emPortugues] = await Promise.all([
+        enviar(grupos.en.map((p) => p.id), pickForPatient(bilingue, "en-GB")),
+        enviar(grupos.pt.map((p) => p.id), pickForPatient(bilingue, "pt-BR")),
+      ]);
+
+      push = {
+        sent: emIngles.sent + emPortugues.sent,
+        failed: emIngles.failed + emPortugues.failed,
+        deactivated: emIngles.deactivated + emPortugues.deactivated,
+        error: emIngles.error || emPortugues.error,
+      };
+    }
+
+    // O resultado fica no registro, e não só no toast: recarregar a página
+    // perdia os números, e uma falha inteira do serviço não deixava rastro.
+    if (push) {
+      await (prisma as any).clinicBroadcast.update({
+        where: { id: broadcast.id },
+        data: { pushSent: push.sent, pushFailed: push.failed },
+      }).catch(() => {});
+    }
+
     return NextResponse.json(
-      { id: broadcast.id, recipientCount: patients.length },
+      { id: broadcast.id, recipientCount: patients.length, push },
       { status: 201 }
     );
   } catch (err) {

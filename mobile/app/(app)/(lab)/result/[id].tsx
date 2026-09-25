@@ -1,7 +1,8 @@
 import { View, Linking, Alert } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
+import { openFileInApp } from "@/components/FileViewer";
 import { fetchLabOrder } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 
@@ -34,7 +35,8 @@ export default function LabResult() {
   const openReport = async () => {
     if (!reportUrl) return;
     try {
-      await Linking.openURL(reportUrl);
+      // O laudo também fica dentro do app (mesma razão dos documentos).
+      await openFileInApp(reportUrl);
     } catch {
       Alert.alert("Error", "Could not open the report.");
     }
@@ -97,7 +99,15 @@ export default function LabResult() {
           </Card>
         )}
 
-        <Button title="Discuss with physiotherapist" variant="ghost" size="md" />
+        {/* Estava sem `onPress`: o botão existia, enchia a tela e não fazia
+            nada. Leva para a conversa com a clínica, que é onde o resultado
+            de fato se discute. */}
+        <Button
+          title="Discuss with your therapist"
+          variant="ghost"
+          size="md"
+          onPress={() => router.push("/(app)/(clinica)/messages")}
+        />
       </View>
     </Screen>
   );

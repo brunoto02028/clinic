@@ -41,7 +41,11 @@ export default function BookingConfirmed() {
   const address = params.address || null;
 
   return (
-    <Screen testID="booking-confirmed-screen" style={styles.center}>
+    // `scroll`: num iPhone pequeno, com local e endereço preenchidos, o
+    // conteúdo passava da tela e o botão "Voltar para Saúde" — a única saída
+    // desta tela — ficava fora de alcance. Com `flexGrow` no lugar de `flex`,
+    // continua centralizado quando cabe e rola quando não cabe.
+    <Screen scroll testID="booking-confirmed-screen" style={styles.center}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.content}>
@@ -175,6 +179,10 @@ export default function BookingConfirmed() {
 
 const styles = StyleSheet.create({
   center: {
+    // `flexGrow`, não `flex`: dentro de um ScrollView o `flex` colapsa o
+    // conteúdo. Com `flexGrow: 1` a tela continua centralizada quando o
+    // conteúdo cabe, e vira rolagem quando não cabe.
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
   },

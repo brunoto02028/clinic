@@ -2,11 +2,13 @@ import { View, Pressable, Linking, Alert } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { ExerciseVideo } from "@/components/ExerciseVideo";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchPrescriptions, completeExercise, fetchExerciseClearance } from "@/api/exercises";
 import { ExerciseBlockCard } from "@/components/ExerciseBlockCard";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
+import { ExerciseSubmissions } from "@/components/ExerciseSubmissions";
 import { useLang, pick, t as tr } from "@/lib/i18n";
 
 // The badge beside the exercise name. These were Portuguese-only, so an en-GB
@@ -180,37 +182,10 @@ function ExerciseDetailScreen() {
 
           {/* Video button */}
           {rx.exercise.videoUrl ? (
-            <Pressable
-              onPress={() => Linking.openURL(rx.exercise.videoUrl!)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                padding: 16,
-                backgroundColor: t.colors.badSoft,
-                borderRadius: t.radius.lg,
-                borderWidth: 1,
-                borderColor: t.colors.badSoft,
-              }}
-            >
-              <View style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: t.colors.badSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <Ionicons name="play" size={24} color={t.colors.bad} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Watch the video", pt: "Assistir vídeo" })}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>
-                  {tr(lang, { en: "See how it is done", pt: "Ver demonstração do exercício" })}
-                </Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color={t.colors.textMuted} />
-            </Pressable>
+            <ExerciseVideo
+              videoUrl={rx.exercise.videoUrl}
+              thumbnailUrl={rx.exercise.thumbnailUrl}
+            />
           ) : null}
 
           {/* Description */}
@@ -272,6 +247,10 @@ function ExerciseDetailScreen() {
               ) : null}
             </Card>
           ) : null}
+
+          {/* Mostrar como faz em casa. É o que fecha o atendimento híbrido:
+              sem isto o terapeuta corrige uma execução que nunca viu. */}
+          <ExerciseSubmissions prescriptionId={rx.id} />
         </View>
       )}
     </Screen>

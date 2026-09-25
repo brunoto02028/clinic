@@ -11,9 +11,10 @@ export interface ListItemProps {
   onPress?: () => void;
   last?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }
 
-export function ListItem({ icon, title, subtitle, right, onPress, last, style }: ListItemProps) {
+export function ListItem({ icon, title, subtitle, right, onPress, last, style, testID }: ListItemProps) {
   const t = useTheme();
 
   const content = (
@@ -45,7 +46,7 @@ export function ListItem({ icon, title, subtitle, right, onPress, last, style }:
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <Pressable onPress={onPress} testID={testID} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
         {content}
       </Pressable>
     );

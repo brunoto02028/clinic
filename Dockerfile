@@ -94,6 +94,7 @@ COPY --from=builder /app/scripts/seed-acl-protocol.js ./scripts/seed-acl-protoco
 COPY --from=builder /app/scripts/seed-automation-rules.js ./scripts/seed-automation-rules.js
 COPY --from=builder /app/scripts/backfill-message-screening-clinicid.js ./scripts/backfill-message-screening-clinicid.js
 COPY --from=builder /app/scripts/backfill-consent-accepted-at.js ./scripts/backfill-consent-accepted-at.js
+COPY --from=builder /app/scripts/backfill-wearable-last-reading.js ./scripts/backfill-wearable-last-reading.js
 COPY --from=builder /app/scripts/backfill-protocol-template-clinicid.js ./scripts/backfill-protocol-template-clinicid.js
 COPY --from=builder /app/scripts/backfill-prescription-protocolid.js ./scripts/backfill-prescription-protocolid.js
 COPY --from=builder /app/scripts/backfill-email-message-clinicid.js ./scripts/backfill-email-message-clinicid.js

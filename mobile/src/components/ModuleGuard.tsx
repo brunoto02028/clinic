@@ -1,6 +1,8 @@
+import { View } from "react-native";
 import { Redirect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Screen, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
+import { useTheme } from "@/theme/useTheme";
 import { fetchModules, type AppModule } from "@/api/modules";
 import { SHOW_LAB } from "@/lib/feature-flags";
 
@@ -27,6 +29,14 @@ import { SHOW_LAB } from "@/lib/feature-flags";
  * this app's `staleTime: 0` every mount refetches — treating that as "no" would
  * throw an entitled patient out of the clinic every time the network hiccups.
  * With no answer at all, it still refuses.
+ *
+ * **O spinner é uma cortina, não uma troca de tela.** Este componente embrulha
+ * o `<Stack>` do módulo inteiro. Trocar os filhos por um spinner desmontava o
+ * navegador — e um `<Stack>` remontado nasce com **histórico vazio**, ou seja,
+ * o botão de voltar perde para onde ir. Qualquer momento em que esta consulta
+ * volte a carregar (cache limpo no login, sessão renovada, rede oscilando)
+ * destruía a pilha de navegação do paciente. Achado em 24/09/2026, investigando
+ * por que o voltar não voltava.
  */
 export default function ModuleGuard({
   module,
@@ -35,19 +45,13 @@ export default function ModuleGuard({
   module: AppModule["key"];
   children: React.ReactNode;
 }) {
+  const t = useTheme();
+
   // Same query key as the chooser, so this is a cache read in the common path.
   const { data: modules, isLoading } = useQuery({
     queryKey: ["modules"],
     queryFn: fetchModules,
   });
-
-  if (isLoading) {
-    return (
-      <Screen>
-        <Spinner center />
-      </Screen>
-    );
-  }
 
   // The lab is offered by the build, not only by the server — same rule as the
   // chooser, so a card that appears there is a card that opens. Still only for
@@ -56,9 +60,31 @@ export default function ModuleGuard({
     modules?.some((m) => m.key === module) ||
     (module === "lab" && SHOW_LAB && !!modules?.some((m) => m.key === "clinica"));
 
-  if (!granted) {
+  // Só esta saída desmonta os filhos, e ela é terminal: o paciente está saindo
+  // do módulo de qualquer forma.
+  if (!isLoading && !granted) {
     return <Redirect href="/(app)/module-select" />;
   }
 
-  return <>{children}</>;
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {isLoading && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: t.colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Spinner />
+        </View>
+      )}
+    </View>
+  );
 }

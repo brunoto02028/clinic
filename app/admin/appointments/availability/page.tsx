@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import ScheduleWindowsEditor from "@/components/admin/schedule-windows-editor";
 import { useVocab } from "@/hooks/use-vocab";
 
 interface TherapistBlock {
@@ -203,6 +204,22 @@ export default function AvailabilityPage() {
           {relabel(isPt
             ? "Defina seu horário de trabalho para cada dia da semana. Os pacientes só verão os horários disponíveis ao agendar."
             : "Set your working hours for each day of the week. Patients will only see available time slots when booking.")}
+        </p>
+      </div>
+
+      {/* A agenda por janelas vem primeiro: e ela que manda quando existe.
+          O que esta abaixo e o modelo antigo, que continua valendo para quem
+          nao configurou nada (atividade 080, T-5). */}
+      <ScheduleWindowsEditor />
+
+      <div className="pt-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          {isPt ? "Agenda semanal antiga" : "Old weekly schedule"}
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          {isPt
+            ? "Vale enquanto não houver nenhuma janela acima. Uma faixa por dia, um paciente por horário."
+            : "Applies while there is no window above. One range a day, one patient per slot."}
         </p>
       </div>
 

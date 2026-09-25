@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { View, Pressable, ScrollView, Alert, TextInput } from "react-native";
+import { View, Pressable, ScrollView, Alert, TextInput, Linking } from "react-native";
 import { Stack, router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
+import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
@@ -51,6 +51,16 @@ function BookAppointmentScreen() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
 
+  /**
+   * Qual porta este paciente atravessa: primeira consulta, sessão do pacote
+   * que ele já comprou, ou sessão extra. **O servidor decide** — só ele sabe
+   * se há sessão sobrando, se a triagem foi feita e quanto custa. A tela é o
+   * reflexo, nunca a decisão (atividade 080).
+   */
+  const opcao = useQuery({ queryKey: ["booking-options"], queryFn: fetchBookingOptions });
+  const porta = opcao.data;
+  const janela = porta?.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : porta?.kind ? "TREATMENT" : undefined;
+
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   // Which days the clinic opens is not something to guess at. When the schedule
   // fails to load, or comes back with no open day at all, `closedDays` was `[]`
@@ -62,12 +72,14 @@ function BookAppointmentScreen() {
   const dates = scheduleKnown ? generateDates(closedDays, lang) : [];
 
   const availability = useQuery({
-    queryKey: ["availability", selectedDate],
-    queryFn: () => fetchAvailability(selectedDate!),
-    enabled: !!selectedDate,
+    queryKey: ["availability", selectedDate, janela],
+    queryFn: () => fetchAvailability(selectedDate!, janela),
+    enabled: !!selectedDate && !!porta?.kind,
   });
 
   const slots = availability.data?.slots ?? [];
+  const detalhados = availability.data?.detailedSlots ?? [];
+  const vagasDe = (hora: string) => detalhados.find((s) => s.time === hora)?.spacesLeft ?? null;
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -81,8 +93,35 @@ function BookAppointmentScreen() {
         notes: notes || undefined,
       });
     },
-    onSuccess: () => {
+    onSuccess: async (res: any) => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["booking-options"] });
+
+      // Quando o horário só vale depois de pago, o Checkout abre aqui, no
+      // navegador do sistema. A consulta já existe, mas **não** está
+      // confirmada: quem confirma é o webhook, quando o dinheiro entra. Se a
+      // pessoa fechar a aba, o horário não fica preso a ela.
+      if (porta?.requiresPayment && res?.appointment?.id) {
+        try {
+          const url = await startAppointmentCheckout(res.appointment.id);
+          if (url) {
+            await Linking.openURL(url);
+            router.replace("/(app)/(clinica)/(tabs)/appointments");
+            return;
+          }
+        } catch {
+          Alert.alert(
+            tr(lang, { en: "Booked, not paid yet", pt: "Marcado, ainda não pago" }),
+            tr(lang, {
+              en: "Your slot is held as pending. Open Appointments to pay and confirm it.",
+              pt: "Seu horário ficou pendente. Abra Consultas para pagar e confirmar.",
+            })
+          );
+          router.replace("/(app)/(clinica)/(tabs)/appointments");
+          return;
+        }
+      }
+
       const dateObj = new Date(`${selectedDate}T12:00:00`);
       const locale = lang === "pt" ? "pt-BR" : "en-GB";
       const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
@@ -113,6 +152,63 @@ function BookAppointmentScreen() {
       />
       <View style={{ gap: 20 }}>
         <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
+
+        {/* A porta, antes de tudo. Sem isto o paciente descobria o preço
+            depois de escolher o horário — ou descobria, pior ainda, que nem
+            podia marcar. */}
+        {opcao.isLoading ? (
+          <Card><Spinner /></Card>
+        ) : porta?.blockedReason === "screening_required" ? (
+          <Card>
+            <View style={{ gap: 10 }}>
+              <Text variant="label">
+                {tr(lang, { en: "Your screening comes first", pt: "Sua triagem vem antes" })}
+              </Text>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                {tr(lang, {
+                  en: "Your clinic needs your health questionnaire before your first appointment. It takes a few minutes.",
+                  pt: "Sua clínica precisa do seu questionário de saúde antes da primeira consulta. Leva poucos minutos.",
+                })}
+              </Text>
+              <Button
+                title={tr(lang, { en: "Fill it in", pt: "Preencher" })}
+                variant="health"
+                size="md"
+                onPress={() => router.push("/(app)/(clinica)/screening")}
+                testID="booking-screening-cta"
+              />
+            </View>
+          </Card>
+        ) : porta?.kind === "PACKAGE_SESSION" ? (
+          <Card>
+            <Text variant="label">
+              {tr(lang, { en: "Session from your package", pt: "Sessão do seu pacote" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
+              {porta.sessionsRemaining == null
+                ? tr(lang, { en: "Nothing to pay.", pt: "Nada a pagar." })
+                : tr(lang, {
+                    en: `${porta.sessionsRemaining} of ${porta.sessionsIncluded} left. Nothing to pay.`,
+                    pt: `Restam ${porta.sessionsRemaining} de ${porta.sessionsIncluded}. Nada a pagar.`,
+                  })}
+            </Text>
+          </Card>
+        ) : porta?.kind ? (
+          <Card>
+            <Text variant="label">
+              {porta.kind === "FIRST_CONSULTATION"
+                ? tr(lang, { en: "First consultation", pt: "Primeira consulta" })
+                : tr(lang, { en: "Extra session", pt: "Sessão extra" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
+              {porta.currency} {porta.price.toFixed(2)}
+              {" · "}
+              {porta.requiresPayment
+                ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
+                : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })}
+            </Text>
+          </Card>
+        ) : null}
 
         {/* Type */}
         <Card>
@@ -163,12 +259,24 @@ function BookAppointmentScreen() {
             <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "No times available on this date.", pt: "Sem horários disponíveis nesta data." })}</Text>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {slots.map(time => (
+              {slots.map(time => {
+                // Quantas vagas restam naquele horário — e **nunca** quem
+                // ocupa as outras. Quem está na sala é assunto da clínica.
+                const vagas = vagasDe(time);
+                return (
                 <Pressable key={time} onPress={() => setSelectedTime(time)}
                   style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: selectedTime === time ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: selectedTime === time ? t.colors.health : t.colors.borderSubtle }}>
                   <Text variant="label" color={selectedTime === time ? t.colors.health : t.colors.textSecondary}>{time}</Text>
+                  {vagas != null && vagas > 0 && (
+                    <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11, marginTop: 1 }}>
+                      {vagas === 1
+                        ? tr(lang, { en: "1 space", pt: "1 vaga" })
+                        : tr(lang, { en: `${vagas} spaces`, pt: `${vagas} vagas` })}
+                    </Text>
+                  )}
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
           )}
         </Card>

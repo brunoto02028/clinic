@@ -59,7 +59,7 @@ export default function BATabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Menu",
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "menu" : "menu-outline"} size={size} color={color} />
           ),

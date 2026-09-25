@@ -184,7 +184,7 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   const footerLogoUrl = escapeHtml(emailSafeLogoUrl(rawLogoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL);
   const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
-    ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
+    ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para falar com a gente, use os dados acima ou entre no seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
     : `This is an automated message &mdash; please do not reply to this email.<br>To contact us, use the details above or log in to your <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">patient portal</a>.`;
   // BPR's own physical address — only true for the default tenant. Every
   // other tenant either has no in-person location worth stating here or a
@@ -364,6 +364,14 @@ export const DEFAULT_TEMPLATES = [
     <div style="text-align:center;margin:24px 0;">
       <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Results →</a>
     </div>`,
+  },
+  {
+    slug: 'PATIENT_INVITE' as const,
+    name: 'Patient invitation — set your password',
+    subject: 'Your BPR account is ready — set your password',
+    description: 'Sent when the clinic creates a patient, so they choose their own password',
+    variables: ['patientName', 'resetUrl'],
+    htmlBody: `<h2 style="color:#20242D;font-size:22px;margin:0 0 16px;">Welcome to BPR 👋</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, your clinic has created your account. All that is left is choosing a password — it is yours, and nobody at the clinic knows it.</p><div style="text-align:center;margin:28px 0;"><a href="{{resetUrl}}" style="display:inline-block;background-color:#4F7361;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Set My Password →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link is valid for 7 days.</p>`,
   },
   {
     slug: 'PASSWORD_RESET' as const,

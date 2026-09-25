@@ -32,7 +32,16 @@ export async function buildDailyAdherenceEmail(
   clinicId: string,
   completed: AdherencePatientSummary[],
   missing: AdherencePatientSummary[],
-  now: Date
+  now: Date,
+  /**
+   * O que está parado esperando a clínica — vídeos de exercício sem revisão,
+   * mensagens sem leitura, medições sem dono.
+   *
+   * Entra **neste** e-mail em vez de virar um segundo: a clínica já recebe um
+   * por dia, e mandar outro seria a enxurrada que o Bruno pediu para evitar.
+   * Vazio quando não há nada, e o que já foi visto nunca volta a aparecer.
+   */
+  waitingBlock = ""
 ) {
   const dateLabel = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   // Table-based cards, not <ul>/<li> — the safe pattern for HTML e-mail:
@@ -53,6 +62,7 @@ export async function buildDailyAdherenceEmail(
   const content = `
     <h2 style="color:#20242D;font-size:20px;margin:0 0 2px;">${escapeHtml(clinicName)}</h2>
     <p style="color:#6b7280;font-size:13px;margin:0 0 20px;">Today's adherence &middot; ${dateLabel}</p>
+    ${waitingBlock}
     <div style="margin:0 0 24px;">
       ${pill(`${completed.length} completed everything`, "#EDF3EF", "#3B5A49")}
       ${pill(`${missing.length} missing something`, "#FBEEEC", "#8A4438")}

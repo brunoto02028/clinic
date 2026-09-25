@@ -1,3 +1,5 @@
+import { deliveryState } from "@/lib/withings-subscriptions";
+import { daysSilent, isSilent, silenceThreshold } from "@/lib/wearable-silence";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -50,7 +52,16 @@ export async function GET() {
         },
         wearableConnections: {
           where: { status: "CONNECTED" },
-          select: { provider: true, lastSyncedAt: true, terraUserId: true },
+          select: {
+            provider: true,
+            lastSyncedAt: true,
+            terraUserId: true,
+            notifyConfirmedAppli: true,
+            notifyCheckedAt: true,
+            lastReadingAt: true,
+            createdAt: true,
+            status: true,
+          },
           take: 3,
         },
         wearableDataPoints: {
@@ -61,6 +72,10 @@ export async function GET() {
       },
       orderBy: { firstName: "asc" },
     });
+
+    // O limiar é da clínica e mora numa AutomationRule, para poder mudar sem
+    // deploy: quem mede uma vez por semana não é quem mede todo dia.
+    const limiteSilencio = await silenceThreshold(user.clinicId);
 
     const enriched = patients.map((p: any) => {
       const checks = p.dailyCheckIns || [];
@@ -101,7 +116,18 @@ export async function GET() {
         alerts,
         activeProtocol,
         checkInCount: checks.length,
-        wearableConnections: p.wearableConnections || [],
+        // A clínica precisa ver o mesmo que o paciente vê: "conectado" dizia
+        // só que a autorização deu certo, e um aparelho autorizado e mudo
+        // parecia igual a um funcionando (atividade 075, T-10).
+        wearableConnections: (p.wearableConnections || []).map((c: any) => ({
+          ...c,
+          delivery: deliveryState(c),
+          // Um aparelho pode ter assinatura confirmada e mesmo assim parar de
+          // mandar — a assinatura expira, o paciente sai da conta no celular,
+          // o manguito fica fora da tomada. Nada disso dá erro (075, T-11).
+          daysSilent: daysSilent(c),
+          silent: isSilent(c, limiteSilencio),
+        })),
         latestWearable: p.wearableDataPoints?.[0] || null,
       };
     });

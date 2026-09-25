@@ -37,7 +37,7 @@ export function SegmentedControl({ options, selected, onSelect, style }: Segment
               borderRadius: 9,
               alignItems: "center",
               backgroundColor: isActive ? "#FFFFFF" : "transparent",
-              ...Platform.select({
+              ...Platform.select<ViewStyle>({
                 ios: isActive
                   ? {
                       shadowColor: "#000",

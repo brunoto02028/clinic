@@ -48,3 +48,37 @@ export const tokenStorage = {
     await Promise.all([removeItem(ACCESS_KEY), removeItem(REFRESH_KEY)]);
   },
 };
+
+const LOCK_KEY = "bpr.biometricLock";
+
+/**
+ * Se o paciente ligou a tranca biométrica neste aparelho.
+ *
+ * É preferência, não segredo — mas mora no mesmo cofre porque é por aparelho,
+ * como os tokens, e some junto quando o app é desinstalado. Não é apagada no
+ * logout de propósito: quem sai e volta na mesma conta espera a tranca ligada
+ * do jeito que deixou.
+ */
+export const lockPreference = {
+  async get(): Promise<boolean> {
+    return (await getItem(LOCK_KEY)) === "1";
+  },
+  async set(on: boolean): Promise<void> {
+    if (on) await setItem(LOCK_KEY, "1");
+    else await removeItem(LOCK_KEY);
+  },
+};
+
+/**
+ * Guardar uma coisa pequena no aparelho, por chave.
+ *
+ * O cofre já existia para os tokens e para a preferência da tranca; isto só
+ * abre a mesma porta para quem precisa de uma chave própria — evitando somar
+ * `AsyncStorage`, que é dependência nativa e exigiria build novo por causa de
+ * um lembrete de cinco minutos.
+ */
+export const deviceStore = {
+  get: (key: string) => getItem(key),
+  set: (key: string, value: string) => setItem(key, value),
+  remove: (key: string) => removeItem(key),
+};

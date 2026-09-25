@@ -48,7 +48,7 @@ export default function LabTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Menu",
           tabBarActiveTintColor: t.colors.text,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "menu" : "menu-outline"} size={size} color={color} />

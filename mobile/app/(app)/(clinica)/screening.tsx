@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Pressable, ScrollView } from "react-native";
 import { Stack, router } from "expo-router";
+import { goBackOr } from "@/lib/go-back";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
@@ -95,15 +96,32 @@ function ScreeningScreen() {
   const { data: existing, isLoading, isError: loadError, refetch } = useQuery({
     queryKey: ["screening"],
     queryFn: fetchScreening,
+    // Um formulário sendo preenchido não pode ser sobrescrito pelo servidor.
+    // Com a revalidação no foco da T-12, atender uma ligação no meio da
+    // triagem apagava a etapa atual — e, pior, as red flags confirmadas
+    // continuavam contadas como respondidas enquanto os valores voltavam para
+    // `false`, deixando enviar "não" em perguntas que a pessoa respondeu
+    // "sim". Esta tela lê o servidor uma vez e depois é dona do que tem.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
+  // Semeia **uma vez**, na primeira resposta do servidor.
+  //
+  // `null` is a real answer — this patient has no screening yet — and must
+  // reset the form. `if (existing)` skipped it, so a form already holding
+  // someone's answers kept them: with another account's screening in the
+  // cache, the first autosave wrote that person's health data here.
+  // `undefined` is "still loading" and leaves the form alone.
+  //
+  // A troca de conta continua coberta: `clearSessionCache` limpa o cache antes
+  // de a identidade mudar e a tela desmonta no redirect para o login, então a
+  // próxima montagem semeia de novo, do zero.
+  const seeded = useRef(false);
   useEffect(() => {
-    // `null` is a real answer — this patient has no screening yet — and must
-    // reset the form. `if (existing)` skipped it, so a form already holding
-    // someone's answers kept them: with another account's screening in the
-    // cache, the first autosave wrote that person's health data here.
-    // `undefined` is "still loading" and leaves the form alone.
-    if (existing !== undefined) setForm(existing ?? {});
+    if (existing === undefined || seeded.current) return;
+    seeded.current = true;
+    setForm(existing ?? {});
   }, [existing]);
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
@@ -154,7 +172,10 @@ function ScreeningScreen() {
     mutationFn: () => saveScreening(form, false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["screening"] });
-      router.back();
+      // O recém-cadastrado chega aqui por `replace`, sem histórico: um
+      // `router.back()` puro não fazia nada, e a pessoa terminava nove etapas,
+      // apertava Enviar e via a mesma tela, sem pista de que tinha salvo.
+      goBackOr();
     },
   });
 
@@ -413,6 +434,10 @@ function ScreeningScreen() {
           <View style={{ flex: 1 }}>
             <Button
               variant="health"
+              // Nove etapas de dado clínico e o toque final não dava retorno
+              // nenhum: `submit.isPending` existia e ninguém lia. Dois toques
+              // viravam dois POST.
+              loading={step === STEPS.length - 1 && submit.isPending}
               title={step < STEPS.length - 1
                 ? tr(lang, { en: "Next", pt: "Próximo" })
                 : tr(lang, { en: "Submit assessment", pt: "Enviar avaliação" })}

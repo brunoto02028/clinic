@@ -6,6 +6,8 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 import { logAudit } from "@/lib/system-logger";
 import { clinicDevice, expireStaleSessions, SESSION_WINDOW_MS } from "@/lib/clinic-device";
+import { deliveryState, ensureCheckedSoon } from "@/lib/withings-subscriptions";
+import { daysSilent, isSilent, silenceThreshold } from "@/lib/wearable-silence";
 
 /**
  * Opening the window in which the clinic's cuff measures one named patient
@@ -37,7 +39,26 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ device: { id: device.id, label: device.deviceLabel }, open });
+  // Conexão de antes desta checagem existir: confere em segundo plano.
+  ensureCheckedSoon(device);
+
+  // `delivery` sai; token nenhum sai. O objeto é montado campo a campo de
+  // propósito — `clinicDevice` carrega os tokens para a checagem.
+  // Assinatura confirmada e mesmo assim nada chegando é um estado próprio — e
+  // neste aparelho é o mais caro de todos, porque a clínica mede achando que a
+  // leitura vai entrar no prontuário (atividade 075, T-11).
+  const limite = await silenceThreshold(actor.clinicId);
+
+  return NextResponse.json({
+    device: {
+      id: device.id,
+      label: device.deviceLabel,
+      delivery: deliveryState(device),
+      daysSilent: daysSilent(device),
+      silent: isSilent(device, limite),
+    },
+    open,
+  });
 }
 
 /** POST — open a window on this patient. */

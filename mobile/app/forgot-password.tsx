@@ -68,13 +68,13 @@ export default function ForgotPassword() {
   };
 
   return (
-    <Screen testID="forgot-password-screen">
+    <Screen scroll testID="forgot-password-screen">
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ gap: 32, paddingVertical: 16 }}
       >
-        <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
-          <Logo tone="ink" height={56} style={{ alignSelf: "center", marginBottom: 4 }} />
+        <View style={{ gap: 32 }}>
+          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           <View style={{ gap: 6 }}>
             <Text variant="hero">

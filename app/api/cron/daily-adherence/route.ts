@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
 import { REMINDER_ACTION, buildTodayReminderText } from "@/lib/daily-adherence-email";
 import { getReminderTemplates } from "@/lib/reminder-templates";
+import { pickTemplate } from "@/lib/reminder-templates";
 import { enqueueMessage } from "@/lib/automation/outbox";
 import { loadRules, evaluateCondition, actionText, interpolate } from "@/lib/automation/rules";
 import { createAlert } from "@/lib/alerts";
@@ -177,7 +178,14 @@ export async function POST(req: NextRequest) {
         templateVars: {
           firstName: patient.name?.split(" ")[0] ?? "",
           titles: patient.missingItems.map((i) => i.title),
-          custom: templates?.today ?? null,
+          // A língua é escolhida **aqui**, e não na leitura. Isto guardava o
+          // objeto `{ en, pt }` inteiro num campo que o renderizador lê como
+          // string, e `custom.split(...)` estourava — quebrando os três
+          // caminhos da fila de uma vez: prévia, aprovar e enviar. Como o valor
+          // fica gravado na linha, limpar o template depois não salvava o que
+          // já estava enfileirado. `templateVars` é Json, então o TypeScript
+          // não pegou.
+          custom: pickTemplate(templates?.today, patient.preferredLocale),
         },
       });
       if (queued) remindersQueued++;

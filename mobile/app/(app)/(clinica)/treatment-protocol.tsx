@@ -161,7 +161,28 @@ function TreatmentProtocolScreen() {
                   )}
                 </Card>
                 {protocol.items.map((item) => (
-                  <Pressable key={item.id} onPress={() => !item.isCompleted && completeMut.mutate(item.id)}>
+                  // Concluía ao primeiro toque, sem perguntar e sem desfazer:
+                  // quem tocasse no item para lê-lo, marcava como feito.
+                  <Pressable
+                    key={item.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ checked: item.isCompleted }}
+                    onPress={() => {
+                      if (item.isCompleted) return;
+                      Alert.alert(
+                        tr(lang, { en: "Mark as done?", pt: "Marcar como concluído?" }),
+                        item.title,
+                        [
+                          { text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" },
+                          {
+                            text: tr(lang, { en: "Mark as done", pt: "Concluir" }),
+                            onPress: () => completeMut.mutate(item.id),
+                          },
+                        ],
+                        { cancelable: true }
+                      );
+                    }}
+                  >
                     <Card>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View style={{

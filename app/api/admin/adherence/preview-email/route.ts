@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
 import { buildDailyAdherenceEmail } from "@/lib/daily-adherence-email";
+import { getClinicWaiting, waitingEmailBlock } from "@/lib/clinic-waiting";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,14 @@ export async function GET() {
 
   const now = new Date();
   const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
-  const html = await buildDailyAdherenceEmail(clinic.name, clinic.id, completed, missing, now);
+  // O mesmo bloco que o cron monta. Sem isto a prévia mostrava um e-mail que
+  // não existe mais — e o ponto desta rota é ver exatamente o que a clínica
+  // recebe, não uma aproximação.
+  const waiting = await getClinicWaiting(clinic.id);
+  const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+  const html = await buildDailyAdherenceEmail(
+    clinic.name, clinic.id, completed, missing, now,
+    waitingEmailBlock(waiting, baseUrl)
+  );
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }

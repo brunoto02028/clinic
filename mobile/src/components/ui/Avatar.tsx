@@ -1,17 +1,20 @@
-import { View, type ViewStyle } from "react-native";
+import { useState } from "react";
+import { View, Image, type ViewStyle } from "react-native";
 import { Text } from "./Text";
 import { useTheme } from "@/theme/useTheme";
 import type { Pillar } from "@/theme/tokens";
 
 export interface AvatarProps {
   label: string;
+  /** A foto do paciente. Sem ela, ficam as iniciais. */
+  uri?: string | null;
   pillar?: Pillar;
   round?: boolean;
   size?: number;
   style?: ViewStyle;
 }
 
-export function Avatar({ label, pillar, round, size = 36, style }: AvatarProps) {
+export function Avatar({ label, uri, pillar, round, size = 36, style }: AvatarProps) {
   const t = useTheme();
 
   const bgMap: Record<Pillar, string> = {
@@ -29,13 +32,29 @@ export function Avatar({ label, pillar, round, size = 36, style }: AvatarProps) 
   const bg = pillar ? bgMap[pillar] : t.colors.primary;
   const fg = pillar ? fgMap[pillar] : "#FFFFFF";
 
+  const radius = round ? 9999 : 11;
+  // Objeto apagado no storage, domínio fora do ar: sem isto sobrava um círculo
+  // vazio. As iniciais são um retrato pior e uma falha melhor.
+  const [broken, setBroken] = useState(false);
+
+  if (uri && !broken) {
+    return (
+      <Image
+        source={{ uri }}
+        style={[{ width: size, height: size, borderRadius: radius }, style as object]}
+        accessibilityLabel={label}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
   return (
     <View
       style={[
         {
           width: size,
           height: size,
-          borderRadius: round ? 9999 : 11,
+          borderRadius: radius,
           backgroundColor: bg,
           alignItems: "center",
           justifyContent: "center",

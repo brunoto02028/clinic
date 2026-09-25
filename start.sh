@@ -155,6 +155,12 @@ node /app/scripts/backfill-message-screening-clinicid.js || echo "[start.sh] cli
 echo "[start.sh] Backfilling consent acceptance..."
 node /app/scripts/backfill-consent-accepted-at.js || echo "[start.sh] consent backfill warning — check logs"
 
+# A coluna lastReadingAt nasceu vazia (075, T-11): sem isto todo aparelho
+# apareceria mudo ha meses no primeiro boot, inclusive os que reportam todo
+# dia. So preenche nulos, a partir do que ja esta no banco.
+echo "[start.sh] Backfilling wearable last reading..."
+node /app/scripts/backfill-wearable-last-reading.js || echo "[start.sh] last-reading backfill warning — check logs"
+
 echo "[start.sh] Seeding automation rules..."
 node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
 

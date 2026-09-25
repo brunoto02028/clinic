@@ -59,7 +59,7 @@ export default function ClinicaTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: tr(lang, { en: "Profile", pt: "Perfil" }),
+          title: tr(lang, { en: "Menu", pt: "Menu" }),
           tabBarActiveTintColor: t.colors.text,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "menu" : "menu-outline"} size={size} color={color} />

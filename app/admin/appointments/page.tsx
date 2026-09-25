@@ -108,6 +108,11 @@ export default function AdminAppointmentsPage() {
     paymentMode: "in_person" as "online" | "in_person",
     // Off by default: nothing reaches the patient without a previewed e-mail (activity 68)
     sendConfirmation: false,
+    // O caso fora da curva, que numa clínica pequena é semanal. Os dois ficam
+    // em auditoria com autor e motivo (atividade 080, T-4).
+    courtesySession: false,
+    waiveCharge: false,
+    overrideReason: "",
   });
   const [aiNotesLoading, setAiNotesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -285,6 +290,9 @@ export default function AdminAppointmentsPage() {
           price: Number(createForm.price),
           notes: createForm.notes || null,
           paymentMode: createForm.paymentMode,
+          courtesySession: createForm.courtesySession || undefined,
+          waiveCharge: createForm.waiveCharge || undefined,
+          overrideReason: createForm.overrideReason || undefined,
           sendConfirmation: createForm.paymentMode === "online" ? true : createForm.sendConfirmation,
         }),
       });
@@ -1058,6 +1066,49 @@ export default function AdminAppointmentsPage() {
                 </span>
               </span>
             </label>
+            {/* Cortesia e isenção. Ficam juntas e discretas: são a exceção, e
+                uma tela que as destaca convida a usá-las por reflexo. */}
+            <div className="rounded-lg border border-border px-3 py-2 space-y-2">
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={createForm.courtesySession}
+                  onChange={(e) => setCreateForm(f => ({ ...f, courtesySession: e.target.checked }))}
+                />
+                <span>
+                  <span className="font-medium">{isPt ? "Sessão de cortesia" : "Courtesy session"}</span>
+                  <span className="block text-muted-foreground">
+                    {isPt
+                      ? "Sai do pacote do paciente mesmo se ele estiver esgotado. Para ele, aparece como sessão do pacote."
+                      : "Comes out of the patient's package even when it is spent. To them it shows as a package session."}
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={createForm.waiveCharge}
+                  onChange={(e) => setCreateForm(f => ({ ...f, waiveCharge: e.target.checked }))}
+                />
+                <span>
+                  <span className="font-medium">{isPt ? "Isentar a cobrança" : "Waive the charge"}</span>
+                  <span className="block text-muted-foreground">
+                    {isPt ? "Esta consulta fica com preço zero." : "This appointment is priced at zero."}
+                  </span>
+                </span>
+              </label>
+              {(createForm.courtesySession || createForm.waiveCharge) && (
+                <input
+                  value={createForm.overrideReason}
+                  onChange={(e) => setCreateForm(f => ({ ...f, overrideReason: e.target.value }))}
+                  placeholder={isPt ? "Motivo (fica no registro)" : "Reason (kept on the record)"}
+                  className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
+                />
+              )}
+            </div>
+
             {/* AI Notes Section */}
             <div className="space-y-3 border border-violet-500/20 rounded-lg p-3 bg-violet-500/5">
               <div className="flex items-center gap-2">

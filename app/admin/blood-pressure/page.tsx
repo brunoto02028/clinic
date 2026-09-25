@@ -79,6 +79,10 @@ interface PatientBP {
 }
 
 function classifyBP(sys: number, dia: number) {
+  // A crise não existia aqui: 185/125 aparecia como "High (Stage 2)" para o
+  // terapeuta, o mesmo rótulo de 140/90. O app do paciente já distingue, e
+  // quem age sobre a leitura é quem está deste lado.
+  if (sys >= 180 || dia >= 120) return { label: "Crisis", color: "text-white bg-red-700 border-red-800", icon: AlertTriangle };
   if (sys < 90 || dia < 60) return { label: "Low", color: "text-blue-600 bg-blue-50 border-blue-200", icon: TrendingDown };
   if (sys < 120 && dia < 80) return { label: "Normal", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: CheckCircle };
   if (sys < 130 && dia < 80) return { label: "Elevated", color: "text-amber-600 bg-amber-50 border-amber-200", icon: TrendingUp };

@@ -4,14 +4,14 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Database, Eye, Globe, Lock, UserCheck, Clock, Mail, ArrowLeft } from "lucide-react";
+import { Shield, Database, Eye, Globe, Lock, UserCheck, Clock, Mail, ArrowLeft, Smartphone } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function PrivacyPolicyPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
-  const lastUpdated = "11 June 2026";
+  const lastUpdated = "25 September 2026";
 
   return (
     <div className="public-site min-h-screen bg-background flex flex-col">
@@ -151,8 +151,50 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          {/* 6. Data Sharing */}
-          <Section icon={Globe} title={isPt ? "6. Compartilhamento de Dados" : "6. Data Sharing"}>
+          {/* A secao que faltava: a politica descrevia o site, e o app coleta
+              coisas que o site nao coleta — video do paciente se exercitando,
+              camera, galeria, token de notificacao, biometria. A Apple compara
+              a permissao declarada, o rotulo do App Store Connect e esta
+              pagina; divergencia entre os tres e motivo de rejeicao, e antes
+              disso e uma promessa quebrada ao paciente. */}
+          <Section icon={Smartphone} title={isPt ? "6. O Aplicativo" : "6. The Mobile App"}>
+            <p>{isPt
+              ? "O aplicativo BPR coleta o seguinte, sempre com a sua permissão e sempre para o seu tratamento:"
+              : "The BPR app collects the following, always with your permission and always for your treatment:"}</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><strong>{isPt ? "Vídeos e fotos de exercício" : "Exercise videos and photos"}</strong>{isPt
+                ? " — o que você grava fazendo o exercício em casa, para seu terapeuta assistir e corrigir. Ficam no seu prontuário, visíveis só para você e para a equipe da sua clínica. Você pode apagar um envio enquanto ninguém tiver respondido a ele."
+                : " — what you record doing the exercise at home, for your therapist to watch and correct. They stay in your record, visible only to you and your clinic's team. You can delete a submission while nobody has replied to it."}</li>
+              <li><strong>{isPt ? "Câmera e galeria" : "Camera and photo library"}</strong>{isPt
+                ? " — usadas apenas quando você escolhe anexar um documento ou gravar um exercício. O aplicativo não acessa nada em segundo plano."
+                : " — used only when you choose to attach a document or record an exercise. The app never accesses them in the background."}</li>
+              <li><strong>{isPt ? "Microfone" : "Microphone"}</strong>{isPt
+                ? " — só enquanto você grava um vídeo de exercício, porque o vídeo tem som. Nada é gravado fora disso."
+                : " — only while you record an exercise video, because the video has sound. Nothing is recorded outside that."}</li>
+              <li><strong>{isPt ? "Notificações" : "Notifications"}</strong>{isPt
+                ? " — guardamos um identificador do seu aparelho para conseguir avisá-lo quando a clínica responder, remarcar ou compartilhar algo. O aviso nunca contém informação clínica: ele aparece na tela bloqueada, então diz apenas que há algo novo. Você pode desligar no próprio aplicativo."
+                : " — we store an identifier for your device so we can tell you when the clinic replies, reschedules, or shares something. The alert never contains clinical information: it shows on your lock screen, so it says only that there is something new. You can turn it off inside the app."}</li>
+              <li><strong>{isPt ? "Face ID, Touch ID ou digital" : "Face ID, Touch ID or fingerprint"}</strong>{isPt
+                ? " — se você ligar o bloqueio do aplicativo. A verificação acontece no seu aparelho e nenhum dado biométrico chega até nós."
+                : " — if you turn on the app lock. The check happens on your device and no biometric data ever reaches us."}</li>
+              <li><strong>{isPt ? "Documentos que você envia" : "Documents you send"}</strong>{isPt
+                ? " — exames, laudos e receitas que você anexa, guardados no seu prontuário."
+                : " — reports, tests and prescriptions you attach, kept in your record."}</li>
+            </ul>
+            <p className="mt-3 font-semibold text-foreground">{isPt ? "O que o aplicativo NÃO faz:" : "What the app does NOT do:"}</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>{isPt ? "Não rastreia sua localização" : "It does not track your location"}</li>
+              <li>{isPt ? "Não acessa seus contatos, seu calendário nem seus outros aplicativos" : "It does not access your contacts, your calendar or your other apps"}</li>
+              <li>{isPt ? "Não usa seus dados para publicidade, e não os compartilha com redes de anúncios" : "It does not use your data for advertising, and does not share it with ad networks"}</li>
+              <li>{isPt ? "Não grava nada sem você tocar em gravar" : "It does not record anything unless you tap record"}</li>
+            </ul>
+            <p className="mt-3 text-xs italic">{isPt
+              ? "Os vídeos e fotos de exercício são dados de saúde e recebem o mesmo tratamento do resto do seu prontuário: acesso restrito à sua clínica, transmissão cifrada, e armazenamento que só responde a pedidos autenticados — a URL do arquivo sozinha não abre nada."
+              : "Exercise videos and photos are health data and are treated like the rest of your record: access restricted to your clinic, encrypted in transit, and storage that only answers authenticated requests — the file's address on its own opens nothing."}</p>
+          </Section>
+
+          {/* 7. Data Sharing */}
+          <Section icon={Globe} title={isPt ? "7. Compartilhamento de Dados" : "7. Data Sharing"}>
             <p>{isPt ? "Podemos compartilhar seus dados com:" : "We may share your data with:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>{isPt ? "Processadores de pagamento (Stripe) para transações seguras" : "Payment processors (Stripe) for secure transactions"}</li>
@@ -173,7 +215,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 7. Data Retention */}
-          <Section icon={Clock} title={isPt ? "7. Retenção de Dados" : "7. Data Retention"}>
+          <Section icon={Clock} title={isPt ? "8. Retenção de Dados" : "8. Data Retention"}>
             <div className="space-y-2">
               {[
                 { type: isPt ? "Registros clínicos" : "Clinical records", period: isPt ? "8 anos após o último tratamento (diretrizes CSP/NHS)" : "8 years from last treatment (CSP/NHS guidelines)" },
@@ -192,7 +234,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 8. Your Rights */}
-          <Section icon={UserCheck} title={isPt ? "8. Seus Direitos" : "8. Your Rights"}>
+          <Section icon={UserCheck} title={isPt ? "9. Seus Direitos" : "9. Your Rights"}>
             <p>{isPt ? "Sob o UK GDPR, você tem os seguintes direitos:" : "Under the UK GDPR, you have the following rights:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>{isPt ? "Direito de acesso" : "Right of access"}</strong> — {isPt ? "Solicitar uma cópia dos seus dados pessoais" : "Request a copy of your personal data"}</li>
@@ -213,7 +255,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 9. Data Security */}
-          <Section icon={Lock} title={isPt ? "9. Segurança dos Dados" : "9. Data Security"}>
+          <Section icon={Lock} title={isPt ? "10. Segurança dos Dados" : "10. Data Security"}>
             <p>{isPt ? "Implementamos medidas técnicas e organizacionais apropriadas:" : "We implement appropriate technical and organisational measures:"}</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>{isPt ? "Transmissão criptografada (TLS/SSL) em todas as páginas" : "Encrypted transmission (TLS/SSL) on all pages"}</li>
@@ -226,21 +268,21 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           {/* 10. Children */}
-          <Section icon={Shield} title={isPt ? "10. Crianças" : "10. Children"}>
+          <Section icon={Shield} title={isPt ? "11. Crianças" : "11. Children"}>
             <p>{isPt
               ? "Nossos serviços não são direcionados a menores de 16 anos. Não coletamos intencionalmente dados pessoais de crianças sem consentimento dos pais. Se você acredita que coletamos dados de uma criança, entre em contato imediatamente."
               : "Our services are not directed to children under 16. We do not knowingly collect personal data from children without parental consent. If you believe we have collected data from a child, please contact us immediately."}</p>
           </Section>
 
           {/* 11. International Transfers */}
-          <Section icon={Globe} title={isPt ? "11. Transferências Internacionais" : "11. International Data Transfers"}>
+          <Section icon={Globe} title={isPt ? "12. Transferências Internacionais" : "12. International Data Transfers"}>
             <p>{isPt
               ? "Seus dados podem ser processados por provedores de serviço localizados fora do Reino Unido (ex: Anthropic, Groq, AssemblyAI e Google para análise de IA e transcrição; Stripe para pagamentos — todos baseados nos EUA). Quando isso ocorrer, garantimos que salvaguardas apropriadas estejam em vigor, incluindo Cláusulas Contratuais Padrão (SCCs), o Adendo Internacional de Transferência de Dados do UK (IDTA), Acordos de Processamento de Dados (DPAs) ou adequação reconhecida pelo UK."
               : "Your data may be processed by service providers located outside the United Kingdom (e.g., Anthropic, Groq, AssemblyAI, and Google for AI analysis and transcription; Stripe for payments — all US-based). Where this occurs, we ensure appropriate safeguards are in place, including Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum (IDTA), Data Processing Agreements (DPAs), or UK adequacy recognition."}</p>
           </Section>
 
           {/* 12. Changes */}
-          <Section icon={Clock} title={isPt ? "12. Alterações nesta Política" : "12. Changes to This Policy"}>
+          <Section icon={Clock} title={isPt ? "13. Alterações nesta Política" : "13. Changes to This Policy"}>
             <p>{isPt
               ? "Podemos atualizar esta política periodicamente. Alterações significativas serão notificadas no site. A data \"Última atualização\" no topo indica quando foi revisada pela última vez."
               : "We may update this policy periodically. Significant changes will be notified on the website. The \"Last updated\" date at the top indicates when it was last revised."}</p>

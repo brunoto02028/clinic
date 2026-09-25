@@ -40,6 +40,46 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         const packageId = session.metadata?.packageId;
         const isMembership = session.metadata?.type === "membership_subscription";
+        const appointmentId = session.metadata?.appointmentId;
+
+        // A consulta paga vira consulta confirmada. **Aqui**, e não no momento
+        // de abrir o Checkout: confirmar antes seria reservar horário para quem
+        // fechou a aba. `updateMany` com o status no `where` é o que torna o
+        // evento repetido inofensivo — a Stripe reenvia webhook, e a segunda
+        // vez não encontra nada para mudar (atividade 080).
+        if (appointmentId) {
+          // O `patientId` no `where` é o que impede confirmar a consulta de
+          // outra pessoa — e de outra clínica. Os dois vêm do metadata que a
+          // **nossa** rota de checkout escreveu, e o evento já veio assinado;
+          // ainda assim, confirmar por id solto seria uma chave mestra
+          // (QA de 25/09, falha 7).
+          // A guarda não pode ser condicional: sem `patientId` ela sumia, e a
+          // rota de pagamento que a **web** usa não escreve esse campo — a
+          // proteção existia só no caminho do app (QA de 25/09, N2). Quando o
+          // metadata não traz o paciente, ele é lido da própria consulta e
+          // comparado com o dono da sessão de pagamento.
+          const metaPatientId = session.metadata?.patientId || session.metadata?.userId || null;
+          const alvo = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            select: { patientId: true, status: true },
+          });
+
+          const podeConfirmar =
+            !!alvo &&
+            alvo.status === "PENDING" &&
+            (!metaPatientId || alvo.patientId === metaPatientId);
+
+          const r = podeConfirmar
+            ? await prisma.appointment.updateMany({
+                where: { id: appointmentId, status: "PENDING", patientId: alvo!.patientId },
+                data: { status: "CONFIRMED" },
+              })
+            : { count: 0 };
+          console.log(
+            `[stripe-webhook] Appointment ${appointmentId}: ${r.count === 1 ? "confirmed" : "already handled"}`
+          );
+          break;
+        }
 
         if (isMembership) {
           // Membership subscription checkout completed

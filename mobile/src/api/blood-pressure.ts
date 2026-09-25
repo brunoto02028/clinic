@@ -55,12 +55,33 @@ export async function saveBloodPressure(input: {
  * that called a reading normal while the server e-mailed an alert about it
  * would be worse than showing nothing.
  */
-export type BpBand = "normal" | "elevated" | "stage1" | "stage2" | "crisis";
+export type BpBand = "low" | "normal" | "elevated" | "stage1" | "stage2" | "crisis";
 
+/**
+ * As mesmas faixas que `lib/blood-pressure.ts` aplica na web — e agora
+ * **inteiras**.
+ *
+ * Faltava `low`. Uma leitura de 85/55 caía no `return "normal"` do fim e
+ * aparecia com selo verde, dizendo ao paciente que estava tudo bem, enquanto a
+ * web classificava a mesma medição como hipotensão. Num paciente
+ * pós-operatório tomando anti-hipertensivo, pressão baixa é risco de queda —
+ * e a queda é o que a reabilitação existe para evitar. Achado na revisão de
+ * UX de 24/09/2026.
+ *
+ * A ordem importa: a crise é testada primeiro porque é a única faixa em que o
+ * paciente precisa agir agora, e `low` por último entre as anormais porque
+ * exige que nenhuma das altas tenha casado.
+ */
 export function bpBand(systolic: number, diastolic: number): BpBand {
   if (systolic >= 180 || diastolic >= 120) return "crisis";
   if (systolic >= 140 || diastolic >= 90) return "stage2";
   if (systolic >= 130 || diastolic >= 80) return "stage1";
-  if (systolic >= 120) return "elevated";
+  if (systolic >= 120 && diastolic < 80) return "elevated";
+  if (systolic < 90 || diastolic < 60) return "low";
   return "normal";
+}
+
+/** Se esta faixa pede ação imediata do paciente, não só registro. */
+export function bpNeedsAttentionNow(band: BpBand): boolean {
+  return band === "crisis";
 }

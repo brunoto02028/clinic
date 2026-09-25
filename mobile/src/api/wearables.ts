@@ -1,11 +1,26 @@
 import { apiFetch } from "./client";
 
+/**
+ * `status` only ever said whether the authorisation worked. `delivery` says
+ * whether anything is actually coming — the two are different questions, and
+ * a device can be authorised and silent (activity 075, T-10).
+ *
+ *  - `receiving`  Withings confirmed it will send all four kinds
+ *  - `partial`    it confirmed some; something is missing
+ *  - `silent`     it confirmed none. Authorised, and sending nothing.
+ *  - `unchecked`  connected before this existed; nobody has asked yet
+ */
+export type WearableDelivery = "receiving" | "partial" | "silent" | "unchecked";
+
 export interface WearableConnection {
   id: string;
   provider: string;
   status: string;
   lastSyncedAt: string | null;
   createdAt: string;
+  delivery?: WearableDelivery;
+  /** Se o que falta é justamente a pressão — a medida que esta clínica trata. */
+  missingBloodPressure?: boolean;
 }
 
 export interface WearableDataPoint {
@@ -44,6 +59,14 @@ export async function syncProvider(provider: string) {
   });
 }
 
+/** Asks Withings again to send us measurements. The OAuth is not repeated. */
+export async function resubscribeWithings() {
+  return apiFetch<{ confirmed: number[]; missing: number[]; delivery: WearableDelivery }>(
+    "/api/wearables/resubscribe",
+    { method: "POST" }
+  );
+}
+
 export async function disconnectProvider(provider: string) {
   return apiFetch<{ ok: boolean }>("/api/wearables/disconnect", {
     method: "POST",
@@ -51,14 +74,23 @@ export async function disconnectProvider(provider: string) {
   });
 }
 
+/**
+ * `enabled` é se o paciente pode ser convidado a ligar **hoje**.
+ *
+ * Seis destes sete passavam por um agregador cuja credencial nunca foi
+ * configurada: a tela mostrava sete botões "Connect" e seis só podiam falhar.
+ * Ficam na lista porque cada um volta no dia em que a API dele estiver
+ * providenciada — ligar é este interruptor, aqui e no servidor
+ * (`lib/open-wearables.ts`), mais a credencial.
+ */
 export const OW_PROVIDERS = [
-  { key: "oura", name: "Oura Ring", icon: "💍" },
-  { key: "garmin", name: "Garmin", icon: "⌚" },
-  { key: "whoop", name: "Whoop", icon: "🏋️" },
-  { key: "fitbit", name: "Fitbit", icon: "📱" },
-  { key: "polar", name: "Polar", icon: "❄️" },
-  { key: "strava", name: "Strava", icon: "🚴" },
-  { key: "withings", name: "Withings", icon: "🩺" },
+  { key: "oura", name: "Oura Ring", icon: "💍", enabled: false },
+  { key: "garmin", name: "Garmin", icon: "⌚", enabled: false },
+  { key: "whoop", name: "Whoop", icon: "🏋️", enabled: false },
+  { key: "fitbit", name: "Fitbit", icon: "📱", enabled: false },
+  { key: "polar", name: "Polar", icon: "❄️", enabled: false },
+  { key: "strava", name: "Strava", icon: "🚴", enabled: false },
+  { key: "withings", name: "Withings", icon: "🩺", enabled: true },
 ] as const;
 
 /**

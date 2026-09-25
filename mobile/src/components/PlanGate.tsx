@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { View } from "react-native";
+import { goBackOr } from "@/lib/go-back";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t } from "@/lib/i18n";
 import { fetchAccess } from "@/api/access";
@@ -49,27 +50,60 @@ export function PlanGate({
 
   if (data.modules.includes(module)) return <>{children}</>;
 
+  /**
+   * Exercícios têm texto próprio, e o motivo é honestidade.
+   *
+   * "Não incluído no seu plano" soa como muro de vendas para quem acabou de
+   * criar a conta — e a verdade é outra: a clínica ainda não montou o programa
+   * dele. Desde a 078, prescrever um exercício **já libera** esta tela, então
+   * quem lê isto é exatamente quem ainda não foi atendido.
+   */
+  const ehExercicios = module === "mod_exercises";
+
   return (
     <Screen>
       <Card>
         <View style={{ alignItems: "center", gap: 12, paddingVertical: 32 }}>
           <Ionicons name="lock-closed-outline" size={36} color={theme.colors.textMuted} />
           <Text variant="subtitle" style={{ textAlign: "center" }}>
-            {t(lang, {
-              en: "Not included in your plan",
-              pt: "Não incluído no seu plano",
-            })}
+            {ehExercicios
+              ? t(lang, {
+                  en: "Your programme is not set up yet",
+                  pt: "Seu programa ainda não foi montado",
+                })
+              : t(lang, {
+                  en: "Not included in your plan",
+                  pt: "Não incluído no seu plano",
+                })}
           </Text>
           <Text
             variant="caption"
             color={theme.colors.textSecondary}
             style={{ textAlign: "center", lineHeight: 18 }}
           >
-            {t(lang, {
-              en: "Your clinic can add this to your plan. Ask them if you think this is wrong.",
-              pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
-            })}
+            {ehExercicios
+              ? t(lang, {
+                  en: "Your therapist puts your exercises here once your treatment is agreed. Nothing for you to do yet.",
+                  pt: "Seu terapeuta coloca seus exercícios aqui assim que o tratamento for definido. Nada a fazer por enquanto.",
+                })
+              : t(lang, {
+                  en: "Your clinic can add this to your plan. Ask them if you think this is wrong.",
+                  pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
+                })}
           </Text>
+          {/* Uma tela que só diz "não" precisa de uma porta — e a porta não
+              pode ser condicional. Estava dentro de `canGoBack()`, ou seja,
+              sumia exatamente nos casos em que era mais necessária: quem
+              chegou aqui por `replace`, sem histórico, ficava olhando um
+              cadeado sem nada para tocar. Auditoria de navegação, 24/09/2026:
+              este componente cobre 19 telas. */}
+          <Button
+            title={t(lang, { en: "Go back", pt: "Voltar" })}
+            variant="greige"
+            size="sm"
+            onPress={() => goBackOr()}
+            testID="plan-gate-back"
+          />
         </View>
       </Card>
     </Screen>

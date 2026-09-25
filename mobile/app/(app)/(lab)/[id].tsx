@@ -83,7 +83,7 @@ export default function LabTestDetail() {
           </Text>
           {["Choose how to collect: at home, at BPR, or with a phlebotomist",
             "Your sample is sent to the laboratory for analysis",
-            "Your result appears in the app with your physiotherapist's commentary",
+            "Your result appears in the app with your therapist's commentary",
           ].map((step, idx) => (
             <View key={idx} style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
               <View style={{

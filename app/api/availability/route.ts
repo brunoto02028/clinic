@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor } from "@/lib/tenant-access";
 import { findTherapist } from "@/lib/appointment-access";
+import { slotsForDate, hasConfiguredSchedule, exceptionForDate, applyException } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay, zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 // GET: Fetch available time slots for a given date
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
       );
     }
     const targetTherapistId = therapist.id;
+    const clinicIdForSchedule = actor!.clinicId!;
 
     // Blocked day (holiday, absence, training...) takes precedence over the weekly schedule
     const block = await (prisma as any).therapistBlock.findFirst({
@@ -60,6 +62,32 @@ export async function GET(request: NextRequest) {
     });
     if (block) {
       return NextResponse.json({ slots: [], available: false, reason: "blocked" });
+    }
+
+    // A agenda configurada pela clínica manda. Quem ainda não configurou
+    // janela nenhuma continua regido pelo modelo antigo, logo abaixo — é
+    // fallback, não substituição: ninguém acorda sem agenda porque o modelo
+    // mudou (atividade 080, T-5).
+    if (await hasConfiguredSchedule(clinicIdForSchedule, targetTherapistId, dateStr)) {
+      const pedido = request.nextUrl.searchParams.get("kind");
+      const kind = pedido === "CONSULTATION" || pedido === "TREATMENT" ? pedido : undefined;
+
+      // A data **escrita**, como veio da tela. Passar um `Date` fazia a agenda
+      // ler o fuso do servidor, que em produção é UTC (QA de 25/09, N1).
+      const slots = await slotsForDate(clinicIdForSchedule, targetTherapistId, dateStr, {
+        kind,
+        nowMinutes: dateStr === getZonedDateString() ? getZonedMinutesOfDay() : null,
+      });
+
+      return NextResponse.json({
+        // A tela antiga espera uma lista de horas; a nova quer a capacidade
+        // junto. Os dois formatos saem daqui para nenhum cliente quebrar.
+        slots: slots.map((s) => s.time),
+        detailedSlots: slots,
+        available: slots.length > 0,
+        therapistId: targetTherapistId,
+        configured: true,
+      });
     }
 
     // Get therapist availability for this day of week
@@ -77,9 +105,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ slots: [], available: false, reason: "not_working" });
     }
 
+    // O feriado, a folga e o expediente curto valem **em qualquer modelo de
+    // agenda**. Eram lidos só no ramo novo, e num dia regido por este aqui a
+    // exceção era salva, aparecia na lista, e não fechava nada — dava para
+    // marcar no feriado (QA de 25/09, N10).
+    const excecaoDoDia = await exceptionForDate(clinicIdForSchedule, targetTherapistId, dateStr);
+    const faixa = applyException(
+      { startTime: availability.startTime, endTime: availability.endTime },
+      excecaoDoDia
+    );
+    if (!faixa) {
+      return NextResponse.json({
+        slots: [],
+        available: false,
+        reason: excecaoDoDia?.closed ? "closed" : "not_working",
+      });
+    }
+
     // Generate time slots based on availability window
-    const [startH, startM] = availability.startTime.split(":").map(Number);
-    const [endH, endM] = availability.endTime.split(":").map(Number);
+    const [startH, startM] = faixa.startTime.split(":").map(Number);
+    const [endH, endM] = faixa.endTime.split(":").map(Number);
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
 

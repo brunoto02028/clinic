@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getValidatedUserById } from "@/lib/auth-credentials";
 import { signAccessToken, rotateRefreshToken } from "@/lib/mobile-tokens";
+import { canUsePatientApp, patientOnlyRefusal } from "@/lib/mobile-patient-only";
 import { withAbsoluteLogo } from "@/lib/mobile-user";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 
@@ -33,6 +34,12 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getValidatedUserById(rotated.userId);
+    // Também aqui, e não só no login: sem isto, quem entrou antes desta regra
+    // — ou quem virou staff depois de entrar — seguiria dentro até o refresh
+    // token vencer, daqui a trinta dias.
+    if (user && !canUsePatientApp((user as any).role)) {
+      return corsJson(patientOnlyRefusal(), { status: 403 });
+    }
     if (!user) {
       return corsJson({ error: "Account is no longer active" }, { status: 401 });
     }

@@ -72,7 +72,28 @@ function TasksScreen() {
               const isDone = item.status === "completed";
               const prio = PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.normal;
               return (
-                <Pressable onPress={() => !isDone && completeMut.mutate(item.id)}>
+                // O card inteiro concluía a tarefa ao primeiro toque — quem
+                // tocasse para ler, concluía, sem confirmação e sem desfazer.
+                // Agora o toque pergunta. O mesmo app já faz assim na nutrição.
+                <Pressable
+                  onPress={() => {
+                    if (isDone) return;
+                    Alert.alert(
+                      tr(lang, { en: "Mark as done?", pt: "Marcar como concluída?" }),
+                      item.title,
+                      [
+                        { text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" },
+                        {
+                          text: tr(lang, { en: "Mark as done", pt: "Concluir" }),
+                          onPress: () => completeMut.mutate(item.id),
+                        },
+                      ],
+                      { cancelable: true }
+                    );
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ checked: isDone }}
+                >
                   <Card>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <View style={{

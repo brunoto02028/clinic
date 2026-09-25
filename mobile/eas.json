@@ -28,14 +28,18 @@
         "image": "latest",
         "buildType": "app-bundle"
       },
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_SHOW_LAB": "false"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
         "appleId": "brunoto02028@gmail.com",
-        "appleTeamId": "97S4QQ26F9"
+        "appleTeamId": "97S4QQ26F9",
+        "ascAppId": "6815581205"
       }
     }
   }

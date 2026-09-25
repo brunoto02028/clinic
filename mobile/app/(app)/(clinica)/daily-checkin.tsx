@@ -87,7 +87,13 @@ function DailyCheckInScreen() {
   const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["daily-checkin"],
+    queryFn: fetchCheckIns,
+    // Formulário em edição não pode ser sobrescrito pelo servidor no meio
+    // (revalidação no foco, 075 T-12 — a mesma razão da triagem).
+    refetchOnWindowFocus: false,
+  });
 
   const [pain, setPain] = useState(3);
   const [mood, setMood] = useState(3);

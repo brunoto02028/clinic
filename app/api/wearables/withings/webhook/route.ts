@@ -79,6 +79,10 @@ export async function POST(req: NextRequest) {
       kinds: KINDS_BY_APPLI[appli] ?? ["bp"],
     });
 
+    // O carimbo de chegada é do `ingestWithings`, com a data da leitura — os
+    // três chamadores usam o mesmo caminho, e dois deles carimbando por conta
+    // própria era como o terceiro ficava de fora.
+
     console.log(
       `[withings/webhook] userid=${userid} appli=${appli} bp=${counts.bloodPressure} activity=${counts.activityDays} sleep=${counts.sleepNights}`
     );

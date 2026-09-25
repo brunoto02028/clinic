@@ -72,11 +72,39 @@ function PatientCard({ p, protocols, onAssign }: { p: any; protocols: any[]; onA
                   <Brain className="h-3 w-3" /> {p.activeProtocol}
                 </p>
               )}
-              {p.wearableConnections?.length > 0 && (
-                <p className="text-xs text-violet-400 mt-0.5 flex items-center gap-1">
-                  <Watch className="h-3 w-3" /> {p.wearableConnections.length} device{p.wearableConnections.length > 1 ? 's' : ''}
-                </p>
-              )}
+              {p.wearableConnections?.length > 0 && (() => {
+                // "Conectado" dizia só que a autorização deu certo. Um aparelho
+                // autorizado que a Withings nunca confirmou enviar aparecia
+                // idêntico a um funcionando, e a clínica achava que estava
+                // monitorando quem não estava (atividade 075, T-10).
+                const mudos = p.wearableConnections.filter(
+                  (c: any) => c.delivery === "silent" || c.delivery === "partial"
+                ).length;
+                // Assinatura confirmada e mesmo assim parou de chegar dado: a
+                // assinatura expira, o paciente sai da conta no celular, o
+                // aparelho fica fora da tomada. Nada disso dá erro (075, T-11).
+                const calados = p.wearableConnections.filter((c: any) => c.silent);
+                const maisCalado = calados.reduce(
+                  (pior: any, c: any) => (!pior || (c.daysSilent ?? 0) > (pior.daysSilent ?? 0) ? c : pior),
+                  null as any
+                );
+                return (
+                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${mudos || calados.length ? "text-amber-400" : "text-violet-400"}`}>
+                    <Watch className="h-3 w-3" /> {p.wearableConnections.length} device{p.wearableConnections.length > 1 ? 's' : ''}
+                    {mudos > 0 && (
+                      <span title="Authorised, but the provider has not confirmed it will send measurements">
+                        · {mudos} not sending
+                      </span>
+                    )}
+                    {maisCalado && (
+                      <span title="Nothing has arrived for longer than the clinic's threshold">
+                        · {calados.length > 1 ? `${calados.length} silent, oldest ` : "silent "}
+                        {maisCalado.daysSilent}d
+                      </span>
+                    )}
+                  </p>
+                );
+              })()}
             </div>
           </div>
 

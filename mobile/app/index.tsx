@@ -14,9 +14,11 @@ export default function Welcome() {
     if (status === "authenticated") {
       router.replace("/(app)/module-select");
     }
+    // Nada a fazer com `locked`: a cortina da raiz já está por cima, e
+    // navegar para cá ou para lá por baixo dela só embaralharia o histórico.
   }, [status]);
 
-  if (status === "loading") {
+  if (status === "loading" || status === "locked") {
     return (
       <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
         <Spinner />

@@ -14,14 +14,20 @@ export const palette = {
   workSoft: "#EDF0F5",
   health: "#4F7361",
   healthSoft: "#EDF3EF",
-  community: "#A87438",
+  // Escurecido 13% para passar 4,5:1 sobre o próprio `communitySoft` — antes
+  // dava 3,58:1. O matiz é o mesmo; lado a lado com o original não se nota a
+  // diferença. Única mudança de token da revisão de cor, e proposta como
+  // exceção justificada por número, não por gosto.
+  community: "#926531",
   communitySoft: "#F7F1E7",
 
   ok: "#55705F",
   okSoft: "#E7EEE9",
-  warn: "#8A6D3B",
+  // 4,12:1 sobre `warnSoft`, agora 4,5:1. Ver a nota em `community`.
+  warn: "#826637",
   warnSoft: "#F3ECDD",
-  bad: "#A85A4B",
+  // 4,02:1 sobre `badSoft`, agora 4,5:1. Ver a nota em `community`.
+  bad: "#9C5446",
   badSoft: "#F4E4E0",
 
   white: "#FFFFFF",

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
+import { pushDocumento } from "@/lib/push-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,10 @@ export async function POST(
       doctorName,
       documentDate: documentDate ? new Date(documentDate) : null,
     });
+
+    // O 4º aviso da T-5. A função existia e nunca era chamada — um gatilho que
+    // não dispara é pior que nenhum, porque a spec diz que ele existe.
+    await pushDocumento(patientId);
 
     return NextResponse.json({ success: true, document }, { status: 201 });
   } catch (err: any) {

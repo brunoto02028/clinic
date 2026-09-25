@@ -129,6 +129,10 @@ export async function POST(request: NextRequest) {
         appointmentId,
         paymentId: payment.id,
         userId,
+        // O mesmo nome que a rota do app escreve. A guarda do webhook procura
+        // por ele, e sem isto o pagamento feito pelo site era o único caminho
+        // sem checagem de dono (QA de 25/09, N2).
+        patientId: userId,
         type: "appointment",
         hoursUntilAppt: Math.round(hoursUntil).toString(),
       },

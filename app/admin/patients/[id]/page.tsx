@@ -14,6 +14,7 @@ import {
 import ClinicMeasurementButton from "@/components/admin/clinic-measurement-button";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
+import ExerciseSubmissionsPanel from "@/components/admin/exercise-submissions-panel";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
@@ -21,6 +22,7 @@ import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admi
 import { BloodPressureTab } from "@/components/admin/blood-pressure-tab";
 import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
+import PatientWellbeingChart from "@/components/admin/patient-wellbeing-chart";
 import AutomationRuns from "@/components/patients/automation-runs";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
@@ -773,20 +775,25 @@ export default function PatientProfilePage() {
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/admin/patients"); }}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
+        <div className="flex-1 basis-72 min-w-[18rem] overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-6 w-6 text-primary" /></div>
-            <div>
-              <h1 className="text-xl font-bold">{p.firstName} {p.lastName}</h1>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold truncate">{p.firstName} {p.lastName}</h1>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {p.email}</span>
+                <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{p.email}</span></span>
                 {p.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {p.phone}</span>}
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(p.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* A barra de medição, aberta, é muito mais larga que o botão que a
+            abriu. O bloco do paciente acima tem um piso de largura (`basis-72`)
+            justamente para que este grupo não tenha para onde crescer e caia
+            para a linha de baixo — antes ele espremia o nome até zero e o texto
+            transbordava por baixo da barra. */}
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 max-w-full">
           {/* Only renders when this clinic has a cuff connected (activity 074,
               T-15); it asks the API and draws nothing otherwise. */}
           <ClinicMeasurementButton
@@ -2292,8 +2299,12 @@ export default function PatientProfilePage() {
         </TabsContent>
 
         {/* ── Tab: Exercícios ── */}
-        <TabsContent value="exercicios" className="mt-4">
+        <TabsContent value="exercicios" className="mt-4 space-y-6">
           <PatientExercisesTab patientId={patientId} />
+          {/* O vídeo que o paciente gravou em casa fica junto da prescrição,
+              que é onde ele significa alguma coisa — foi onde o Bruno pediu
+              para ser avisado, "para fazer a revisão e dar um retorno". */}
+          <ExerciseSubmissionsPanel patientId={patientId} />
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}
@@ -2325,7 +2336,12 @@ export default function PatientProfilePage() {
           <AutomationRuns patientId={patientId} />
         </TabsContent>
 
-        <TabsContent value="atividade" className="mt-4">
+        <TabsContent value="atividade" className="mt-4 space-y-4">
+          {/* A tendência primeiro, o feed depois. O check-in diário respondia
+              "como você está hoje?" e ia parar no meio de uploads e mensagens,
+              onde a única pergunta que ele existe para responder — está
+              melhorando? — não tinha onde ser respondida. */}
+          <PatientWellbeingChart patientId={patientId} />
           <PatientActivityTab patientId={patientId} />
         </TabsContent>
 

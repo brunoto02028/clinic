@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/system-logger";
 import type { WithingsBpReading } from "@/lib/withings";
+import {
+  MATCHABLE_SESSION_STATUSES,
+  SESSION_GRACE_MS,
+  sessionCovers,
+} from "@/lib/clinic-session-match";
 
 /**
  * Whose record a reading from the clinic's own cuff belongs to.
@@ -26,8 +31,11 @@ export const SESSION_WINDOW_MS = 3 * 60 * 1000;
  *
  * The therapist sometimes presses "Measure" with the cuff already inflating,
  * and the measurement is then stamped a few seconds before the session exists.
+ *
+ * Mora em `clinic-session-match.ts` junto com a regra que a usa, e é
+ * reexportada aqui porque era daqui que todo mundo a importava.
  */
-export const SESSION_GRACE_MS = 30 * 1000;
+export { SESSION_GRACE_MS } from "@/lib/clinic-session-match";
 
 export type AttributionOutcome =
   | { kind: "assigned"; patientId: string; readingId: string; sessionId: string }
@@ -46,17 +54,27 @@ export interface ClinicConnection {
  * The comparison is against the measurement's own timestamp, never against
  * `now()`: the cuff syncs over Wi-Fi when it finishes and the webhook arrives
  * later, so "now" would attribute the wrong reading or discard a good one.
+ *
+ * E por isso uma janela **expirada** também conta. Ela descreve um intervalo de
+ * tempo verdadeiro; o que perdeu foi a contagem na tela. Sem isto, a leitura
+ * que só subia horas depois — visita domiciliar, manguito sem rede conhecida —
+ * chegava com a sessão já marcada `EXPIRED` pela varredura e ia para a caixa de
+ * entrada, com a resposta certa existindo e sendo descartada. Quem decide fica
+ * em `clinic-session-match.ts`, fora do banco, para poder ser testado.
  */
 async function matchingSessions(connectionId: string, measuredAt: Date) {
-  return (prisma as any).clinicMeasurementSession.findMany({
+  const candidatas = await (prisma as any).clinicMeasurementSession.findMany({
     where: {
       connectionId,
-      status: "OPEN",
+      status: { in: [...MATCHABLE_SESSION_STATUSES] },
       openedAt: { lte: new Date(measuredAt.getTime() + SESSION_GRACE_MS) },
       expiresAt: { gte: measuredAt },
     },
     orderBy: { openedAt: "desc" },
   });
+  // A consulta já filtra pelo mesmo intervalo; passar pela regra pura mantém
+  // uma única definição de "esta janela cobre esta medição".
+  return candidatas.filter((c: any) => sessionCovers(c, measuredAt));
 }
 
 /**
@@ -78,7 +96,9 @@ export async function attributeClinicReading(
   }
 
   // The same measurement reaches us twice: once from the webhook, once from
-  // the scheduled sync. Withings' own group id is the key, and it has to be
+  // the daily sync at /api/cron/wearables-sync — which, until activity 075
+  // T-11, did not exist, so this deduplication was guarding a second path that
+  // never ran. Withings' own group id is the key, and it has to be
   // checked on *both* sides — the inbox and the records. Checking only the
   // inbox put a re-delivered reading there a second time even though it had
   // already been filed, because by then its session was closed and no window
@@ -99,6 +119,23 @@ export async function attributeClinicReading(
       }),
     ]);
     if (inInbox || inRecord) return { kind: "duplicate" };
+  } else {
+    // Sem id da Withings não há chave de deduplicação — e isso era
+    // sobrevivível enquanto o webhook entregava cada medida uma vez. Com o
+    // cron da T-11 relendo a mesma janela todo dia, a mesma leitura viraria
+    // uma linha nova na caixa de entrada por dia, por até trinta dias.
+    // O horário mais os dois números é o que essa leitura tem de próprio;
+    // duas medidas iguais no mesmo segundo, no mesmo aparelho, são a mesma.
+    const igual = await (prisma as any).unassignedMeasurement.findFirst({
+      where: {
+        connectionId: connection.id,
+        measuredAt: reading.measuredAt,
+        systolic: reading.systolic,
+        diastolic: reading.diastolic,
+      },
+      select: { id: true },
+    });
+    if (igual) return { kind: "duplicate" };
   }
 
   const sessions = await matchingSessions(connection.id, new Date(reading.measuredAt));
@@ -217,6 +254,15 @@ export async function expireStaleSessions(connectionId?: string): Promise<number
 export async function clinicDevice(clinicId: string) {
   return (prisma as any).wearableConnection.findFirst({
     where: { clinicId, isClinicDevice: true, status: "CONNECTED" },
-    select: { id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true },
+    select: {
+      id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true,
+      // Se a Withings confirmou que manda. O manguito da recepção alimenta
+      // vários pacientes e era o único sem nenhuma tela dizendo se está mudo:
+      // o /admin/biohacking só varre quem tem papel PATIENT, e esta conexão
+      // pertence a quem autorizou (atividade 075, T-10).
+      notifyConfirmedAppli: true, notifyCheckedAt: true,
+      lastReadingAt: true, createdAt: true, status: true,
+      accessToken: true, refreshToken: true, tokenExpiresAt: true,
+    },
   });
 }

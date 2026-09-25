@@ -48,13 +48,18 @@ const SECURITY_HEADERS: Record<string, string> = {
 // with no access-control headers at all and the patient could not book —
 // while /api/patient answered fine, which is what made it look like a bug in
 // the screen rather than in the allowlist.
-const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files'];
+const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files', '/api/exercise-submissions', '/api/push-token'];
 // CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
 // bearer (not cookie) auth means "*" doesn't expose any ambient session.
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
 const MOBILE_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN,
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  // `DELETE` entrou com a remoção da foto de perfil (075, T-14). Sem ele, o
+  // preflight recusava um verbo que a rota implementa — e a única vítima era o
+  // Expo Web, que é justamente onde se testa. O app nativo não aplica CORS e a
+  // web da clínica é mesma origem, então o erro ficaria invisível até alguém
+  // abrir o app no navegador e não conseguir remover a própria foto.
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 // clinicType from a mobile access token's payload (unverified — see its use).
@@ -312,6 +317,26 @@ export async function middleware(request: NextRequest) {
   // headers (x-user-*, x-clinic-id, x-impersonated-by) so a forged Bearer can't
   // spoof them past the gate into header-trusting routes. Threat detection and
   // rate limiting above still apply.
+  /**
+   * O arquivo com token assinado na URL.
+   *
+   * `/api/files/[id]` sabe verificar um `?t=` — assinado, preso a um arquivo e
+   * a uma pessoa, válido por minutos (`lib/file-access-token.ts`). Mas o
+   * middleware nunca deixava a rota rodar: sem cookie e sem `Bearer`, a
+   * requisição caía no gate de sessão e virava `307 → /login`.
+   *
+   * E é exatamente assim que o app pede o arquivo — `<Image source={{uri}}>` e
+   * `Linking.openURL` não mandam cabeçalho nenhum. O anexo existia, a URL era
+   * assinada corretamente, e o paciente recebia a página de login no lugar da
+   * foto. Achado pelo QA de 25/09/2026.
+   *
+   * Deixar passar aqui não abre nada: quem decide continua sendo a rota, que
+   * confere a assinatura, o dono e o prazo. Sem `?t=` válido, ela responde 404.
+   */
+  if (pathname.startsWith('/api/files/') && request.nextUrl.searchParams.get('t')) {
+    return NextResponse.next();
+  }
+
   const authHeader = request.headers.get('authorization');
   if (authHeader?.toLowerCase().startsWith('bearer ') && isMobileApiPath(pathname)) {
     // The personal-studio block must hold for the app too (activity 52, T-7).

@@ -28,6 +28,7 @@ export type GrantReason =
   | "fullAccess" // per-patient full access override
   | "staff" // the viewer is not a patient
   | "studio" // student of a personal-trainer studio: everything by default (activity 55)
+  | "prescription" // the clinic prescribed an exercise — the clinical act itself (activity 78)
   | "override"; // per-patient admin override
 
 export interface PatientAccessInput {
@@ -38,6 +39,15 @@ export interface PatientAccessInput {
   medicalScreening?: { isSubmitted?: boolean | null } | null;
   patientSubscriptions?: Array<{ plan?: { isFree?: boolean | null; features?: string[] | null } | null }> | null;
   packagesAsPatient?: Array<unknown> | null;
+  /**
+   * Prescrições ativas. Basta existir uma — `take: 1` no select.
+   *
+   * Existe porque o módulo de exercícios dependia de **comércio** e não de
+   * **cuidado**: o terapeuta prescrevia, e o app do paciente continuava dizendo
+   * "não está incluído no seu plano" porque ele não tinha pacote nem
+   * assinatura. O ato clínico não abria a porta; só a venda abria.
+   */
+  receivedExercises?: Array<unknown> | null;
   /** The patient's tenant — a studio's students start with everything. */
   clinic?: { type?: string | null } | null;
 }
@@ -162,6 +172,12 @@ export function computePatientAccess(patient: PatientAccessInput): PatientAccess
     }
   }
 
+  // Prescrever é conceder. A porta se abre pelo ato clínico, e não só pela
+  // venda — e do tamanho do ato: libera exercícios, nada mais.
+  if ((patient.receivedExercises || []).length > 0) {
+    grantModule("mod_exercises", "prescription");
+  }
+
   if (hasActiveTreatment) {
     for (const m of TREATMENT_MODULES) grantModule(m, "treatment");
     for (const p of TREATMENT_PERMISSIONS) grantPermission(p, "treatment");
@@ -237,4 +253,6 @@ export const PATIENT_ACCESS_SELECT = {
     select: { id: true, status: true, protocol: { select: { id: true, status: true } } },
   },
   clinic: { select: { type: true } },
+  // Só a existência importa, e o índice `@@index([patientId])` já está lá.
+  receivedExercises: { where: { isActive: true }, select: { id: true }, take: 1 },
 } as const;

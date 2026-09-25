@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { notifyPatient } from "@/lib/notify-patient";
+import { pushNovaMensagem } from "@/lib/push-notify";
+import { pickForPatient } from "@/lib/patient-language";
 import { saveChatAttachment } from "@/lib/chat-attachment";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +74,10 @@ export async function POST(
 
   let content = "";
   let title: string | null = null;
+  // A segunda versão, opcional. Inglês é a língua primária e o que o paciente
+  // recebe quando isto não vem; quem tem pt-BR no perfil recebe esta.
+  let contentPt: string | null = null;
+  let titlePt: string | null = null;
   let kind = "message";
   let attachment: { fileUrl: string; fileName: string; fileType: string } | null = null;
 
@@ -80,6 +86,8 @@ export async function POST(
     const formData = await req.formData();
     content = ((formData.get("content") as string) || "").trim();
     title = (formData.get("title") as string) || null;
+    contentPt = ((formData.get("contentPt") as string) || "").trim() || null;
+    titlePt = ((formData.get("titlePt") as string) || "").trim() || null;
     kind = (formData.get("kind") as string) || "message";
     const file = formData.get("file") as File | null;
     if (file && file.size > 0) {
@@ -93,12 +101,26 @@ export async function POST(
     const body = await req.json();
     content = (body.content || "").trim();
     title = body.title || null;
+    contentPt = (body.contentPt || "").trim() || null;
+    titlePt = (body.titlePt || "").trim() || null;
     kind = body.kind || "message";
   }
 
   if (!content && !attachment) {
     return NextResponse.json({ error: "content or file required" }, { status: 400 });
   }
+
+  // A língua tem de ser sabida **antes** de escrever a linha: o que se guarda
+  // é o texto que o paciente leu, não o par de versões. Se ele trocar de idioma
+  // depois, a mensagem que recebeu continua sendo a que recebeu.
+  const destinatario = await prisma.user.findUnique({
+    where: { id: params.id },
+    select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true },
+  });
+  const texto = pickForPatient(
+    { title, content, titlePt, contentPt },
+    destinatario?.preferredLocale
+  );
 
   const [message, patient] = await Promise.all([
     (prisma as any).clinicMessage.create({
@@ -112,23 +134,20 @@ export async function POST(
         senderId: (session.user as any).id,
         senderRole: "staff",
         kind,
-        title: title || null,
-        content: content || (attachment ? `📎 ${attachment.fileName}` : ""),
+        title: texto.title,
+        content: texto.content || (attachment ? `📎 ${attachment.fileName}` : ""),
         attachmentUrl: attachment?.fileUrl || null,
         attachmentName: attachment?.fileName || null,
         attachmentType: attachment?.fileType || null,
       },
       include: { sender: { select: { firstName: true, lastName: true, role: true } } },
     }),
-    prisma.user.findUnique({
-      where: { id: params.id },
-      select: { id: true, firstName: true, lastName: true, email: true },
-    }),
+    Promise.resolve(destinatario),
   ]);
 
   if (patient) {
     const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
-    const preview = (content || attachment?.fileName || "").slice(0, 120);
+    const preview = (texto.content || attachment?.fileName || "").slice(0, 120);
     try {
       await notifyPatient({
         patientId: patient.id,
@@ -138,6 +157,11 @@ export async function POST(
     } catch (e) {
       console.error("[messages] Failed to notify patient:", e);
     }
+
+    // E o toque no ombro de quem tem o app (077, T-5). Vai aqui, e não dentro
+    // de `notifyPatient`: aquele caminho é o dos crons de lembrete, e push de
+    // robô é exatamente o que ficou proibido em 17/09.
+    await pushNovaMensagem(patient.id);
   }
 
   return NextResponse.json(message, { status: 201 });

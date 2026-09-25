@@ -46,6 +46,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   // T-15). They are in no patient's record until someone assigns them, so the
   // count belongs where it is seen without looking for it.
   const [unassignedMeasurements, setUnassignedMeasurements] = useState(0);
+  // O vídeo que o paciente gravou em casa e ninguém assistiu (076, T-5).
+  // Entra no mesmo badge: são todos "há algo esperando por você em Pacientes".
+  const [unreviewedSubmissions, setUnreviewedSubmissions] = useState(0);
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
   const { data: session } = useSession();
@@ -78,6 +81,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
         .then((data) => {
           if (data?.pendingPatients !== undefined) setPendingPatients(data.pendingPatients);
           if (data?.unassignedMeasurements !== undefined) setUnassignedMeasurements(data.unassignedMeasurements);
+          if (data?.unreviewedSubmissions !== undefined) setUnreviewedSubmissions(data.unreviewedSubmissions);
         })
         .catch(() => {});
     };
@@ -253,9 +257,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
                 <span className={labelClass}>{relabel(isPt ? section.labelPt : section.label)}</span>
-                {section.key === "patients" && pendingPatients + unassignedMeasurements > 0 && (
+                {section.key === "patients" && pendingPatients + unassignedMeasurements + unreviewedSubmissions > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 flex-shrink-0">
-                    {pendingPatients + unassignedMeasurements > 9 ? "9+" : pendingPatients + unassignedMeasurements}
+                    {pendingPatients + unassignedMeasurements + unreviewedSubmissions > 9 ? "9+" : pendingPatients + unassignedMeasurements + unreviewedSubmissions}
                   </span>
                 )}
               </button>

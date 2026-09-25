@@ -184,7 +184,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     key: "notifications",
     label: "Notifications",
-    labelPt: "Notificacoes",
+    labelPt: "Notificações",
     icon: BellRing,
     tabs: [
       {
@@ -192,7 +192,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         // deploy (activity 072, T-6). The tenant owner's, not a therapist's.
         key: "automation-rules",
         label: "Automation rules",
-        labelPt: "Regras da automacao",
+        labelPt: "Regras da automação",
         href: "/admin/automation",
         matchRoutes: ["/admin/automation"],
         clinicalOnly: true,
@@ -203,7 +203,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         // Nothing leaves the building from here without a click.
         key: "outbox",
         label: "Waiting for you",
-        labelPt: "Esperando voce",
+        labelPt: "Esperando você",
         href: "/admin/outbox",
         matchRoutes: ["/admin/outbox"],
         clinicalOnly: true,

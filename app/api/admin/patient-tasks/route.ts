@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
-import { sendPushToUser } from "@/lib/push-send";
+import { pushTarefa } from "@/lib/push-notify";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
@@ -171,11 +171,16 @@ export async function POST(req: NextRequest) {
         where: { id: task.id },
         data: { emailSent: true, emailSentAt: new Date() },
       });
-      await sendPushToUser(pid, {
-        title: titlePt || title,
-        body: plainMessagePt,
-        url: actionUrl || "/dashboard/tasks",
-      }).catch(() => {});
+      // Este push existia desde antes, mandando para uma API do Firebase
+      // desligada — ou seja, nunca chegou a lugar nenhum. Ao fazer o push
+      // voltar a funcionar (077), ele passou a **chegar**, e com três defeitos:
+      // levava o título da tarefa verbatim ("Sign consent for the knee joint
+      // injection") para a tela bloqueada, falava português com paciente
+      // inglês, e apontava para uma rota da web que o app não tem.
+      //
+      // Agora ele usa o mesmo caminho dos outros quatro avisos: texto neutro,
+      // idioma do paciente, rota do app. O que é a tarefa fica dentro do app.
+      await pushTarefa(pid);
     } catch (err) {
       console.error(`[patient-tasks] Failed to notify patient ${pid}:`, err);
     }

@@ -14,13 +14,29 @@ import { resolveActorTenant } from "@/lib/actor-tenant";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      // Allow linking Google to existing accounts (same email)
-      // Safe here because Google only returns verified emails
-      allowDangerousEmailAccountLinking: true,
-    }),
+    /**
+     * Só quando há credencial de verdade.
+     *
+     * Com `|| ""` o provedor era montado de qualquer jeito, e em produção —
+     * onde `GOOGLE_CLIENT_ID` nunca foi configurada — o clique no botão dava
+     * `client_id is required` no servidor e mandava o paciente para uma página
+     * de erro que responde 302 com corpo vazio. A tela piscava e ele voltava
+     * ao mesmo lugar, sem explicação nenhuma.
+     *
+     * Sem as duas variáveis, o Google some de `/api/auth/providers`, e as telas
+     * deixam de oferecer o que não existe (ver `hooks/use-google-signin.ts`).
+     */
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            // Allow linking Google to existing accounts (same email)
+            // Safe here because Google only returns verified emails
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     CredentialsProvider({
       name: "credentials",
       credentials: {

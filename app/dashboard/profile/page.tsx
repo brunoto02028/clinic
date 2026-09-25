@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { User, Globe, Phone, MapPin, Save, CheckCircle, Calendar, Shield, Lock, Eye, EyeOff, AlertCircle, Mail, MessageSquare, MessageCircle, Scale, ArrowRight, Info, Clock } from 'lucide-react';
+import { User, Camera, Trash2, Globe, Phone, MapPin, Save, CheckCircle, Calendar, Shield, Lock, Eye, EyeOff, AlertCircle, Mail, MessageSquare, MessageCircle, Scale, ArrowRight, Info, Clock } from 'lucide-react';
 import { useLocale } from '@/hooks/use-locale';
 import { t as i18nT } from '@/lib/i18n';
 import { useVocab } from "@/hooks/use-vocab";
@@ -47,6 +47,13 @@ export default function PatientProfilePage() {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
 
+  // Foto de perfil — a mesma que o app grava, pela mesma rota. Uma foto que
+  // aparece num canal aparece no outro.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     fetch('/api/patient/profile')
       .then(r => r.json())
@@ -62,9 +69,82 @@ export default function PatientProfilePage() {
         setEmergencyRelation(d.user?.emergencyContactRelation || '');
         setLocale(d.user?.preferredLocale || 'en-GB');
         setCommPref(d.user?.communicationPreference || 'EMAIL');
+        setPhotoUrl(d.user?.profileImageUrl || null);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+  async function handlePhoto(file: File) {
+    // Barrado aqui, o arquivo grande não sobe só para voltar 400 — numa rede
+    // ruim isso é meio minuto de espera para nada.
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError(
+        isPt ? 'Imagem muito grande (máx. 5 MB).' : 'Image is too large (max 5 MB).'
+      );
+      if (fileInput.current) fileInput.current.value = '';
+      return;
+    }
+    setPhotoBusy(true);
+    setPhotoError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/patient/profile/photo', { method: 'POST', body: form });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'failed');
+      // Sessão expirada não dá erro: o middleware redireciona e o `fetch`
+      // segue o 307, devolvendo 200 com o HTML do login. `res.ok` fica
+      // verdadeiro, e ler `profileImageUrl` de um corpo que não é o nosso
+      // apagava a foto da tela sem dizer nada. Só aceita o que veio com a
+      // forma certa.
+      if (typeof data?.profileImageUrl !== 'string') throw new Error('session');
+      setPhotoUrl(data.profileImageUrl);
+    } catch (e: any) {
+      setPhotoError(
+        e?.message === 'session'
+          ? isPt
+            ? 'Sua sessão expirou. Entre de novo e tente outra vez.'
+            : 'Your session expired. Sign in again and retry.'
+          : e?.message && e.message !== 'failed'
+          ? e.message
+          : isPt
+          ? 'Não foi possível salvar essa foto.'
+          : 'We could not save that photo.'
+      );
+    } finally {
+      setPhotoBusy(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setPhotoBusy(true);
+    setPhotoError('');
+    try {
+      const res = await fetch('/api/patient/profile/photo', { method: 'DELETE' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error('failed');
+      // A mesma armadilha do envio: sessão expirada devolve 200 com o HTML do
+      // login, e sem conferir a forma do corpo a foto sumia da tela como se
+      // tivesse sido removida.
+      if (!data || !('profileImageUrl' in data)) throw new Error('session');
+      setPhotoUrl(null);
+    } catch (e: any) {
+      setPhotoError(
+        e?.message === 'session'
+          ? isPt
+            ? 'Sua sessão expirou. Entre de novo e tente outra vez.'
+            : 'Your session expired. Sign in again and retry.'
+          : isPt
+          ? 'Não foi possível remover a foto.'
+          : 'We could not remove the photo.'
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -195,6 +275,68 @@ export default function PatientProfilePage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{T('profile.title')}</h1>
           <p className="text-sm text-muted-foreground">{T('profile.subtitle')}</p>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={isPt ? 'Foto de perfil' : 'Profile photo'}
+            className="h-16 w-16 rounded-full object-cover border border-border"
+          />
+        ) : (
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="h-7 w-7 text-primary" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">
+            {isPt ? 'Foto de perfil' : 'Profile photo'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {isPt ? 'JPEG, PNG ou WebP, até 5 MB.' : 'JPEG, PNG or WebP, up to 5 MB.'}
+          </p>
+          {photoError && (
+            <p className="text-xs text-destructive mt-1">{photoError}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handlePhoto(f);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={photoBusy}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-medium hover:bg-muted disabled:opacity-50"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            {photoBusy
+              ? isPt ? 'Salvando…' : 'Saving…'
+              : photoUrl
+              ? isPt ? 'Trocar' : 'Change'
+              : isPt ? 'Enviar' : 'Upload'}
+          </button>
+          {photoUrl && (
+            <button
+              type="button"
+              onClick={() => void handleRemovePhoto()}
+              disabled={photoBusy}
+              aria-label={isPt ? 'Remover foto' : 'Remove photo'}
+              className="p-2 rounded-xl border border-border text-muted-foreground hover:text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

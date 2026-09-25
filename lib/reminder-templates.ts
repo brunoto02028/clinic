@@ -21,6 +21,23 @@ export const REMINDER_TEMPLATE_TOKENS: Record<ReminderTemplateType, string[]> = 
   weeklyClosing: ["{name}"],
 };
 
+/**
+ * O texto na língua do paciente — ou `null`, que é "use o padrão".
+ *
+ * Existe porque quem enfileira precisa decidir a língua **antes** de gravar:
+ * o campo guardado é lido como string, e guardar o par `{ en, pt }` ali
+ * quebrava a prévia, a aprovação e o envio de uma vez só (QA de 25/09, R1).
+ */
+export function pickTemplate(
+  tpl: ReminderTemplateLang | null | undefined,
+  preferredLocale?: string | null
+): string | null {
+  if (!tpl) return null;
+  const pt = String(preferredLocale || "").toLowerCase().startsWith("pt");
+  const escolhido = pt ? tpl.pt || tpl.en : tpl.en || tpl.pt;
+  return escolhido?.trim() || null;
+}
+
 export async function getReminderTemplates(clinicId: string | null | undefined): Promise<ReminderTemplatesJson> {
   if (!clinicId) return {};
   const clinic = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { reminderTemplatesJson: true } });
