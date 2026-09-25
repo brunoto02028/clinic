@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable } from "react-native";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Stack } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,6 +54,9 @@ function formatWhen(iso: string, lang: "en" | "pt"): string {
 
 function MessagesScreen() {
   const t = useTheme();
+  // A altura do header, que o teclado precisa descontar. O módulo ganhou
+  // header em 24/09/2026 e sem isto o campo ficava atrás do teclado.
+  const headerHeight = useHeaderHeight();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<ScrollView>(null);
@@ -96,8 +100,18 @@ function MessagesScreen() {
           headerShadowVisible: false,
         }}
       />
+      {/*
+        `keyboardVerticalOffset` faltava, e passou a importar quando o módulo
+        ganhou header (24/09/2026): sem contar a altura dele, o
+        KeyboardAvoidingView compensa de menos exatamente esse tanto, e o campo
+        fica atrás do teclado — a pessoa digita sem ver o que digita. É a mesma
+        queixa do achado 1, numa tela que escapou porque tem lista própria e
+        não usa o ramo com rolagem do `Screen`, que é onde o conserto geral
+        vive.
+      */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={headerHeight}
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1, gap: 12 }}>
@@ -122,6 +136,9 @@ function MessagesScreen() {
             <ScrollView
               ref={scrollRef}
               style={{ flex: 1 }}
+              // Sem isto, o primeiro toque com o teclado aberto só fecha o
+              // teclado — tocar em "Enviar" exigia dois toques.
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ gap: 10, paddingBottom: 8 }}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
             >
