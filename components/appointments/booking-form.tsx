@@ -91,14 +91,37 @@ export default function BookingForm() {
     fetchAvailableDates();
   }, [therapistsChecked, selectedTherapistId]);
 
+  // A mesma porta que o servidor vai usar para gravar. Esta tela lia
+  // `service-prices` e mostrava sempre o preço de CONSULTATION: um paciente em
+  // tratamento via £88,50 e era cobrado £44,25 — o defeito que
+  // `lib/booking-options.ts` existe para impedir (QA de 25/09, N4).
+  const [porta, setPorta] = useState<{
+    kind: string | null;
+    price: number;
+    currency: string;
+    requiresPayment: boolean;
+    sessionsRemaining: number | null;
+    sessionsIncluded: number | null;
+  } | null>(null);
+
   useEffect(() => {
-    fetch("/api/patient/service-prices")
-      .then(r => r.json())
-      .then((data: any[]) => {
-        const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
-        if (consultation?.price) setConsultationPrice(consultation.price);
+    fetch("/api/patient/booking-options")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        setPorta(d);
+        if (typeof d?.price === "number") setConsultationPrice(d.price);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Se a porta não responder, o preço antigo é melhor que nenhum — mas
+        // a tela deixa de prometer o que não sabe (ver abaixo).
+        fetch("/api/patient/service-prices")
+          .then((r) => r.json())
+          .then((data: any[]) => {
+            const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
+            if (consultation?.price) setConsultationPrice(consultation.price);
+          })
+          .catch(() => {});
+      });
 
     fetch("/api/patient/membership/subscription")
       .then(r => r.json())
@@ -471,12 +494,39 @@ export default function BookingForm() {
                   <span className="text-muted-foreground">{isPt ? "Duração" : "Duration"}</span>
                   <span className="font-medium">60 {isPt ? "minutos" : "min"}</span>
                 </div>
-                {!hasActivePackage && consultationPrice != null && (
+                {porta?.kind === "PACKAGE_SESSION" ? (
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">{isPt ? "Sessão do seu pacote" : "Session from your package"}</span>
+                    <span className="font-bold text-primary">
+                      {porta.sessionsRemaining == null
+                        ? isPt ? "sem cobrança" : "no charge"
+                        : isPt
+                          ? `restam ${porta.sessionsRemaining} de ${porta.sessionsIncluded}`
+                          : `${porta.sessionsRemaining} of ${porta.sessionsIncluded} left`}
+                    </span>
+                  </div>
+                ) : porta?.kind ? (
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">
+                      {porta.kind === "FIRST_CONSULTATION"
+                        ? isPt ? "Primeira consulta" : "First consultation"
+                        : isPt ? "Sessão extra" : "Extra session"}
+                    </span>
+                    <span className="font-bold text-primary">
+                      £{porta.price.toFixed(2)}
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        {porta.requiresPayment
+                          ? isPt ? "pago ao marcar" : "paid when you book"
+                          : isPt ? "entra na fatura" : "on your invoice"}
+                      </span>
+                    </span>
+                  </div>
+                ) : !hasActivePackage && consultationPrice != null ? (
                   <div className="flex justify-between pt-2 border-t mt-2">
                     <span className="font-semibold">{isPt ? "Preço estimado" : "Estimated price"}</span>
                     <span className="font-bold text-primary">£{consultationPrice}</span>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { zonedTimeToUtc, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 
 /**
  * A agenda como a clínica a configurou — e os horários que sobram dela.
@@ -34,15 +35,21 @@ const hhmm = (min: number): string =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
 /**
- * "YYYY-MM-DD" do **dia local**, e não do UTC.
+ * O dia da semana de uma data escrita, sem passar pelo relógio do servidor.
  *
- * `toISOString().slice(0,10)` numa meia-noite de Londres no horário de verão é
- * 23:00 UTC do dia anterior — e a exceção fechava o dia errado. A janela saía
- * certa porque `getDay()` já lê a hora local; só a data estava deslocada, e o
- * defeito some sozinho no inverno, que é o pior tipo (QA de 25/09, falha 3).
+ * A primeira correção trocou `toISOString()` por leitura local — e local é o
+ * fuso **do servidor**, que em produção é UTC (`node:20-alpine`, sem `ENV TZ`).
+ * Resultado: a segunda devolvia as janelas de domingo, a exceção fechava o dia
+ * errado, o horário certo era recusado e um fora da janela era aceito. Só
+ * aparecia fora de `Europe/London`, então passava batido aqui.
+ *
+ * Agora a agenda fala em **data escrita** ("YYYY-MM-DD") e hora da clínica, e
+ * não lê o relógio do processo em lugar nenhum. O meio-dia UTC é só para o
+ * cálculo do dia da semana não encostar em nenhuma borda.
  */
-const diaLocal = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function diaDaSemana(dateStr: string): number {
+  return new Date(`${dateStr}T12:00:00Z`).getUTCDay();
+}
 
 /** Duas janelas na mesma faixa seriam a mesma sala em dois usos. */
 export function overlaps(
@@ -70,9 +77,9 @@ export interface ResolvedWindow {
 export async function windowsForDate(
   clinicId: string,
   therapistId: string,
-  date: Date
+  /** "YYYY-MM-DD" na data da clínica — nunca um `Date`, ver `diaDaSemana`. */
+  dateStr: string
 ): Promise<ResolvedWindow[]> {
-  const dateStr = diaLocal(date);
 
   // A do terapeuta vence a da clínica. Não dá para pedir isso ao banco com
   // `orderBy therapistId desc`: no Postgres, DESC é NULLS FIRST, e a linha da
@@ -93,7 +100,7 @@ export async function windowsForDate(
   if (excecao?.closed) return [];
 
   const janelas = await (prisma as any).scheduleWindow.findMany({
-    where: { clinicId, therapistId, dayOfWeek: date.getDay(), isActive: true },
+    where: { clinicId, therapistId, dayOfWeek: diaDaSemana(dateStr), isActive: true },
     orderBy: { startTime: "asc" },
     select: { startTime: true, endTime: true, kind: true, capacity: true, slotMinutes: true },
   });
@@ -128,29 +135,40 @@ export async function windowsForDate(
 export async function slotsForDate(
   clinicId: string,
   therapistId: string,
-  date: Date,
+  dateStr: string,
   opts: { kind?: WindowKind; nowMinutes?: number | null } = {}
 ): Promise<Slot[]> {
-  const janelas = await windowsForDate(clinicId, therapistId, date);
+  const janelas = await windowsForDate(clinicId, therapistId, dateStr);
   if (janelas.length === 0) return [];
 
-  const diaInicio = new Date(date);
-  diaInicio.setHours(0, 0, 0, 0);
-  const diaFim = new Date(date);
-  diaFim.setHours(23, 59, 59, 999);
+  // As bordas do dia **da clínica**, convertidas para instante. `setHours` em
+  // cima de um `Date` daria a meia-noite do servidor.
+  const diaInicio = zonedTimeToUtc(dateStr, "00:00");
+  const diaFim = zonedTimeToUtc(dateStr, "23:59");
+
+  // Quem está esperando pagar segura o horário — mas não para sempre. Um
+  // Checkout abandonado deixava a vaga presa indefinidamente, e o plano diz o
+  // contrário: "o horário só fica reservado depois" do pagamento
+  // (QA de 25/09, N8). Meia hora é o tempo de pagar; passou disso, a vaga
+  // volta para quem quiser.
+  const limiteDeEspera = new Date(Date.now() - 30 * 60 * 1000);
 
   const marcadas = await prisma.appointment.findMany({
     where: {
       therapistId,
       dateTime: { gte: diaInicio, lte: diaFim },
-      status: { in: ["PENDING", "PENDING_PATIENT", "CONFIRMED"] },
+      OR: [
+        { status: { in: ["CONFIRMED", "PENDING_PATIENT"] } },
+        { status: "PENDING", createdAt: { gte: limiteDeEspera } },
+      ],
     },
     select: { dateTime: true, duration: true },
   });
 
   const ocupacao = (inicio: number, fim: number) =>
     marcadas.filter((a) => {
-      const aInicio = a.dateTime.getHours() * 60 + a.dateTime.getMinutes();
+      // Minutos no fuso da clínica, como a rota antiga já fazia.
+      const aInicio = getZonedMinutesOfDay(a.dateTime);
       const aFim = aInicio + (a.duration || 60);
       return inicio < aFim && aInicio < fim;
     }).length;
@@ -176,10 +194,28 @@ export async function slotsForDate(
   return saida.sort((a, b) => minutos(a.time) - minutos(b.time));
 }
 
-/** A clínica configurou alguma janela? Decide entre o modelo novo e o antigo. */
-export async function hasConfiguredSchedule(clinicId: string, therapistId: string): Promise<boolean> {
+/**
+ * Este **dia** foi configurado? Decide entre o modelo novo e o antigo.
+ *
+ * Contava janelas do terapeuta, não do dia: criar uma janela de sábado apagava
+ * a segunda inteira de quem tinha a agenda antiga — em silêncio, e com o aviso
+ * da tela sumindo exatamente quando o risco começava (QA de 25/09, N6).
+ *
+ * Dia a dia, a migração é gradual: o que você configurou passa a valer, o resto
+ * continua como estava.
+ */
+export async function hasConfiguredSchedule(
+  clinicId: string,
+  therapistId: string,
+  dateStr?: string
+): Promise<boolean> {
   const n = await (prisma as any).scheduleWindow.count({
-    where: { clinicId, therapistId, isActive: true },
+    where: {
+      clinicId,
+      therapistId,
+      isActive: true,
+      ...(dateStr ? { dayOfWeek: diaDaSemana(dateStr) } : {}),
+    },
   });
   return n > 0;
 }

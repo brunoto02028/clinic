@@ -145,9 +145,17 @@ export async function POST(request: NextRequest) {
     // daqui a três meses ninguém sabe quem liberou nem por quê — e a pergunta
     // aparece justamente quando a conta não fecha.
     if (courtesySession || waiveCharge) {
+      // `userEmail: ""` fixo tornava a auditoria menos útil justamente onde
+      // ela mais importa: "quem liberou isto?" com um id opaco obriga outra
+      // consulta, três meses depois (QA de 25/09, N9).
+      const autor = await prisma.user.findUnique({
+        where: { id: userId! },
+        select: { email: true },
+      });
+
       await logAudit({
         userId: userId!,
-        userEmail: "",
+        userEmail: autor?.email ?? "",
         userRole: String(userRole),
         action: courtesySession ? "APPOINTMENT_COURTESY_SESSION" : "APPOINTMENT_CHARGE_WAIVED",
         entity: "Appointment",

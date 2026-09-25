@@ -53,15 +53,28 @@ export async function POST(req: NextRequest) {
           // **nossa** rota de checkout escreveu, e o evento já veio assinado;
           // ainda assim, confirmar por id solto seria uma chave mestra
           // (QA de 25/09, falha 7).
-          const metaPatientId = session.metadata?.patientId;
-          const r = await prisma.appointment.updateMany({
-            where: {
-              id: appointmentId,
-              status: "PENDING",
-              ...(metaPatientId ? { patientId: metaPatientId } : {}),
-            },
-            data: { status: "CONFIRMED" },
+          // A guarda não pode ser condicional: sem `patientId` ela sumia, e a
+          // rota de pagamento que a **web** usa não escreve esse campo — a
+          // proteção existia só no caminho do app (QA de 25/09, N2). Quando o
+          // metadata não traz o paciente, ele é lido da própria consulta e
+          // comparado com o dono da sessão de pagamento.
+          const metaPatientId = session.metadata?.patientId || session.metadata?.userId || null;
+          const alvo = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            select: { patientId: true, status: true },
           });
+
+          const podeConfirmar =
+            !!alvo &&
+            alvo.status === "PENDING" &&
+            (!metaPatientId || alvo.patientId === metaPatientId);
+
+          const r = podeConfirmar
+            ? await prisma.appointment.updateMany({
+                where: { id: appointmentId, status: "PENDING", patientId: alvo!.patientId },
+                data: { status: "CONFIRMED" },
+              })
+            : { count: 0 };
           console.log(
             `[stripe-webhook] Appointment ${appointmentId}: ${r.count === 1 ? "confirmed" : "already handled"}`
           );

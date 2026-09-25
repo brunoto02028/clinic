@@ -17,17 +17,22 @@ jest.mock("@/lib/db", () => ({
 }));
 
 import { prisma } from "@/lib/db";
+import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 import { slotsForDate, windowsForDate, overlaps } from "@/lib/schedule";
 
 const janelas = (prisma as any).scheduleWindow;
 const excecoes = (prisma as any).scheduleException;
 const consultas = (prisma as any).appointment;
 
-// Uma quinta-feira qualquer, longe do fuso de virada.
-const QUINTA = new Date(2026, 9, 1, 12, 0, 0);
+// Uma quinta-feira, escrita — não um `Date`. A agenda não lê o relógio do
+// servidor em lugar nenhum desde o achado N1: em produção ele está em UTC, e
+// lá a segunda devolvia as janelas de domingo.
+const QUINTA = "2026-10-01";
 
+// O instante que corresponde àquela hora **na clínica**, para o teste valer em
+// qualquer fuso de máquina.
 const consulta = (hora: number, minuto = 0, duracao = 60) => ({
-  dateTime: new Date(2026, 9, 1, hora, minuto),
+  dateTime: zonedTimeToUtc(QUINTA, `${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}`),
   duration: duracao,
 });
 
@@ -158,15 +163,23 @@ describe("windowsForDate — a exceção", () => {
     expect(await windowsForDate("c", "t", QUINTA)).toEqual([]);
   });
 
-  it("a data consultada é o dia local, não o UTC", async () => {
-    // `toISOString()` numa meia-noite de Londres no horário de verão é 23:00
-    // UTC do dia anterior, e a exceção fechava o dia errado — um defeito que
-    // some sozinho no inverno (QA de 25/09, falha 3).
-    const meiaNoiteDeVerao = new Date(2026, 6, 15, 0, 0, 0);
+  it("a data e o dia da semana saem da data escrita, não do relógio do servidor", async () => {
+    // A primeira correção trocou `toISOString()` por leitura local — e local é
+    // o fuso **do servidor**, que em produção é UTC. A segunda passava a
+    // devolver as janelas de domingo (QA de 25/09, N1).
     janelas.findMany.mockResolvedValue([]);
 
-    await windowsForDate("c", "t", meiaNoiteDeVerao);
+    await windowsForDate("c", "t", "2026-07-15"); // uma quarta-feira
 
     expect(excecoes.findMany.mock.calls[0][0].where.date).toBe("2026-07-15");
+    expect(janelas.findMany.mock.calls[0][0].where.dayOfWeek).toBe(3);
+  });
+
+  it("o dia da semana não muda com o fuso da máquina", async () => {
+    janelas.findMany.mockResolvedValue([]);
+
+    // Domingo, e continua domingo em qualquer lugar do mundo.
+    await windowsForDate("c", "t", "2026-10-04");
+    expect(janelas.findMany.mock.calls[0][0].where.dayOfWeek).toBe(0);
   });
 });

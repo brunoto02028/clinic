@@ -12,7 +12,7 @@
 
 jest.mock("@/lib/db", () => ({
   prisma: {
-    user: { findFirst: jest.fn() },
+    user: { findFirst: jest.fn(), findUnique: jest.fn() },
     clinic: { findUnique: jest.fn() },
     patientPackage: { findFirst: jest.fn() },
     appointment: { create: jest.fn() },
@@ -56,6 +56,10 @@ beforeEach(() => {
     clinicId: "clinicaA", userRole: "ADMIN", userId: "admin1",
   });
   users.findFirst.mockResolvedValue({ id: "p1" });
+  // A auditoria passou a gravar o e-mail de quem autorizou, em vez de string
+  // vazia: "quem liberou isto?" com um id opaco obriga outra consulta meses
+  // depois (QA de 25/09, N9).
+  users.findUnique.mockResolvedValue({ email: "admin@x.test" });
   pacotes.findFirst.mockResolvedValue({ id: "pac1" });
   consultas.create.mockImplementation(async ({ data }: any) => ({
     id: "a1", ...data, patient: { id: "p1", email: "p@x.test", firstName: "P", lastName: "T" },
@@ -86,6 +90,7 @@ describe("POST /api/admin/appointments — a clínica anula", () => {
     const auditoria = (logAudit as jest.Mock).mock.calls[0][0];
     expect(auditoria.action).toBe("APPOINTMENT_COURTESY_SESSION");
     expect(auditoria.userId).toBe("admin1");
+    expect(auditoria.userEmail).toBe("admin@x.test");
     expect(auditoria.metadata.reason).toBe("remarcação por falta minha");
 
     expect(syncSessionsUsed).toHaveBeenCalledWith("pac1");

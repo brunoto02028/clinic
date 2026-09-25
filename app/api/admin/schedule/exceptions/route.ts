@@ -49,6 +49,16 @@ export async function POST(req: NextRequest) {
     // folga de uma pessoa, e vence a da clínica na hora de resolver o dia.
     const therapistId = body?.therapistId || null;
 
+    // A rota irmã das janelas já validava o dono; esta não, e aceitava o id de
+    // um terapeuta de outra clínica (QA de 25/09, N7).
+    if (therapistId) {
+      const dono = await prisma.user.findFirst({
+        where: { id: therapistId, clinicId },
+        select: { id: true },
+      });
+      if (!dono) return NextResponse.json({ error: "Therapist not found" }, { status: 404 });
+    }
+
     const dados = {
       closed,
       startTime: closed ? null : body.startTime || null,

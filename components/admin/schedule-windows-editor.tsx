@@ -33,6 +33,7 @@ interface Window {
 
 interface Exception {
   id: string;
+  therapistId: string | null;
   date: string;
   closed: boolean;
   startTime: string | null;
@@ -141,7 +142,10 @@ export default function ScheduleWindowsEditor() {
       const r = await fetch("/api/admin/schedule/exceptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(excecao),
+        // Sem isto, fechar "a agenda do ther-a" fechava a clínica inteira: o
+        // corpo ia sem terapeuta e a rota gravava a exceção da clínica toda
+        // (QA de 25/09, N3).
+        body: JSON.stringify({ ...excecao, therapistId: terapeutaId || undefined }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error((isPt && d.errorPt) || d.error || "failed");
@@ -347,6 +351,13 @@ export default function ScheduleWindowsEditor() {
             {isPt
               ? "Feriado, férias, ou um dia mais curto. Fechar apaga as janelas do dia; encurtar apara as janelas em vez de apagá-las."
               : "A holiday, time off, or an early finish. Closing removes the day's windows; shortening trims them instead of deleting them."}
+            {terapeutaId
+              ? isPt
+                ? " Vale só para a agenda selecionada acima."
+                : " Applies only to the diary selected above."
+              : isPt
+                ? " Sem escolher uma agenda acima, vale para a clínica toda."
+                : " With no diary picked above, it applies to the whole clinic."}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -411,7 +422,18 @@ export default function ScheduleWindowsEditor() {
                   <span className="text-muted-foreground">
                     {e.closed
                       ? isPt ? "fechado" : "closed"
-                      : `${e.startTime || "—"}–${e.endTime || "—"}`}
+                      : e.startTime && e.endTime
+                        ? `${e.startTime}–${e.endTime}`
+                        : e.endTime
+                          ? isPt ? `até ${e.endTime}` : `until ${e.endTime}`
+                          : isPt ? `a partir de ${e.startTime}` : `from ${e.startTime}`}
+                    {" · "}
+                    {/* De quem é a linha. Sem isto, o "Remover" apagava a folga
+                        de outro terapeuta sem nenhum aviso (QA de 25/09, N3). */}
+                    {e.therapistId
+                      ? terapeutas.find((t) => t.id === e.therapistId)?.name
+                        ?? (isPt ? "um terapeuta" : "a therapist")
+                      : isPt ? "clínica toda" : "whole clinic"}
                     {e.note ? ` · ${e.note}` : ""}
                   </span>
                   <button

@@ -68,11 +68,13 @@ export async function GET(request: NextRequest) {
     // janela nenhuma continua regido pelo modelo antigo, logo abaixo — é
     // fallback, não substituição: ninguém acorda sem agenda porque o modelo
     // mudou (atividade 080, T-5).
-    if (await hasConfiguredSchedule(clinicIdForSchedule, targetTherapistId)) {
+    if (await hasConfiguredSchedule(clinicIdForSchedule, targetTherapistId, dateStr)) {
       const pedido = request.nextUrl.searchParams.get("kind");
       const kind = pedido === "CONSULTATION" || pedido === "TREATMENT" ? pedido : undefined;
 
-      const slots = await slotsForDate(clinicIdForSchedule, targetTherapistId, dayStart, {
+      // A data **escrita**, como veio da tela. Passar um `Date` fazia a agenda
+      // ler o fuso do servidor, que em produção é UTC (QA de 25/09, N1).
+      const slots = await slotsForDate(clinicIdForSchedule, targetTherapistId, dateStr, {
         kind,
         nowMinutes: dateStr === getZonedDateString() ? getZonedMinutesOfDay() : null,
       });

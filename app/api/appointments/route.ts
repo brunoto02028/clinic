@@ -15,6 +15,7 @@ import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
 import { slotsForDate, hasConfiguredSchedule } from "@/lib/schedule";
+import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
@@ -222,10 +223,17 @@ export async function POST(request: NextRequest) {
     // quinta pessoa num horário de quatro, ou um domingo às 03:00. A clínica
     // continua podendo marcar fora — ela é quem abre exceção, e sabe que está
     // abrindo (QA de 25/09).
-    if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId))) {
-      const quando = new Date(dateTime);
-      const hora = `${String(quando.getHours()).padStart(2, "0")}:${String(quando.getMinutes()).padStart(2, "0")}`;
-      const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, quando, {
+    // Data e hora **da clínica**, derivadas do instante que chegou. Ler
+      // `getHours()` daria a hora do servidor, e em produção ele está em UTC:
+      // o horário legítimo era recusado e um fora da janela, aceito
+      // (QA de 25/09, N1).
+    const quando = new Date(dateTime);
+    const diaDaClinica = getZonedDateString(quando);
+    const minutosDaClinica = getZonedMinutesOfDay(quando);
+    const hora = `${String(Math.floor(minutosDaClinica / 60)).padStart(2, "0")}:${String(minutosDaClinica % 60).padStart(2, "0")}`;
+
+    if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId, diaDaClinica))) {
+      const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, diaDaClinica, {
         kind: opcao.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT",
       });
 
@@ -266,12 +274,17 @@ export async function POST(request: NextRequest) {
         price: resolvedPrice,
         // A sessão do pacote não gera cobrança: ela já foi paga quando o
         // paciente comprou o pacote. E `paymentMethod` do corpo não decide
-        // nada quando o servidor exige pagamento.
-        paymentMethod: opcao?.kind === "PACKAGE_SESSION"
-          ? "IN_PERSON"
-          : opcao?.requiresPayment
-            ? "ONLINE"
-            : resolvedPaymentMethod,
+        // nada quando quem marca é o paciente — nem para exigir pagamento,
+        // nem para dispensá-lo. A sessão faturada é `IN_PERSON` porque não há
+        // Checkout nenhum para ela: nascia `ONLINE` e `PENDING`, esperando um
+        // webhook que nunca vinha (QA de 25/09, N5).
+        paymentMethod: opcao
+          ? opcao.kind === "PACKAGE_SESSION"
+            ? "IN_PERSON"
+            : opcao.requiresPayment
+              ? "ONLINE"
+              : "IN_PERSON"
+          : resolvedPaymentMethod,
         kind: opcao ? opcao.kind : "CLINIC_BOOKED",
         // O vínculo é o que permite devolver a sessão no cancelamento. Um
         // contador solto não sabe qual consulta gastou qual sessão.
@@ -280,13 +293,17 @@ export async function POST(request: NextRequest) {
         // muda isso: `paymentMethod: "IN_PERSON"` mandado pelo paciente numa
         // primeira consulta confirmava o horário sem cobrança nenhuma
         // (QA de 25/09, falha 8). Quem confirma é o webhook.
-        status: opcao?.requiresPayment
-          ? "PENDING"
-          : opcao?.kind === "PACKAGE_SESSION"
+        // Quem marca pelo app: pendente só quando há pagamento a fazer. A
+        // sessão extra faturada fica confirmada — a cobrança entra na fatura,
+        // e deixá-la pendente à espera de um webhook inexistente era um
+        // horário preso para sempre.
+        status: opcao
+          ? opcao.requiresPayment
+            ? "PENDING"
+            : "CONFIRMED"
+          : resolvedPaymentMethod === "IN_PERSON"
             ? "CONFIRMED"
-            : resolvedPaymentMethod === "IN_PERSON"
-              ? "CONFIRMED"
-              : "PENDING",
+            : "PENDING",
       },
       include: {
         patient: {
