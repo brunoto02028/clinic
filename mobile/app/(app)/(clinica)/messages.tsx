@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, Pressable, Alert, Image, Linking } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Card, Input, Button, Spinner } from "@/components/ui";
@@ -75,6 +75,7 @@ function MessagesScreen() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
   const [anexo, setAnexo] = useState<OutgoingAttachment | null>(null);
+  const caminho = usePathname();
   const scrollRef = useRef<ScrollView>(null);
 
   const { data: profile, error } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
@@ -123,7 +124,7 @@ function MessagesScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissao.granted) {
-      explainDeniedPermission(permissao, origem === "camera" ? "camera" : "library", lang);
+      explainDeniedPermission(permissao, origem === "camera" ? "camera" : "library", lang, caminho);
       return;
     }
 

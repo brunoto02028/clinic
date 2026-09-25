@@ -7,6 +7,7 @@ import { Avatar, Text } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { explainDeniedPermission } from "@/lib/ask-permission";
+import { usePathname } from "expo-router";
 import { fetchProfile } from "@/api/profile";
 import { uploadProfilePhoto, removeProfilePhoto } from "@/api/profile-photo";
 
@@ -25,6 +26,7 @@ export function ProfilePhotoPicker({ size = 80 }: { size?: number }) {
   const lang = useLang();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const caminho = usePathname();
 
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
 
@@ -43,7 +45,7 @@ export function ProfilePhotoPicker({ size = 80 }: { size?: number }) {
       // "Permita o acesso para continuar" não dizia ONDE, e o iOS só pergunta
       // uma vez: depois de negada, todo toque voltava para o mesmo aviso sem
       // saída.
-      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang);
+      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang, caminho);
       return;
     }
 

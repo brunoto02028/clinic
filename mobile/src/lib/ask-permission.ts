@@ -1,5 +1,6 @@
 import { Alert, Linking } from "react-native";
 import { t as tr, type Lang } from "@/lib/i18n";
+import { lembrarOndeEstava } from "@/lib/return-to";
 
 /**
  * Pedir permissão de câmera ou galeria — e dizer o que fazer quando ela já foi
@@ -24,7 +25,15 @@ export interface PermissionLike {
 export function explainDeniedPermission(
   permission: PermissionLike,
   kind: "camera" | "library",
-  lang: Lang
+  lang: Lang,
+  /**
+   * A tela atual, para voltar nela depois.
+   *
+   * Mudar uma permissão nos Ajustes faz o iOS **matar e reiniciar o app**, e a
+   * pessoa reabre na tela inicial em vez de onde estava. Quem quem saiu de
+   * "Mensagens" para permitir a câmera espera voltar em "Mensagens".
+   */
+  currentPath?: string
 ): void {
   const what =
     kind === "camera"
@@ -54,7 +63,10 @@ export function explainDeniedPermission(
       { text: tr(lang, { en: "Not now", pt: "Agora não" }), style: "cancel" },
       {
         text: tr(lang, { en: "Open Settings", pt: "Abrir Ajustes" }),
-        onPress: () => void Linking.openSettings(),
+        onPress: () => {
+          if (currentPath) void lembrarOndeEstava(currentPath);
+          void Linking.openSettings();
+        },
       },
     ],
     { cancelable: true }

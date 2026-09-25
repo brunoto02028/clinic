@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FlatList, Linking, Pressable, View, Platform, Alert } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, usePathname} from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -33,6 +33,7 @@ async function uploadDocument(uri: string, fileName: string, mimeType: string) {
 
 function DocumentsScreen() {
   const lang = useLang();
+  const caminho = usePathname();
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
@@ -71,7 +72,7 @@ function DocumentsScreen() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang);
+      explainDeniedPermission(permission, source === "camera" ? "camera" : "library", lang, caminho);
       return;
     }
 

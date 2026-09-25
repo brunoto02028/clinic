@@ -11,6 +11,8 @@ import { wireAppLock } from "@/lib/app-lock";
 import { PrivacyCover } from "@/components/PrivacyCover";
 import { LockOverlay } from "@/components/LockOverlay";
 import { applyUpdateOnLaunch } from "@/lib/app-updates";
+import { consumirOndeEstava } from "@/lib/return-to";
+import { router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -54,6 +56,16 @@ export default function RootLayout() {
   // concluir que a correção não foi feita — custou horas em 24/09/2026.
   useEffect(() => {
     void applyUpdateOnLaunch();
+  }, []);
+
+  // Quem saiu para os Ajustes volta na tela de onde saiu. O iOS reinicia o app
+  // ao mudar uma permissão, e sem isto a pessoa reabre no início — longe do
+  // que estava fazendo. Vale por cinco minutos e serve uma vez só, então uma
+  // abertura normal nunca cai no meio de nada.
+  useEffect(() => {
+    void consumirOndeEstava().then((rota) => {
+      if (rota) router.replace(rota as never);
+    });
   }, []);
 
   // Traduz "o app voltou ao primeiro plano" em "revalide o que está na tela".
