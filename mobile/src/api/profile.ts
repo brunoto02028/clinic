@@ -14,6 +14,8 @@ export interface PatientProfile {
   emergencyContactRelation?: string | null;
   preferredLocale?: string | null;
   communicationPreference?: string | null;
+  /** Aviso no celular. O paciente desliga aqui em vez de desinstalar. */
+  pushEnabled?: boolean;
 }
 
 export async function fetchProfile(): Promise<PatientProfile> {

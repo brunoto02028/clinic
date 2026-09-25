@@ -52,6 +52,11 @@ export default function NotificationsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [schedule, setSchedule] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
+  // O aviso no celular (077). Desligado por omissão, e com uma etapa de prévia
+  // antes de sair: push não tem desfazer.
+  const [pushNotify, setPushNotify] = useState(false);
+  const [preview, setPreview] = useState<{ patients: number; devices: number } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -93,6 +98,33 @@ export default function NotificationsPage() {
     });
   };
 
+  /** A prévia: o texto exato e quantos aparelhos recebem de verdade. */
+  const abrirPreview = async () => {
+    if (!title.trim() || !content.trim()) return;
+    if (audience === "selected" && selectedIds.size === 0) {
+      toast({ title: "Select at least one patient", variant: "destructive" });
+      return;
+    }
+    setLoadingPreview(true);
+    try {
+      const r = await fetch("/api/admin/broadcasts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audience,
+          patientIds: audience === "selected" ? Array.from(selectedIds) : [],
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed");
+      setPreview({ patients: d.patients, devices: d.devices });
+    } catch (e: any) {
+      toast({ title: "Could not load the preview", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const send = async () => {
     if (!title.trim() || !content.trim()) return;
     if (audience === "selected" && selectedIds.size === 0) {
@@ -114,6 +146,7 @@ export default function NotificationsPage() {
           audience,
           patientIds: audience === "selected" ? Array.from(selectedIds) : [],
           scheduledFor: schedule && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+          pushNotify,
         }),
       });
       const data = await r.json();
@@ -122,13 +155,16 @@ export default function NotificationsPage() {
         title: data.scheduled ? "Notification scheduled!" : "Notification sent!",
         description: data.scheduled
           ? `Will be sent on ${new Date(data.scheduledFor).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}.`
-          : `Delivered to ${data.recipientCount} patient${data.recipientCount > 1 ? "s" : ""}.`,
+          : `Delivered to ${data.recipientCount} patient${data.recipientCount > 1 ? "s" : ""}.` +
+            (data.push ? ` Phone: ${data.push.sent} device${data.push.sent === 1 ? "" : "s"}.` : ""),
       });
       setTitle("");
       setContent("");
       setSelectedIds(new Set());
       setSchedule(false);
       setScheduledFor("");
+      setPreview(null);
+      setPushNotify(false);
       // refresh history
       fetch("/api/admin/broadcasts")
         .then((r) => (r.ok ? r.json() : []))
@@ -280,20 +316,69 @@ export default function NotificationsPage() {
             )}
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={send}
-              disabled={sending || !title.trim() || !content.trim()}
-              className="gap-2"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : schedule ? <CalendarClock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              {schedule
-                ? "Schedule notification"
-                : audience === "all"
-                ? `Send to all (${patients.length})`
-                : `Send to ${selectedIds.size} patient${selectedIds.size !== 1 ? "s" : ""}`}
-            </Button>
-          </div>
+          {/* O push é opt-in e some quando o envio é agendado: agendar push
+              tiraria a chance de cancelar, que é a única proteção que existe. */}
+          {!schedule && (
+            <label className="flex items-start gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={pushNotify}
+                onCheckedChange={(v) => { setPushNotify(!!v); setPreview(null); }}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Also notify on their phone</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  A push notification for whoever has the app. It shows on the lock screen — write it
+                  as something anyone nearby could read.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {preview ? (
+            /* A prévia. Nada sai antes desta tela: push não tem desfazer. */
+            <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">This is what goes out:</p>
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-sm whitespace-pre-wrap mt-1">{content}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                In the app for <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
+                {pushNotify ? (
+                  preview.devices > 0 ? (
+                    <> · on the phone of <strong>{preview.devices}</strong> device{preview.devices === 1 ? "" : "s"}</>
+                  ) : (
+                    <> · <strong>no phone will ring</strong>: nobody has the app with notifications on yet</>
+                  )
+                ) : null}
+              </p>
+              <div className="flex gap-2">
+                <Button onClick={send} disabled={sending} className="gap-2">
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Send now
+                </Button>
+                <Button variant="outline" onClick={() => setPreview(null)} disabled={sending}>
+                  Back
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                onClick={schedule ? send : abrirPreview}
+                disabled={sending || loadingPreview || !title.trim() || !content.trim()}
+                className="gap-2"
+              >
+                {sending || loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : schedule ? <CalendarClock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                {schedule
+                  ? "Schedule notification"
+                  : audience === "all"
+                  ? `Review and send to all (${patients.length})`
+                  : `Review and send to ${selectedIds.size} patient${selectedIds.size !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
+          )}
           <p className="text-[10px] text-muted-foreground">
             {relabel("Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.")}
           </p>

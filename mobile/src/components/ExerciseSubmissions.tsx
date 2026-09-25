@@ -8,6 +8,7 @@ import { Text, Card, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { explainDeniedPermission } from "@/lib/ask-permission";
+import { SubmissionVideo } from "@/components/SubmissionVideo";
 import {
   fetchSubmissions,
   uploadSubmission,
@@ -26,9 +27,10 @@ import {
  * tempo combinado, então a pessoa vê o limite acontecer em vez de descobrir,
  * depois do esforço, que o arquivo não serve.
  *
- * O app ainda não **toca** vídeo: isso depende de uma biblioteca nativa e de um
- * build. Não faz falta no ciclo — quem precisa assistir é o terapeuta, no
- * painel. O que o paciente precisa ver é que chegou e o que responderam.
+ * **E dá para rever o que se mandou**: quem acabou de gravar o próprio
+ * exercício precisa conferir se pegou o movimento inteiro, e depois rever a
+ * execução ao lado da correção que o terapeuta escreveu. O arquivo é privado,
+ * então o player leva a credencial — ver `SubmissionVideo`.
  */
 export function ExerciseSubmissions({ prescriptionId }: { prescriptionId: string }) {
   const t = useTheme();
@@ -36,6 +38,9 @@ export function ExerciseSubmissions({ prescriptionId }: { prescriptionId: string
   const qc = useQueryClient();
   const caminho = usePathname();
   const [enviando, setEnviando] = useState(false);
+  // Um player por vez. Vários montados na mesma tela disputam áudio e memória,
+  // e ninguém assiste dois vídeos ao mesmo tempo.
+  const [abertoId, setAbertoId] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["exercise-submissions", prescriptionId],
@@ -226,6 +231,29 @@ export function ExerciseSubmissions({ prescriptionId }: { prescriptionId: string
                     </Pressable>
                   )}
                 </View>
+
+                {abertoId === s.id ? (
+                  <SubmissionVideo id={s.id} kind={s.kind} />
+                ) : (
+                  <Pressable
+                    onPress={() => setAbertoId(s.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr(lang, { en: "Watch", pt: "Assistir" })}
+                    testID="exercise-submission-play"
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}
+                  >
+                    <Ionicons
+                      name={s.kind === "PHOTO" ? "image-outline" : "play-circle-outline"}
+                      size={18}
+                      color={t.colors.health}
+                    />
+                    <Text variant="caption" color={t.colors.health}>
+                      {s.kind === "PHOTO"
+                        ? tr(lang, { en: "See the photo", pt: "Ver a foto" })
+                        : tr(lang, { en: "Watch what you sent", pt: "Assistir o que você mandou" })}
+                    </Text>
+                  </Pressable>
+                )}
 
                 {s.reviewedAt ? (
                   s.reviewNote ? (

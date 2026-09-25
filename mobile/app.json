@@ -61,7 +61,8 @@
           "photosPermission": "BPR needs access to your photos so you can attach an existing document or report to your clinical record.",
           "cameraPermission": "BPR uses the camera so you can photograph a document, a report or a scan and send it to your clinic."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "extra": {
       "router": {},

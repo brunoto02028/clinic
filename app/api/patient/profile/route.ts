@@ -23,7 +23,7 @@ export async function GET() {
       select: {
         id: true, firstName: true, lastName: true, email: true,
         phone: true, dateOfBirth: true, address: true,
-        preferredLocale: true, communicationPreference: true,
+        preferredLocale: true, communicationPreference: true, pushEnabled: true,
         emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
         profileImageUrl: true,
       } as any,
@@ -59,7 +59,9 @@ export async function PATCH(req: NextRequest) {
     // Save, with no error, because the field never reached this list. A patient
     // correcting a misspelt surname is doing ordinary self-service, not
     // something that needs the clinic on the phone.
-    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'dateOfBirth', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+    // `pushEnabled`: a chave que o paciente tem para dizer "chega" sem
+    // precisar desinstalar o app (077, T-7).
+    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'pushEnabled', 'dateOfBirth', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
     const data: Record<string, any> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) data[field] = body[field];

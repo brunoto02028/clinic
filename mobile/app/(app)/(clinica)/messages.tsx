@@ -17,6 +17,7 @@ import {
   type OutgoingAttachment,
 } from "@/api/messages";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { explainDeniedPermission } from "@/lib/ask-permission";
 import { t as tr } from "@/lib/i18n";
 import { fetchProfile } from "@/api/profile";
@@ -115,8 +116,7 @@ function MessagesScreen() {
    * próprio, preso ao exercício, senão em duas semanas a conversa vira uma
    * pilha de vídeos sem contexto (atividade 076).
    *
-   * PDF depende do `expo-document-picker`, que é dependência nativa e exige
-   * build — fica para o próximo.
+   * PDF vai logo abaixo, em `anexarArquivo`.
    */
   const anexarImagem = async (origem: "camera" | "galeria") => {
     const permissao =
@@ -159,6 +159,40 @@ function MessagesScreen() {
     });
   };
 
+  /**
+   * Anexar um PDF.
+   *
+   * É o caso real de quem chega com exame, laudo ou receita de outro serviço —
+   * e o servidor já aceitava desde sempre. O seletor é do próprio sistema, e
+   * só oferece PDF: uma lista que mostra tudo e depois recusa quase tudo é
+   * pior que uma lista curta.
+   */
+  const anexarArquivo = async () => {
+    const r = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      multiple: false,
+      // Sem a cópia para o cache, o `uri` do iOS aponta para um arquivo que o
+      // app não tem mais permissão de ler na hora do upload.
+      copyToCacheDirectory: true,
+    });
+    if (r.canceled || !r.assets?.[0]) return;
+
+    const a = r.assets[0];
+    if (a.size != null && a.size > ATTACHMENT_MAX_BYTES) {
+      Alert.alert(
+        tr(lang, { en: "File too large", pt: "Arquivo muito grande" }),
+        tr(lang, { en: "The limit is 25 MB.", pt: "O limite é 25 MB." })
+      );
+      return;
+    }
+
+    setAnexo({
+      uri: a.uri,
+      name: a.name || `documento-${Date.now()}.pdf`,
+      mimeType: a.mimeType || "application/pdf",
+    });
+  };
+
   const escolherAnexo = () => {
     Alert.alert(
       tr(lang, { en: "Attach", pt: "Anexar" }),
@@ -166,6 +200,7 @@ function MessagesScreen() {
       [
         { text: tr(lang, { en: "Take photo", pt: "Tirar foto" }), onPress: () => void anexarImagem("camera") },
         { text: tr(lang, { en: "Choose photo", pt: "Escolher foto" }), onPress: () => void anexarImagem("galeria") },
+        { text: tr(lang, { en: "Choose a PDF", pt: "Escolher um PDF" }), onPress: () => void anexarArquivo() },
         // Vídeo não entra na conversa — ele tem lugar próprio, preso ao
         // exercício. Sem esta linha, quem quisesse mandar um abria o menu, não
         // achava a opção, e não recebia pista nenhuma de onde ela está.
@@ -344,7 +379,15 @@ function MessagesScreen() {
               entre escolher e enviar, e ninguém confere o que anexou. */}
           {anexo && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderRadius: 12, backgroundColor: t.colors.surfaceMuted }}>
-              <Image source={{ uri: anexo.uri }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+              {/* PDF não tem miniatura: desenhado como imagem, virava um
+                  retângulo vazio e parecia anexo quebrado. */}
+              {anexo.mimeType.startsWith("image/") ? (
+                <Image source={{ uri: anexo.uri }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+              ) : (
+                <View style={{ width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: t.colors.border }}>
+                  <Ionicons name="document-text-outline" size={20} color={t.colors.textSecondary} />
+                </View>
+              )}
               <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1 }} numberOfLines={1}>
                 {anexo.name}
               </Text>
@@ -361,8 +404,8 @@ function MessagesScreen() {
           )}
 
           <SafeAreaView edges={["bottom"]} style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
-            {/* Anexar. Imagem por enquanto: PDF depende de uma dependência
-                nativa e do próximo build. */}
+            {/* Anexar: foto ou PDF. Vídeo não — ele tem lugar próprio, preso
+                ao exercício. */}
             <Pressable
               onPress={escolherAnexo}
               disabled={send.isPending}

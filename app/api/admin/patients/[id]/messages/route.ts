@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { notifyPatient } from "@/lib/notify-patient";
+import { pushNovaMensagem } from "@/lib/push-notify";
 import { saveChatAttachment } from "@/lib/chat-attachment";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +139,11 @@ export async function POST(
     } catch (e) {
       console.error("[messages] Failed to notify patient:", e);
     }
+
+    // E o toque no ombro de quem tem o app (077, T-5). Vai aqui, e não dentro
+    // de `notifyPatient`: aquele caminho é o dos crons de lembrete, e push de
+    // robô é exatamente o que ficou proibido em 17/09.
+    await pushNovaMensagem(patient.id);
   }
 
   return NextResponse.json(message, { status: 201 });

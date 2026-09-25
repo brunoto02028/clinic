@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 import { logAudit } from "@/lib/system-logger";
+import { pushRespostaAoVideo } from "@/lib/push-notify";
 
 /**
  * A correção do terapeuta sobre um envio.
@@ -57,6 +58,11 @@ export async function POST(
     description: "Therapist reviewed a patient's exercise submission",
     metadata: { patientId: submission.patientId, hasNote: !!note },
   }).catch(() => {});
+
+  // O toque no ombro. Uma pessoa da clínica acabou de assistir e responder —
+  // o push só conta isso. Falhar aqui não desfaz a revisão, que já está no
+  // banco (`.catch` dentro de `pushRespostaAoVideo`).
+  await pushRespostaAoVideo(submission.patientId);
 
   return NextResponse.json({ submission: atualizado });
 }

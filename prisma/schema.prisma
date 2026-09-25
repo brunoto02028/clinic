@@ -757,6 +757,10 @@ model User {
   socialMediaConsentAt           DateTime?
   preferredLocale                String                     @default("en-GB") // en-GB or pt-BR
   communicationPreference        String                     @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
+  // Aviso no celular. Ligado por padrao: quem instalou o app e deu permissao
+  // ao sistema ja disse sim uma vez. A chave existe para o "nao" depois disso
+  // ter para onde ir que nao seja desinstalar (077, T-7).
+  pushEnabled                    Boolean                    @default(true)
   telegramChatId                 String? // Telegram chat_id for bot messages
   consentLogs                    ConsentLog[]               @relation("PatientConsentLogs")
   screeningEditApprovals         MedicalScreening[]         @relation("ScreeningEditApprover")

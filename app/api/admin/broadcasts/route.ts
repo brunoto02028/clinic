@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { sendPushToUsers, countPushDevices } from "@/lib/push-send";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getActor, requireStaff, tenantWhere, accessErrorResponse, AccessError } from "@/lib/tenant-access";
 
@@ -61,6 +62,30 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// GET ?devices=1 — quantos aparelhos receberiam agora. É o número que a prévia
+// mostra, e ele nunca é igual ao de pacientes: quem não instalou o app, ou
+// desligou o aviso, não está aqui. Mesma regra de tenant do resto do arquivo.
+export async function PATCH(req: NextRequest) {
+  try {
+    const actor = await getActor(req);
+    if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    requireStaff(actor);
+    const { clinicId } = tenantWhere(actor);
+
+    const { audience = "all", patientIds = [] } = await req.json().catch(() => ({}));
+    const where: any = { role: "PATIENT", clinicId };
+    if (audience === "selected") where.id = { in: patientIds };
+
+    const patients = await prisma.user.findMany({ where, select: { id: true } });
+    const devices = await countPushDevices(patients.map((p) => p.id));
+
+    return NextResponse.json({ patients: patients.length, devices });
+  } catch (err) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
+    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
+  }
+}
+
 // POST — send a broadcast to all or selected patients of the CALLER'S tenant only.
 export async function POST(req: NextRequest) {
   try {
@@ -69,7 +94,12 @@ export async function POST(req: NextRequest) {
     requireStaff(actor);
     const { clinicId } = tenantWhere(actor);
 
-    const { title, content, audience = "all", patientIds = [], notify = true, scheduledFor } = await req.json();
+    const {
+      title, content, audience = "all", patientIds = [], notify = true, scheduledFor,
+      // O aviso no celular. Desligado por omissão: push não tem desfazer, e o
+      // caminho silencioso tem que ser o mais conservador.
+      pushNotify = false,
+    } = await req.json();
     if (!title?.trim() || !content?.trim()) {
       return NextResponse.json({ error: "title and content required" }, { status: 400 });
     }
@@ -154,8 +184,27 @@ export async function POST(req: NextRequest) {
       ).catch(() => {});
     }
 
+    // O toque no ombro de quem tem o app. Vai **depois** das mensagens: a
+    // mensagem é o registro, o push é só o aviso de que ela existe — e quem
+    // estava sem celular, sem app ou com o aviso desligado encontra tudo
+    // quando abrir (077, T-4).
+    let push: { sent: number; failed: number; deactivated: number; error?: string } | null = null;
+    if (pushNotify) {
+      push = await sendPushToUsers(
+        patients.map((p) => p.id),
+        {
+          title: title.trim(),
+          // O corpo é o texto do aviso, cortado. A notificação aparece na tela
+          // bloqueada, então aqui não entra nada além do que a clínica escolheu
+          // escrever para todo mundo ver.
+          body: content.trim().slice(0, 140),
+          url: "/(app)/(clinica)/messages",
+        }
+      );
+    }
+
     return NextResponse.json(
-      { id: broadcast.id, recipientCount: patients.length },
+      { id: broadcast.id, recipientCount: patients.length, push },
       { status: 201 }
     );
   } catch (err) {
