@@ -1,4 +1,5 @@
 import { getToken } from 'next-auth/jwt';
+import { gemeoNoAdmin } from '@/lib/dashboard-admin-twins';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
@@ -103,6 +104,10 @@ const publicRoutes = [
   '/pt/articles', // PT-language article URLs (activity 12) — public, server-rendered for SEO
   '/api/service-pages',
   '/api/version',
+  // A porta para o app. Ela precisa abrir para quem clicou num e-mail e não
+  // está logado no navegador — se pedisse sessão, o paciente cairia no login
+  // em vez de no app, que é exatamente o desvio que ela existe para evitar.
+  '/abrir',
   // Os termos são públicos de propósito: termos que só quem já entrou consegue
   // ler são termos que ninguém lê antes de concordar. Estar em
   // `MOBILE_API_PREFIXES` não bastava — aquilo diz que a rota **aceita** o
@@ -492,9 +497,12 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL(target, request.url));
         }
       }
-      // Default: /dashboard/X → /admin/X (works for exercises, education, clinical-notes, etc.)
-      const subPath = pathname.replace('/dashboard', '');
-      return NextResponse.redirect(new URL('/admin' + subPath, request.url));
+      // Era: /dashboard/X → /admin/X, sempre, sem conferir se /admin/X existe.
+      // Vinte e duas das trinta e sete telas do paciente não têm equivalente,
+      // e para essas o desvio entregava um 404 — a forma mais cara de errar,
+      // porque quem clica conclui que o sistema perdeu a página.
+      const gemeo = gemeoNoAdmin(pathname);
+      return NextResponse.redirect(new URL(gemeo ?? '/admin', request.url));
     }
   }
 
