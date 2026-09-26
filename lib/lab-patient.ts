@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { HOME_KITS } from "@/lib/lab-catalog";
 import { labStage } from "@/lib/lab-stage";
+import { nonDiagnosticCopy } from "@/lib/lab-review-mode";
 
 /**
  * O que o paciente pode ver (081, T-3) — e, tão importante, o que não pode.
@@ -69,6 +70,7 @@ export function patientOrder(o: OrderRow) {
       : null,
     released: !!o.releasedToPatientAt,
     releasedAt: o.releasedToPatientAt,
+    reviewMode: o.reviewMode,
     // Eventos internos (RELEASED, erros) não são do paciente; só o ciclo do kit.
     events: o.events.filter((e) => ["CONFIRMED", "KIT_DISPATCHED", "SAMPLE_RECEIVED", "PROCESSING_LAB", "RESULTS_READY", "CANCELLED_LAB"].includes(e.status)),
   };
@@ -76,17 +78,22 @@ export function patientOrder(o: OrderRow) {
 
 /** O resultado, e só quando liberado. Antes disso a função devolve `null`. */
 export async function patientResult(o: OrderRow) {
-  if (!o.releasedToPatientAt) return null;
+  // Pedido direto: o resultado é da pessoa assim que chega. Pedido com
+  // terapeuta: só depois que a clínica libera (081, corrigido em 26/09/2026).
+  const liberado = o.reviewMode === "THERAPIST" ? !!o.releasedToPatientAt : o.status === "RESULTS_READY";
+  if (!liberado) return null;
   const values = await prisma.labResultValue.findMany({
     where: { registration: { orderId: o.id } },
     select: { id: true, biomarker: true, value: true, valueText: true, unit: true, minRange: true, maxRange: true, outOfRange: true, measuredAt: true },
     orderBy: { biomarker: "asc" },
   });
   return {
+    reviewMode: o.reviewMode,
     releasedAt: o.releasedToPatientAt,
     noteEn: o.releaseNote ?? "",
     notePt: o.releaseNotePt ?? "",
     values,
     pdfAvailable: o.registrations.some((r) => !!r.resultsPdfPath),
+    nonDiagnostic: nonDiagnosticCopy(o.reviewMode),
   };
 }

@@ -21,9 +21,20 @@ enum UserRole {
 
 // What kind of tenant a Clinic row is. Drives vocabulary (patient/student,
 // treatment/workout), which modules are on, and the onboarding flow.
+/// Que tipo de profissional é este tenant.
+///
+/// Eram dois porque o produto era dois. O app passou a ser uma porta para
+/// vários — um médico, um psicólogo, um nutricionista — e cada um deles é um
+/// tenant com a própria agenda, os próprios preços e os próprios pacientes
+/// (083). O valor aqui só diz **o que a pessoa é**; quem pode vê-la é a
+/// combinação de `acceptingPatients` e `languages`.
 enum TenantType {
   CLINIC
   PERSONAL_TRAINER
+  DOCTOR
+  PSYCHOLOGIST
+  NUTRITIONIST
+  OTHER_PROFESSIONAL
 }
 
 enum ExtraSessionPayment {
@@ -415,6 +426,19 @@ model Clinic {
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
 
+  /// Em que línguas este profissional atende — `["en-GB"]`, `["pt-BR"]`, ou
+  /// as duas (083).
+  ///
+  /// Um médico que só fala português não deve aparecer para quem lê o app em
+  /// inglês: a consulta não aconteceria, e oferecer o que não se pode cumprir
+  /// é a mesma falha do botão que promete uma porta inexistente. Vazio quer
+  /// dizer "sem restrição" — é o caso de toda clínica que já existe.
+  languages String[] @default([])
+
+  /// Este profissional aceita gente nova pelo app? Nasce `false`: um tenant
+  /// aparece para desconhecidos quando alguém decide, nunca por existir.
+  acceptingPatients Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -532,6 +556,7 @@ model Clinic {
   automationRuns         AutomationRun[]
   exerciseSubmissions    ExerciseSubmission[]
   labOrders              LabOrder[]
+  patientServicePrices   PatientServicePrice[]
 
   @@index([slug])
   @@index([isActive])
@@ -691,7 +716,21 @@ model User {
   /// account never appears on the booking screen by accident.
   bookable Boolean @default(false)
 
-  outcomeMeasures PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  /// Esta pessoa é paciente da clínica, ou só alguém que baixou o app?
+  ///
+  /// O app deixou de ser só o app dos pacientes (26/09/2026): alguém indicado
+  /// por um amigo baixa, se cadastra e compra um exame de laboratório sem
+  /// nunca ter sido atendido. Mostrar a ele prontuário, exercícios e mensagens
+  /// de uma clínica que nunca o viu é oferecer a casa de outra pessoa.
+  ///
+  /// Nasce `false` num cadastro feito pela própria pessoa e `true` quando é a
+  /// clínica que cria a conta. Vira `true` sozinho no primeiro ato clínico —
+  /// uma consulta marcada, um pacote — que é o momento em que ela de fato
+  /// passa a ser paciente.
+  isClinicPatient Boolean @default(false)
+
+  outcomeMeasures        PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
 
   // Profile Image
   profileImageUrl  String?
@@ -4686,6 +4725,39 @@ enum ServiceType {
   BODY_ASSESSMENT
 }
 
+/// Uma exceção de preço para **um** paciente (082).
+///
+/// Linha própria, e não uma coluna em `ServicePrice`, por duas razões. A
+/// técnica: aquele modelo tem `@@unique([clinicId, serviceType])`, e acrescentar
+/// `patientId` obrigaria a trocar a restrição — um `DROP INDEX` em produção,
+/// que é o que o guard de migração existe para impedir. A honesta: o preço da
+/// clínica e a exceção de uma pessoa são coisas diferentes, e a exceção tem
+/// motivo — que fica gravado aqui.
+///
+/// Zero é um preço válido (cortesia registrada). "Sem linha" é que significa
+/// "este paciente paga o preço da clínica".
+model PatientServicePrice {
+  id        String @id @default(cuid())
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User   @relation("PatientServicePrices", fields: [patientId], references: [id], onDelete: Cascade)
+
+  serviceType ServiceType
+  price       Float
+  currency    String      @default("GBP")
+  /// Por que esta pessoa paga diferente. Para a clínica, não para o paciente.
+  note        String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([patientId, serviceType])
+  @@index([clinicId])
+  @@index([patientId])
+}
+
 model ServicePrice {
   id          String      @id @default(cuid())
   clinicId    String?
@@ -7637,6 +7709,11 @@ model LabOrder {
   /// O paciente só vê o resultado depois que a clínica libera (decisão do
   /// Bruno, 25/09/2026). Quem liberou fica no AuditLog; aqui fica o quando e
   /// o comentário que o paciente lê em cima dos valores, EN primeiro.
+  /// Decidido na compra, e não depois: quem comprou tinha relação clínica
+  /// naquele momento? Congelado porque a relação muda, e um pedido antigo não
+  /// pode trocar de regra no meio.
+  reviewMode LabReviewMode @default(DIRECT)
+
   releasedToPatientAt DateTime?
   releasedById        String?
   releaseNote         String?   @db.Text
@@ -7690,6 +7767,23 @@ model LabOrderEvent {
 /// Os estados da LML, um para um, sem tradução criativa. O nome deles é
 /// minúsculo (`awaiting_patient`); o mapa em lib/lab-registration-status.ts
 /// faz a ponte, e um teste lê este enum do schema para o mapa não divergir.
+/// Quem lê o resultado primeiro (081, corrigido em 26/09/2026).
+///
+/// O desenho original supunha que todo exame era de um paciente da clínica, e
+/// que o terapeuta lia antes. Mas o exame é **independente**: alguém que ouviu
+/// falar do app pode baixar, se cadastrar e comprar um exame sem nunca ter sido
+/// atendido. Não há terapeuta nessa relação — segurar o resultado dessa pessoa
+/// seria prender o que é dela esperando uma revisão que ninguém vai fazer.
+///
+/// `THERAPIST`: quem comprou é paciente da clínica, com história de atendimento.
+/// O resultado chega, a clínica lê, escreve uma nota e libera.
+/// `DIRECT`: quem comprou não tem relação clínica. O resultado é dele e aparece
+/// assim que chega.
+enum LabReviewMode {
+  THERAPIST
+  DIRECT
+}
+
 enum LabRegistrationStatus {
   AWAITING_PATIENT
   PENDING

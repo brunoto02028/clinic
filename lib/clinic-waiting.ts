@@ -120,7 +120,7 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
       })
       .then((r: { patientId: string }[]) => r.length),
     (prisma as any).labOrder.count({
-      where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null },
+      where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null, reviewMode: "THERAPIST" },
     }),
   ]);
 

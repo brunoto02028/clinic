@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     // The extra per-user flags this endpoint needs beyond the actor.
     const user = await prisma.user.findUnique({
       where: { id: actor.userId },
-      select: { moduleOverrides: true, fullAccessOverride: true },
+      select: { moduleOverrides: true, fullAccessOverride: true, isClinicPatient: true },
     });
 
     // Training is default-on for a personal-trainer tenant (or explicitly enabled).
@@ -128,8 +128,22 @@ export async function GET(request: NextRequest) {
     // have done that to all of them at once. An explicit override removes it.
     const clinicaDenied = overrideGrants(overrides["mod_clinica"]) === false;
     const keys = new Set(available.map((m) => m.key));
-    if (!clinicaDenied) {
+    // A área da clínica é de quem é paciente dela. Alguém indicado por um
+    // amigo baixa o app, compra um exame de laboratório e nunca foi atendido —
+    // dar a ele prontuário, exercícios e mensagens de uma clínica que nunca o
+    // viu é oferecer a casa de outra pessoa (083). Uma concessão explícita no
+    // `moduleOverrides` continua valendo: é a clínica dizendo "este é meu".
+    const clinicaConcedida = overrideGrants(overrides["mod_clinica"]) === true || user?.isClinicPatient === true;
+    if (!clinicaDenied && clinicaConcedida) {
       keys.add("clinica");
+    }
+    // O interruptor da clínica **concede**, não só remove. Escrito só como
+    // filtro, ligar o laboratório não ligava nada: o paciente continuava
+    // dependendo de uma linha `DIAGNOSTICS` em ClinicModuleAccess que a BPR
+    // nunca teve, e o módulo não aparecia (medido em produção, 26/09/2026).
+    // Uma negação explícita do paciente continua valendo.
+    if (labOn && overrideGrants(overrides["mod_lab"]) !== false) {
+      keys.add("lab");
     }
     const result = MODULE_DEFS.filter((m) => keys.has(m.key));
 

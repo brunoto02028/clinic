@@ -14,6 +14,7 @@ import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access"
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
+import { markAsClinicPatient } from "@/lib/lab-review-mode";
 import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
@@ -202,18 +203,29 @@ export async function POST(request: NextRequest) {
     // servidor cobrando outro é o defeito que isto impede (atividade 080).
     const opcao = isPatient ? await bookingOptionsFor(patientId) : null;
     if (opcao && !opcao.kind) {
-      return NextResponse.json(
-        {
-          error:
-            opcao.blockedReason === "screening_required"
-              ? "Complete your medical screening before booking."
-              : "This account is not linked to a clinic",
-          errorPt:
-            opcao.blockedReason === "screening_required"
-              ? "Preencha sua triagem antes de marcar."
-              : "Esta conta não está ligada a uma clínica",
-          code: opcao.blockedReason,
+      // Cada motivo tem a sua frase. O ternário que existia aqui distinguia
+      // só a triagem e jogava todo o resto em "esta conta não está ligada a
+      // uma clínica" — então o paciente sem preço configurado era mandado
+      // procurar o problema no lugar errado, e a clínica não descobria que o
+      // interruptor "Active" estava desligado. Era justamente o buraco que a
+      // correção do £60 existia para fechar (QA da 082, F2).
+      const MOTIVOS = {
+        screening_required: {
+          en: "Complete your medical screening before booking.",
+          pt: "Preencha sua triagem antes de marcar.",
         },
+        price_not_set: {
+          en: "The clinic has not set a price for this yet.",
+          pt: "A clínica ainda não definiu um preço para isto.",
+        },
+        no_clinic: {
+          en: "This account is not linked to a clinic.",
+          pt: "Esta conta não está ligada a uma clínica.",
+        },
+      } as const;
+      const motivo = MOTIVOS[opcao.blockedReason ?? "no_clinic"] ?? MOTIVOS.no_clinic;
+      return NextResponse.json(
+        { error: motivo.en, errorPt: motivo.pt, code: opcao.blockedReason },
         { status: 409 }
       );
     }
@@ -274,25 +286,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // A clínica pode marcar sem preço configurado (ela cobra fora do app, e é
-    // ela quem abre exceção); o paciente, não — cobrar um número que ninguém
-    // escolheu foi o que o £60 fixo fazia.
-    const precoConfigurado = await patientBookingPrice(actor.clinicId);
-    if (isPatient && !opcao && precoConfigurado === null) {
-      return NextResponse.json(
-        {
-          error: "The clinic has not set a price for this yet.",
-          errorPt: "A clínica ainda não definiu um preço para isto.",
-          code: "price_not_set",
-        },
-        { status: 409 }
-      );
-    }
+    // O que o paciente escolheu em "Tipo de consulta", quando é um tratamento
+    // que esta clínica oferece de verdade. Qualquer outra coisa é ignorada.
+    const tipoEscolhido = isPatient && typeof treatmentType === "string"
+      ? (await prisma.treatmentType.findFirst({
+          where: { clinicId: actor.clinicId, isActive: true, name: treatmentType },
+          select: { name: true },
+        }))?.name ?? null
+      : null;
+
+    // A clínica pode marcar sem preço configurado: ela cobra fora do app e é
+    // ela quem abre exceção. O paciente não chega aqui sem preço — a recusa
+    // dele é a de `bookingOptionsFor`, setenta linhas acima. (Havia uma
+    // segunda guarda `isPatient && !opcao` neste ponto: `opcao` é sempre um
+    // objeto para o paciente, então ela nunca rodava — QA da 082, F3.)
+    const precoConfigurado = await patientBookingPrice(actor.clinicId, patientId);
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
       : opcao
         ? opcao.price
         : precoConfigurado ?? 0;
+
+    // Marcar consulta é o ato que transforma alguém que comprou um exame em
+    // paciente da clínica: a partir daqui ele tem prontuário, exercícios e
+    // conversa (083). Idempotente para quem já era.
+    await markAsClinicPatient(patientId, actor.clinicId);
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -301,13 +319,13 @@ export async function POST(request: NextRequest) {
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
-        // O tipo também é do servidor quando quem marca é o paciente: o
-        // `price` já era ignorado, e deixar o rótulo passar seria a mesma
-        // porta, mais estreita (QA de 25/09, falha 9).
+        // O rótulo do paciente vale **se for um dos tratamentos que a clínica
+        // cadastrou** (082): antes, o que ele escolhia era descartado — ele
+        // tocava em "Sports Therapy" e a consulta nascia "Treatment Session".
+        // Validar contra a lista da clínica fecha a mesma porta que a falha 9
+        // fechou (nenhuma string arbitrária entra) sem jogar fora a escolha.
         treatmentType: opcao
-          ? opcao.kind === "FIRST_CONSULTATION"
-            ? "Initial Consultation"
-            : "Treatment Session"
+          ? tipoEscolhido ?? (opcao.kind === "FIRST_CONSULTATION" ? "Initial Consultation" : "Treatment Session")
           : treatmentType,
         notes: notes || null,
         price: resolvedPrice,

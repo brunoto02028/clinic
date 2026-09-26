@@ -1,4 +1,4 @@
-import type { LabOrderStatus, LabRegistrationStatus } from "@prisma/client";
+import type { LabOrderStatus, LabRegistrationStatus, LabReviewMode } from "@prisma/client";
 
 /**
  * Onde o pedido está, do ponto de vista de quem espera (081, T-3).
@@ -22,6 +22,8 @@ export interface StageInput {
   status: LabOrderStatus;
   releasedToPatientAt: Date | string | null;
   registrations: { status: LabRegistrationStatus }[];
+  /** Ausente conta como `DIRECT`: sem relação clínica não há revisão. */
+  reviewMode?: LabReviewMode;
 }
 
 export function labStage(o: StageInput): LabStage {
@@ -42,7 +44,9 @@ export function labStage(o: StageInput): LabStage {
     case "PROCESSING_LAB":
       return "at_lab";
     case "RESULTS_READY":
-      return "in_review";
+      // Sem terapeuta na relação, não há revisão a esperar: o resultado
+      // chegou e é da pessoa (081, corrigido em 26/09/2026).
+      return o.reviewMode === "THERAPIST" ? "in_review" : "released";
   }
 }
 
@@ -83,8 +87,11 @@ export function stageCopy(stage: LabStage, reviewDays: number): { en: { title: s
       pt: { title: "Em revisão com o seu terapeuta", body: `Seu resultado chegou e está com o seu terapeuta. Normalmente leva até ${d} dia${d === 1 ? " útil" : "s úteis"}. Você será avisado quando estiver pronto para ver.` },
     },
     released: {
-      en: { title: "Result ready", body: "Your therapist has reviewed your result and left a note." },
-      pt: { title: "Resultado pronto", body: "Seu terapeuta revisou o seu resultado e deixou uma nota." },
+      // Sem "seu terapeuta revisou": num pedido direto ninguém revisou, e essa
+      // é exatamente a frase que dá confiança ao número. A nota do terapeuta,
+      // quando existe, a própria tela do resultado mostra.
+      en: { title: "Result ready", body: "Your result is in your record." },
+      pt: { title: "Resultado pronto", body: "Seu resultado está no seu prontuário." },
     },
     cancelled: {
       en: { title: "Cancelled", body: "This order was cancelled. Contact the clinic if you believe this is a mistake." },

@@ -39,6 +39,55 @@ export async function servicePricesForClinic(clinicId: string | null): Promise<P
 }
 
 /**
+ * Os preços que **este** paciente vê (082).
+ *
+ * A ordem é uma só, escrita uma vez, e responde à tela e à marcação:
+ *
+ *     exceção do paciente → preço da clínica → padrão da plataforma → nada
+ *
+ * Duas implementações da mesma pergunta seriam a tela prometendo um preço e o
+ * servidor cobrando outro — foi a N4 da 080, e custou uma rodada de QA.
+ *
+ * A exceção não se anuncia: o paciente vê um número, não uma negociação.
+ */
+export async function servicePricesForPatient(
+  clinicId: string | null,
+  patientId: string
+): Promise<PatientServicePrice[]> {
+  const base = await servicePricesForClinic(clinicId);
+  if (!clinicId) return base;
+
+  const excecoes = await prisma.patientServicePrice.findMany({
+    where: { patientId, clinicId },
+    select: { id: true, serviceType: true, price: true, currency: true },
+  });
+  if (excecoes.length === 0) return base;
+
+  const porTipo = new Map(excecoes.map((e) => [e.serviceType as string, e]));
+  const substituidos = base.map((p) => {
+    const e = porTipo.get(p.serviceType);
+    return e ? { ...p, id: e.id, price: e.price, currency: e.currency } : p;
+  });
+
+  // Uma exceção para um serviço que a clínica não precificou ainda assim vale:
+  // é a clínica dizendo "esta pessoa paga isto", e não precisa de um preço
+  // geral para existir.
+  const tinha = new Set(base.map((p) => p.serviceType));
+  const novos = excecoes
+    .filter((e) => !tinha.has(e.serviceType as string))
+    .map((e) => ({
+      id: e.id,
+      serviceType: e.serviceType as string,
+      name: String(e.serviceType),
+      description: null,
+      price: e.price,
+      currency: e.currency,
+    }));
+
+  return [...substituidos, ...novos];
+}
+
+/**
  * O preço da consulta que o paciente marca sozinho — a mesma cifra que a tela
  * mostra e a que fica gravada, nunca um número vindo do navegador.
  *
@@ -51,23 +100,13 @@ export async function servicePricesForClinic(clinicId: string | null): Promise<P
  * Estúdio de personal continua em 0 de propósito: as sessões dele são pagas
  * presencialmente (atividade 52, T-7), então zero é uma decisão, não um buraco.
  */
-export async function patientBookingPrice(clinicId: string): Promise<number | null> {
-  const prices = await servicePricesForClinic(clinicId);
+export async function patientBookingPrice(clinicId: string, patientId?: string): Promise<number | null> {
+  const prices = patientId
+    ? await servicePricesForPatient(clinicId, patientId)
+    : await servicePricesForClinic(clinicId);
   const consultation = prices.find((p) => p.serviceType === "CONSULTATION");
   if (consultation) return consultation.price;
   const clinic = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { type: true } });
   return isPersonalTenant(clinic?.type) ? 0 : null;
 }
 
-/**
- * O que a clínica precificou, do ponto de vista de quem administra — inclusive
- * as linhas desligadas, que é justamente o que a tela precisa mostrar para o
- * interruptor deixar de ser invisível.
- */
-export async function servicePricesForAdmin(clinicId: string | null) {
-  if (!clinicId) return [];
-  const own = await prisma.servicePrice.findMany({ where: { clinicId }, orderBy: { serviceType: "asc" } });
-  const priced = new Set(own.map((p) => p.serviceType));
-  const defaults = await prisma.servicePrice.findMany({ where: { clinicId: null }, orderBy: { serviceType: "asc" } });
-  return [...own, ...defaults.filter((p) => !priced.has(p.serviceType))];
-}

@@ -66,6 +66,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const base = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
+  // Quem paga pelo app volta **para o app**. Apontar o retorno para o site
+  // deixava a pessoa no Safari depois de pagar, tendo de achar sozinha o
+  // caminho de volta — no meio de um pagamento (083). A rota da assinatura já
+  // fazia assim; esta não fazia.
+  const isMobile =
+    req.headers.get("x-platform") === "mobile" ||
+    req.nextUrl.searchParams.get("platform") === "mobile";
+
   try {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
@@ -92,8 +100,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           quantity: 1,
         },
       ],
-      success_url: `${base}/dashboard/appointments?paid=1`,
-      cancel_url: `${base}/dashboard/appointments?cancelled=1`,
+      success_url: isMobile ? "bprclinic://appointments?status=success" : `${base}/dashboard/appointments?paid=1`,
+      cancel_url: isMobile ? "bprclinic://appointments?status=cancelled" : `${base}/dashboard/appointments?cancelled=1`,
     });
 
     return NextResponse.json({ url: session.url });

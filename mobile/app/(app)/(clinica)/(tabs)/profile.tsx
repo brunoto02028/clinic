@@ -14,6 +14,9 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
   { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents" },
   { title: { en: "Treatment plan", pt: "Plano de tratamento" }, icon: "heart-outline", href: "/(app)/(clinica)/treatment-protocol" },
+  // Os planos que a clínica oferece a este paciente (082, T-3). A API já
+  // filtrava por paciente; faltava a porta.
+  { title: { en: "Plans", pt: "Planos" }, icon: "pricetags-outline", href: "/(app)/(clinica)/plans" },
   { title: { en: "Pending actions", pt: "Pendências" }, icon: "notifications-outline", href: "/(app)/(clinica)/tasks" },
   { title: { en: "Assessment screening", pt: "Avaliação" }, icon: "shield-outline", href: "/(app)/(clinica)/screening" },
   { title: { en: "My progress", pt: "Meu progresso" }, icon: "trending-up-outline", href: "/(app)/(clinica)/assessment-progress" },

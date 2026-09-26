@@ -7,6 +7,7 @@ import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { patientOrder, patientOrderInclude } from "@/lib/lab-patient";
 import { labOrderingEnabled } from "@/lib/lab-ordering";
 import { hasLabConsent } from "@/lib/lab-consent";
+import { reviewModeFor } from "@/lib/lab-review-mode";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -125,11 +126,17 @@ export async function POST(request: NextRequest) {
   });
   const subtotal = Math.round(lineItems.reduce((sum, li) => sum + li.total, 0) * 100) / 100;
 
+  // Quem lê o resultado primeiro, decidido **na compra** (081, corrigido em
+  // 26/09/2026): quem já foi atendido tem terapeuta para revisar; quem baixou
+  // o app por indicação de um amigo, não — e o resultado é dele.
+  const reviewMode = await reviewModeFor(payload.sub, payload.clinicId);
+
   const order = await prisma.labOrder.create({
     data: {
       orderNumber,
       patientId: payload.sub,
       clinicId: payload.clinicId,
+      reviewMode,
       status: "BASKET",
       subtotal,
       total: subtotal,
