@@ -127,6 +127,17 @@ describe("quem pode ler", () => {
     expect(rota).not.toMatch(/getServerSession|getMobileUser|patientGate/);
   });
 
+  it("e o **middleware** também a deixa passar", () => {
+    // Este teste nasceu de um defeito meu. Eu afirmei "a rota é aberta"
+    // olhando só o arquivo da rota — e em produção ela redirecionava para o
+    // login, porque quem barra vem antes. Estar em `MOBILE_API_PREFIXES` diz
+    // que ela **aceita** o bearer do app, não que dispensa sessão.
+    const mw = ler("middleware.ts");
+    const i = mw.indexOf("const publicRoutes = [");
+    const fim = mw.indexOf("];", i);
+    expect(mw.slice(i, fim)).toContain("'/api/terms'");
+  });
+
   it("e o app alcança a rota pelo middleware", () => {
     expect(ler("middleware.ts")).toMatch(/MOBILE_API_PREFIXES = \['\/api\/terms'/);
   });

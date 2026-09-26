@@ -103,6 +103,12 @@ const publicRoutes = [
   '/pt/articles', // PT-language article URLs (activity 12) — public, server-rendered for SEO
   '/api/service-pages',
   '/api/version',
+  // Os termos são públicos de propósito: termos que só quem já entrou consegue
+  // ler são termos que ninguém lê antes de concordar. Estar em
+  // `MOBILE_API_PREFIXES` não bastava — aquilo diz que a rota **aceita** o
+  // bearer do app, não que ela dispensa sessão, e um navegador sem cookie
+  // continuava caindo no login (achado em produção, 26/09/2026).
+  '/api/terms',
   '/api/client-error',
   '/api/foot-scans/session',
   '/api/webhooks',
