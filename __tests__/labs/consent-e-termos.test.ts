@@ -20,7 +20,11 @@ import {
   labConsentFor,
 } from "../../lib/lab-consent";
 
-const termos = fs.readFileSync(path.join(__dirname, "..", "..", "app", "terms", "page.tsx"), "utf8");
+// O texto dos termos saiu do JSX e virou dado em `lib/terms-content.ts`
+// (26/09/2026): o app tinha a própria cópia, com nove dos vinte e seis itens,
+// e a do laboratório não existia nele. Estas asserções seguem o texto para a
+// casa nova — o que elas guardam é o que os termos **dizem**, não onde moram.
+const termos = fs.readFileSync(path.join(__dirname, "..", "..", "lib", "terms-content.ts"), "utf8");
 
 describe("o consentimento não promete revisão nenhuma", () => {
   it.each(["en-GB", "pt-BR"] as const)("%s não diz que alguém revisa antes", (loc) => {
