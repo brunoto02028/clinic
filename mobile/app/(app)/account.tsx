@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { useAreaSwitch } from "@/lib/areas";
+import { useThemeStore } from "@/store/theme";
 import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
 import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 
@@ -30,6 +31,8 @@ export default function Account() {
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
   const { canSwitch, switchArea } = useAreaSwitch();
+  const modo = useThemeStore((s) => s.modo);
+  const definirModo = useThemeStore((s) => s.definir);
   const bio = useBiometricCapability();
 
   const { data: profile, isLoading } = useQuery({
@@ -107,6 +110,55 @@ export default function Account() {
           {/* Num aparelho sem sensor a linha não existe, e aí quem fecha a
               lista é "Alterar senha" — daí o `last` condicional acima. */}
           {bio?.hasHardware && <BiometricLockRow cap={bio} last />}
+        </Card>
+
+        {/* A aparência é escolha da pessoa (086). Dois botões e não um
+            interruptor: "claro/escuro" como par mostra o que existe, enquanto
+            um switch obriga a descobrir o que o estado desligado significa. */}
+        <Card>
+          <View style={{ paddingVertical: 4 }}>
+            <Text variant="label" style={{ fontWeight: "600" }}>
+              {tr(lang, { en: "Appearance", pt: "Aparência" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+              {tr(lang, { en: "How the app looks on this phone.", pt: "Como o app fica neste aparelho." })}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              {(["light", "dark"] as const).map((m) => {
+                const ativo = modo === m;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => definirModo(m)}
+                    testID={`theme-${m}`}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: ativo ? 2 : 1,
+                      borderColor: ativo ? t.colors.health : t.colors.border,
+                      backgroundColor: ativo ? t.colors.healthSoft : t.colors.surface,
+                    }}
+                  >
+                    <Ionicons
+                      name={m === "dark" ? "moon-outline" : "sunny-outline"}
+                      size={20}
+                      color={ativo ? t.colors.health : t.colors.textMuted}
+                    />
+                    <Text
+                      variant="caption"
+                      color={ativo ? t.colors.health : t.colors.textSecondary}
+                      style={{ fontWeight: ativo ? "700" : "400" }}
+                    >
+                      {m === "dark" ? tr(lang, { en: "Dark", pt: "Escuro" }) : tr(lang, { en: "Light", pt: "Claro" })}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </Card>
 
         {/* Escondido por `!CLINIC_ONLY`, o que deixava a conta sem saída neste

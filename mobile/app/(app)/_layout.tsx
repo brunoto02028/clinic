@@ -2,10 +2,24 @@ import { Redirect, Stack } from "expo-router";
 import { HeaderBack } from "@/components/HeaderBack";
 import { Screen, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
+import { useSessionPing } from "@/lib/session-ping";
 
 /** Route guard: only authenticated sessions reach screens in this group. */
 export default function AppLayout() {
   const status = useAuth((s) => s.status);
+
+  /**
+   * O sinal de uso (085, T-1).
+   *
+   * Aqui, e não na raiz, porque este layout é o que só existe para quem está
+   * autenticado — é a definição de "usando o app". E antes de qualquer `return`
+   * condicional: mover o hook para depois deles o faria montar e desmontar
+   * conforme o status, e cada remontagem começaria uma sessão.
+   *
+   * `locked` conta como uso: a tranca é uma cortina, a pessoa está com o app
+   * aberto e volta em segundos.
+   */
+  useSessionPing(status === "authenticated" || status === "locked");
 
   if (status === "loading") {
     return (

@@ -107,14 +107,14 @@ export default function ModuleSelect() {
   // good answer in hand.
   if (isError && !modules) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
         <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="cloud-offline-outline" size={40} color="#8A8F9A" />
+          <Ionicons name="cloud-offline-outline" size={40} color={t.colors.textMuted} />
           <Text
             style={{
               fontFamily: "Sora_600SemiBold",
               fontSize: 18,
-              color: "#FFFFFF",
+              color: t.colors.text,
               textAlign: "center",
               marginTop: 20,
             }}
@@ -125,7 +125,7 @@ export default function ModuleSelect() {
             style={{
               fontFamily: "Inter_400Regular",
               fontSize: 13,
-              color: "#8A8F9A",
+              color: t.colors.textMuted,
               textAlign: "center",
               marginTop: 10,
               lineHeight: 20,
@@ -140,12 +140,12 @@ export default function ModuleSelect() {
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 12,
-              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
               borderWidth: 1,
-              borderColor: "#33373F",
+              borderColor: t.colors.border,
             })}
           >
-            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: t.colors.text }}>
               {tr(lang, { en: "Try again", pt: "Tentar de novo" })}
             </Text>
           </Pressable>
@@ -156,14 +156,14 @@ export default function ModuleSelect() {
 
   if (noModules) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
         <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="phone-portrait-outline" size={40} color="#8A8F9A" />
+          <Ionicons name="phone-portrait-outline" size={40} color={t.colors.textMuted} />
           <Text
             style={{
               fontFamily: "Sora_600SemiBold",
               fontSize: 18,
-              color: "#FFFFFF",
+              color: t.colors.text,
               textAlign: "center",
               marginTop: 20,
             }}
@@ -174,7 +174,7 @@ export default function ModuleSelect() {
             style={{
               fontFamily: "Inter_400Regular",
               fontSize: 13,
-              color: "#8A8F9A",
+              color: t.colors.textMuted,
               textAlign: "center",
               marginTop: 10,
               lineHeight: 20,
@@ -196,12 +196,12 @@ export default function ModuleSelect() {
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 12,
-              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
               borderWidth: 1,
-              borderColor: "#33373F",
+              borderColor: t.colors.border,
             })}
           >
-            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: t.colors.text }}>
               {tr(lang, { en: "Sign out", pt: "Sair" })}
             </Text>
           </Pressable>
@@ -212,21 +212,23 @@ export default function ModuleSelect() {
 
   if (isLoading || skipTo) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: t.colors.background, alignItems: "center", justifyContent: "center" }}>
         <Spinner />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 60 }}>
-        <Logo tone="bone" height={44} style={{ marginBottom: 28 }} />
+        {/* 44 era pequeno demais no aparelho — é a primeira coisa que a
+            pessoa vê ao abrir, e a marca não pode pedir esforço. */}
+        <Logo tone={t.isDark ? "bone" : "ink"} height={64} style={{ marginBottom: 28 }} />
         <Text
           style={{
             fontFamily: "Sora_700Bold",
             fontSize: 26,
-            color: "#FFFFFF",
+            color: t.colors.text,
             letterSpacing: -0.5,
             marginBottom: 6,
           }}
@@ -239,7 +241,7 @@ export default function ModuleSelect() {
           style={{
             fontFamily: "Inter_400Regular",
             fontSize: 13,
-            color: "#B9BDC6",
+            color: t.colors.textSecondary,
             marginBottom: 36,
           }}
         >
@@ -255,11 +257,11 @@ export default function ModuleSelect() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 16,
-                backgroundColor: pressed ? "#2A2E38" : "#262A33",
+                backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
                 borderRadius: 16,
                 padding: 20,
                 borderWidth: 1,
-                borderColor: "#33373F",
+                borderColor: t.colors.border,
               })}
             >
               <View
@@ -267,7 +269,7 @@ export default function ModuleSelect() {
                   width: 48,
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: "#33373F",
+                  backgroundColor: t.colors.surfaceMuted,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -275,7 +277,7 @@ export default function ModuleSelect() {
                 <Ionicons
                   name={ICON_MAP[mod.icon] || "apps-outline"}
                   size={24}
-                  color="#CDC7BE"
+                  color={t.colors.textSecondary}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -283,7 +285,7 @@ export default function ModuleSelect() {
                   style={{
                     fontFamily: "Sora_600SemiBold",
                     fontSize: 16,
-                    color: "#FFFFFF",
+                    color: t.colors.text,
                   }}
                 >
                   {mod.name}
@@ -292,14 +294,14 @@ export default function ModuleSelect() {
                   style={{
                     fontFamily: "Inter_400Regular",
                     fontSize: 12,
-                    color: "#8A8F9A",
+                    color: t.colors.textMuted,
                     marginTop: 2,
                   }}
                 >
                   {mod.description}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#8A8F9A" />
+              <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
             </Pressable>
           ))}
         </View>
@@ -320,10 +322,10 @@ export default function ModuleSelect() {
             paddingHorizontal: 20,
             paddingVertical: 10,
             borderRadius: 12,
-            backgroundColor: pressed ? "#2A2E38" : "transparent",
+            backgroundColor: pressed ? t.colors.surfaceMuted : "transparent",
           })}
         >
-          <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: "#8A8F9A" }}>
+          <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: t.colors.textMuted }}>
             {tr(lang, { en: "Sign out", pt: "Sair" })}
           </Text>
         </Pressable>

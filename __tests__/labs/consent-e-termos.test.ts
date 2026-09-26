@@ -150,3 +150,56 @@ describe("o aceite dos termos passa a ter versão", () => {
     expect(lerT("lib", "lab-consent.ts")).toMatch(/16, decisão do Bruno/);
   });
 });
+
+describe("as telas do laboratório não prometem revisão (achado do Bruno no aparelho)", () => {
+  const raizL = path.join(__dirname, "..", "..", "mobile");
+  const lerL = (...p: string[]) => fs.readFileSync(path.join(raizL, ...p), "utf8");
+
+  it("o catálogo não diz que o terapeuta revisa antes", () => {
+    // Sobreviveu à remoção da fila de liberação e foi o Bruno quem viu, no
+    // aparelho: a tela prometia exatamente o que os termos negam.
+    const cat = lerL("app", "(app)", "(lab)", "(tabs)", "index.tsx");
+    expect(cat).not.toMatch(/therapist reviews the result/i);
+    expect(cat).not.toMatch(/terapeuta revisa o resultado/i);
+    expect(cat).toMatch(/The result comes straight to you/);
+    expect(cat).toMatch(/O resultado vem direto para você/);
+  });
+
+  it("a tela do exame também não", () => {
+    const det = lerL("app", "(app)", "(lab)", "[id].tsx");
+    expect(det).not.toMatch(/Your therapist reviews the result/i);
+    expect(det).toMatch(/It is yours to share with whichever doctor you prefer/);
+  });
+
+  it("e nenhuma tela do laboratório promete revisão, em nenhuma língua", () => {
+    const dir = path.join(raizL, "app", "(app)", "(lab)");
+    const arquivos: string[] = [];
+    const varrer = (d: string) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, e.name);
+        if (e.isDirectory()) varrer(full);
+        else if (e.name.endsWith(".tsx")) arquivos.push(full);
+      }
+    };
+    varrer(dir);
+    expect(arquivos.length).toBeGreaterThan(3);
+    for (const f of arquivos) {
+      const src = fs.readFileSync(f, "utf8");
+      expect(src).not.toMatch(/therapist reviews/i);
+      expect(src).not.toMatch(/terapeuta revisa/i);
+    }
+  });
+});
+
+describe("o app da clínica tem duas áreas, não três", () => {
+  const raizM = path.join(__dirname, "..", "..");
+  it("a BA sai do seletor, a não ser que alguém a conceda de propósito", () => {
+    // Aparecia pelo atalho de "admin vê tudo"; paciente nunca teve.
+    const rota = fs.readFileSync(path.join(raizM, "app", "api", "mobile", "modules", "route.ts"), "utf8");
+    expect(rota).toMatch(/const semBa =/);
+    expect(rota).toMatch(/baLiberado \? mods : mods\.filter\(\(m\) => m\.key !== "ba"\)/);
+    // Nos dois caminhos: o da equipe e o do paciente.
+    // Dois lugares chamam: o caminho da equipe e o do paciente.
+    expect(rota.match(/semBa\(sem/g)?.length).toBe(2);
+  });
+});

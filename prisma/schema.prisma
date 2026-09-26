@@ -558,6 +558,7 @@ model Clinic {
   labOrders              LabOrder[]
   patientServicePrices   PatientServicePrice[]
   coupons                Coupon[]
+  appSessions            AppSession[]
 
   @@index([slug])
   @@index([isActive])
@@ -734,6 +735,7 @@ model User {
   servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
   couponsTargeted        Coupon[]                @relation("CouponTarget")
   couponRedemptions      CouponRedemption[]      @relation("CouponRedemptions")
+  appSessions            AppSession[]            @relation("UserAppSessions")
 
   // Profile Image
   profileImageUrl  String?
@@ -4873,6 +4875,49 @@ model CouponRedemption {
   @@index([couponId, patientId, scope, targetId])
   @@index([patientId])
   @@index([stripeSessionId])
+}
+
+/**
+ * Uma sessão de uso do app (085, T-1).
+ *
+ * "Quanto tempo essa pessoa usa o app" era uma pergunta sem resposta: o
+ * cadastro dizia quem ela é, e nada dizia se ela abriu. Contar **toques**
+ * responderia, e geraria uma tabela enorme para uma pergunta simples — então o
+ * que se guarda é a sessão: começo, último sinal, fim.
+ *
+ * O app manda um sinal na abertura e a cada poucos minutos **em primeiro
+ * plano**. Em segundo plano, nada: bateria é do paciente.
+ *
+ * Quem fecha a sessão é o **silêncio**, não um cron — fechar o app não manda
+ * nada confiável, e os crons deste projeto estão desligados de propósito.
+ *
+ * `city` e `country` vêm do IP no login (T-2). **O IP cru não é guardado aqui**:
+ * ele já vive no `ConsentLog` quando tem função, e uma cidade responde "onde
+ * estão meus usuários" sem guardar de onde cada um fala.
+ */
+model AppSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("UserAppSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// A clínica no momento da sessão. Opcional porque uma conta só-laboratório
+  /// pode não ter nenhuma.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+
+  startedAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  /// Preenchido quando o silêncio passa da janela — na leitura, não por cron.
+  endedAt    DateTime?
+
+  platform   String?
+  appVersion String?
+  city       String?
+  country    String?
+
+  @@index([userId, lastSeenAt])
+  @@index([clinicId, lastSeenAt])
+  @@index([endedAt])
 }
 
 model ServicePrice {

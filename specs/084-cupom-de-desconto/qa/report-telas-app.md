@@ -82,22 +82,33 @@ nem deveria, nos dois exercitados.
 
 | # | severidade | o quê | estado |
 |---|---|---|---|
-| **W-1** | média (só navegador) | `x-platform` fora do `Access-Control-Allow-Headers`: **todo** checkout de consulta por cliente web é bloqueado no preflight | **aberto — decisão do Bruno** |
+| **W-1** | ~~média~~ **não é defeito** | `x-platform` fora do `Access-Control-Allow-Headers`: checkout por cliente web bloqueado no preflight | **fechado — o alvo é o app** |
 | **W-2** | baixa (só sem chave) | `getStripe()` rodava antes do ramo da cortesia e fora do `try`: sem `STRIPE_SECRET_KEY`, um 500 de corpo vazio | **corrigido** |
 | **N-1** | cosmético | com cortesia de 100% a tela dizia `GBP 0.00` · "paid when you book" | **corrigido** |
 | O-1 | observação | `fullAccessOverride` ignora `mod_ba`/`mod_clinica` negados, mas **não** `mod_lab` | registrado |
 | O-2 | observação | sem `TreatmentType` cadastrado, "Confirm booking" nunca habilita — e o comentário no código diz o contrário | registrado, pré-existente |
 
-**W-1 em detalhe.** `mobile/src/api/booking.ts` manda `x-platform: mobile` (decisão da 083, para o
-retorno da Stripe voltar ao app). A lista permitida tem dois cabeçalhos:
+**W-1 em detalhe, e por que ficou como está.** `mobile/src/api/booking.ts` manda
+`x-platform: mobile` (decisão da 083, para o retorno da Stripe voltar ao app). A lista permitida tem
+dois cabeçalhos:
 
 ```
 middleware.ts:63        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 lib/mobile-cors.ts:14   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 ```
 
-No aparelho não existe CORS e isso nunca aparece. Na web e numa futura PWA, o pagamento **não sai**,
-e o app cai no `catch`. É a pergunta de produto: a web é alvo? Se sim, são duas linhas.
+No aparelho não existe CORS e isso nunca aparece. Na web, o pagamento não sai.
+
+**Decisão do Bruno, 26/09/2026:** *"o alvo é o app, pois na web depois que eu lançar o app não vou
+liberar acesso aos pacientes nem usuários mais, só pelo app."* Então isto **não é defeito** — é uma
+rota que ninguém vai percorrer. Não foi corrigido de propósito: dois cabeçalhos a mais no CORS não
+custam nada, mas afrouxar uma política para um cliente que não vai existir é dívida disfarçada de
+zelo.
+
+**O que fica como consequência**, e vale mais que o achado: o alvo web do Expo continua sendo a
+única forma de **medir** as telas do paciente sem simulador, e ele passa por este mesmo CORS. Quem
+repetir este QA vai tropeçar de novo e vai precisar interceptar o preflight no Playwright, como foi
+feito aqui. Está documentado acima.
 
 ## Nota de ambiente
 
@@ -119,7 +130,7 @@ que é a evidência dela.
 ## O que falta para a 084
 
 1. **R-1 do reteste** — quem mede se o furo fechou é o harness de rota, não a tela.
-2. **Decidir sobre W-1** (a web é alvo?).
+2. ~~Decidir sobre W-1~~ — **decidido: o alvo é o app.**
 3. **Um passe no simulador** para a caixa da recusa.
 4. `PACKAGE` e `TREATMENT_PLAN` seguem com servidor pronto e nenhuma tela que colete o código.
 5. QA online depois do deploy, conferindo o commit pela lista de deployments do Coolify.

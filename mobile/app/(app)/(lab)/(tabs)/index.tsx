@@ -60,7 +60,7 @@ export default function LabsHub() {
         <View>
           <Text variant="title">{tr(lang, { en: "Blood tests", pt: "Exames de sangue" })}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-            {tr(lang, { en: "A finger-prick kit at home. Your therapist reviews the result before you see it.", pt: "Kit de picada no dedo, em casa. Seu terapeuta revisa o resultado antes de você ver." })}
+            {tr(lang, { en: "A finger-prick kit at home. The result comes straight to you.", pt: "Kit de picada no dedo, em casa. O resultado vem direto para você." })}
           </Text>
         </View>
 
@@ -90,8 +90,18 @@ export default function LabsHub() {
           icon={<Ionicons name="search-outline" size={18} color={t.colors.textMuted} />}
         />
 
+        {/* `flexGrow: 0` porque um ScrollView horizontal dentro de uma coluna
+            flex tenta ocupar a altura disponível e espreme o conteúdo — os
+            rótulos saíam cortados em cima e embaixo no aparelho do Bruno
+            (26/09/2026). O `paddingVertical` dá o ar que falta para a descida
+            das letras. */}
         {categories.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: 8, paddingVertical: 3 }}
+          >
             <Chip label={tr(lang, { en: "All", pt: "Todos" })} selected={category === "all"} onPress={() => setCategory("all")} accentColor={SAGE} />
             {categories.map((cat) => (
               <Chip key={cat} label={cat} selected={category === cat} onPress={() => setCategory(cat)} accentColor={SAGE} />
