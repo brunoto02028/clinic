@@ -1,11 +1,11 @@
 import { View, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, ListItem, Button, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { useModule } from "@/store/module";
-import { fetchProfile } from "@/api/profile";
+import { fetchProfile, updateProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { useAreaSwitch } from "@/lib/areas";
@@ -34,6 +34,29 @@ export default function Account() {
   const modo = useThemeStore((s) => s.modo);
   const definirModo = useThemeStore((s) => s.definir);
   const bio = useBiometricCapability();
+  const qc = useQueryClient();
+
+  /**
+   * Trocar de idioma vale na hora, e não ao salvar um formulário.
+   *
+   * `useLang()` lê a consulta `profile`, então mexer no cache já repinta o app
+   * inteiro antes de o servidor responder. Se o servidor recusar, o
+   * `invalidateQueries` do fim traz a verdade de volta — e o pior caso é a
+   * língua voltar sozinha, não a pessoa ficar presa na errada.
+   */
+  const trocarIdioma = useMutation({
+    mutationFn: (locale: string) => updateProfile({ preferredLocale: locale }),
+    onMutate: async (locale) => {
+      await qc.cancelQueries({ queryKey: ["profile"] });
+      const antes = qc.getQueryData(["profile"]);
+      qc.setQueryData(["profile"], (p: any) => (p ? { ...p, preferredLocale: locale } : p));
+      return { antes };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.antes) qc.setQueryData(["profile"], ctx.antes);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  });
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -110,6 +133,60 @@ export default function Account() {
           {/* Num aparelho sem sensor a linha não existe, e aí quem fecha a
               lista é "Alterar senha" — daí o `last` condicional acima. */}
           {bio?.hasHardware && <BiometricLockRow cap={bio} last />}
+        </Card>
+
+        {/* O idioma morava **só** dentro de "Editar perfil", num formulário
+            que exige tocar em Salvar — e quem entra no app na língua errada
+            tem dificuldade justamente para achar o caminho até lá. Aqui, ao
+            lado da aparência, ele é o que é: uma preferência de leitura, que
+            muda na hora (pedido do Bruno, 26/09/2026). */}
+        <Card>
+          <View style={{ paddingVertical: 4 }}>
+            <Text variant="label" style={{ fontWeight: "600" }}>
+              {tr(lang, { en: "Language", pt: "Idioma" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+              {tr(lang, { en: "The language you read the app in.", pt: "A língua em que você lê o app." })}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              {([
+                { codigo: "en-GB", rotulo: "English", bandeira: "🇬🇧" },
+                { codigo: "pt-BR", rotulo: "Português", bandeira: "🇧🇷" },
+              ] as const).map((l) => {
+                const ativo = (lang === "pt") === l.codigo.startsWith("pt");
+                return (
+                  <Pressable
+                    key={l.codigo}
+                    onPress={() => trocarIdioma.mutate(l.codigo)}
+                    disabled={trocarIdioma.isPending}
+                    testID={`lang-${l.codigo}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: ativo }}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: ativo ? 2 : 1,
+                      borderColor: ativo ? t.colors.health : t.colors.border,
+                      backgroundColor: ativo ? t.colors.healthSoft : t.colors.surface,
+                      opacity: trocarIdioma.isPending ? 0.6 : 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{l.bandeira}</Text>
+                    <Text
+                      variant="caption"
+                      color={ativo ? t.colors.health : t.colors.textSecondary}
+                      style={{ fontWeight: ativo ? "700" : "400" }}
+                    >
+                      {l.rotulo}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </Card>
 
         {/* A aparência é escolha da pessoa (086). Dois botões e não um

@@ -28,6 +28,11 @@ export interface StreakResult {
 }
 
 export async function submitCheckIn(data: {
+  /**
+   * O dia que este registro descreve, `YYYY-MM-DD`. Ausente significa hoje.
+   * O servidor recusa o futuro e recusa mais de catorze dias atrás.
+   */
+  checkinDate?: string;
   painLevel: number;
   moodLevel: number;
   energyLevel?: number;

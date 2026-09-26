@@ -73,6 +73,37 @@ export async function POST(req: NextRequest) {
 
     const today = todayStr();
 
+    /**
+     * O dia que o registro descreve.
+     *
+     * Era sempre hoje, cravado. O Bruno: *"o paciente pode querer virar todo
+     * dia... então ele colocar uma data e enviar."* Quem esqueceu ontem não
+     * tinha como registrar ontem, e a dor de ontem não deixa de ter existido.
+     *
+     * Duas bordas, e as duas são sobre o registro ser verdade:
+     *
+     * - **nunca o futuro** — ninguém relata a dor que ainda não sentiu;
+     * - **no máximo catorze dias atrás** — além disso não é lembrança, é
+     *   reconstrução, e um gráfico feito de reconstrução engana quem o lê.
+     */
+    const pedida = typeof body.checkinDate === "string" ? body.checkinDate.trim() : "";
+    let checkinDate = today;
+    if (pedida) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pedida)) {
+        return NextResponse.json({ error: "checkinDate must be YYYY-MM-DD" }, { status: 400 });
+      }
+      const limite = new Date(`${today}T12:00:00.000Z`);
+      limite.setUTCDate(limite.getUTCDate() - 14);
+      const maisAntiga = limite.toISOString().slice(0, 10);
+      if (pedida > today) {
+        return NextResponse.json({ error: "You cannot check in for a future date" }, { status: 400 });
+      }
+      if (pedida < maisAntiga) {
+        return NextResponse.json({ error: "You can only go back 14 days", earliest: maisAntiga }, { status: 400 });
+      }
+      checkinDate = pedida;
+    }
+
     const bioFields = {
       energyLevel:  energyLevel  != null ? Math.min(10, Math.max(1, energyLevel))  : null,
       sleepQuality: sleepQuality != null ? Math.min(10, Math.max(1, sleepQuality)) : null,
@@ -81,11 +112,11 @@ export async function POST(req: NextRequest) {
     };
 
     const checkIn = await (prisma as any).dailyCheckIn.upsert({
-      where: { patientId_checkinDate: { patientId: userId, checkinDate: today } },
+      where: { patientId_checkinDate: { patientId: userId, checkinDate } },
       create: {
         patientId: userId,
         clinicId,
-        checkinDate: today,
+        checkinDate,
         painLevel: Math.min(10, Math.max(0, painLevel)),
         moodLevel: Math.min(5, Math.max(1, moodLevel)),
         exercisesDone: exercisesDone ?? false,
@@ -116,7 +147,10 @@ export async function POST(req: NextRequest) {
         : null;
       const alreadyActive = lastActive === today;
 
-      if (!alreadyActive) {
+      // XP e sequência só valem para **hoje**. Registrar ontem é corrigir o
+      // histórico, e corrigir o histórico não pode virar moeda: quem voltasse
+      // catorze dias ganharia catorze sequências de uma vez.
+      if (!alreadyActive && checkinDate === today) {
         const xpData: any = { xp: { increment: 15 }, totalXpEarned: { increment: 15 }, bprCredits: { increment: 1 }, lastActiveDate: new Date() };
 
         if (exercisesDone) {
