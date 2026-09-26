@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 
@@ -15,6 +16,26 @@ import * as Notifications from "expo-notifications";
  * cobriria só o app já aberto.
  */
 export function PushRouter() {
+  /**
+   * Na web não existe módulo nativo de notificação, e
+   * `useLastNotificationResponse()` estourava com
+   * `UnavailabilityError: ExpoNotifications.getLastNotificationResponse is not
+   * available on web`. Como este componente vive dentro do `RootLayout`, a
+   * exceção derrubava **o app inteiro**: página branca, nenhuma tela do app
+   * carregável no navegador — e foi o que impediu três rodadas de QA de testar
+   * qualquer tela do paciente (26/09/2026).
+   *
+   * A saída é retornar antes de chamar o hook. `Platform.OS` é constante na vida
+   * do processo, então o ramo nunca alterna e a regra dos hooks continua
+   * respeitada — o corpo com os hooks vive no componente separado abaixo.
+   *
+   * Notificação na web não é perda: não há push no navegador aqui.
+   */
+  if (Platform.OS === "web") return null;
+  return <PushRouterNativo />;
+}
+
+function PushRouterNativo() {
   const ultima = Notifications.useLastNotificationResponse();
   const jaTratada = useRef<string | null>(null);
 
