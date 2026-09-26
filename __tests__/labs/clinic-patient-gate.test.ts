@@ -36,7 +36,16 @@ describe("a rota de módulos", () => {
   it("o laboratório não depende mais de ser paciente da clínica", () => {
     // Era `labOn && !clinicaDenied && …`: quem não tinha a clínica perdia o
     // laboratório junto, que é exatamente o contrário do produto.
-    expect(rota).toMatch(/if \(labOn && overrideGrants\(overrides\["mod_lab"\]\) !== false\)/);
+    //
+    // A asserção guarda a **independência**, não a grafia: a concessão do
+    // laboratório não menciona `clinica` nem `isClinicPatient`. Fixar a linha
+    // exata fazia este teste reprovar a mudança de 26/09 (liberação individual
+    // vencendo o interruptor geral) em vez de reprovar o defeito.
+    const concessao = rota.slice(rota.indexOf("const labParaEste ="));
+    const linha = concessao.slice(0, concessao.indexOf(";"));
+    expect(linha).toMatch(/labOn/);
+    expect(linha).not.toMatch(/clinica/i);
+    expect(linha).not.toMatch(/isClinicPatient/);
   });
 });
 

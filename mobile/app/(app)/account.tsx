@@ -8,7 +8,7 @@ import { useModule } from "@/store/module";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { CLINIC_ONLY } from "@/lib/feature-flags";
+import { useAreaSwitch } from "@/lib/areas";
 import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
 import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 
@@ -29,6 +29,7 @@ export default function Account() {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
+  const { canSwitch, switchArea } = useAreaSwitch();
   const bio = useBiometricCapability();
 
   const { data: profile, isLoading } = useQuery({
@@ -38,11 +39,6 @@ export default function Account() {
 
   const fullName = profile ? `${profile.firstName} ${profile.lastName}` : user?.name ?? "";
   const email = profile?.email ?? user?.email ?? "";
-
-  const handleSwitchModule = () => {
-    clearModule();
-    router.replace("/module-select");
-  };
 
   const handleLogout = async () => {
     clearModule();
@@ -113,14 +109,17 @@ export default function Account() {
           {bio?.hasHardware && <BiometricLockRow cap={bio} last />}
         </Card>
 
-        {/* Nothing to switch to in a clinic-only build, and the chooser it
-            opens is the screen that build exists to skip. */}
-        {!CLINIC_ONLY && (
+        {/* Escondido por `!CLINIC_ONLY`, o que deixava a conta sem saída neste
+            build: o servidor concedia o laboratório e nada no app levava até
+            ele. Quem manda agora é quantas áreas a conta tem — `CLINIC_ONLY`
+            decide onde a pessoa cai, não onde ela pode ir. */}
+        {canSwitch && (
           <Button
-            title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })}
+            title={tr(lang, { en: "Switch area", pt: "Trocar de área" })}
             variant="ghost"
-            onPress={handleSwitchModule}
+            onPress={switchArea}
             size="md"
+            testID="account-switch-area"
           />
         )}
 

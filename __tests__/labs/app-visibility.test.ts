@@ -28,14 +28,22 @@ describe("a rota de módulos", () => {
   });
 
   it("o filtro remove exatamente a chave `lab`", () => {
-    expect(rota).toMatch(/labOn \? mods : mods\.filter\(\(m\) => m\.key !== "lab"\)/);
+    expect(rota).toMatch(/mods\.filter\(\(m\) => m\.key !== "lab"\)/);
   });
 
-  it("e o interruptor CONCEDE, não só remove — ligar tem que ligar", () => {
+  it("e a resposta CONCEDE, não só remove — ligar tem que ligar", () => {
     // Escrito só como filtro, ligar o laboratório não ligava nada: o paciente
-    // seguia preso a uma linha DIAGNOSTICS que a BPR nunca teve.
-    expect(rota).toMatch(/if \(labOn && overrideGrants\(overrides\["mod_lab"\]\) !== false\)/);
+    // seguia preso a uma linha DIAGNOSTICS que a BPR nunca teve (R1 do review
+    // da 083).
+    //
+    // A asserção deixou de citar a grafia de então (`labOn && overrideGrants(…)`)
+    // porque em 26/09 a regra mudou — a liberação individual passou a vencer o
+    // interruptor geral — e um teste que fixa a grafia reprova a mudança em vez
+    // do defeito. O que ele guarda é a propriedade: **a mesma** variável filtra
+    // e concede, e concede de verdade.
+    expect(rota).toMatch(/if \(labParaEste\) \{/);
     expect(rota).toMatch(/keys\.add\("lab"\)/);
+    expect(rota).toMatch(/labParaEste \? mods : mods\.filter/);
   });
 });
 
