@@ -98,6 +98,25 @@ export async function GET(request: NextRequest) {
     const labParaEste = labDele === false ? false : labOn || labDele === true;
     const semLab = <T extends { key: string }>(mods: T[]): T[] =>
       labParaEste ? mods : mods.filter((m) => m.key !== "lab");
+
+    /**
+     * **A BA não entra no app do paciente.**
+     *
+     * Este binário é o app da clínica: laboratório e clínica. A BA é outro
+     * produto, para outra gente, e aparecia no seletor porque o atalho de
+     * "admin vê tudo" devolve `MODULE_DEFS` inteiro — então o Bruno abria o app
+     * e via três áreas onde deviam existir duas (medido no aparelho dele,
+     * 26/09/2026).
+     *
+     * Paciente nunca recebeu: a BA depende de `ORDERS`/`SOCIAL_MEDIA` em
+     * `ClinicModuleAccess`, que a BPR não tem. Quem via era só a equipe.
+     *
+     * Uma concessão explícita continua abrindo a porta — é o mesmo desenho do
+     * laboratório, e é o que permite voltar atrás sem mexer em código.
+     */
+    const baLiberado = overrideGrants(overrides["mod_ba"]) === true;
+    const semBa = <T extends { key: string }>(mods: T[]): T[] =>
+      baLiberado ? mods : mods.filter((m) => m.key !== "ba");
     if (isPersonalTenant(clinic?.type)) {
       return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
@@ -113,7 +132,7 @@ export async function GET(request: NextRequest) {
       actor.role === "ADMIN" ||
       actor.role === "THERAPIST"
     ) {
-      return corsJson(withTraining(semLab([...MODULE_DEFS])));
+      return corsJson(withTraining(semBa(semLab([...MODULE_DEFS]))));
     }
 
     // Check clinic-level module access
@@ -174,7 +193,7 @@ export async function GET(request: NextRequest) {
     // here was unreachable: when clinica is not denied it is added to `keys`
     // above, so `result` is never empty; when it is denied the condition is
     // already true. An empty list is the honest answer for a denied account.
-    return corsJson(withTraining(semLab(result)));
+    return corsJson(withTraining(semBa(semLab(result))));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

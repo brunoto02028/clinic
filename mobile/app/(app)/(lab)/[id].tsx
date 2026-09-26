@@ -58,7 +58,9 @@ export default function LabTestDetail() {
     swab
       ? { en: "A finger-prick and a swab at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo e swab em casa, seguindo os passos do app. Poste no mesmo dia." }
       : { en: "A finger-prick at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo em casa, seguindo os passos do app. Poste no mesmo dia." },
-    { en: "Your therapist reviews the result and writes a note. Then it appears here.", pt: "Seu terapeuta revisa o resultado e escreve uma nota. Só então ele aparece aqui." },
+    // Ninguém da clínica lê antes (26/09/2026) — e os termos publicados
+    // prometem isso em duas línguas.
+    { en: "The laboratory sends the result, and it appears here. It is yours to share with whichever doctor you prefer.", pt: "O laboratório envia o resultado, e ele aparece aqui. Ele é seu, para compartilhar com o médico que preferir." },
   ];
 
   return (

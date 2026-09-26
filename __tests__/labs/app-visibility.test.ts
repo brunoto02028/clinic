@@ -23,8 +23,11 @@ describe("a rota de módulos", () => {
   });
 
   it("filtra o lab nos dois caminhos — o da equipe e o do paciente", () => {
-    expect(rota).toContain("withTraining(semLab([...MODULE_DEFS]))");
-    expect(rota).toContain("withTraining(semLab(result))");
+    // A asserção olha a composição, não a linha inteira: em 26/09 entrou um
+    // `semBa` por fora (a BA não é do app da clínica) e fixar a grafia fazia
+    // este teste reprovar a mudança em vez do defeito.
+    expect(rota).toMatch(/withTraining\(sem\w+\(semLab\(\[\.\.\.MODULE_DEFS\]\)\)\)/);
+    expect(rota).toMatch(/withTraining\(sem\w+\(semLab\(result\)\)\)/);
   });
 
   it("o filtro remove exatamente a chave `lab`", () => {
