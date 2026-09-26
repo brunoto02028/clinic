@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Spinner, Logo } from "@/components/ui";
 import { fetchModules, type AppModule } from "@/api/modules";
-import { SHOW_LAB, CLINIC_ONLY } from "@/lib/feature-flags";
+import { CLINIC_ONLY } from "@/lib/feature-flags";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
@@ -19,14 +19,6 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "barbell-outline": "barbell-outline",
   "body-outline": "body-outline",
   "nutrition-outline": "nutrition-outline",
-};
-
-/** Same shape the server sends, so the card renders identically. */
-const LAB_DEF: AppModule = {
-  key: "lab",
-  name: "Laboratory",
-  icon: "flask-outline",
-  description: "Lab tests & results",
 };
 
 const ROUTE_MAP: Record<AppModule["key"], string> = {
@@ -62,15 +54,11 @@ export default function ModuleSelect() {
   // effect. Unknown keys are dropped instead.
   const routable = rawModules?.filter((m) => m.key in ROUTE_MAP);
 
-  // The lab ships finished in every build and is offered unless this build
-  // turned it off (see lib/feature-flags.ts). Only ever added for someone the
-  // server already treats as a clinic patient — a studio's students have no
-  // `clinica` in their list and are a different product entirely.
+  // O laboratório vem do servidor como qualquer outra área: a clínica o liga
+  // em /admin/labs e ele aparece aqui. O app não o acrescenta por conta —
+  // fazer isso mostrava um card que a guarda do módulo depois recusava.
   const isClinicPatient = !!routable?.some((m) => m.key === "clinica");
-  const modules =
-    SHOW_LAB && isClinicPatient && !routable?.some((m) => m.key === "lab")
-      ? [...(routable ?? []), LAB_DEF]
-      : routable;
+  const modules = routable;
 
   // Straight past the chooser when there is nothing to choose: either the
   // account has one area, or this build is the clinic app and the account is a
