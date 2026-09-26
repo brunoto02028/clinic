@@ -243,3 +243,21 @@ describe("os achados do reteste (R-2, R-3, N-2 e os textos)", () => {
     expect(tela).toMatch(/on a package or a treatment plan it is refused/);
   });
 });
+
+describe("os achados do QA das telas", () => {
+  it("W-2: sem chave da Stripe, a cortesia de 100% não vira 500 mudo", () => {
+    // `getStripe()` lança sem a chave, e rodava antes do ramo da cortesia e
+    // fora do `try` — qualquer ambiente sem chave reprovava a cortesia por um
+    // motivo que não era o dela.
+    const consulta = ler("app", "api", "patient", "appointments", "[id]", "checkout", "route.ts");
+    expect(consulta).toMatch(/stripe: \(\(\) => \{[\s\S]{0,200}return null;/);
+    expect(consulta).not.toMatch(/stripe: getStripe\(\),/);
+  });
+
+  it("N-1: preço zerado não diz 'pago ao marcar'", () => {
+    const tela = ler("mobile", "app", "(app)", "(clinica)", "book-appointment.tsx");
+    expect(tela).toMatch(/cupom && cupom\.final === 0/);
+    expect(tela).toMatch(/nothing to pay/);
+    expect(tela).toMatch(/nada a pagar/);
+  });
+});

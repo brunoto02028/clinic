@@ -94,7 +94,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         // **Esta** consulta. Duas consultas pendentes são duas compras, e a
         // segunda bate no limite em vez de reaproveitar a reserva da primeira.
         targetId: appointment.id,
-        stripe: getStripe(),
+        /**
+         * Preguiçoso e tolerante (W-2 do QA das telas, 26/09/2026).
+         *
+         * `getStripe()` **lança** sem `STRIPE_SECRET_KEY`, e esta linha roda
+         * antes do ramo da cortesia de 100% — que não cobra nada — e fora do
+         * `try`. Num ambiente sem a chave, uma consulta que deveria sair
+         * confirmada e de graça virava um 500 de corpo vazio, e o app dizia
+         * "marcado, ainda não pago". Em produção a chave existe; o que isso
+         * custava era confiança em toda medição local.
+         *
+         * Sem Stripe não dá para expirar a sessão anterior — e é aceitável:
+         * sem Stripe também não houve sessão anterior.
+         */
+        stripe: (() => {
+          try {
+            return getStripe();
+          } catch {
+            return null;
+          }
+        })(),
       })
     : ({ tipo: "sem_cupom" } as const);
 
