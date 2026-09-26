@@ -7,6 +7,7 @@ import { fetchLabOrders, type LabOrder, type LabStage } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { stageCopy } from "@/lib/lab-stage-copy";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 /**
  * Os pedidos (081, T-3), cada um com a posição em que está. O que precisa de
@@ -25,6 +26,7 @@ const STAGE_PILL: Record<LabStage, "warn" | "work" | "ok" | "bad" | "muted"> = {
 
 export default function LabOrders() {
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const lang = useLang();
   const { data, isLoading, isError } = useQuery({ queryKey: ["lab-orders"], queryFn: fetchLabOrders });
   const reviewDays = data?.reviewDays ?? 2;
@@ -67,6 +69,7 @@ export default function LabOrders() {
           </View>
         ) : (
           <FlatList
+            refreshControl={controle}
             data={data?.orders}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: 10, paddingBottom: 24 }}

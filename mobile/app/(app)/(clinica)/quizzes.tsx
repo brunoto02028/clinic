@@ -6,9 +6,11 @@ import { fetchQuizzes, quizTitle } from "@/api/extras";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 function QuizzesScreen() {
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const lang = useLang();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["quizzes"],
@@ -26,6 +28,7 @@ function QuizzesScreen() {
         <Text muted testID="quizzes-empty">{tr(lang, { en: "No quizzes available.", pt: "Nenhum quiz disponível." })}</Text>
       ) : (
         <FlatList
+            refreshControl={controle}
           data={data}
           keyExtractor={(q) => q.id}
           contentContainerStyle={{ gap: 10 }}

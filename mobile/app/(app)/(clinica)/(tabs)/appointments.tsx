@@ -9,11 +9,13 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 
 function AppointmentsScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["appointments"],
     queryFn: fetchAppointments,
@@ -52,6 +54,7 @@ function AppointmentsScreen() {
         </View>
       ) : (
         <FlatList
+            refreshControl={controle}
           data={sorted}
           keyExtractor={(item) => item.id}
           onRefresh={refetch}

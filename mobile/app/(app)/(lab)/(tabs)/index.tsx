@@ -8,6 +8,7 @@ import { fetchLabCatalog, fetchLabOrders, type LabProduct } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { stageCopy } from "@/lib/lab-stage-copy";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 /**
  * O catálogo (081, T-3): o que você quer saber? Nome, o que mede, prazo e o
@@ -16,6 +17,7 @@ import { stageCopy } from "@/lib/lab-stage-copy";
  */
 export default function LabsHub() {
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const lang = useLang();
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<string>("all");
@@ -139,6 +141,7 @@ export default function LabsHub() {
           </View>
         ) : (
           <FlatList
+            refreshControl={controle}
             data={filtered}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: 10, paddingBottom: 24 }}

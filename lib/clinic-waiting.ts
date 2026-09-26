@@ -169,7 +169,7 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
       <tr><td style="background-color:#F3ECDD;border-left:3px solid #826637;border-radius:8px;padding:14px 16px;">
         <p style="margin:0 0 8px;font-weight:700;color:#20242D;">Waiting for you</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
+          ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/exercise-submissions")}
           ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
           ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
           ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}

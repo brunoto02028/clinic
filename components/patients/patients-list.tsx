@@ -26,6 +26,7 @@ import {
   Eye,
   EyeOff,
   MessageCircle,
+  Video,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -73,6 +74,8 @@ interface Patient {
   clinicId?: string | null;
   answeredQCount?: number;
   unreadMessages?: number;
+  /** Vídeos de exercício que este paciente mandou e ninguém viu (087, T-5). */
+  videosEsperando?: number;
   latestDiagnosisStatus?: string | null;
   medicalScreening: {
     id: string;
@@ -320,6 +323,20 @@ export default function PatientsList() {
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-[9px] font-semibold text-blue-300">
                               <MessageCircle className="h-2.5 w-2.5" />
                               {patient.unreadMessages} message{(patient.unreadMessages ?? 0) !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {/* A fila responde "o que está esperando"; esta marca
+                              responde "**deste** paciente, tem algo para eu
+                              ver?" — que é a pergunta que se faz olhando a
+                              lista. Sem ela, o vídeo chegava e a única pista
+                              era um número no menu que não dizia de quem. */}
+                          {(patient.videosEsperando ?? 0) > 0 && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[9px] font-semibold text-amber-300"
+                              data-testid={`video-esperando-${patient.id}`}
+                            >
+                              <Video className="h-2.5 w-2.5" />
+                              {patient.videosEsperando} video{(patient.videosEsperando ?? 0) !== 1 ? "s" : ""}
                             </span>
                           )}
                           {(patient.answeredQCount ?? 0) > 0 && (
