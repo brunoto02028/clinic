@@ -264,9 +264,15 @@ ${tr(lang, {
                 original={porta.price}
                 cupom={cupom}
                 suffix={
-                  porta.requiresPayment
-                    ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
-                    : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })
+                  /* Zerado pelo cupom não é "pago ao marcar": prometer um
+                     pagamento que não vai acontecer, no lugar exato onde a
+                     pessoa confere se vai pagar, é o tipo de frase que faz ela
+                     desconfiar do resto (N-1 do QA das telas). */
+                  cupom && cupom.final === 0
+                    ? tr(lang, { en: "nothing to pay", pt: "nada a pagar" })
+                    : porta.requiresPayment
+                      ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
+                      : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })
                 }
               />
               {/* Só onde há o que descontar: numa sessão do pacote não há nada
