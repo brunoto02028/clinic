@@ -7,6 +7,7 @@ import { sendTemplatedEmail } from '@/lib/email-templates';
 import { notifyPatient } from '@/lib/notify-patient';
 import { sendAdminAlert } from '@/lib/admin-alert-email';
 import { escapeHtml } from '@/lib/admin-notify-email';
+import { TERMS_VERSION, registrarAceiteDosTermos } from '@/lib/terms-version';
 import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = 'force-dynamic';
@@ -55,13 +56,18 @@ export async function POST(req: NextRequest) {
     data: { consentAcceptedAt: new Date() } as any,
   });
 
+  // O carimbo no usuário diz **que** aceitou; a linha no log diz **o quê**, com
+  // IP e aparelho. Sem ela, revisar os termos deixava sem resposta a pergunta de
+  // quem leu a versão antiga (26/09/2026).
+  await registrarAceiteDosTermos({ patientId: userId, req, onde: 'portal' });
+
   // Send consent confirmation via preferred channel
   notifyPatient({
     patientId: userId,
     emailTemplateSlug: 'CONSENT_CONFIRMED',
     emailVars: {
       consentDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-      termsVersion: 'v1.0',
+      termsVersion: TERMS_VERSION,
       ipAddress: '',
       portalUrl: `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/dashboard`,
     },
