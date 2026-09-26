@@ -387,6 +387,14 @@ model Clinic {
   /// aberta e gera mensagem.
   labReviewDays         Int                 @default(2)
 
+  /// O laboratório aparece no app dos pacientes desta clínica? (081)
+  ///
+  /// Era um interruptor de build (`EXPO_PUBLIC_SHOW_LAB`), o que obrigava um
+  /// binário novo a cada mudança de ideia. Aqui é dado: a clínica liga e
+  /// desliga na tela, e o app responde na próxima vez que pergunta quais áreas
+  /// existem. Nasce desligado — o módulo só aparece quando alguém decide.
+  labVisibleInApp Boolean @default(false)
+
   // Baseline module/permission grant every new PATIENT of this clinic starts
   // with (act.62) — same key vocabulary as User.moduleOverrides
   // (mod_.../perm_... -> true), but only ever grant entries here, never

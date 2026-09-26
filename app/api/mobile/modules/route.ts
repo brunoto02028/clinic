@@ -69,8 +69,19 @@ export async function GET(request: NextRequest) {
     // Lab/Clinic/BA — mirroring the web separation. Checked before the
     // admins-see-everything path so a personal ADMIN doesn't get clinic modules.
     const clinic = actor.clinicId
-      ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } })
+      ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true, labVisibleInApp: true } })
       : null;
+
+    /**
+     * O laboratório aparece? (081)
+     *
+     * Era o build que decidia (`EXPO_PUBLIC_SHOW_LAB`), então mudar de ideia
+     * custava um binário. Agora é a clínica, na tela: desligado, o módulo some
+     * do app na próxima vez que ele pergunta quais áreas existem — inclusive
+     * para a equipe, senão "esconder" não esconderia de quem testa.
+     */
+    const labOn = clinic?.labVisibleInApp === true;
+    const semLab = <T extends { key: string }>(mods: T[]): T[] => (labOn ? mods : mods.filter((m) => m.key !== "lab"));
     if (isPersonalTenant(clinic?.type)) {
       return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
@@ -86,7 +97,7 @@ export async function GET(request: NextRequest) {
       actor.role === "ADMIN" ||
       actor.role === "THERAPIST"
     ) {
-      return corsJson(withTraining([...MODULE_DEFS]));
+      return corsJson(withTraining(semLab([...MODULE_DEFS])));
     }
 
     const overrides = (user?.moduleOverrides as Record<string, boolean> | null) || {};
@@ -135,7 +146,7 @@ export async function GET(request: NextRequest) {
     // here was unreachable: when clinica is not denied it is added to `keys`
     // above, so `result` is never empty; when it is denied the condition is
     // already true. An empty list is the honest answer for a denied account.
-    return corsJson(withTraining(result));
+    return corsJson(withTraining(semLab(result)));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

@@ -35,6 +35,8 @@ const UI = {
     title: "Lab tests", subtitle: "Home kits from the laboratory. You set the sale price; the margin is yours.",
     orders: "Orders", awaiting: (n: number) => `${n} result${n === 1 ? "" : "s"} waiting for your review`,
     reviewDays: "Review window", reviewHint: "Working days you promise the patient between the result arriving and your release. The app shows this number.",
+    visible: "Show in the patient app", visibleHint: "Off, the Laboratory area disappears from every patient's app the next time it asks — no new build, no update.",
+    visibleOn: "Patients can see the Laboratory area.", visibleOff: "Hidden. Nobody sees the Laboratory area in the app.",
     sync: "Refresh from the laboratory", syncHint: "Needs the laboratory's API token — not connected yet.",
     test: "Test", cost: "Cost", sale: "Sale price", margin: "Margin", active: "On sale",
     days: (n: number | null) => (n ? `${n} working day${n === 1 ? "" : "s"}` : "—"),
@@ -50,6 +52,8 @@ const UI = {
     title: "Exames", subtitle: "Kits de casa do laboratório. Você define o preço de venda; a margem é sua.",
     orders: "Pedidos", awaiting: (n: number) => `${n} resultado${n === 1 ? "" : "s"} esperando a sua revisão`,
     reviewDays: "Prazo de revisão", reviewHint: "Dias úteis que você promete ao paciente entre o resultado chegar e a sua liberação. O app mostra este número.",
+    visible: "Mostrar no app do paciente", visibleHint: "Desligado, a área Laboratório some do app de todos os pacientes na próxima vez que ele pergunta — sem build novo, sem update.",
+    visibleOn: "Os pacientes veem a área Laboratório.", visibleOff: "Escondido. Ninguém vê a área Laboratório no app.",
     sync: "Atualizar do laboratório", syncHint: "Precisa do token da API do laboratório — ainda não conectado.",
     test: "Exame", cost: "Custo", sale: "Preço de venda", margin: "Margem", active: "À venda",
     days: (n: number | null) => (n ? `${n} dia${n === 1 ? "" : "s"} útil${n === 1 ? "" : "eis"}` : "—"),
@@ -75,6 +79,7 @@ export default function LabCatalogPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [awaiting, setAwaiting] = useState(0);
   const [reviewDays, setReviewDays] = useState<number | null>(null);
+  const [visible, setVisible] = useState<boolean | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; patch: Record<string, unknown>; cost: number; sale: number } | null>(null);
 
   const load = useCallback(async () => {
@@ -88,6 +93,7 @@ export default function LabCatalogPage() {
       setCanSetPrices(!!p.canSetPrices);
       setAwaiting(o?.totals?.awaitingRelease ?? 0);
       setReviewDays(s?.labReviewDays ?? null);
+      setVisible(typeof s?.labVisibleInApp === "boolean" ? s.labVisibleInApp : null);
       setFailed(false);
     } catch {
       setFailed(true);
@@ -127,11 +133,17 @@ export default function LabCatalogPage() {
     void patch(p.id, { retailPrice: n });
   };
 
-  const saveReviewDays = async (n: number) => {
-    const r = await fetch("/api/admin/labs/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ labReviewDays: n }) });
+  const saveSettings = async (body: Record<string, unknown>) => {
+    const r = await fetch("/api/admin/labs/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
-    if (r.ok) { setReviewDays(data.labReviewDays); toast({ title: ui.saved }); }
-    else toast({ title: ui.notSaved, description: locale === "pt-BR" ? data.errorPt || data.error : data.error, variant: "destructive" });
+    if (r.ok) {
+      if (typeof data.labReviewDays === "number") setReviewDays(data.labReviewDays);
+      if (typeof data.labVisibleInApp === "boolean") setVisible(data.labVisibleInApp);
+      toast({ title: ui.saved });
+    } else {
+      toast({ title: ui.notSaved, description: locale === "pt-BR" ? data.errorPt || data.error : data.error, variant: "destructive" });
+      void load();
+    }
   };
 
   return (
@@ -154,6 +166,24 @@ export default function LabCatalogPage() {
       </div>
 
       <Card>
+        <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">{ui.visible}</p>
+            <p className="text-xs text-muted-foreground max-w-xl">{ui.visibleHint}</p>
+            {visible !== null && (
+              <p className={`text-xs mt-1 ${visible ? "text-ba1-ok" : "text-muted-foreground"}`} data-testid="lab-visible-state">
+                {visible ? ui.visibleOn : ui.visibleOff}
+              </p>
+            )}
+          </div>
+          <Switch
+            checked={!!visible} disabled={!canSetPrices || visible === null} data-testid="lab-visible-toggle"
+            onCheckedChange={(v) => { setVisible(v); void saveSettings({ labVisibleInApp: v }); }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="pt-6 flex flex-wrap items-center gap-4">
           <div>
             <p className="text-sm font-medium">{ui.reviewDays}</p>
@@ -163,7 +193,7 @@ export default function LabCatalogPage() {
             type="number" min={1} max={14} className="w-24" data-testid="lab-review-days"
             value={reviewDays ?? ""} disabled={!canSetPrices || reviewDays === null}
             onChange={(e) => setReviewDays(Number(e.target.value))}
-            onBlur={(e) => { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 1 && n <= 14) void saveReviewDays(n); }}
+            onBlur={(e) => { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 1 && n <= 14) void saveSettings({ labReviewDays: n }); }}
           />
         </CardContent>
       </Card>

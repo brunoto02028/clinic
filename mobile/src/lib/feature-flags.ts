@@ -4,28 +4,15 @@
  */
 
 /**
- * Whether the Laboratory module is offered in this build.
+ * O laboratório **não** é mais decidido aqui.
  *
- * The lab screens — catalogue, test detail, collection method, checkout,
- * orders and results — are all finished and ship in every build. What changes
- * is whether a patient can reach them.
- *
- * Default is **on**, so the module is there to try. For the build that goes to
- * patients before the laboratory's own API is connected, set
- * `EXPO_PUBLIC_SHOW_LAB=false`:
- *
- *     EXPO_PUBLIC_SHOW_LAB=false eas build --profile production --platform ios
- *
- * With it off, the server decides as it otherwise would: the lab appears only
- * for a clinic that has `DIAGNOSTICS` enabled in ClinicModuleAccess — the data
- * switch that needs no new build at all.
- *
- * This only ever *adds* the lab for someone the server already recognises as a
- * clinic patient. A studio's students are a different product and never see
- * it: their module list has no `clinica` in it, which is the condition the
- * chooser and the route guard both check.
+ * Era `EXPO_PUBLIC_SHOW_LAB`, inlinado no bundle: mudar de ideia custava um
+ * binário novo, e o interruptor ficava longe de quem decide. Agora é um dado
+ * da clínica (`Clinic.labVisibleInApp`), ligado e desligado em /admin/labs, e
+ * o servidor responde `/api/mobile/modules` de acordo. Desligado, o módulo
+ * some do app na próxima vez que ele pergunta — sem build, sem update.
  */
-export const SHOW_LAB = process.env.EXPO_PUBLIC_SHOW_LAB !== "false";
+
 
 /**
  * Whether this build goes straight into the clinic.
