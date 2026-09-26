@@ -19,7 +19,7 @@ import { servicePricesForClinic, patientBookingPrice } from "@/lib/service-price
  */
 
 export type BookingKind = "FIRST_CONSULTATION" | "PACKAGE_SESSION" | "EXTRA_SESSION";
-export type BookingBlock = "screening_required" | "no_clinic";
+export type BookingBlock = "screening_required" | "no_clinic" | "price_not_set";
 
 export interface BookingOption {
   /** `null` quando bloqueado. */
@@ -93,9 +93,16 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
   });
 
   if (jaTeveConsulta === 0) {
+    // Sem preço configurado não há primeira consulta a oferecer. O padrão de
+    // £60 que existia aqui cobrava um número que ninguém escolheu — e escondia
+    // do Bruno que o interruptor "Active" da tela de preços estava desligado.
+    const preco = await patientBookingPrice(clinicId);
+    if (preco === null) {
+      return { kind: null, blockedReason: "price_not_set", ...vazio };
+    }
     return {
       kind: "FIRST_CONSULTATION",
-      price: await patientBookingPrice(clinicId),
+      price: preco,
       currency: moeda,
       requiresPayment: true,
       sessionsRemaining: null,
@@ -107,9 +114,13 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
   // 3) Em tratamento, sem sessão sobrando: extra. Quem já confia em você não
   //    precisa pagar adiantado — mas a clínica decide.
   const sessao = precos.find((p) => p.serviceType === "TREATMENT_SESSION");
+  const precoExtra = sessao ? sessao.price : await patientBookingPrice(clinicId);
+  if (precoExtra === null) {
+    return { kind: null, blockedReason: "price_not_set", ...vazio };
+  }
   return {
     kind: "EXTRA_SESSION",
-    price: sessao ? sessao.price : await patientBookingPrice(clinicId),
+    price: precoExtra,
     currency: moeda,
     requiresPayment: paciente.clinic?.extraSessionPayment === "AT_BOOKING",
     sessionsRemaining: null,

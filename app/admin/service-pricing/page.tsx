@@ -552,6 +552,21 @@ export default function ServicePricingPage() {
                     />
                   </div>
                 </div>
+                {/* O que o paciente vê, dito em voz alta.
+                    O Bruno digitou 100, deixou "Active" desligado e o app
+                    ofereceu a consulta por £60 — um padrão escrito no código
+                    que ninguém escolheu. O padrão morreu; o que restava era a
+                    tela não dizer que o interruptor decide (26/09/2026). */}
+                <div
+                  className={`rounded-md px-3 py-2 text-xs ${sp.isActive ? "bg-ba1-ok/10 text-ba1-ok" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}
+                  data-testid={`price-effect-${sp.serviceType}`}
+                >
+                  {sp.isActive
+                    ? `Patients see ${sp.currency} ${Number(sp.price || 0).toFixed(2)}.`
+                    : sp.serviceType === "CONSULTATION"
+                      ? "Off — patients cannot book a first consultation until you switch this on."
+                      : "Off — patients do not see this service."}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
