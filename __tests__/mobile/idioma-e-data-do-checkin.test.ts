@@ -77,7 +77,9 @@ describe("o check-in ganhou um dia", () => {
     // Sem isto, escolher ontem manteria os números de hoje na tela e a pessoa
     // gravaria a dor de hoje com a data de ontem.
     expect(checkinTela).toMatch(/dia === data\?\.todayDate/);
-    expect(checkinTela).toMatch(/\(data\?\.history \?\? \[\]\)\.find\(\(h\) => h\.checkinDate === dia\)/);
+    // A busca ganhou o período junto quando manhã/tarde/noite passaram a
+    // coexistir: achar só pela data traria o da manhã para quem preenche a noite.
+    expect(checkinTela).toMatch(/h\.checkinDate === dia && h\.period === periodo/);
   });
 
   it("e não sobrou o efeito antigo brigando pelos mesmos estados", () => {
@@ -98,9 +100,12 @@ describe("o servidor aceita a data, com bordas", () => {
   });
 
   it("a chave do upsert passou a usar o dia pedido", () => {
-    expect(checkinRota).toMatch(/patientId_checkinDate: \{ patientId: userId, checkinDate \}/);
+    // A chave virou de três partes quando o período entrou; o que este teste
+    // guarda é o **dia pedido** chegar nela, não o formato dela.
+    expect(checkinRota).toMatch(/patientId: userId, checkinDate, period/);
+    // O `create` grava o dia pedido, e desde o período ele grava os dois.
     // `\s+` e não `\n`: os arquivos deste repo têm CRLF, e `\n` sozinho não casa.
-    expect(checkinRota).toMatch(/checkinDate,\s+painLevel/);
+    expect(checkinRota).toMatch(/checkinDate,\s+period,/);
   });
 
   it("o futuro é recusado", () => {
@@ -123,5 +128,89 @@ describe("o servidor aceita a data, com bordas", () => {
     // Corrigir o histórico não pode virar moeda: quem voltasse catorze dias
     // ganharia catorze sequências de uma vez.
     expect(checkinRota).toMatch(/if \(!alreadyActive && checkinDate === today\)/);
+  });
+});
+
+describe("manhã, tarde e noite são três fatos", () => {
+  const schema = ler("prisma", "schema.prisma");
+
+  it("a chave única deixou de ser paciente + dia", () => {
+    // Era isso que fazia o registro da noite apagar o da manhã.
+    expect(schema).toMatch(/@@unique\(\[patientId, checkinDate, period\]\)/);
+    expect(schema).not.toMatch(/@@unique\(\[patientId, checkinDate\]\)/);
+  });
+
+  it("quem já registrava antes disto continua válido", () => {
+    // `day` é honesto: aquele registro descreve o dia, sem dizer a hora.
+    // Marcá-lo como "manhã" seria inventar dado clínico.
+    expect(schema).toMatch(/period\s+String @default\("day"\)/);
+  });
+
+  it("a rota recusa um período que não existe", () => {
+    expect(checkinRota).toMatch(/PERIODOS = \["day", "morning", "afternoon", "evening"\]/);
+    expect(checkinRota).toMatch(/period must be one of/);
+  });
+
+  it("e o upsert usa a chave de três partes", () => {
+    expect(checkinRota).toMatch(
+      /patientId_checkinDate_period: \{ patientId: userId, checkinDate, period \}/
+    );
+  });
+
+  it("o GET devolve **todos** os do dia", () => {
+    // `findUnique` devolveria um dos três sem dizer qual.
+    expect(checkinRota).toMatch(/todayAll: todayCheckIns/);
+    expect(checkinRota).toMatch(/where: \{ patientId: userId, checkinDate: today \}/);
+  });
+
+  it("e `today` continua existindo, para não quebrar quem já o lê", () => {
+    expect(checkinRota).toMatch(/todayCheckIns\.find\(\(c: any\) => c\.period === "day"\) \?\? todayCheckIns\[0\]/);
+  });
+
+  it("XP continua uma vez por dia, não uma por período", () => {
+    // Três registros num dia são três olhares sobre o mesmo dia, não três
+    // dias de constância.
+    expect(checkinRota).toMatch(/if \(!alreadyActive && checkinDate === today\)/);
+  });
+
+  it("a tela abre no período que o relógio já sabe", () => {
+    expect(checkinTela).toMatch(/useState<PeriodoDoDia>\(\(\) => periodoDeAgora\(\)\)/);
+    expect(checkinTela).toMatch(/if \(h < 12\) return "morning"/);
+  });
+
+  it("trocar de período carrega o registro daquele período", () => {
+    expect(checkinTela).toMatch(/h\.checkinDate === dia && h\.period === periodo/);
+  });
+
+  it("e cai no registro do dia inteiro quando não há um do período", () => {
+    expect(checkinTela).toMatch(/h\.checkinDate === dia && h\.period === "day"/);
+  });
+
+  it("um ponto marca o período já preenchido", () => {
+    // Sem isso a pessoa toca em cada um para descobrir onde já escreveu.
+    expect(checkinTela).toMatch(/const temRegistro =/);
+    expect(checkinTela).toMatch(/testID=\{`checkin-periodo-\$\{p\}`\}/);
+  });
+
+  it("os três nomes existem nas duas línguas", () => {
+    for (const par of ['en: "Morning", pt: "Manhã"', 'en: "Afternoon", pt: "Tarde"', 'en: "Evening", pt: "Noite"']) {
+      expect(checkinTela).toContain(par);
+    }
+  });
+});
+
+describe("a palavra é terapeuta, nunca fisioterapeuta", () => {
+  it.each([
+    ["lib/terms-content.ts", ["lib", "terms-content.ts"]],
+    ["lib/patient-email.ts", ["lib", "patient-email.ts"]],
+    ["a triagem do app", ["mobile", "app", "(app)", "(clinica)", "screening.tsx"]],
+  ])("%s não usa mais a palavra", (_nome, caminho) => {
+    // Regra do Bruno: texto que o paciente lê diz "Terapeuta"/therapist.
+    expect(ler(...(caminho as string[]))).not.toMatch(/physiotherap|fisioterap/i);
+  });
+
+  it("mas o nome da clínica continua inteiro", () => {
+    // "Bruno Physical Rehabilitation" é a marca, não a palavra.
+    expect(ler("lib", "terms-content.ts")).toMatch(/Bruno Physical Rehabilitation/);
   });
 });
