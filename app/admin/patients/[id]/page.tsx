@@ -2250,11 +2250,16 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Exercícios ── */}
         <TabsContent value="exercicios" className="mt-4 space-y-6">
-          <PatientExercisesTab patientId={patientId} />
-          {/* O vídeo que o paciente gravou em casa fica junto da prescrição,
-              que é onde ele significa alguma coisa — foi onde o Bruno pediu
-              para ser avisado, "para fazer a revisão e dar um retorno". */}
+          {/* O vídeo vem **antes** da prescrição.
+              Ele ficava no fim, depois de nove exercícios, e a fila levava
+              justamente para cá: o Bruno clicava no vídeo que estava
+              esperando e caía numa lista onde precisava rolar até o fundo
+              para achá-lo (26/09/2026).
+              Quem chega nesta aba vindo da fila vem por causa do vídeo; quem
+              chega para prescrever rola um pouco. A ordem segue quem tem
+              pressa. */}
           <ExerciseSubmissionsPanel patientId={patientId} />
+          <PatientExercisesTab patientId={patientId} />
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}
