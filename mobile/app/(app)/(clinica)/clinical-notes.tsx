@@ -9,10 +9,12 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 function ClinicalNotesScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const [search, setSearch] = useState("");
   const { data, isLoading, isError, refetch, error } = useQuery({
     queryKey: ["clinical-notes"],
@@ -60,6 +62,7 @@ function ClinicalNotesScreen() {
           </Card>
         ) : (
           <FlatList
+            refreshControl={controle}
             data={filtered}
             keyExtractor={n => n.id}
             contentContainerStyle={{ gap: 10 }}

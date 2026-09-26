@@ -66,7 +66,33 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json(patients);
+    // Quem tem vídeo esperando (087, T-5).
+    //
+    // A fila responde "o que está esperando"; esta marca responde a outra
+    // pergunta, que é a que se faz olhando a lista: "**deste** paciente, tem
+    // algo para eu ver?" Sem ela, quem abre um prontuário não tem sinal nenhum
+    // de que há vídeo a assistir.
+    //
+    // Um `groupBy` e não uma contagem por linha: com trinta pacientes na tela,
+    // uma consulta por linha são trinta idas ao banco para desenhar um ponto.
+    const pendentes = patients.length
+      ? await (prisma as any).exerciseSubmission.groupBy({
+          by: ["patientId"],
+          where: {
+            clinicId: where.clinicId,
+            reviewedAt: null,
+            patientId: { in: patients.map((p) => p.id) },
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const porPaciente = new Map<string, number>(
+      pendentes.map((g: any) => [g.patientId, g._count._all as number])
+    );
+
+    return NextResponse.json(
+      patients.map((p) => ({ ...p, videosEsperando: porPaciente.get(p.id) ?? 0 }))
+    );
   } catch (error) {
     console.error("Error fetching admin patients:", error);
     return NextResponse.json({ error: "Failed to fetch patients" }, { status: 500 });

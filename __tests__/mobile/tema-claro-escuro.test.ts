@@ -95,8 +95,24 @@ describe("nada crava cor onde o tema deveria mandar", () => {
     expect(seletor).toMatch(/backgroundColor: t\.colors\.background/);
   });
 
-  it("o logo troca de tom com o tema", () => {
-    expect(seletor).toMatch(/tone=\{t\.isDark \? "bone" : "ink"\}/);
+  it("o logo troca de tom com o tema, e nenhuma tela precisa dizer isso", () => {
+    // As telas de entrada cravavam `tone="ink"` — certo enquanto existia uma
+    // paleta, e um logo invisível no dia em que o tom escuro subiu (aparelho do
+    // Bruno, 26/09/2026). A decisão desceu para o componente.
+    const logo = ler("src", "components", "ui", "Logo.tsx");
+    expect(logo).toMatch(/ART\[tone \?\? \(t\.isDark \? "bone" : "ink"\)\]/);
+    expect(seletor).not.toMatch(/tone=/);
+    for (const tela of ["login.tsx", "register.tsx", "forgot-password.tsx"]) {
+      expect(ler("app", tela)).not.toMatch(/<Logo tone=/);
+    }
+  });
+
+  it("mas quem pinta o próprio fundo escuro continua dizendo", () => {
+    // Boas-vindas, trava e cobertura de privacidade são escuras nos dois tons —
+    // ali o tema não sabe o que o `View` de cima está fazendo.
+    for (const [...p] of [["app", "index.tsx"], ["src", "components", "LockOverlay.tsx"], ["src", "components", "PrivacyCover.tsx"]]) {
+      expect(ler(...p)).toMatch(/<Logo tone="bone"/);
+    }
   });
 
   it("o `View` raiz segue o tema, não o bege", () => {
@@ -143,5 +159,109 @@ describe("seguir o aparelho ainda não existe, e o motivo está escrito", () => 
   it("e o app.json segue intocado — este trabalho não pede build", () => {
     const appJson = JSON.parse(ler("app.json"));
     expect(appJson.expo.userInterfaceStyle).toBe("light");
+  });
+});
+
+/**
+ * Tira comentário antes de procurar cor cravada.
+ *
+ * Os próprios docstrings destes arquivos citam `#FFFFFF` e `#6A6F79` — são as
+ * cores que **saíram**. Sem isto o teste acusaria a explicação do defeito como
+ * se fosse o defeito, que já me aconteceu quatro vezes nesta base.
+ */
+const semComentarios = (src: string) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*/g, "");
+
+describe("tinta sobre acento é token, não branco cravado", () => {
+  // Branco sobre o verde do claro dá 5,31:1; sobre o verde **clareado** do
+  // escuro dá 2,66:1. E tinta escura, que salva o escuro, reprova no claro em
+  // 2,17. O valor certo depende do tom — logo, é token.
+  it("`accentFg` existe nas duas paletas, com valores diferentes", () => {
+    expect(tema).toMatch(/accentFg: string;/);
+    expect(tema).toMatch(/accentFg: palette\.white,/);
+    expect(tema).toMatch(/accentFg: palette\.ink,/);
+  });
+
+  it.each([
+    ["src/components/ui/Button.tsx", 4],
+    ["src/components/ui/Avatar.tsx", 1],
+    ["src/components/ProfilePhotoPicker.tsx", 1],
+    ["app/login.tsx", 1],
+    ["app/register.tsx", 1],
+    ["app/(app)/(clinica)/blood-pressure.tsx", 4],
+    ["app/(app)/(clinica)/messages.tsx", 1],
+    ["app/(app)/(clinica)/screening.tsx", 2],
+    ["app/(app)/(clinica)/wearables.tsx", 3],
+    ["app/(app)/(clinica)/messages.tsx", 5],
+    ["app/(app)/(nutricao)/index.tsx", 3],
+  ])("%s não crava mais branco sobre acento", (arquivo) => {
+    const src = semComentarios(ler(...arquivo.split("/")));
+    expect(src).not.toMatch(/(color|fg)\s*[:=]\s*\{?\s*"#(?:fff|FFF|ffffff|FFFFFF)"/);
+  });
+
+  it("e o par certo foi escolhido: acento pede `accentFg`, `primary` pede `primaryFg`", () => {
+    // Não é intercambiável: `primary` é ink no claro e **bone** no escuro, então
+    // sobre ele o par é `primaryFg`. Trocar um pelo outro dá 1,10:1.
+    expect(ler("src", "components", "ui", "Button.tsx")).toMatch(
+      /health: \{ bg: t\.colors\.health, fg: t\.colors\.accentFg \}/
+    );
+    expect(ler("src", "components", "ui", "Avatar.tsx")).toMatch(
+      /const fg = pillar \? fgMap\[pillar\] : t\.colors\.primaryFg;/
+    );
+  });
+
+  it("a legenda em cima do acento tem o par translúcido", () => {
+    // 75% de branco sobre o verde clareado do escuro dá ~1,4:1: a hora da
+    // mensagem enviada desaparece dentro da própria bolha.
+    expect(tema).toMatch(/accentFgSoft: "rgba\(255, 255, 255, 0\.75\)"/);
+    expect(tema).toMatch(/accentFgSoft: "rgba\(32, 36, 45, 0\.72\)"/);
+    const msgs = semComentarios(ler("app", "(app)", "(clinica)", "messages.tsx"));
+    expect(msgs).not.toMatch(/rgba\(255,\s*255,\s*255/);
+    expect(msgs).toMatch(/mine \? t\.colors\.accentFgSoft : t\.colors\.textMuted/);
+  });
+
+  it("branco continua onde ele é certo — em cima de preto", () => {
+    // Visor de arquivo e vídeo têm fundo preto nos dois tons; ali temar seria
+    // apagar o texto.
+    expect(ler("src", "components", "FileViewer.tsx")).toMatch(/color="#FFFFFF"/);
+  });
+});
+
+describe("o controle segmentado mostra qual está selecionado", () => {
+  const segmented = ler("src", "components", "ui", "SegmentedControl.tsx");
+
+  it("trilho e botão são tokens — a relação entre eles se inverte no escuro", () => {
+    expect(tema).toMatch(/segmentTrack: "#EBEAE6"/);
+    expect(tema).toMatch(/segmentThumb: palette\.card/);
+    expect(tema).toMatch(/segmentTrack: palette\.ink/);
+    expect(tema).toMatch(/segmentThumb: "#333845"/);
+    expect(segmented).toMatch(/backgroundColor: t\.colors\.segmentTrack/);
+    expect(segmented).toMatch(/isActive \? t\.colors\.segmentThumb : "transparent"/);
+  });
+
+  it("o botão do escuro é **mais claro** que o trilho, senão nada parece levantado", () => {
+    const i = tema.indexOf("const dark: ThemeColors");
+    const bloco = tema.slice(i, tema.indexOf("\n};", i));
+    const luz = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16);
+    const trilho = "#20242D"; // palette.ink
+    const botao = bloco.match(/segmentThumb: "(#[0-9A-Fa-f]{6})"/)![1];
+    expect(luz(botao)).toBeGreaterThan(luz(trilho));
+  });
+
+  it("o rótulo inativo deixou de reprovar nos dois tons", () => {
+    // `#6A6F79` sobre o trilho bege dava 4,19:1 — abaixo do mínimo no claro
+    // também, não só no escuro.
+    expect(semComentarios(segmented)).not.toMatch(/#6A6F79/);
+    expect(segmented).toMatch(/isActive \? t\.colors\.text : t\.colors\.textMuted/);
+  });
+});
+
+describe("a seta de voltar é visível no escuro", () => {
+  it("o tint padrão vem do tema, não do bege cravado", () => {
+    // 1,10:1 em toda tela com cabeçalho, nos sete layouts — o defeito mais
+    // espalhado que o QA achou.
+    const h = ler("src", "components", "HeaderBack.tsx");
+    expect(h).toMatch(/const cor = tint \?\? t\.colors\.text;/);
+    expect(h).toMatch(/color=\{cor\}/);
   });
 });

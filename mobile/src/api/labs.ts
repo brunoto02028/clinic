@@ -146,3 +146,42 @@ export async function fetchLabConsent(locale: "en-GB" | "pt-BR"): Promise<LabCon
 export async function acceptLabConsent(): Promise<{ accepted: boolean; acceptedAt: string; version: string }> {
   return apiFetch("/api/patient/lab-consent", { method: "POST" });
 }
+
+// ---------------------------------------------------------------------------
+// Pontos de coleta (081): onde a pessoa dá a amostra, perto de onde ela mora.
+// ---------------------------------------------------------------------------
+
+export interface PontoDeColeta {
+  id: string;
+  nome: string;
+  endereco: string;
+  cidade: string | null;
+  postcode: string | null;
+  distanciaKm: number | null;
+  onibus: string | null;
+  trem: string | null;
+  proximaVaga: string | null;
+}
+
+/**
+ * Quatro respostas, e três delas valem antes de o laboratório estar ligado.
+ * Uma tela que não sabe **por que** está vazia só sabe ficar vazia: sem isto,
+ * "complete seu cadastro" e "ainda não ligamos" viram o mesmo nada.
+ */
+export type EstadoDosPontos =
+  | "sem_postcode"
+  | "postcode_desconhecido"
+  | "laboratorio_desconectado"
+  | "ok";
+
+export interface PontosDeColeta {
+  estado: EstadoDosPontos;
+  postcode: string | null;
+  /** O distrito que o serviço de código postal devolve — confere na tela. */
+  local: string | null;
+  pontos: PontoDeColeta[];
+}
+
+export async function fetchPontosDeColeta(): Promise<PontosDeColeta> {
+  return apiFetch<PontosDeColeta>("/api/mobile/labs/collection-points");
+}

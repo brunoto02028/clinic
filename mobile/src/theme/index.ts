@@ -21,6 +21,43 @@ export interface ThemeColors {
   workSoft: string;
 
   /**
+   * A cor do texto **em cima de um acento** — verde, azul, âmbar, vermelho.
+   *
+   * Existe porque a sua falta era o defeito: `#FFFFFF` estava cravado em
+   * `Button`, `Avatar`, no chip de idioma e no badge da foto. Branco sobre o
+   * verde escuro do claro dá 5,31:1; sobre o verde **clareado** do escuro dá
+   * **2,66:1**, e o rótulo do botão principal some (QA da 086, 26/09/2026).
+   *
+   * E não bastava trocar por tinta: no escuro ink sobre acento dá 5,82–6,80,
+   * mas no claro reprova em 2,17–3,05. Ou seja, o valor certo **depende do
+   * tom** — que é a definição de token. Não faltava cor nova; faltava o par
+   * ter nome.
+   */
+  accentFg: string;
+
+  /**
+   * A versão apagada de `accentFg` — legenda, hora da mensagem, sobrerrótulo.
+   *
+   * Existe pelo mesmo motivo que `accentFg`, e ela sozinha não bastava:
+   * `rgba(255,255,255,0.75)` em cima do verde clareado do escuro dá ~1,4:1, e a
+   * hora da mensagem enviada desaparece dentro da própria bolha.
+   */
+  accentFgSoft: string;
+
+  /**
+   * O trilho e o botão do controle segmentado.
+   *
+   * São **dois** tokens porque a relação entre eles se inverte entre os tons:
+   * no claro o trilho é um bege recuado e o botão é o card branco, saliente; no
+   * escuro o trilho é a superfície e o botão é um degrau **mais claro** que ela
+   * — é o único jeito de o selecionado parecer levantado sobre fundo escuro.
+   * Cravados, davam botão `#FFFFFF` sobre trilho `#FFFFFF`: 1,10:1, o
+   * selecionado invisível (QA da 086).
+   */
+  segmentTrack: string;
+  segmentThumb: string;
+
+  /**
    * O acento do laboratório — o sage e o âmbar (086, T-2).
    *
    * Decisão do Bruno: *"as telas do laboratório, quando for o tom escuro, têm
@@ -89,6 +126,12 @@ const light: ThemeColors = {
   community: palette.community,
   communitySoft: palette.communitySoft,
 
+  accentFg: palette.white,
+  accentFgSoft: "rgba(255, 255, 255, 0.75)",
+
+  segmentTrack: "#EBEAE6",
+  segmentThumb: palette.card,
+
   lab: "#65807B",
   labSoft: "#E4EDE7",
   labWarm: "#B8823A",
@@ -151,6 +194,13 @@ const dark: ThemeColors = {
   healthSoft: "#1E2A24",
   community: "#D0A468",
   communitySoft: "#2A2418",
+
+  // Tinta sobre o acento clareado: 5,82 no `bad`, 6,80 no `community`.
+  accentFg: palette.ink,
+  accentFgSoft: "rgba(32, 36, 45, 0.72)",
+
+  segmentTrack: palette.ink,
+  segmentThumb: "#333845",
 
   // O sage e o âmbar do laboratório, clareados para o escuro. O `Soft` de cada
   // um deixa de ser fundo pálido e vira fundo escuro tingido do mesmo tom — é o

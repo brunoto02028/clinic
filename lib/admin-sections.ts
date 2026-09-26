@@ -116,6 +116,17 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
+        // O badge vermelho contava os vídeos e não dizia quais. O backend já
+        // respondia `?pending=1` desde a 076 e nenhuma tela perguntava — o
+        // único caminho até um vídeo era abrir o prontuário e achar a aba
+        // (087, T-4). Aqui está a porta.
+        key: "submissions",
+        label: "Videos",
+        labelPt: "Vídeos",
+        href: "/admin/exercise-submissions",
+        matchRoutes: ["/admin/exercise-submissions"],
+      },
+      {
         // Readings from the clinic's own cuff that matched no measurement
         // window (activity 074, T-15). It needs a door in the navigation, or
         // the only way to reach it is the link on an expired measurement.

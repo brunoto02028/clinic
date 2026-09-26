@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * As abas que existem. Um `?tab=` fora desta lista cai em `resumo` — sem ela,
+ * uma URL com erro de digitação montaria o `Tabs` num valor que nenhum
+ * `TabsContent` responde, e o resultado é uma tela em branco sem explicação.
+ */
+const ABAS_VALIDAS = [
+  "resumo", "screening", "avaliacoes", "assessments", "notas", "medidas", "pressao",
+  "protocolo", "rehab", "evidencia", "exercicios", "workouts", "nutrition",
+  "mensagens", "docs", "billing", "atividade", "automacao",
+];
+
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -195,8 +206,24 @@ export default function PatientProfilePage() {
   // activity 68): land on the Messages tab with the composer prefilled.
   const [emailAppointmentId, setEmailAppointmentId] = useState<string | null>(null);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("email");
-    if (id) { setEmailAppointmentId(id); setActiveTab("mensagens"); }
+    const busca = new URLSearchParams(window.location.search);
+    const id = busca.get("email");
+    if (id) { setEmailAppointmentId(id); setActiveTab("mensagens"); return; }
+    // `?tab=` — a aba era estado puramente local, e por isso **nada** conseguia
+    // apontar para ela: nem o contador do menu, nem o e-mail diário, nem um
+    // link colado numa conversa. O vídeo do exercício chegava e o único caminho
+    // até ele era abrir o prontuário e adivinhar a aba (087, T-6).
+    const pedida = busca.get("tab");
+    if (pedida && ABAS_VALIDAS.includes(pedida)) setActiveTab(pedida);
+  }, []);
+
+  // Trocar de aba escreve na URL, sem recarregar: é o que torna a aba
+  // compartilhável e o que faz o botão de voltar do navegador significar algo.
+  const irParaAba = useCallback((aba: string) => {
+    setActiveTab(aba);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", aba);
+    window.history.replaceState(null, "", url.toString());
   }, []);
   // Safety net: a personal tenant must never land on a clinical tab (its trigger
   // and every entry point are hidden, but a stale/forced value would otherwise
@@ -1022,7 +1049,7 @@ export default function PatientProfilePage() {
       )}
 
       {/* ─── Tabs ─── */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+      <Tabs value={activeTab} onValueChange={irParaAba} className="mt-4">
         <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
   {(() => {
             const pendingDiag = data.diagnoses?.filter((d: any) => d.status === "DRAFT" || d.status === "UNDER_REVIEW").length ?? 0;
@@ -2349,6 +2376,15 @@ export default function PatientProfilePage() {
           <TabsContent value="workouts" className="mt-4 space-y-4">
             <StudentBadgesStrip studentId={patientId} />
             <WorkoutProgress studentId={patientId} />
+            {/* O vídeo que o aluno manda entrava e **sumia** (087, T-7).
+                A aba de exercícios é escondida no estúdio de propósito — ele
+                prescreve por Workouts, e duas vias desconexas foi o que a 055
+                evitou. Mas o envio continuou aceito: o arquivo subia, o
+                registro nascia, o contador subia, e não havia tela nenhuma.
+                Aceitar e esconder é a única saída que não se defende. Entre
+                mostrar e recusar, mostrar ganha — o aluno já gravou. Então o
+                painel vem para onde o estúdio já olha, sem reabrir a aba. */}
+            <ExerciseSubmissionsPanel patientId={patientId} />
             <WorkoutBuilder studentId={patientId} />
           </TabsContent>
         )}

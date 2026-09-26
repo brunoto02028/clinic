@@ -59,7 +59,7 @@ export default function Login() {
         style={{ gap: 32, paddingVertical: 16 }}
       >
         <View style={{ gap: 32 }}>
-          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
+          <Logo height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}
           <View style={{ gap: 6 }}>
@@ -185,7 +185,7 @@ export default function Login() {
                   <Text style={{
                     fontFamily: "Inter_600SemiBold",
                     fontSize: 10.5,
-                    color: active ? "#FFFFFF" : t.colors.textSecondary,
+                    color: active ? t.colors.primaryFg : t.colors.textSecondary,
                   }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>

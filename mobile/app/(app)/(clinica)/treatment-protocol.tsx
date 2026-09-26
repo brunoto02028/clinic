@@ -8,6 +8,7 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 // Same wording the web uses (app/dashboard/treatment/page.tsx). The screen
 // printed the enum key straight through, so the patient read "Fase SHORT_TERM".
@@ -59,6 +60,7 @@ function toPrecautionLines(value: unknown): string[] {
 function TreatmentProtocolScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const qc = useQueryClient();
   const { data, isLoading, isError, refetch, error } = useQuery({ queryKey: ["protocols"], queryFn: fetchProtocols });
 
@@ -96,7 +98,7 @@ function TreatmentProtocolScreen() {
             </View>
           </Card>
         ) : (
-          <FlatList data={protocols} keyExtractor={p => p.id} contentContainerStyle={{ gap: 16 }} showsVerticalScrollIndicator={false}
+          <FlatList refreshControl={controle} data={protocols} keyExtractor={p => p.id} contentContainerStyle={{ gap: 16 }} showsVerticalScrollIndicator={false}
             renderItem={({ item: protocol }) => {
               const precautionLines = toPrecautionLines(protocol.precautions);
               return (

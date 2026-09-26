@@ -1,44 +1,19 @@
 import { useState } from "react";
-import { View, Pressable, ScrollView, Alert, TextInput, Linking } from "react-native";
+import { View, Pressable, Alert, TextInput, Linking } from "react-native";
 import { Stack, router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
-import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { useAuth } from "@/store/auth";
 import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 import { openCheckout } from "@/lib/checkout";
 import { ApiError } from "@/api/client";
 import { CouponField, PrecoComCupom } from "@/components/CouponField";
+import { CalendarioDeAgenda } from "@/components/CalendarioDeAgenda";
 import type { CouponPreviewOk } from "@/api/coupons";
-
-function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
-  const dates = [];
-  // Weekday initials in the patient's language, not a hardcoded Portuguese
-  // list — the app is read in English by most of these patients.
-  const dayNames = lang === "pt"
-    ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  for (let i = 1; i <= 14; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    if (closedDays.includes(d.getDay())) continue;
-    dates.push({
-      label: d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }),
-      // Local parts, not `toISOString()`: the chip is labelled from `getDate()`
-      // in the phone's own timezone, and the value was being taken from UTC.
-      // In BST a patient opening this between midnight and 01:00 got a value
-      // one day BEFORE the chip they tapped; west of UTC it lands one day
-      // after. The booking then went to the wrong day.
-      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-      day: dayNames[d.getDay()],
-      date: d.getDate(),
-    });
-  }
-  return dates;
-}
 
 function BookAppointmentScreen() {
   const lang = useLang();
@@ -71,8 +46,9 @@ function BookAppointmentScreen() {
   // shuts on Sunday. The patient picked one, waited, and got "No times
   // available". The web says so up front instead, and now so does this.
   const scheduleKnown = schedule.isSuccess && (schedule.data?.length ?? 0) > 0;
-  const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
-  const dates = scheduleKnown ? generateDates(closedDays, lang) : [];
+  // O dia fechado deixou de ser filtrado aqui: quem diz que um dia não abre
+  // agora é o servidor, dia a dia, junto com o motivo — e ele sabe de feriado e
+  // de folga, que uma lista de dias da semana no cliente nunca soube.
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate, janela],
@@ -312,7 +288,7 @@ ${tr(lang, {
           <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
           {schedule.isLoading ? (
             <Spinner />
-          ) : dates.length === 0 ? (
+          ) : !scheduleKnown ? (
             <Text variant="caption" color={t.colors.textMuted}>
               {tr(lang, {
                 en: "No available dates at the moment. Please contact the clinic.",
@@ -320,15 +296,15 @@ ${tr(lang, {
               })}
             </Text>
           ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {dates.map(d => (
-              <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
-                style={{ alignItems: "center", paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: selectedDate === d.value ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: selectedDate === d.value ? t.colors.health : t.colors.borderSubtle }}>
-                <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{d.day}</Text>
-                <Text variant="subtitle" color={selectedDate === d.value ? t.colors.health : t.colors.text} style={{ fontSize: 18 }}>{d.date}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+            /* Era uma tira reta de catorze dias em que **todo dia parecia
+               igual**: só tocando em cada um dava para saber se havia vaga.
+               Não era desleixo da tela — a rota respondia um dia por chamada
+               (087, T-3). */
+            <CalendarioDeAgenda
+              selecionada={selectedDate}
+              onEscolher={(d) => { setSelectedDate(d); setSelectedTime(null); }}
+              kind={janela}
+            />
           )}
         </Card>
 

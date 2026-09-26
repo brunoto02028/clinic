@@ -138,11 +138,11 @@ export default function NutritionScreen() {
                   })}
                 >
                   {busy === m.id ? (
-                    <ActivityIndicator size="small" color={done ? "#fff" : t.colors.text} />
+                    <ActivityIndicator size="small" color={done ? t.colors.accentFg : t.colors.text} />
                   ) : (
-                    <Ionicons name="checkmark" size={16} color={done ? "#fff" : t.colors.text} />
+                    <Ionicons name="checkmark" size={16} color={done ? t.colors.accentFg : t.colors.text} />
                   )}
-                  <Text variant="caption" color={done ? "#fff" : t.colors.text} style={{ fontFamily: "Inter_700Bold" }}>
+                  <Text variant="caption" color={done ? t.colors.accentFg : t.colors.text} style={{ fontFamily: "Inter_700Bold" }}>
                     {done ? "Done" : "Mark done"}
                   </Text>
                 </Pressable>

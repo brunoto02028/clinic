@@ -1,15 +1,32 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor } from "@/lib/tenant-access";
 import { findTherapist } from "@/lib/appointment-access";
-import { slotsForDate, hasConfiguredSchedule, exceptionForDate, applyException } from "@/lib/schedule";
-import { getZonedDateString, getZonedMinutesOfDay, zonedTimeToUtc } from "@/lib/clinic-timezone";
+import {
+  disponibilidadeDoDia,
+  disponibilidadeDoIntervalo,
+  diasEntre,
+  MAX_DIAS_NO_INTERVALO,
+} from "@/lib/availability-day";
 
-// GET: Fetch available time slots for a given date
-// Query params: date (YYYY-MM-DD), therapistId (optional), duration (minutes, default 60)
+/**
+ * Horários livres — de um dia, ou de um intervalo.
+ *
+ * `?date=YYYY-MM-DD` responde como sempre respondeu, campo a campo: é o que a
+ * tela de horários consome, e mudar a forma dela quebraria quem já está no
+ * aparelho de alguém.
+ *
+ * `?from=&to=` responde **quantos** horários cada dia tem, sem os horários em
+ * si. É o que o calendário precisa para pintar a semana ou o mês antes de a
+ * pessoa tocar em qualquer dia, e um mês com todos os horários de todos os
+ * dias é uma resposta enorme para desenhar trinta e uma bolinhas (087, T-2).
+ *
+ * A regra de um dia não mora mais aqui — ela é uma função, e as duas formas
+ * chamam a mesma. Duplicada, a segunda cópia seria a que ninguém lembra de
+ * corrigir.
+ */
 export async function GET(request: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();
@@ -18,27 +35,26 @@ export async function GET(request: NextRequest) {
     }
 
     const dateStr = request.nextUrl.searchParams.get("date");
+    const from = request.nextUrl.searchParams.get("from");
+    const to = request.nextUrl.searchParams.get("to");
     const therapistId = request.nextUrl.searchParams.get("therapistId");
     const duration = parseInt(request.nextUrl.searchParams.get("duration") || "60", 10);
+    const kind = request.nextUrl.searchParams.get("kind");
 
-    if (!dateStr) {
-      return NextResponse.json({ error: "Date parameter is required" }, { status: 400 });
+    if (!dateStr && !(from && to)) {
+      return NextResponse.json(
+        { error: "Date parameter is required" },
+        { status: 400 }
+      );
     }
 
-    // Anchor at noon UTC so the calendar date is unambiguous regardless of server timezone.
-    const dayOfWeek = new Date(`${dateStr}T12:00:00.000Z`).getUTCDay(); // 0=Sunday, 1=Monday, etc.
-
-    // Clinic's own midnight-to-midnight for this date, not the server's.
-    const dayStart = zonedTimeToUtc(dateStr, "00:00");
-    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
-
-    // Find therapist — if not specified, fall back to whoever sees patients.
-    // Role is not the test: the clinic owner and the developer both hold
-    // SUPERADMIN, and this findFirst had no ordering, so it could just as
-    // easily have returned the developer — who has no availability configured,
-    // leaving the patient staring at a calendar with no slots.
-    // Only the caller's own tenant: a therapist named from another tenant
-    // answers like one that doesn't exist.
+    // Quem atende — se ninguém for pedido, quem vê pacientes.
+    // O papel não é o teste: o dono da clínica e o desenvolvedor têm ambos
+    // SUPERADMIN, e este `findFirst` não tinha ordenação, então podia devolver
+    // o desenvolvedor — que não tem disponibilidade nenhuma configurada,
+    // deixando o paciente diante de um calendário sem horário.
+    // Só o tenant de quem chama: um terapeuta de outro tenant responde como um
+    // que não existe.
     const actor = await getActor(request);
     const therapist = actor?.clinicId
       ? await findTherapist(actor.clinicId, therapistId, actor.role === "PATIENT")
@@ -49,139 +65,31 @@ export async function GET(request: NextRequest) {
         { status: therapistId ? 404 : 400 }
       );
     }
-    const targetTherapistId = therapist.id;
-    const clinicIdForSchedule = actor!.clinicId!;
+    const clinicId = actor!.clinicId!;
 
-    // Blocked day (holiday, absence, training...) takes precedence over the weekly schedule
-    const block = await (prisma as any).therapistBlock.findFirst({
-      where: {
-        therapistId: targetTherapistId,
-        startDate: { lte: dayEnd },
-        endDate: { gte: dayStart },
-      },
-    });
-    if (block) {
-      return NextResponse.json({ slots: [], available: false, reason: "blocked" });
+    if (dateStr) {
+      const dia = await disponibilidadeDoDia(clinicId, therapist.id, dateStr, { kind, duration });
+      return NextResponse.json(dia);
     }
 
-    // A agenda configurada pela clínica manda. Quem ainda não configurou
-    // janela nenhuma continua regido pelo modelo antigo, logo abaixo — é
-    // fallback, não substituição: ninguém acorda sem agenda porque o modelo
-    // mudou (atividade 080, T-5).
-    if (await hasConfiguredSchedule(clinicIdForSchedule, targetTherapistId, dateStr)) {
-      const pedido = request.nextUrl.searchParams.get("kind");
-      const kind = pedido === "CONSULTATION" || pedido === "TREATMENT" ? pedido : undefined;
-
-      // A data **escrita**, como veio da tela. Passar um `Date` fazia a agenda
-      // ler o fuso do servidor, que em produção é UTC (QA de 25/09, N1).
-      const slots = await slotsForDate(clinicIdForSchedule, targetTherapistId, dateStr, {
-        kind,
-        nowMinutes: dateStr === getZonedDateString() ? getZonedMinutesOfDay() : null,
-      });
-
-      return NextResponse.json({
-        // A tela antiga espera uma lista de horas; a nova quer a capacidade
-        // junto. Os dois formatos saem daqui para nenhum cliente quebrar.
-        slots: slots.map((s) => s.time),
-        detailedSlots: slots,
-        available: slots.length > 0,
-        therapistId: targetTherapistId,
-        configured: true,
-      });
-    }
-
-    // Get therapist availability for this day of week
-    const availability = await prisma.therapistAvailability.findUnique({
-      where: {
-        therapistId_dayOfWeek: {
-          therapistId: targetTherapistId,
-          dayOfWeek,
+    const dias = diasEntre(from!, to!);
+    if (!dias) {
+      // Um só erro para as três formas de pedir errado — data torta, intervalo
+      // invertido, intervalo longo demais —, porque a tela faz a mesma coisa
+      // com os três: mostra que o pedido não serve.
+      return NextResponse.json(
+        {
+          error: `Invalid range: dates must be YYYY-MM-DD, "from" must not be after "to", and the range must not exceed ${MAX_DIAS_NO_INTERVALO} days`,
         },
-      },
-    });
-
-    // If no availability record or not available, return empty
-    if (!availability || !availability.isAvailable) {
-      return NextResponse.json({ slots: [], available: false, reason: "not_working" });
-    }
-
-    // O feriado, a folga e o expediente curto valem **em qualquer modelo de
-    // agenda**. Eram lidos só no ramo novo, e num dia regido por este aqui a
-    // exceção era salva, aparecia na lista, e não fechava nada — dava para
-    // marcar no feriado (QA de 25/09, N10).
-    const excecaoDoDia = await exceptionForDate(clinicIdForSchedule, targetTherapistId, dateStr);
-    const faixa = applyException(
-      { startTime: availability.startTime, endTime: availability.endTime },
-      excecaoDoDia
-    );
-    if (!faixa) {
-      return NextResponse.json({
-        slots: [],
-        available: false,
-        reason: excecaoDoDia?.closed ? "closed" : "not_working",
-      });
-    }
-
-    // Generate time slots based on availability window
-    const [startH, startM] = faixa.startTime.split(":").map(Number);
-    const [endH, endM] = faixa.endTime.split(":").map(Number);
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-
-    // Read configurable slot interval from SystemConfig
-    const intervalConfig = await prisma.systemConfig.findUnique({ where: { key: "SLOT_INTERVAL_MINUTES" } });
-    const slotInterval = intervalConfig ? parseInt(intervalConfig.value, 10) : 30;
-    const allSlots: string[] = [];
-
-    for (let m = startMinutes; m + duration <= endMinutes; m += slotInterval) {
-      const h = Math.floor(m / 60);
-      const min = m % 60;
-      allSlots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
-    }
-
-    // Get existing appointments for this date to exclude booked slots
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        therapistId: targetTherapistId,
-        dateTime: { gte: dayStart, lte: dayEnd },
-        status: { in: ["PENDING", "CONFIRMED"] },
-      },
-      select: { dateTime: true, duration: true },
-    });
-
-    // Build set of occupied time ranges
-    const occupiedRanges = existingAppointments.map((a) => {
-      const apptStart = getZonedMinutesOfDay(a.dateTime);
-      const apptEnd = apptStart + (a.duration || 60);
-      return { start: apptStart, end: apptEnd };
-    });
-
-    // If the requested date is today (in the clinic's own timezone), drop slots
-    // that have already started — otherwise a patient can "book" a consultation
-    // that's already in the past. Compared against Europe/London, not the
-    // server's or patient's own timezone, since that's what the slot times mean.
-    const isToday = dateStr === getZonedDateString();
-    const nowMinutes = getZonedMinutesOfDay();
-
-    // Filter out slots that overlap with existing appointments or have already passed today
-    const availableSlots = allSlots.filter((slot) => {
-      const [sh, sm] = slot.split(":").map(Number);
-      const slotStart = sh * 60 + sm;
-      const slotEnd = slotStart + duration;
-
-      if (isToday && slotStart <= nowMinutes) return false;
-
-      return !occupiedRanges.some(
-        (range) => slotStart < range.end && slotEnd > range.start
+        { status: 400 }
       );
-    });
+    }
 
-    return NextResponse.json({
-      slots: availableSlots,
-      available: true,
-      workingHours: { start: availability.startTime, end: availability.endTime },
-      therapistId: targetTherapistId,
+    const resposta = await disponibilidadeDoIntervalo(clinicId, therapist.id, dias, {
+      kind,
+      duration,
     });
+    return NextResponse.json({ dias: resposta, therapistId: therapist.id });
   } catch (error) {
     console.error("Error fetching availability:", error);
     return NextResponse.json({ error: "Failed to fetch availability" }, { status: 500 });

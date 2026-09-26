@@ -1,6 +1,6 @@
 # Atividade 086 — Claro e escuro
 
-**Status:** T-1 implementada · QA pendente
+**Status:** T-1 e T-2 concluídas (QA aprovado) · T-3 bloqueada por build
 **Data:** 26/09/2026
 
 ## Objetivo
@@ -48,30 +48,36 @@ escolheu escuro justamente para não levar luz no rosto.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | Paleta escura, preferência e a escolha na conta | implementada · QA pendente |
-| T-2 | Varredura das telas que cravam cor | pendente |
+| T-1 | Paleta escura, preferência e a escolha na conta | **concluída** — `qa/report-t-1.md` |
+| T-2 | Varredura das telas que cravam cor | **concluída** — mesmo relatório |
 | T-3 | "Seguir o aparelho" (depende de um build) | bloqueada |
 
-## O que a T-2 tem de alcançar
+## O que a T-2 alcançou
 
-Estas telas cravam cor e **não acompanham o tom escuro**:
+A lista original desta seção estava **errada** — foi tirada de uma contagem de ocorrências de hex por
+arquivo, e contagem não separa defeito de acerto. Cinco dos seis defeitos que o QA mediu estavam em
+arquivos que ela não listava (`Avatar`, `SegmentedControl`, `HeaderBack`, `ProfilePhotoPicker`,
+`login`/`register`), porque cada um tem **uma** cor cravada — e a que importa.
 
-```
-app/(app)/(clinica)/messages.tsx        5 ocorrências
-app/(app)/(clinica)/blood-pressure.tsx  5
-src/components/ui/Button.tsx            4
-src/components/FileViewer.tsx           4
-app/(app)/(ba)/(tabs)/work.tsx          4
-app/index.tsx                           3
-src/components/ui/Logo.tsx              2
-src/components/LockOverlay.tsx          2
-src/components/ExerciseVideo.tsx        2
-app/(app)/(treino)/_layout.tsx          2
-app/(app)/(nutricao)/_layout.tsx        2
-```
+O critério que funcionou não é "quantas cores tem" e sim **"esta cor está em cima de quê"**:
 
-**Algumas dessas cores podem ser acento de marca de propósito** (o `SAGE` e o `AMBER` das telas do
-laboratório, por exemplo). A varredura precisa do Bruno olhando, não de uma substituição em massa.
+- cor cravada em cima de um **acento** (verde, azul, âmbar, vermelho) → defeito, porque o acento muda
+  de valor entre os tons;
+- cor cravada em cima de **preto** (visor de arquivo, vídeo, véu sobre miniatura) → acerto, porque o
+  fundo não muda;
+- cor cravada como **fundo** de tela ou card → defeito.
+
+Treze nós corrigidos, medidos antes e depois. Três tokens novos, nenhum valor novo inventado —
+`accentFg`, `accentFgSoft` e o par `segmentTrack`/`segmentThumb`. Detalhe e números em
+`qa/report-t-1.md`.
+
+### O que ficou fora, de propósito
+
+| o que | por que |
+|---|---|
+| Card "próxima sessão" da home da clínica | decisão de design: consertar o escuro **muda o claro**, que já está aprovado |
+| Telas da BA (`work`, `community`, `onboarding`, `invoice`) | *"a BA pode deixar fora, com certeza"* — Bruno |
+| `FileViewer`, `ExerciseVideo`, miniplay dos exercícios | fundo preto nos dois tons; temar ali apagaria o texto |
 
 ## Suposições
 

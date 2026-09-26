@@ -71,7 +71,11 @@ describe("waitingEmailBlock", () => {
 
   it("leva contagem e link, nunca o que está no vídeo", () => {
     const html = waitingEmailBlock(espera({ exerciseVideos: 2, unassignedMeasurements: 1 }), "https://bpr.clinic");
-    expect(html).toContain("https://bpr.clinic/admin/patients");
+    // O link era `/admin/patients` — "2 vídeos esperando" e descubra de quem,
+    // abrindo paciente por paciente. Agora ele cai na fila, que é a tela que
+    // responde *quais* (087, T-4).
+    expect(html).toContain("https://bpr.clinic/admin/exercise-submissions");
+    expect(html).not.toContain('href="https://bpr.clinic/admin/patients"');
     expect(html).toContain("https://bpr.clinic/admin/measurements/inbox");
     // nenhum nome, nenhum id, nenhuma chave de armazenamento
     expect(html).not.toMatch(/storageKey|exercise-submissions\/|r2\.dev|cloudflarestorage/);

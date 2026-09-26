@@ -171,6 +171,53 @@ export default function ClinicsPage() {
 
     // Studio welcome e-mail to the owner, with a new temporary password (activity 56).
     const [welcomeFor, setWelcomeFor] = useState<Clinic | null>(null);
+
+    /**
+     * Apagar clínica (087, a pedido do Bruno em 26/09/2026).
+     *
+     * O item de menu existia **sem `onClick`** — decorativo desde sempre. Foi
+     * só por isso que ninguém nunca apagou uma clínica por engano, porque a
+     * rota por trás era um `delete` cru e `User.clinicId` cascateia: apagar a
+     * clínica apaga todo paciente dela, todo prontuário, toda consulta.
+     *
+     * Ligá-lo sem mostrar o que morre junto seria pior do que deixá-lo morto.
+     */
+    const [apagando, setApagando] = useState<Clinic | null>(null);
+    const [conteudo, setConteudo] = useState<any | null>(null);
+    const [nomeDigitado, setNomeDigitado] = useState("");
+    const [apagandoAgora, setApagandoAgora] = useState(false);
+
+    const abrirExclusao = async (clinic: Clinic) => {
+        setApagando(clinic);
+        setNomeDigitado("");
+        setConteudo(null);
+        try {
+            const r = await fetch(`/api/admin/clinics/${clinic.id}`);
+            if (r.ok) setConteudo(await r.json());
+        } catch { /* a contagem é informação, não pré-requisito */ }
+    };
+
+    const confirmarExclusao = async () => {
+        if (!apagando) return;
+        setApagandoAgora(true);
+        try {
+            const forca = (conteudo?.total ?? 0) > 0 ? "&force=1" : "";
+            const r = await fetch(
+                `/api/admin/clinics/${apagando.id}?confirm=${encodeURIComponent(apagando.name)}${forca}`,
+                { method: "DELETE" }
+            );
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                toast({ title: "Not deleted", description: j.error ?? "Failed", variant: "destructive" });
+                return;
+            }
+            toast({ title: "Deleted", description: `${apagando.name} and everything in it.` });
+            setApagando(null);
+            setClinics((cs) => cs.filter((c) => c.id !== apagando.id));
+        } finally {
+            setApagandoAgora(false);
+        }
+    };
     const [welcomeLocale, setWelcomeLocale] = useState("en");
     const [sendingWelcome, setSendingWelcome] = useState(false);
     const [welcomePreview, setWelcomePreview] = useState<EmailPreviewData | null>(null);
@@ -418,7 +465,10 @@ export default function ClinicsPage() {
                                                             Clinic Settings
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-destructive">
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => void abrirExclusao(clinic)}
+                                                        >
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             Delete Clinic
                                                         </DropdownMenuItem>
@@ -641,6 +691,71 @@ export default function ClinicsPage() {
                         <Button variant="outline" onClick={() => setWelcomeFor(null)} disabled={sendingWelcome}>Cancel</Button>
                         <Button onClick={sendWelcome} disabled={sendingWelcome || !welcomePreview}>
                             {sendingWelcome ? "Sending…" : "Send e-mail"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!apagando} onOpenChange={(o) => { if (!o) setApagando(null); }}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Delete {apagando?.name}?</DialogTitle>
+                        <DialogDescription>
+                            This cannot be undone. Everything below is deleted with the clinic.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {conteudo === null ? (
+                        <p className="text-sm text-muted-foreground">Counting what is inside…</p>
+                    ) : conteudo.total === 0 ? (
+                        <p className="text-sm text-emerald-500">
+                            This clinic is empty. Nothing is lost.
+                        </p>
+                    ) : (
+                        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
+                            {[
+                                ["Patients", conteudo.pacientes],
+                                ["Staff", conteudo.equipe],
+                                ["Appointments", conteudo.consultas],
+                                ["Clinical notes", conteudo.notasClinicas],
+                                ["Lab orders", conteudo.pedidosDeExame],
+                                ["Exercise videos", conteudo.videosDeExercicio],
+                                ["Messages", conteudo.mensagens],
+                            ]
+                                .filter(([, n]) => (n as number) > 0)
+                                .map(([rotulo, n]) => (
+                                    <div key={rotulo as string} className="flex justify-between">
+                                        <span>{rotulo as string}</span>
+                                        <span className="font-semibold">{n as number}</span>
+                                    </div>
+                                ))}
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        {/* Numa lista, a linha errada fica a um pixel da certa —
+                            e o que se perde aqui não volta. */}
+                        <Label htmlFor="confirmar-nome">
+                            Type <span className="font-semibold">{apagando?.name}</span> to confirm
+                        </Label>
+                        <Input
+                            id="confirmar-nome"
+                            value={nomeDigitado}
+                            onChange={(e) => setNomeDigitado(e.target.value)}
+                            autoComplete="off"
+                            data-testid="confirmar-nome-clinica"
+                        />
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setApagando(null)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            disabled={nomeDigitado !== apagando?.name || apagandoAgora}
+                            onClick={() => void confirmarExclusao()}
+                            data-testid="apagar-clinica"
+                        >
+                            {apagandoAgora ? "Deleting…" : "Delete permanently"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

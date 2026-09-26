@@ -129,3 +129,36 @@ export async function fetchTreatmentTypes(): Promise<ClinicTreatmentType[]> {
   const res = await apiFetch<ClinicTreatmentType[]>("/api/patient/treatment-types");
   return Array.isArray(res) ? res : [];
 }
+
+// ---------------------------------------------------------------------------
+// A agenda de um intervalo (087, T-2/T-3)
+// ---------------------------------------------------------------------------
+
+export interface DiaDaAgenda {
+  data: string;
+  livres: number;
+  fechado: boolean;
+  /** `blocked`, `closed`, `not_working` — por que não dá para marcar nesse dia. */
+  motivo?: string;
+}
+
+/**
+ * Quantos horários cada dia tem, para um intervalo.
+ *
+ * Existe porque a tela precisa saber **onde tem vaga antes de a pessoa tocar**.
+ * Perguntar isso com a rota de um dia custaria sete chamadas por semana e
+ * trinta e uma por mês; esta é uma.
+ *
+ * Vem a contagem, não os horários: um mês com todos os horários de todos os
+ * dias é uma resposta enorme para desenhar trinta e uma marcas. Os horários
+ * continuam vindo de `fetchAvailability` quando o dia é escolhido.
+ */
+export async function fetchAgendaDoIntervalo(
+  from: string,
+  to: string,
+  kind?: string
+): Promise<{ dias: DiaDaAgenda[]; therapistId?: string }> {
+  return apiFetch<{ dias: DiaDaAgenda[]; therapistId?: string }>(
+    `/api/availability?from=${from}&to=${to}${kind ? `&kind=${kind}` : ""}`
+  );
+}

@@ -158,7 +158,7 @@ export default function Register() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ gap: 28, paddingVertical: 16 }}
       >
-          <Logo tone="ink" height={96} style={{ alignSelf: "center" }} />
+          <Logo height={96} style={{ alignSelf: "center" }} />
 
           <View style={{ gap: 6 }}>
             <Text variant="hero">{tr(lang, { en: "Create your account", pt: "Crie sua conta" })}</Text>
@@ -355,7 +355,7 @@ export default function Register() {
                     borderColor: active ? t.colors.primary : t.colors.border,
                   }}
                 >
-                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? "#FFFFFF" : t.colors.textSecondary }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? t.colors.primaryFg : t.colors.textSecondary }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>
                 </Pressable>

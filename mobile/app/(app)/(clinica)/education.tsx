@@ -7,6 +7,7 @@ import { fetchEducation, educationList } from "@/api/education";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 const TYPE_ICONS: Record<string, { icon: string; colorKey: "work" | "bad" | "health" | "community" }> = {
   ARTICLE: { icon: "document-text-outline", colorKey: "work" },
@@ -18,6 +19,7 @@ const TYPE_ICONS: Record<string, { icon: string; colorKey: "work" | "bad" | "hea
 function EducationScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["education"],
     queryFn: fetchEducation,
@@ -52,6 +54,7 @@ function EducationScreen() {
         </View>
       ) : (
         <FlatList
+            refreshControl={controle}
           data={list}
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ gap: 10 }}

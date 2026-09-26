@@ -2,10 +2,18 @@ import { type ReactNode } from "react";
 import { ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/theme/useTheme";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 export interface ScreenProps {
   children: ReactNode;
   scroll?: boolean;
+  /**
+   * Puxar para atualizar. Ligado por padrão em toda tela que rola — o Bruno
+   * pediu o gesto no app inteiro, e pedir tela por tela garantiria esquecer
+   * algumas. Passe `false` onde a atualização atrapalha, como um formulário
+   * em preenchimento.
+   */
+  refreshable?: boolean;
   padded?: boolean;
   style?: ViewStyle;
   testID?: string;
@@ -26,8 +34,9 @@ export interface ScreenProps {
  */
 const MAX_CONTENT_WIDTH = 560;
 
-export function Screen({ children, scroll, padded = true, style, testID }: ScreenProps) {
+export function Screen({ children, scroll, padded = true, style, testID, refreshable = true }: ScreenProps) {
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const inner: ViewStyle = {
     flex: scroll ? undefined : 1,
     padding: padded ? t.spacing.lg : 0,
@@ -59,6 +68,7 @@ export function Screen({ children, scroll, padded = true, style, testID }: Scree
           // Arrastar para baixo fecha o teclado, que é como o resto do iOS se
           // comporta e é a saída mais rápida quando ele está no caminho.
           keyboardDismissMode="interactive"
+          refreshControl={refreshable ? controle : undefined}
         >
           {children}
         </ScrollView>

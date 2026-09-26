@@ -89,12 +89,12 @@ texto de todas as telas.
 
 | peça | estado |
 |---|---|
-| `appointment_only` no nosso catálogo, e o texto por exame | **bloqueado** pelo token — o campo vem do catálogo deles |
-| Post code como campo próprio | **livre** — hoje ele é colado dentro do endereço |
-| Post code → coordenada | **livre**, mas precisa de um serviço (ver abaixo) |
-| Busca dos pontos mais próximos | **bloqueado** pelo token |
+| `appointment_only` no nosso catálogo, e o texto por exame | **bloqueado** pelo token. O subtítulo do catálogo já parou de prometer kit para todos |
+| Post code como campo próprio | **feito** (26/09) — `User.city`/`User.postcode`, e editável no perfil |
+| Post code → coordenada | **feito** (26/09) — `lib/postcode.ts`, postcodes.io, com prazo e cache |
+| Busca dos pontos mais próximos | **escrita e não exercida** — `nearestTestLocations()` liga sozinha no dia do token |
 | Agendar, remarcar, cancelar | **bloqueado** pelo token |
-| Explicar o mecanismo ao usuário | **livre** — e é metade do que o Bruno pediu |
+| Explicar o mecanismo ao usuário | **feito** (26/09) — `(lab)/how-it-works`, os três caminhos, EN+PT |
 
 ### O passo que falta no meio
 
@@ -106,13 +106,25 @@ Alternativa sem terceiro: pedir a localização do aparelho — o que voltaria a
 GPS, prompt, texto de propósito e mudança na ficha da App Store. Foi justamente o que evitamos na
 085. O código postal continua sendo o caminho mais barato.
 
-### O código postal está no lugar errado
+### O código postal está no lugar errado — **resolvido em 26/09/2026**
 
-`mobile/app/(app)/profile-setup.tsx` junta endereço e código postal numa string:
+`mobile/app/(app)/profile-setup.tsx` juntava endereço e código postal numa string:
 
 ```ts
 address: [address.trim(), postcode.trim()].filter(Boolean).join(", ")
 ```
 
-`User.postcode` **já existe** no banco e fica vazio. Para buscar ponto de coleta, ele precisa ser
-gravado separado — é uma linha no app e uma no servidor, e não depende de token nenhum.
+**Correção de uma afirmação errada desta página.** Estava escrito aqui que `User.postcode` "já
+existe no banco e fica vazio". Não existia: o `postcode` da linha 340 do schema é do model
+**`Clinic`**. O `User` tinha só `address`. Eu li o `grep` e não li o model.
+
+O que foi feito:
+
+- `User.city` e `User.postcode` criados, com `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` aplicado por
+  `prisma db execute` — aditivo, e o `migrate diff` contra o banco confirmou zero DROP vindo desta
+  mudança;
+- o app manda os dois separados, e o perfil passou a ter campo para **editar** os três (endereço,
+  cidade, código postal) — quem digitasse errado antes ficava preso;
+- `lib/postcode.ts` normaliza para a forma do Reino Unido e resolve a coordenada pelo postcodes.io;
+- quem se cadastrou **antes** disto não precisa de migração de dado: `postcodeDoCadastro()` lê o
+  campo próprio primeiro e cai para o fim do `address` antigo.

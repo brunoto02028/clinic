@@ -705,6 +705,12 @@ model User {
   sex                      String? // "M" | "F" — used by the personal-trainer skinfold %BF formula (activity 21)
   photoConsentAt           DateTime? // consent for progress photos in personal-trainer assessments (activity 21)
   address                  String?
+  /// Cidade e código postal separados do endereço (081, 26/09/2026). Estavam
+  /// colados dentro de `address` numa string só — e um ponto de coleta se
+  /// acha por código postal, não por "12 Harley St, W1G 9QD". Guardado
+  /// normalizado, na forma do Reino Unido: "SW1A 1AA".
+  city                     String?
+  postcode                 String?
   emergencyContactName     String?
   emergencyContactPhone    String?
   emergencyContactRelation String?

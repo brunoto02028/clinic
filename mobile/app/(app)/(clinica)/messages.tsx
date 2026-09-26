@@ -311,13 +311,13 @@ function MessagesScreen() {
                       {m.kind !== "message" && (
                         <Text
                           variant="caption"
-                          color={mine ? "#FFFFFF" : t.colors.textMuted}
+                          color={mine ? t.colors.accentFg : t.colors.textMuted}
                           style={{ fontWeight: "700", textTransform: "uppercase", fontSize: 10 }}
                         >
                           {m.title || ui.notice}
                         </Text>
                       )}
-                      <Text variant="body" color={mine ? "#FFFFFF" : t.colors.text} style={{ lineHeight: 20 }}>
+                      <Text variant="body" color={mine ? t.colors.accentFg : t.colors.text} style={{ lineHeight: 20 }}>
                         {m.content}
                       </Text>
 
@@ -353,10 +353,10 @@ function MessagesScreen() {
                             hitSlop={8}
                             style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}
                           >
-                            <Ionicons name="document-outline" size={16} color={mine ? "#FFFFFF" : t.colors.text} />
+                            <Ionicons name="document-outline" size={16} color={mine ? t.colors.accentFg : t.colors.text} />
                             <Text
                               variant="caption"
-                              color={mine ? "#FFFFFF" : t.colors.text}
+                              color={mine ? t.colors.accentFg : t.colors.text}
                               style={{ textDecorationLine: "underline", flexShrink: 1 }}
                             >
                               {m.attachmentName ?? ui.attachment}
@@ -366,7 +366,7 @@ function MessagesScreen() {
                       )}
                       <Text
                         variant="caption"
-                        color={mine ? "rgba(255,255,255,0.75)" : t.colors.textMuted}
+                        color={mine ? t.colors.accentFgSoft : t.colors.textMuted}
                         style={{ fontSize: 10 }}
                       >
                         {!mine && m.sender ? `${m.sender.firstName} · ` : ""}
@@ -451,7 +451,7 @@ function MessagesScreen() {
                 backgroundColor: pressed ? t.colors.healthSoft : t.colors.health,
               })}
             >
-              <Ionicons name="send" size={18} color="#FFFFFF" />
+              <Ionicons name="send" size={18} color={t.colors.accentFg} />
             </Pressable>
           </SafeAreaView>
 
