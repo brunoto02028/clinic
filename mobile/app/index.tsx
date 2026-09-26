@@ -20,14 +20,14 @@ export default function Welcome() {
 
   if (status === "loading" || status === "locked") {
     return (
-      <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: t.colors.background, alignItems: "center", justifyContent: "center" }}>
         <Spinner />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
       <View style={{ flex: 1, justifyContent: "space-between", paddingHorizontal: 20 }}>
         {/* Center: brand logo */}
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 18 }}>
@@ -38,7 +38,7 @@ export default function Welcome() {
             style={{
               fontFamily: "Inter_400Regular",
               fontSize: 12.5,
-              color: "#B9BDC6",
+              color: t.colors.textSecondary,
             }}
           >
             Your recovery, step by step.
@@ -57,9 +57,9 @@ export default function Welcome() {
             onPress={() => router.push("/login")}
             style={{ alignItems: "center", paddingVertical: 14 }}
           >
-            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11.5, color: "#8A8F9A" }}>
+            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11.5, color: t.colors.textMuted }}>
               Already a member?{" "}
-              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11.5, color: "#FFFFFF" }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11.5, color: t.colors.text }}>
                 Sign in
               </Text>
             </Text>

@@ -19,6 +19,22 @@ export interface ThemeColors {
 
   work: string;
   workSoft: string;
+
+  /**
+   * O acento do laboratório — o sage e o âmbar (086, T-2).
+   *
+   * Decisão do Bruno: *"as telas do laboratório, quando for o tom escuro, têm
+   * que ficar com a identidade proporcionada."* Aquele verde é o que faz a tela
+   * parecer cuidada em vez de genérica, e ele não some no escuro — muda de
+   * valor mantendo o matiz.
+   *
+   * Vive no tema, e não em constantes dentro de cinco telas, porque uma cor
+   * declarada em cinco lugares diverge no primeiro ajuste.
+   */
+  lab: string;
+  labSoft: string;
+  labWarm: string;
+  labWarmSoft: string;
   health: string;
   healthSoft: string;
   community: string;
@@ -72,6 +88,11 @@ const light: ThemeColors = {
   healthSoft: palette.healthSoft,
   community: palette.community,
   communitySoft: palette.communitySoft,
+
+  lab: "#65807B",
+  labSoft: "#E4EDE7",
+  labWarm: "#B8823A",
+  labWarmSoft: "#F5EFDD",
 
   ok: palette.ok,
   okSoft: palette.okSoft,
@@ -130,6 +151,14 @@ const dark: ThemeColors = {
   healthSoft: "#1E2A24",
   community: "#D0A468",
   communitySoft: "#2A2418",
+
+  // O sage e o âmbar do laboratório, clareados para o escuro. O `Soft` de cada
+  // um deixa de ser fundo pálido e vira fundo escuro tingido do mesmo tom — é o
+  // que preserva a identidade em vez de apagá-la.
+  lab: "#8FB0A8",
+  labSoft: "#1E2A27",
+  labWarm: "#D9A860",
+  labWarmSoft: "#2B2519",
 
   ok: "#84A791",
   okSoft: "#1E2A23",

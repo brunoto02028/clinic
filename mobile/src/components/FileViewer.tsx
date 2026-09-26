@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui";
 import { useLang, t as tr } from "@/lib/i18n";
 
+import { themes } from "@/theme";
+import { useThemeStore } from "@/store/theme";
 /**
  * Abrir um documento sem sair do app.
  *
@@ -36,8 +38,14 @@ export function isImageFile(type?: string | null, name?: string | null): boolean
  */
 export async function openFileInApp(url: string): Promise<void> {
   await WebBrowser.openBrowserAsync(url, {
-    // Cores do app, para a folha não parecer outro produto.
-    toolbarColor: "#F3F2EE",
+    /**
+     * Cores do app, para a folha não parecer outro produto.
+     *
+     * Lido do store e não do hook: isto é uma função assíncrona, não um
+     * componente — hook aqui não existe. `getState()` é a leitura de fora do
+     * React, e o valor é o mesmo que a tela está usando.
+     */
+    toolbarColor: themes[useThemeStore.getState().modo].surfaceMuted,
     controlsColor: "#4F7361",
     enableBarCollapsing: true,
   });

@@ -221,9 +221,15 @@ export default function ModuleSelect() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 60 }}>
-        {/* 44 era pequeno demais no aparelho — é a primeira coisa que a
-            pessoa vê ao abrir, e a marca não pode pedir esforço. */}
-        <Logo tone={t.isDark ? "bone" : "ink"} height={64} style={{ marginBottom: 28 }} />
+        {/* A marca é a primeira coisa que a pessoa vê ao abrir, e não pode
+            pedir esforço: 44 era pequeno, 64 ainda era discreto. Centralizada,
+            porque encostada à esquerda ela parecia um cabeçalho em vez de uma
+            abertura. */}
+        <Logo
+          tone={t.isDark ? "bone" : "ink"}
+          height={84}
+          style={{ marginBottom: 32, alignSelf: "center" }}
+        />
         <Text
           style={{
             fontFamily: "Sora_700Bold",

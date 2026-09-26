@@ -185,7 +185,7 @@ export default function Login() {
                   <Text style={{
                     fontFamily: "Inter_600SemiBold",
                     fontSize: 10.5,
-                    color: active ? "#FFFFFF" : "#4A4F59",
+                    color: active ? "#FFFFFF" : t.colors.textSecondary,
                   }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>

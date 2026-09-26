@@ -8,11 +8,6 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { stageCopy, STAGE_ORDER, COLLECTION_STEPS } from "@/lib/lab-stage-copy";
 
-const SAGE = "#65807B";
-const SAGE_FOG = "#E4EDE7";
-const AMBER = "#B8823A";
-const AMBER_BG = "#F5EFDD";
-
 /**
  * O acompanhamento (081, T-3): onde o pedido está, com os estados de verdade —
  * "kit a caminho", "registre seu kit", "amostra recebida", "no laboratório",
@@ -55,9 +50,9 @@ export default function LabOrderTracking() {
         }}
       />
       <View style={{ gap: 14 }}>
-        <Card style={{ backgroundColor: precisaDeVoce ? AMBER_BG : o.stage === "released" ? t.colors.okSoft : SAGE_FOG, borderWidth: 0 }} testID={`lab-stage-${o.stage}`}>
+        <Card style={{ backgroundColor: precisaDeVoce ? t.colors.labWarmSoft : o.stage === "released" ? t.colors.okSoft : t.colors.labSoft, borderWidth: 0 }} testID={`lab-stage-${o.stage}`}>
           <Text variant="caption" color={t.colors.textSecondary}>{testName}</Text>
-          <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", marginTop: 4, color: precisaDeVoce ? AMBER : t.colors.text }}>{copy.title}</Text>
+          <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", marginTop: 4, color: precisaDeVoce ? t.colors.labWarm : t.colors.text }}>{copy.title}</Text>
           <Text variant="body" style={{ fontSize: 12, marginTop: 6, lineHeight: 18 }}>{copy.body}</Text>
         </Card>
 
@@ -66,7 +61,7 @@ export default function LabOrderTracking() {
             <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", marginBottom: 6 }}>{tr(lang, { en: "When the kit arrives", pt: "Quando o kit chegar" })}</Text>
             {o.registration?.canRegister ? (
               <Button
-                title={tr(lang, { en: "Register my kit", pt: "Registrar meu kit" })} variant="primary" size="lg" style={{ backgroundColor: SAGE }} testID="lab-register-kit"
+                title={tr(lang, { en: "Register my kit", pt: "Registrar meu kit" })} variant="primary" size="lg" style={{ backgroundColor: t.colors.lab }} testID="lab-register-kit"
                 onPress={() => router.push({ pathname: "/(app)/(lab)/order/[id]/register" as any, params: { id: o.id } })}
               />
             ) : (
@@ -99,8 +94,8 @@ export default function LabOrderTracking() {
             <View style={{ paddingLeft: 22 }}>
               {STAGE_ORDER.map((stage, i) => {
                 const state = i < idx ? "done" : i === idx ? "active" : "pending";
-                const dot = state === "pending" ? "#DDE0E4" : state === "active" && precisaDeVoce ? AMBER : SAGE;
-                const line = state === "done" ? SAGE : "#DDE0E4";
+                const dot = state === "pending" ? t.colors.border : state === "active" && precisaDeVoce ? t.colors.labWarm : t.colors.lab;
+                const line = state === "done" ? t.colors.lab : t.colors.border;
                 const last = i === STAGE_ORDER.length - 1;
                 return (
                   <View key={stage} style={{ position: "relative", paddingBottom: last ? 0 : 22 }}>
@@ -118,7 +113,7 @@ export default function LabOrderTracking() {
 
         {o.stage === "released" && (
           <Button
-            title={tr(lang, { en: "See my result", pt: "Ver meu resultado" })} variant="primary" size="lg" style={{ backgroundColor: SAGE }} testID="lab-see-result"
+            title={tr(lang, { en: "See my result", pt: "Ver meu resultado" })} variant="primary" size="lg" style={{ backgroundColor: t.colors.lab }} testID="lab-see-result"
             onPress={() => router.push({ pathname: "/(app)/(lab)/result/[id]" as any, params: { id: o.id } })}
           />
         )}

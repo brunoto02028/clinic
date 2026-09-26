@@ -10,9 +10,9 @@ export default function BATabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: t.colors.text,
-        tabBarInactiveTintColor: "#9AA0AC",
+        tabBarInactiveTintColor: t.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: t.colors.surface,
           borderTopColor: t.colors.border,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 88 : 64,

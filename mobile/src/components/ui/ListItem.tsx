@@ -26,7 +26,7 @@ export function ListItem({ icon, title, subtitle, right, onPress, last, style, t
           gap: 11,
           paddingVertical: 11,
           borderBottomWidth: last ? 0 : 1,
-          borderBottomColor: "#EEEDE9",
+          borderBottomColor: t.colors.borderSubtle,
         },
         style,
       ]}
