@@ -36,23 +36,26 @@ const STATUS: Record<string, { en: string; pt: string }> = {
 const UI = {
   "en-GB": {
     title: "Lab orders", back: "Catalogue",
-    all: "All", waiting: "Waiting for your review", released: "Released",
-    sold: "Sold", cost: "Cost", margin: "Margin", orders: "orders", awaiting: "waiting for review",
+    all: "All", released: "With results",
+    sold: "Sold", cost: "Cost", margin: "Margin", orders: "orders",
+    results: "Results in", resultsHint: "the patient already has them",
     order: "Order", patient: "Patient", tests: "Tests", status: "Status", paid: "Paid",
     empty: "No orders yet.", failed: "Could not load the orders.", retry: "Try again",
-    releasedBadge: "Released", awaitingBadge: "Review", open: "Open",
+    releasedBadge: "Results with the patient", open: "Open",
   },
   "pt-BR": {
     title: "Pedidos de exame", back: "Catálogo",
-    all: "Todos", waiting: "Esperando a sua revisão", released: "Liberados",
-    sold: "Vendido", cost: "Custo", margin: "Margem", orders: "pedidos", awaiting: "esperando revisão",
+    all: "Todos", released: "Com resultado",
+    sold: "Vendido", cost: "Custo", margin: "Margem", orders: "pedidos",
+    results: "Resultados", resultsHint: "o paciente já os tem",
     order: "Pedido", patient: "Paciente", tests: "Exames", status: "Estado", paid: "Pago",
     empty: "Nenhum pedido ainda.", failed: "Não foi possível carregar os pedidos.", retry: "Tentar de novo",
-    releasedBadge: "Liberado", awaitingBadge: "Revisar", open: "Abrir",
+    releasedBadge: "Resultado com o paciente", open: "Abrir",
   },
 } as const;
 
-type Filter = "all" | "waiting" | "released";
+/** "waiting" saiu em 26/09/2026: o resultado vai direto e não há fila. */
+type Filter = "all" | "released";
 
 export default function LabOrdersPage() {
   const { locale } = useLocale();
@@ -75,7 +78,7 @@ export default function LabOrdersPage() {
   useEffect(() => { void load(); }, [load]);
 
   const shown = (rows ?? []).filter((r) =>
-    filter === "all" ? true : filter === "waiting" ? r.awaitingRelease : !!r.releasedToPatientAt
+    filter === "all" ? true : r.status === "RESULTS_READY" || !!r.releasedToPatientAt
   );
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString(pt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }) : "—");
 
@@ -92,7 +95,7 @@ export default function LabOrdersPage() {
             [ui.sold, gbp(totals.sold), `${totals.orders} ${ui.orders}`],
             [ui.cost, gbp(totals.cost), ""],
             [ui.margin, gbp(totals.margin), totals.sold > 0 ? `${Math.round((totals.margin / totals.sold) * 100)}%` : ""],
-            [ui.waiting, String(totals.awaitingRelease), ui.awaiting],
+            [ui.results, String(rows?.filter((r) => r.status === "RESULTS_READY" || r.releasedToPatientAt).length ?? 0), ui.resultsHint],
           ].map(([label, value, hint]) => (
             <Card key={label}><CardContent className="pt-5">
               <p className="text-xs text-muted-foreground">{label}</p>
@@ -104,9 +107,9 @@ export default function LabOrdersPage() {
       )}
 
       <div className="flex gap-2">
-        {(["all", "waiting", "released"] as Filter[]).map((f) => (
+        {(["all", "released"] as Filter[]).map((f) => (
           <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} data-testid={`lab-filter-${f}`}>
-            {f === "all" ? ui.all : f === "waiting" ? ui.waiting : ui.released}
+            {f === "all" ? ui.all : ui.released}
           </Button>
         ))}
       </div>
@@ -133,8 +136,9 @@ export default function LabOrdersPage() {
                   <TableCell className="text-sm">{r.products.join(", ")}</TableCell>
                   <TableCell>
                     <span className="text-sm">{pt ? STATUS[r.status]?.pt : STATUS[r.status]?.en ?? r.status}</span>
-                    {r.awaitingRelease && <Badge className="ml-2 bg-amber-500/20 text-amber-700">{ui.awaitingBadge}</Badge>}
-                    {r.releasedToPatientAt && <Badge className="ml-2 bg-green-500/20 text-green-700">{ui.releasedBadge}</Badge>}
+                    {(r.status === "RESULTS_READY" || r.releasedToPatientAt) && (
+                      <Badge className="ml-2 bg-green-500/20 text-green-700">{ui.releasedBadge}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">{fmt(r.paidAt)}</TableCell>
                   <TableCell className="text-right tabular-nums">{gbp(r.total)}</TableCell>

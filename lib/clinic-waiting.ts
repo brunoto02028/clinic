@@ -119,9 +119,10 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
         distinct: ["patientId"],
       })
       .then((r: { patientId: string }[]) => r.length),
-    (prisma as any).labOrder.count({
-      where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null, reviewMode: "THERAPIST" },
-    }),
+    // Sempre zero: o resultado sai direto para a pessoa e não há fila de
+    // liberação (26/09/2026). Mantido como posição do array para não mexer no
+    // formato que as telas leem.
+    Promise.resolve(0),
   ]);
 
   return {

@@ -2,70 +2,58 @@ import { prisma } from "@/lib/db";
 import type { LabReviewMode } from "@prisma/client";
 
 /**
- * Quem lê o resultado primeiro (081, corrigido em 26/09/2026).
+ * Quem lê o resultado primeiro — e a resposta agora é **a pessoa** (26/09/2026).
  *
- * O desenho original supunha que todo exame era de um paciente da clínica.
- * Não é: **o exame é independente**. Alguém que ouviu falar do app por um
- * amigo baixa, se cadastra e compra um exame sem nunca ter sido atendido —
- * e o resultado é dele.
+ * Isto mudou três vezes, e a última é definitiva porque é contratual:
  *
- * A revisão pertence à **relação clínica**, não ao exame. Onde ela existe, o
- * terapeuta lê primeiro e escreve uma nota (a decisão do Bruno em 25/09).
- * Onde não existe, não há quem revise: segurar o resultado seria prender o que
- * é da pessoa esperando alguém que nunca vai olhar.
+ *   > "os resultados do laboratório vão para o paciente, o paciente pode pedir
+ *   > qualquer exame independente da clinic, nada é associado; pelo contrato,
+ *   > nós facilitamos a vida do paciente dando acesso a exames privados, e
+ *   > depois de receber os exames as pessoas podem enviar para o médico de sua
+ *   > preferência" — Bruno, 26/09/2026
  *
- * O que conta como relação clínica: ter sido atendido. A mesma lista de status
- * que `booking-options` usa para decidir se a próxima consulta ainda é a
- * primeira — consulta cancelada não é história.
+ * O desenho anterior (081) segurava o resultado de quem tinha relação clínica
+ * até a clínica ler e liberar. Isso fazia sentido enquanto o exame era da
+ * clínica; deixou de fazer quando ele virou um produto que qualquer pessoa
+ * compra. E os termos publicados hoje dizem, em duas línguas, que **ninguém da
+ * clínica lê antes** — código e contrato não podem discordar sobre isso.
+ *
+ * **As colunas continuam no banco.** `LabOrder.reviewMode`,
+ * `releasedToPatientAt`, `releaseNote` e `releaseNotePt` não foram removidas:
+ * apagar coluna é perder o que já foi gravado, e o guard de migração existe
+ * para impedir exatamente isso. Elas ficam preenchidas com o caminho direto —
+ * `releasedToPatientAt` na chegada do resultado — e nada mais as consulta para
+ * decidir.
+ *
+ * Compartilhar com a terapeuta é ação **da pessoa**, não da clínica. Ainda não
+ * existe, e é a próxima coisa a construir aqui.
  */
 
-const CONTA_COMO_ATENDIMENTO = ["PENDING", "PENDING_PATIENT", "CONFIRMED", "COMPLETED", "NO_SHOW"];
-
-export async function reviewModeFor(patientId: string, clinicId: string | null): Promise<LabReviewMode> {
-  if (!clinicId) return "DIRECT";
-
-  const atendido = await prisma.appointment.count({
-    where: { patientId, clinicId, status: { in: CONTA_COMO_ATENDIMENTO as any } },
-  });
-  if (atendido > 0) return "THERAPIST";
-
-  // Pacote comprado também é relação: a pessoa pagou por um tratamento, ainda
-  // que a primeira sessão não tenha acontecido.
-  const pacote = await prisma.patientPackage.count({
-    where: { patientId, clinicId, status: "ACTIVE" },
-  });
-  return pacote > 0 ? "THERAPIST" : "DIRECT";
-}
-
-/** O resultado deste pedido espera alguém ler? */
-export function needsRelease(o: { reviewMode: LabReviewMode; releasedToPatientAt: Date | string | null }): boolean {
-  return o.reviewMode === "THERAPIST" && !o.releasedToPatientAt;
+/**
+ * Sempre `DIRECT`.
+ *
+ * A função sobrevive à decisão em vez de sumir porque quem grava o pedido
+ * continua precisando de um valor para a coluna, e porque um dia pode haver
+ * outro modo (um médico que assina laudo, por exemplo). Um `return "DIRECT"`
+ * com o porquê escrito é mais honesto que espalhar a constante por cinco
+ * chamadores.
+ */
+export async function reviewModeFor(_patientId: string, _clinicId: string | null): Promise<LabReviewMode> {
+  return "DIRECT";
 }
 
 /**
- * O pedido direto não tem liberação: quando o resultado chega, ele é da pessoa.
- * `releasedToPatientAt` é gravado junto para a tela não precisar saber a regra.
- */
-export function releasesOnArrival(reviewMode: LabReviewMode): boolean {
-  return reviewMode === "DIRECT";
-}
-
-/**
- * A frase de não-diagnóstico muda com quem leu.
+ * A frase de não-diagnóstico.
  *
- * "Seu terapeuta os revisou" seria mentira num pedido direto — e é o tipo de
- * mentira que importa, porque é exatamente o que dá confiança ao número.
+ * Era duas, escolhidas por quem tinha lido. Agora ninguém lê antes, então é uma
+ * — e ela diz isso. "Seu terapeuta os revisou" seria mentira, e é o tipo de
+ * mentira que importa, porque é exatamente o que daria confiança ao número.
  */
-export function nonDiagnosticCopy(reviewMode: LabReviewMode): { en: string; pt: string } {
-  return reviewMode === "THERAPIST"
-    ? {
-        en: "These results are for information and do not replace a consultation. Your therapist has reviewed them.",
-        pt: "Estes resultados são informativos e não substituem uma consulta. Seu terapeuta os revisou.",
-      }
-    : {
-        en: "These results are for information and do not replace a consultation. Nobody has reviewed them for you — if anything concerns you, speak to a clinician.",
-        pt: "Estes resultados são informativos e não substituem uma consulta. Ninguém os revisou para você — se algo preocupar, procure um profissional de saúde.",
-      };
+export function nonDiagnosticCopy(): { en: string; pt: string } {
+  return {
+    en: "These results are for information and do not replace a consultation. Nobody has reviewed them for you — if anything concerns you, share them with a clinician of your choice.",
+    pt: "Estes resultados são informativos e não substituem uma consulta. Ninguém os revisou para você — se algo preocupar, compartilhe com um profissional de saúde da sua escolha.",
+  };
 }
 
 /**
@@ -74,6 +62,9 @@ export function nonDiagnosticCopy(reviewMode: LabReviewMode): { en: string; pt: 
  * Chamado no primeiro ato clínico — a consulta marcada, o pacote dado. É o
  * momento em que ela deixa de ser alguém que comprou um exame e passa a ter
  * prontuário, exercícios e conversa. Idempotente: só vai de false para true.
+ *
+ * Comprar exame continua não sendo ato clínico, e agora nem o resultado passa
+ * pela clínica.
  */
 export async function markAsClinicPatient(patientId: string, clinicId: string): Promise<void> {
   await prisma.user.updateMany({

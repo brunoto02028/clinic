@@ -48,15 +48,18 @@ export async function auditLab(userId: string, action: string, entity: string, e
 }
 
 /**
- * Resultados que chegaram e ninguém liberou — o sétimo contador do painel de
- * espera. Conta pedidos, não biomarcadores: um exame é uma decisão.
+ * Resultados esperando liberação — **sempre zero desde 26/09/2026**.
+ *
+ * O resultado passou a sair direto para a pessoa, então não existe fila: a
+ * clínica não tem nada a liberar. A função sobrevive porque o painel de espera
+ * tem sete contadores e removê-la mexeria no formato que várias telas leem; ela
+ * devolve zero sem ir ao banco, que é a resposta certa e não custa consulta.
+ *
+ * Quando existir o compartilhamento iniciado pela pessoa, o que vai contar aqui
+ * é outra coisa: resultados que **ela** mandou para a clínica ler.
  */
-export async function labResultsAwaitingRelease(clinicId: string): Promise<number> {
-  // Só o que espera alguém: um pedido direto não tem revisão a fazer, e
-  // contá-lo aqui cobraria da clínica um trabalho que não existe.
-  return (prisma as any).labOrder.count({
-    where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null, reviewMode: "THERAPIST" },
-  });
+export async function labResultsAwaitingRelease(_clinicId: string): Promise<number> {
+  return 0;
 }
 
 /** O pedido com tudo que a tela de liberação precisa. */

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Loader2, Eye, Send, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Eye, CheckCircle2 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,10 +100,11 @@ export default function LabOrderReleasePage() {
   const [previous, setPrevious] = useState<Previous[]>([]);
   const [reviewDays, setReviewDays] = useState(2);
   const [failed, setFailed] = useState(false);
+  // Só leitura: ninguém escreve nota nova desde que a liberação acabou. Os
+  // pedidos antigos que tiverem uma continuam mostrando-a.
   const [noteEn, setNoteEn] = useState("");
   const [notePt, setNotePt] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [releasing, setReleasing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -115,20 +116,6 @@ export default function LabOrderReleasePage() {
     } catch { setFailed(true); }
   }, [id]);
   useEffect(() => { void load(); }, [load]);
-
-  const release = async () => {
-    setReleasing(true);
-    try {
-      const r = await fetch(`/api/admin/labs/orders/${id}/release`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ noteEn, notePt }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { toast({ title: ui.failed, description: pt ? d.errorPt || d.error : d.error, variant: "destructive" }); return; }
-      setPreviewOpen(false);
-      toast({ title: ui.releasedOk });
-      await load();
-    } finally { setReleasing(false); }
-  };
 
   const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString(pt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—");
 
@@ -190,44 +177,42 @@ export default function LabOrderReleasePage() {
         </CardContent></Card>
       </div>
 
-      {order.releasedToPatientAt ? (
-        <Card className="border-green-500/40"><CardContent className="pt-5 text-sm flex items-start gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
-          <div>
-            <p data-testid="lab-released-at">{ui.released(fmtDate(order.releasedToPatientAt))}</p>
+      {/* A fila de liberação acabou em 26/09/2026: o resultado vai direto para
+          a pessoa, e os termos publicados dizem isso em duas línguas. Esta tela
+          continua existindo para a clínica **ver** um pedido — nunca para
+          segurá-lo. Notas antigas seguem aparecendo onde existirem. */}
+      <Card className="border-amber-500/40">
+        <CardContent className="pt-5 text-sm flex items-start gap-2">
+          <CheckCircle2 className="h-4 w-4 text-amber-600 mt-0.5" />
+          <div className="flex-1" data-testid="lab-goes-direct">
+            <p className="font-medium">
+              {pt ? "O resultado vai direto para a pessoa." : "The result goes straight to the person."}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {pt
+                ? "Não há liberação a fazer: assim que o laboratório entrega, o resultado aparece no app dela. Quem escolhe com quem compartilhar é ela."
+                : "There is nothing to release: as soon as the laboratory delivers it, the result appears in their app. They choose who to share it with."}
+            </p>
+            {order.releasedToPatientAt && (
+              <p className="mt-2 text-xs text-muted-foreground" data-testid="lab-released-at">
+                {ui.released(fmtDate(order.releasedToPatientAt))}
+              </p>
+            )}
             {order.releaseNote && <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{order.releaseNote}</p>}
             {order.releaseNotePt && <p className="mt-1 text-muted-foreground whitespace-pre-wrap">{order.releaseNotePt}</p>}
+            {order.hasValues && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => setPreviewOpen(true)} data-testid="lab-preview">
+                <Eye className="h-4 w-4 mr-1.5" /> {ui.preview}
+              </Button>
+            )}
           </div>
-        </CardContent></Card>
-      ) : !order.awaitingRelease || !order.hasValues ? (
-        <Card><CardContent className="pt-5 text-sm flex items-center gap-2 text-muted-foreground" data-testid="lab-waiting-lab">
-          <Clock className="h-4 w-4" /> {ui.waitingLab}
-        </CardContent></Card>
-      ) : null}
+        </CardContent>
+      </Card>
 
       {values.length > 0 && (
         <Card>
           <CardHeader><CardTitle className="text-base">{ui.result}</CardTitle></CardHeader>
           <CardContent><ResultTable /></CardContent>
-        </Card>
-      )}
-
-      {order.awaitingRelease && order.hasValues && (
-        <Card>
-          <CardContent className="pt-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="note-en">{ui.note}</Label>
-              <p className="text-xs text-muted-foreground">{ui.noteHint}</p>
-              <Textarea id="note-en" rows={4} value={noteEn} onChange={(e) => setNoteEn(e.target.value)} data-testid="lab-note-en" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="note-pt">{ui.notePt}</Label>
-              <Textarea id="note-pt" rows={4} value={notePt} onChange={(e) => setNotePt(e.target.value)} data-testid="lab-note-pt" />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setPreviewOpen(true)} data-testid="lab-preview"><Eye className="h-4 w-4 mr-1.5" /> {ui.preview}</Button>
-            </div>
-          </CardContent>
         </Card>
       )}
 
@@ -254,18 +239,20 @@ export default function LabOrderReleasePage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{ui.previewTitle}</DialogTitle><DialogDescription>{pt ? "Exatamente o que o paciente lê ao abrir o resultado." : "Exactly what the patient reads when they open the result."}</DialogDescription></DialogHeader>
           <div className="rounded-xl border bg-[#F5F4F1] p-4 space-y-3 text-[#20242D]" data-testid="lab-patient-preview">
-            <p className="text-xs uppercase tracking-wide text-[#5B616C]">{patientPt ? "Nota do seu terapeuta" : "Your therapist's note"}</p>
-            <p className="text-sm whitespace-pre-wrap">{noteForPatient.trim() || (patientPt ? "(sem nota)" : "(no note)")}</p>
+            {/* A nota só aparece se existir: prometer "nota do seu terapeuta"
+                quando ninguém escreve mais nenhuma seria a mesma mentira que o
+                consentimento antigo contava. */}
+            {noteForPatient.trim() && (
+              <>
+                <p className="text-xs uppercase tracking-wide text-[#5B616C]">{patientPt ? "Nota da clínica" : "A note from the clinic"}</p>
+                <p className="text-sm whitespace-pre-wrap">{noteForPatient}</p>
+              </>
+            )}
             <ResultTable patientView />
             <p className="text-xs text-[#5B616C]">{patientPt ? UI["pt-BR"].nonDiag : UI["en-GB"].nonDiag}</p>
           </div>
-          <DialogFooter>
-            <Button onClick={() => void release()} disabled={releasing} data-testid="lab-release">
-              {releasing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Send className="h-4 w-4 mr-1.5" />}
-              {releasing ? ui.releasing : ui.release}
-            </Button>
-          </DialogFooter>
-          <p className="text-[11px] text-muted-foreground">{pt ? `Prazo prometido: ${reviewDays} dia(s) útil(eis).` : `Promised window: ${reviewDays} working day(s).`}</p>
+          {/* Sem botão de liberar: não há o que liberar. A prévia sobrevive
+              porque ver o que a pessoa lê continua valendo. */}
         </DialogContent>
       </Dialog>
     </div>

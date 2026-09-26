@@ -33,7 +33,7 @@ interface Product {
 const UI = {
   "en-GB": {
     title: "Lab tests", subtitle: "Home kits from the laboratory. You set the sale price; the margin is yours.",
-    orders: "Orders", awaiting: (n: number) => `${n} result${n === 1 ? "" : "s"} waiting for your review`,
+    orders: "Orders",
     reviewDays: "Review window", reviewHint: "Working days you promise the patient between the result arriving and your release. The app shows this number.",
     visible: "Show in the patient app", visibleHint: "Off, the Laboratory area disappears from every patient's app the next time it asks — no new build, no update.",
     visibleOn: "Patients can see the Laboratory area.", visibleOff: "Hidden. Nobody sees the Laboratory area in the app.",
@@ -50,7 +50,7 @@ const UI = {
   },
   "pt-BR": {
     title: "Exames", subtitle: "Kits de casa do laboratório. Você define o preço de venda; a margem é sua.",
-    orders: "Pedidos", awaiting: (n: number) => `${n} resultado${n === 1 ? "" : "s"} esperando a sua revisão`,
+    orders: "Pedidos",
     reviewDays: "Prazo de revisão", reviewHint: "Dias úteis que você promete ao paciente entre o resultado chegar e a sua liberação. O app mostra este número.",
     visible: "Mostrar no app do paciente", visibleHint: "Desligado, a área Laboratório some do app de todos os pacientes na próxima vez que ele pergunta — sem build novo, sem update.",
     visibleOn: "Os pacientes veem a área Laboratório.", visibleOff: "Escondido. Ninguém vê a área Laboratório no app.",
@@ -77,7 +77,6 @@ export default function LabCatalogPage() {
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const [awaiting, setAwaiting] = useState(0);
   const [reviewDays, setReviewDays] = useState<number | null>(null);
   const [visible, setVisible] = useState<boolean | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; patch: Record<string, unknown>; cost: number; sale: number } | null>(null);
@@ -91,7 +90,6 @@ export default function LabCatalogPage() {
       ]);
       setProducts(p.products);
       setCanSetPrices(!!p.canSetPrices);
-      setAwaiting(o?.totals?.awaitingRelease ?? 0);
       setReviewDays(s?.labReviewDays ?? null);
       setVisible(typeof s?.labVisibleInApp === "boolean" ? s.labVisibleInApp : null);
       setFailed(false);
@@ -158,8 +156,10 @@ export default function LabCatalogPage() {
             <RefreshCw className="h-4 w-4 mr-1.5" /> {ui.sync}
           </Button>
           <Link href="/admin/labs/orders">
-            <Button size="sm" variant={awaiting > 0 ? "default" : "outline"}>
-              <ClipboardCheck className="h-4 w-4 mr-1.5" /> {awaiting > 0 ? ui.awaiting(awaiting) : ui.orders}
+            {/* Sem contador de fila: o resultado vai direto para a pessoa e
+                não há nada esperando a clínica (26/09/2026). */}
+            <Button size="sm" variant="outline">
+              <ClipboardCheck className="h-4 w-4 mr-1.5" /> {ui.orders}
             </Button>
           </Link>
         </div>
