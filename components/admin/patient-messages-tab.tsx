@@ -177,7 +177,18 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
                 {m.title && <p className="text-xs font-bold mb-0.5">{m.title}</p>}
                 <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 {m.attachmentUrl && (
-                  m.attachmentType?.startsWith("image/") ? (
+                  m.attachmentType?.startsWith("audio/") ? (
+                    /* O recado de voz (089). Um `<audio controls>` toca aqui
+                       mesmo: abrir noutra aba para ouvir oito segundos tira o
+                       terapeuta da conversa, e ele está lendo a conversa. */
+                    <audio
+                      controls
+                      preload="metadata"
+                      src={m.attachmentUrl ?? undefined}
+                      className="mt-2 w-full max-w-xs"
+                      data-testid="audio-da-mensagem"
+                    />
+                  ) : m.attachmentType?.startsWith("image/") ? (
                     <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="block mt-2">
                       <img src={m.attachmentUrl} alt={m.attachmentName || ""} className="max-h-40 rounded-xl border border-border/50 object-cover" />
                     </a>

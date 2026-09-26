@@ -135,10 +135,19 @@ describe("nada crava cor onde o tema deveria mandar", () => {
 });
 
 describe("a pessoa escolhe, e a escolha é visível", () => {
-  it("há dois botões, não um interruptor", () => {
-    // Um switch obriga a descobrir o que "desligado" significa.
+  it("há três botões, não um interruptor", () => {
+    // Um switch obriga a descobrir o que "desligado" significa. E o terceiro
+    // chegou no build 16: "o aparelho" é o padrão de quem nunca escolheu.
     expect(conta).toMatch(/testID=\{`theme-\$\{m\}`\}/);
-    expect(conta).toMatch(/\(\["light", "dark"\] as const\)/);
+    expect(conta).toMatch(/\(\["system", "light", "dark"\] as const\)/);
+  });
+
+  it("e o do aparelho vem primeiro", () => {
+    // É o que a maior parte das pessoas quer sem saber que quer: o telefone
+    // escurece à noite e o app acompanha.
+    const i = conta.indexOf('(["system", "light", "dark"] as const)');
+    expect(i).toBeGreaterThan(-1);
+    expect(conta).toMatch(/en: "Phone", pt: "Aparelho"/);
   });
 
   it("nas duas línguas", () => {
@@ -148,17 +157,44 @@ describe("a pessoa escolhe, e a escolha é visível", () => {
   });
 });
 
-describe("seguir o aparelho ainda não existe, e o motivo está escrito", () => {
-  it("o store explica que depende de um build", () => {
-    // `app.json` tem `userInterfaceStyle: "light"`, que força aparência clara
-    // no iOS — então `useColorScheme()` responderia "light" para todo mundo.
-    expect(store).toMatch(/userInterfaceStyle/);
-    expect(store).toMatch(/build novo/);
+describe("seguir o aparelho passou a existir (build 16)", () => {
+  it("o app.json deixa o iOS dizer a verdade", () => {
+    // Era `"light"`, que forçava aparência clara — e com ela
+    // `Appearance.getColorScheme()` respondia "light" para todo mundo,
+    // inclusive para quem usa o telefone no escuro. Trocar muda o fingerprint,
+    // então esperou um build que acontecesse por outro motivo: o do push.
+    const appJson = JSON.parse(ler("app.json"));
+    expect(appJson.expo.userInterfaceStyle).toBe("automatic");
   });
 
-  it("e o app.json segue intocado — este trabalho não pede build", () => {
-    const appJson = JSON.parse(ler("app.json"));
-    expect(appJson.expo.userInterfaceStyle).toBe("light");
+  it("`system` é o padrão de quem nunca escolheu", () => {
+    expect(store).toMatch(/escolha: "system",/);
+    expect(store).toMatch(/\(await ler\(\)\) \?\? "system"/);
+  });
+
+  it("mas quem já escolheu mantém a escolha", () => {
+    // Sobrepor seria decidir de novo por alguém que já decidiu.
+    expect(store).toMatch(/v === "dark" \|\| v === "light" \|\| v === "system" \? v : null/);
+  });
+
+  it("o tom pintado nunca é `system` — é sempre claro ou escuro", () => {
+    // `themes[modo]` não tem entrada "system"; deixar vazar daria `undefined`
+    // em toda cor e o RN pinta transparente.
+    expect(store).toMatch(/modo: e === "system" \? doAparelho\(\) : e/);
+    expect(store).toMatch(/modo: ModoDeCor;/);
+  });
+
+  it("e o app acompanha o aparelho mudando de tom com ele aberto", () => {
+    // O iOS escurece sozinho ao anoitecer. Quem escolheu `system` tem de
+    // acompanhar na hora; quem fixou um tom não pode ser mexido.
+    expect(store).toMatch(/Appearance\.addChangeListener/);
+    expect(store).toMatch(/if \(escolha !== "system"\) return;/);
+  });
+
+  it("alternar sai de `system` de propósito", () => {
+    // Quem toca no botão está pedindo um tom, não pedindo para continuar
+    // seguindo.
+    expect(store).toMatch(/alternar: \(\) => get\(\)\.definir\(get\(\)\.modo === "dark" \? "light" : "dark"\)/);
   });
 });
 
@@ -263,5 +299,56 @@ describe("a seta de voltar é visível no escuro", () => {
     const h = ler("src", "components", "HeaderBack.tsx");
     expect(h).toMatch(/const cor = tint \?\? t\.colors\.text;/);
     expect(h).toMatch(/color=\{cor\}/);
+  });
+});
+
+describe("o acento do laboratório passa nos DOIS tons (F-7)", () => {
+  /** Contraste WCAG entre dois hex. */
+  const razao = (a: string, b: string) => {
+    const lum = (h: string) => {
+      const [r, g, b2] = [1, 3, 5]
+        .map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b2;
+    };
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  /** O valor de um token numa das paletas. */
+  const token = (paleta: "light" | "dark", nome: string) => {
+    const i = tema.indexOf(`const ${paleta}: ThemeColors`);
+    const bloco = tema.slice(i, tema.indexOf("\n};", i));
+    return bloco.match(new RegExp(`\\b${nome}: "(#[0-9A-Fa-f]{6})"`))![1];
+  };
+
+  it.each([
+    ["lab sobre o card", "lab", "#FFFFFF"],
+    ["lab sobre labSoft", "lab", "labSoft"],
+    ["labWarm sobre o card", "labWarm", "#FFFFFF"],
+    ["labWarm sobre labWarmSoft", "labWarm", "labWarmSoft"],
+  ])("claro: %s", (_nome, tinta, fundo) => {
+    // F-7 do QA do tema, aberto desde 26/09 de manhã: o acento reprovava no
+    // **claro**, que é o tom em que ele mais aparece. É a cor do preço do
+    // exame e do número do resultado.
+    const bg = fundo.startsWith("#") ? fundo : token("light", fundo);
+    expect(razao(token("light", tinta), bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["lab", "lab"],
+    ["labWarm", "labWarm"],
+  ])("escuro: %s sobre a superfície", (_nome, tinta) => {
+    expect(razao(token("dark", tinta), "#20242D")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("e o matiz continua o mesmo — é a identidade, não uma cor nova", () => {
+    // Escurecer mantendo o matiz; inverter ou trocar de tom perderia o sage.
+    const antes = [0x65, 0x80, 0x7b];
+    const agora = [1, 3, 5].map((i) => parseInt(token("light", "lab").slice(i, i + 2), 16));
+    // Verde continua sendo o canal do meio, e o azul segue acima do vermelho.
+    expect(agora[1]).toBeGreaterThan(agora[0]);
+    expect(agora[2]).toBeGreaterThan(agora[0]);
+    expect(agora[1]).toBeLessThan(antes[1]);
   });
 });

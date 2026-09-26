@@ -13,6 +13,7 @@ import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
 import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
 import { getReminderTemplates } from "@/lib/reminder-templates";
+import { sendPushToUser } from "@/lib/push-send";
 
 interface NotifyPatientParams {
   patientId: string;
@@ -47,6 +48,21 @@ interface NotifyPatientParams {
    *  useReminderTemplate all otherwise recompute their own language straight
    *  from the patient's record, ignoring anything the caller passes). */
   forceLocale?: "en" | "pt";
+  /**
+   * O toque no ombro no telefone, **junto** do canal escolhido.
+   *
+   * Não é um canal alternativo: o e-mail continua saindo, porque ele é o que
+   * fica e o que a pessoa acha depois. O push é o que faz olhar agora.
+   *
+   * Passar `false` cala o push para este envio; o padrão é mandar, porque
+   * quem tem o app instalado e o aviso ligado está dizendo que quer ser
+   * avisado.
+   */
+  push?: boolean;
+  /** O título do push. Sem ele, o nome da clínica. */
+  pushTitle?: string;
+  /** Para onde o toque leva dentro do app. */
+  pushUrl?: string;
 }
 
 export async function notifyPatient({
@@ -61,6 +77,9 @@ export async function notifyPatient({
   yesterdayMissingTitles,
   onboardingPending,
   forceLocale,
+  push = true,
+  pushTitle,
+  pushUrl,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -78,6 +97,27 @@ export async function notifyPatient({
     if (!user) return { channel: "none", success: false, error: "Patient not found" };
 
     const u = user as any;
+
+    /**
+     * O push sai antes do canal, e nunca segura nada.
+     *
+     * `sendPushToUser` já respeita `pushEnabled` — a chave que o paciente tem
+     * para dizer "chega" sem desinstalar — e o portão de saída de QA. Sem
+     * aparelho registrado ele simplesmente não faz nada, que é o estado de
+     * hoje: o build instalado não tem a permissão de push, então ninguém está
+     * registrado (26/09/2026).
+     *
+     * O `.catch` existe porque um push que falha não pode impedir o e-mail de
+     * sair. A mensagem que fica é a do e-mail.
+     */
+    if (push) {
+      const ptDoPush = (forceLocale ?? (u.preferredLocale?.startsWith("pt") ? "pt" : "en")) === "pt";
+      void sendPushToUser(patientId, {
+        title: pushTitle ?? (ptDoPush ? "BPR" : "BPR"),
+        body: (ptDoPush ? plainMessagePt || plainMessage : plainMessage).slice(0, 160),
+        url: pushUrl ?? "/(app)/(clinica)/(tabs)/exercises",
+      }).catch(() => {});
+    }
     const pref = forceChannel || u.communicationPreference || "EMAIL";
     const phone: string | null = u.phone || null;
     const email: string = u.email;

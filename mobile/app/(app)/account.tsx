@@ -31,7 +31,7 @@ export default function Account() {
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
   const { canSwitch, switchArea } = useAreaSwitch();
-  const modo = useThemeStore((s) => s.modo);
+  const escolhaDeTema = useThemeStore((s) => s.escolha);
   const definirModo = useThemeStore((s) => s.definir);
   const bio = useBiometricCapability();
   const qc = useQueryClient();
@@ -200,9 +200,12 @@ export default function Account() {
             <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
               {tr(lang, { en: "How the app looks on this phone.", pt: "Como o app fica neste aparelho." })}
             </Text>
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-              {(["light", "dark"] as const).map((m) => {
-                const ativo = modo === m;
+            {/* Três, e "o aparelho" é o primeiro: é o padrão de quem nunca
+                escolheu, e o que a maior parte das pessoas quer sem saber que
+                quer — o telefone escurece à noite e o app acompanha. */}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+              {(["system", "light", "dark"] as const).map((m) => {
+                const ativo = escolhaDeTema === m;
                 return (
                   <Pressable
                     key={m}
@@ -220,7 +223,13 @@ export default function Account() {
                     }}
                   >
                     <Ionicons
-                      name={m === "dark" ? "moon-outline" : "sunny-outline"}
+                      name={
+                        m === "dark"
+                          ? "moon-outline"
+                          : m === "light"
+                            ? "sunny-outline"
+                            : "phone-portrait-outline"
+                      }
                       size={20}
                       color={ativo ? t.colors.health : t.colors.textMuted}
                     />
@@ -229,7 +238,11 @@ export default function Account() {
                       color={ativo ? t.colors.health : t.colors.textSecondary}
                       style={{ fontWeight: ativo ? "700" : "400" }}
                     >
-                      {m === "dark" ? tr(lang, { en: "Dark", pt: "Escuro" }) : tr(lang, { en: "Light", pt: "Claro" })}
+                      {m === "dark"
+                        ? tr(lang, { en: "Dark", pt: "Escuro" })
+                        : m === "light"
+                          ? tr(lang, { en: "Light", pt: "Claro" })
+                          : tr(lang, { en: "Phone", pt: "Aparelho" })}
                     </Text>
                   </Pressable>
                 );

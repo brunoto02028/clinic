@@ -97,6 +97,16 @@ export function attachmentIsImage(type: string | null): boolean {
   return !!type && type.startsWith("image/");
 }
 
+/**
+ * O recado de voz (089).
+ *
+ * Checa o prefixo, e não a lista exata, porque o que decide como **desenhar**
+ * é ser áudio — a lista fechada é do servidor, que decide o que **aceitar**.
+ */
+export function attachmentIsAudio(type: string | null): boolean {
+  return !!type && type.startsWith("audio/");
+}
+
 /** A URL absoluta do anexo, para abrir ou desenhar. */
 export function attachmentHref(m: ClinicMessage): string | null {
   return m.attachmentOpenUrl ? `${API_URL}${m.attachmentOpenUrl}` : null;

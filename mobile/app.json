@@ -9,7 +9,7 @@
     },
     "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -24,6 +24,9 @@
         "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document or record a short video of an exercise for your therapist to review.",
         "NSPhotoLibraryUsageDescription": "BPR needs access to your photos so you can attach a document or report to your record, or send your therapist a video of an exercise you did at home.",
         "NSPhotoLibraryAddUsageDescription": "BPR saves a copy of documents you download from your clinical record."
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
@@ -64,7 +67,20 @@
         }
       ],
       "expo-video",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#4F7361",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "BPR uses the microphone so you can send your therapist a voice message instead of typing. Nothing is recorded unless you hold the record button."
+        }
+      ]
     ],
     "extra": {
       "router": {},
