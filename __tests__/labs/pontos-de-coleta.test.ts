@@ -261,3 +261,33 @@ describe("a tela de como funciona promete o que o contrato diz", () => {
     expect(tela).toMatch(/router\.push\("\/\(app\)\/profile-edit"\)/);
   });
 });
+
+describe("o ponto de coleta abre o mapa", () => {
+  const tela = ler("mobile", "app", "(app)", "(lab)", "how-it-works.tsx");
+
+  it("tocar no cartão leva ao mapa do aparelho", () => {
+    // O Bruno: "tem como a pessoa clicar e ir direto para o mapa?" O mapa é a
+    // parte que **não** depende do laboratório — basta o endereço.
+    expect(tela).toMatch(/onPress=\{\(\) => void abrirNoMapa\(ponto\.nome, ponto\.endereco\)\}/);
+  });
+
+  it("app nativo primeiro, navegador como queda", () => {
+    expect(tela).toMatch(/Platform\.OS === "ios" \? `maps:0,0\?q=/);
+    expect(tela).toMatch(/geo:0,0\?q=/);
+    expect(tela).toMatch(/google\.com\/maps\/search/);
+  });
+
+  it("e um mapa que não abre não derruba a tela", () => {
+    expect(tela).toMatch(/\} catch \{/);
+    expect(tela).toMatch(/\.catch\(\(\) => \{\}\)/);
+  });
+
+  it("o cartão diz que abre o mapa", () => {
+    // Um cartão que abre o mapa sem dizer que abre é um cartão que ninguém toca.
+    expect(tela).toMatch(/en: "Open in maps", pt: "Abrir no mapa"/);
+  });
+
+  it("e tem rótulo de acessibilidade com o nome do lugar", () => {
+    expect(tela).toMatch(/en: `Open \$\{ponto\.nome\} in maps`/);
+  });
+});

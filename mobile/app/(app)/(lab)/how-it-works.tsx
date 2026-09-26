@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, Pressable, Platform, Linking } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +26,34 @@ import { fetchPontosDeColeta } from "@/api/labs";
  * o serviço de códigos postais. Uma tela que reconhece o que a pessoa cadastrou
  * é diferente de uma tela vazia.
  */
+/**
+ * Abre o ponto de coleta no mapa do aparelho.
+ *
+ * O Bruno: *"tem como a pessoa clicar e ir direto para o mapa e ter mais
+ * informações do local?"* O mapa é a parte que **não depende do laboratório**:
+ * basta o endereço, e ele vem no ponto.
+ *
+ * Telefone e "que tipo de lugar é" continuam esperando a conexão com eles —
+ * a documentação que li não traz esses campos.
+ *
+ * `maps:` no iOS e `geo:` no Android abrem o app nativo; a busca do Google
+ * Maps é a queda para quando nenhum dos dois responde, que é o caso do
+ * navegador.
+ */
+async function abrirNoMapa(nome: string, endereco: string): Promise<void> {
+  const busca = encodeURIComponent(`${nome}, ${endereco}`);
+  const nativo = Platform.OS === "ios" ? `maps:0,0?q=${busca}` : `geo:0,0?q=${busca}`;
+  try {
+    if (await Linking.canOpenURL(nativo)) {
+      await Linking.openURL(nativo);
+      return;
+    }
+  } catch {
+    /* um mapa que não abre não pode derrubar a tela */
+  }
+  await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${busca}`).catch(() => {});
+}
+
 export default function ComoFunciona() {
   const t = useTheme();
   const lang = useLang();
@@ -226,7 +254,17 @@ export default function ComoFunciona() {
         ) : (
           <View style={{ gap: 10 }}>
             {(pontos.data?.pontos ?? []).map((ponto) => (
-              <Card key={ponto.id} testID={`ponto-${ponto.id}`}>
+              <Pressable
+                key={ponto.id}
+                onPress={() => void abrirNoMapa(ponto.nome, ponto.endereco)}
+                accessibilityRole="button"
+                accessibilityLabel={tr(lang, {
+                  en: `Open ${ponto.nome} in maps`,
+                  pt: `Abrir ${ponto.nome} no mapa`,
+                })}
+                testID={`ponto-${ponto.id}`}
+              >
+              <Card>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
                   <Text variant="label" style={{ fontWeight: "700", flex: 1 }}>{ponto.nome}</Text>
                   {ponto.distanciaKm != null && (
@@ -242,7 +280,16 @@ export default function ComoFunciona() {
                     {[ponto.trem, ponto.onibus].filter(Boolean).join(" · ")}
                   </Text>
                 )}
+                {/* Um cartão que abre o mapa sem dizer que abre é um cartão
+                    que ninguém toca. */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
+                  <Ionicons name="navigate-outline" size={14} color={t.colors.lab} />
+                  <Text variant="caption" color={t.colors.lab} style={{ fontWeight: "600" }}>
+                    {tr(lang, { en: "Open in maps", pt: "Abrir no mapa" })}
+                  </Text>
+                </View>
               </Card>
+              </Pressable>
             ))}
           </View>
         )}

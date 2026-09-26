@@ -15,12 +15,16 @@ import { usePullToRefresh } from "@/lib/pull-to-refresh";
  * preço de venda. Em cima, quando existe, o pedido que precisa de você —
  * registrar o kit é o ponto de falha do produto inteiro.
  */
+/** Quantas categorias cabem em duas fileiras num telefone. */
+const CATEGORIAS_VISIVEIS = 7;
+
 export default function LabsHub() {
   const t = useTheme();
   const { controle } = usePullToRefresh();
   const lang = useLang();
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [todasCategorias, setTodasCategorias] = useState(false);
 
   const catalog = useQuery({ queryKey: ["lab-catalog"], queryFn: fetchLabCatalog });
   const orders = useQuery({ queryKey: ["lab-orders"], queryFn: fetchLabOrders });
@@ -45,18 +49,19 @@ export default function LabsHub() {
   const dias = (n: number | null) =>
     n ? tr(lang, { en: `Results in ${n} working day${n === 1 ? "" : "s"}`, pt: `Resultado em ${n} dia${n === 1 ? " útil" : "s úteis"}` }) : "";
 
-  return (
-    <Screen testID="labs-hub">
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: tr(lang, { en: "Blood tests", pt: "Exames de sangue" }),
-          headerStyle: { backgroundColor: t.colors.background },
-          headerTintColor: t.colors.text,
-          headerShadowVisible: false,
-        }}
-      />
-      <View style={{ gap: 16, flex: 1 }}>
+  /**
+   * O cabeçalho rola **junto** com a lista.
+   *
+   * Ele era fixo, e o Bruno: *"fica congelado, aquelas palavras lá em cima, e
+   * fica pouca opção de visualização das rolagens dos exames embaixo."* Com
+   * título, subtítulo, busca e as categorias parados no topo, sobrava uma
+   * janelinha de um exame e meio — num catálogo de vinte e dois.
+   *
+   * Como `ListHeaderComponent`, ele sai de cena ao rolar e a lista fica com a
+   * tela inteira.
+   */
+  const cabecalho = (
+    <View style={{ gap: 16 }}>
         <View>
           <Text variant="title">{tr(lang, { en: "Blood tests", pt: "Exames de sangue" })}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
@@ -104,22 +109,54 @@ export default function LabsHub() {
           icon={<Ionicons name="search-outline" size={18} color={t.colors.textMuted} />}
         />
 
-        {/* Isto era um ScrollView horizontal, e a última categoria ficava
-            fatiada na borda da tela — "Alle..." em vez de "Allergy", sem nada
-            indicando que dava para arrastar. Numa fileira de filtro, o que está
-            escondido não é usado (aparelho do Bruno, 26/09/2026).
+        {/* Duas correções no mesmo lugar, e a segunda desfaz o excesso da
+            primeira.
 
-            Quebrar em linha mostra todas de uma vez. São seis rótulos curtos:
-            cabem em duas linhas, e some junto o aperto vertical que o
-            ScrollView dentro de uma coluna flex causava. */}
+            Era um ScrollView horizontal e a última categoria ficava fatiada na
+            borda — "Alle..." em vez de "Allergy", sem nada indicando que dava
+            para arrastar. Quebrei em linha, e com **doze** categorias isso
+            virou quatro fileiras comendo a tela: sobrava um exame e meio
+            visível (aparelho do Bruno, 26/09/2026, duas horas depois).
+
+            Nada escondido na borda **e** nada engolindo a lista: mostra o que
+            cabe em duas linhas e o resto entra num toque. */}
         {categories.length > 1 && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <Chip label={tr(lang, { en: "All", pt: "Todos" })} selected={category === "all"} onPress={() => setCategory("all")} accentColor={t.colors.lab} />
-            {categories.map((cat) => (
+            {(todasCategorias ? categories : categories.slice(0, CATEGORIAS_VISIVEIS)).map((cat) => (
               <Chip key={cat} label={cat} selected={category === cat} onPress={() => setCategory(cat)} accentColor={t.colors.lab} />
             ))}
+            {categories.length > CATEGORIAS_VISIVEIS && (
+              <Chip
+                label={
+                  todasCategorias
+                    ? tr(lang, { en: "Less", pt: "Menos" })
+                    : `+${categories.length - CATEGORIAS_VISIVEIS}`
+                }
+                onPress={() => setTodasCategorias((v) => !v)}
+                accentColor={t.colors.lab}
+              />
+            )}
           </View>
         )}
+    </View>
+  );
+
+  return (
+    <Screen testID="labs-hub">
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: tr(lang, { en: "Blood tests", pt: "Exames de sangue" }),
+          headerStyle: { backgroundColor: t.colors.background },
+          headerTintColor: t.colors.text,
+          headerShadowVisible: false,
+        }}
+      />
+      <View style={{ flex: 1 }}>
+        {/* Carregando, erro e vazio não têm lista, então o cabeçalho vem
+            solto nesses três — ele é o que diz onde a pessoa está. */}
+        {catalog.isLoading || catalog.isError || filtered.length === 0 ? cabecalho : null}
 
         {catalog.isLoading ? (
           <Spinner center />
@@ -141,10 +178,16 @@ export default function LabsHub() {
           </View>
         ) : (
           <FlatList
+            ListHeaderComponent={cabecalho}
             refreshControl={controle}
             data={filtered}
             keyExtractor={(item) => item.id}
+            // A lista fica com a tela inteira ao rolar: o cabeçalho ficava
+            // fixo e sobrava uma janelinha para os exames.
             contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
+            // O vão entre o cabeçalho e o primeiro exame; o `gap` do
+            // `contentContainerStyle` não alcança o `ListHeaderComponent`.
+            ListHeaderComponentStyle={{ marginBottom: 16 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <Pressable onPress={() => router.push(`/(app)/(lab)/${item.id}`)} testID={`lab-product-${item.code}`}>
