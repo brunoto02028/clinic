@@ -34,25 +34,32 @@ describe("a marca da lista chega na rota que a lista realmente lê", () => {
     // Este é o teste que faltava. Eu confirmei "a contagem está na rota" sem
     // conferir **qual** rota a tela chama.
     expect(telaLista).toMatch(/fetch\("\/api\/patients"\)/);
-    expect(rotaLista).toMatch(/videosEsperando: p\.exerciseSubmissions\?\.length \?\? 0/);
+    expect(rotaLista).toMatch(/videosEsperando: p\._count\?\.exerciseSubmissions \?\? 0/);
   });
 
   it("conta só o que ninguém viu", () => {
-    const i = rotaLista.indexOf("exerciseSubmissions: {");
+    const i = rotaLista.indexOf("_count: { select:");
     expect(rotaLista.slice(i, i + 160)).toMatch(/where: \{ reviewedAt: null \}/);
   });
 
   it("vem junto do `include`, não numa consulta por paciente", () => {
     // Mensagens e perguntas já vêm assim; uma consulta por linha seria trinta
     // idas ao banco para desenhar trinta pontos.
-    const i = rotaLista.indexOf("exerciseSubmissions: {");
+    const i = rotaLista.indexOf("_count: { select:");
     const j = rotaLista.indexOf("clinicMessagesReceived: {");
     expect(i).toBeGreaterThan(j);
     expect(rotaLista).not.toMatch(/patients\.map\([\s\S]{0,120}await/);
   });
 
   it("e o objeto interno não vaza na resposta", () => {
-    expect(rotaLista).toMatch(/exerciseSubmissions: undefined,/);
+    expect(rotaLista).toMatch(/_count: undefined,/);
+  });
+
+  it("conta sem carregar as linhas", () => {
+    // Era `select: { id: true }`, que trazia **todas** as linhas só para medir
+    // o tamanho da lista — payload sem teto para desenhar um ponto (revisão
+    // de 26/09/2026).
+    expect(rotaLista).toMatch(/_count: \{ select: \{ exerciseSubmissions: \{ where: \{ reviewedAt: null \} \} \} \}/);
   });
 
   it("a linha do paciente acende com esse campo", () => {

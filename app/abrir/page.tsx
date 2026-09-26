@@ -64,7 +64,11 @@ export default function Abrir() {
         color: "#20242D",
       }}
     >
-      <img src="/logo-ink.png" alt="BPR" style={{ height: 56 }} />
+      {/* `/logo-ink.png` é o nome do arquivo dentro do app, não do site —
+          aqui ele dava 404 e a página abria com a imagem quebrada. O elemento
+          existia, que foi o que eu conferi da primeira vez; carregar é outra
+          coisa (QA online, 26/09/2026). */}
+      <img src="/logo.png" alt="BPR" style={{ height: 56 }} />
 
       <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
         {pt ? "Abrindo o aplicativo…" : "Opening the app…"}

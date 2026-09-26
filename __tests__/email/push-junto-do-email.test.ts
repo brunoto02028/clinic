@@ -25,40 +25,65 @@ const ler = (...p: string[]) => fs.readFileSync(path.join(raiz, ...p), "utf8");
 const notificar = ler("lib", "notify-patient.ts");
 const envio = ler("lib", "push-send.ts");
 
-describe("o push sai junto do canal, não no lugar dele", () => {
-  it("`notifyPatient` manda push antes de escolher o canal", () => {
-    // O e-mail é o que fica e o que a pessoa acha depois; o push é o que faz
-    // olhar agora. Um não substitui o outro.
-    expect(notificar).toMatch(/if \(push\) \{/);
-    expect(notificar).toMatch(/void sendPushToUser\(patientId, \{/);
+describe("o push mora onde uma pessoa apertou um botão", () => {
+  /**
+   * **Eu tinha posto o push dentro de `notifyPatient`, ligado por padrão.**
+   *
+   * A revisão pegou antes de ir ao ar. Aquele arquivo é chamado pelos quatro
+   * crons de lembrete — os que o Bruno mandou desligar em 17/09, "nunca
+   * enviar a paciente automaticamente". Bastaria alguém religar um cron para
+   * o robô começar a vibrar o celular de paciente, e ninguém teria decidido
+   * isso. O próprio `push-notify.ts` diz isso em comentário, e eu escrevi por
+   * cima.
+   */
+  it("`notifyPatient` **não** manda push", () => {
+    expect(notificar).not.toMatch(/sendPushToUser/);
+    expect(notificar).not.toMatch(/push = true/);
   });
 
-  it("e vem ligado por padrão", () => {
-    // Quem tem o app instalado e o aviso ligado está dizendo que quer ser
-    // avisado.
-    expect(notificar).toMatch(/push = true,/);
+  it("e o arquivo explica por que não", () => {
+    // Para o próximo que for tentar — inclusive eu.
+    expect(notificar).toMatch(/chamado pelos quatro crons de lembrete/);
   });
 
-  it("dá para calar num envio específico", () => {
-    expect(notificar).toMatch(/push\?: boolean;/);
+  it("o lembrete manual manda, porque alguém apertou o botão", () => {
+    for (const rota of ["send-reminder", "send-yesterday-followup"]) {
+      const r = ler("app", "api", "admin", "adherence", rota, "route.ts");
+      expect(r).toMatch(/pushLembreteDeAtividades\(patientId\)/);
+    }
   });
 
-  it("um push que falha **não** impede o e-mail", () => {
-    // A mensagem que fica é a do e-mail. Deixar o push derrubar o envio
-    // trocaria a certa pela opcional.
-    expect(notificar).toMatch(/\}\)\.catch\(\(\) => \{\}\);/);
+  it("e os crons continuam sem push", () => {
+    for (const cron of [
+      "appointment-reminders",
+      "bp-reminders",
+      "exercise-reminders",
+      "onboarding-reminder",
+    ]) {
+      const r = ler("app", "api", "cron", cron, "route.ts");
+      expect(r).not.toMatch(/sendPushToUser|pushLembrete/);
+    }
+  });
+});
+
+describe("o push não carrega conteúdo clínico", () => {
+  const notify = ler("lib", "push-notify.ts");
+
+  it("o texto do lembrete não diz quais atividades", () => {
+    // A lista apareceria na tela bloqueada. "Advanced Core 009, Advanced
+    // Core 001…" à vista de quem estiver por perto é o tratamento de alguém.
+    const i = notify.indexOf("export function pushLembreteDeAtividades");
+    const bloco = notify.slice(i, i + 700);
+    expect(bloco).toMatch(/A reminder about today's plan is waiting for you/);
+    expect(bloco).not.toMatch(/\$\{/);
   });
 
-  it("o corpo vai na língua do paciente", () => {
-    expect(notificar).toMatch(/ptDoPush \? plainMessagePt \|\| plainMessage : plainMessage/);
-  });
-
-  it("e é cortado, porque push longo é truncado pelo sistema sem aviso", () => {
-    expect(notificar).toMatch(/\.slice\(0, 160\)/);
-  });
-
-  it("o toque leva a uma tela do app", () => {
-    expect(notificar).toMatch(/pushUrl \?\? "\/\(app\)\/\(clinica\)\/\(tabs\)\/exercises"/);
+  it("e nenhum texto de push interpola dado do paciente", () => {
+    // Todos os corpos são literais. Um `${}` aqui seria o caminho de volta
+    // para o conteúdo clínico na tela bloqueada.
+    const corpos = [...notify.matchAll(/body: "([^"]*)"/g)].map((m) => m[1]);
+    expect(corpos.length).toBeGreaterThan(4);
+    for (const c of corpos) expect(c).not.toContain("${");
   });
 });
 

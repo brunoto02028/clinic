@@ -716,6 +716,17 @@ model User {
   emergencyContactRelation String?
   role                     UserRole  @default(PATIENT)
   isActive                 Boolean   @default(true)
+  /// Quando a pessoa pediu para apagar a conta pelo app.
+  ///
+  /// **A conta some; o prontuário fica.** A Apple exige que quem cria conta
+  /// consiga apagá-la de dentro do app, e o registro clínico tem retenção
+  /// legal de anos — apagar o `User` cascatearia sobre consultas, notas e
+  /// exames que a clínica é obrigada a guardar.
+  ///
+  /// Então isto marca o fim do **acesso**: a pessoa não entra mais, o login
+  /// não funciona, os avisos param. O que a lei manda guardar continua
+  /// guardado, e os termos já dizem por quanto tempo (089/090, 26/09/2026).
+  deletedAt                DateTime?
   emailVerified            DateTime?
 
   /// Whether patients can book appointments with this person. Role cannot
