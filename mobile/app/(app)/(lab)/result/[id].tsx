@@ -84,18 +84,26 @@ export default function LabResult() {
         <Card>
           <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", fontSize: 14 }}>{testName}</Text>
           <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 4 }}>
-            #{o.orderNumber} · {tr(lang, { en: "reviewed", pt: "revisado em" })} {new Date(r.releasedAt).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            #{o.orderNumber}
+            {r.releasedAt
+              ? ` · ${tr(lang, { en: "reviewed", pt: "revisado em" })} ${new Date(r.releasedAt).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+              : ""}
           </Text>
         </Card>
 
-        <Card style={{ backgroundColor: AMBER_BG, borderWidth: 0 }} testID="lab-therapist-note">
-          <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", color: AMBER, marginBottom: 6 }}>
-            {tr(lang, { en: "Your therapist's note", pt: "Nota do seu terapeuta" })}
-          </Text>
-          <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }}>
-            {note.trim() || tr(lang, { en: "Reviewed. No comments.", pt: "Revisado. Sem comentários." })}
-          </Text>
-        </Card>
+        {/* A nota só existe onde houve revisão. Num pedido direto ninguém leu
+            antes — e anunciar uma nota vazia seria prometer um cuidado que não
+            aconteceu (081, corrigido em 26/09/2026). */}
+        {r.reviewMode === "THERAPIST" && (
+          <Card style={{ backgroundColor: AMBER_BG, borderWidth: 0 }} testID="lab-therapist-note">
+            <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", color: AMBER, marginBottom: 6 }}>
+              {tr(lang, { en: "Your therapist's note", pt: "Nota do seu terapeuta" })}
+            </Text>
+            <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }}>
+              {note.trim() || tr(lang, { en: "Reviewed. No comments.", pt: "Revisado. Sem comentários." })}
+            </Text>
+          </Card>
+        )}
 
         <Card>
           <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", marginBottom: 8 }}>{tr(lang, { en: "Your values", pt: "Seus valores" })}</Text>
@@ -113,22 +121,23 @@ export default function LabResult() {
           ))}
         </Card>
 
+        {/* A frase vem do servidor: ela muda com quem leu, e "seu terapeuta os
+            revisou" seria mentira num pedido direto. */}
         <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", paddingHorizontal: 8 }} testID="lab-non-diagnostic">
-          {tr(lang, {
-            en: "These results are for information and do not replace a consultation. Your therapist has reviewed them.",
-            pt: "Estes resultados são informativos e não substituem uma consulta. Seu terapeuta os revisou.",
-          })}
+          {tr(lang, r.nonDiagnostic)}
         </Text>
 
         {r.pdfAvailable && (
           <Button title={tr(lang, { en: "Open the full report", pt: "Abrir o laudo completo" })} variant="primary" size="lg" onPress={openReport} style={{ backgroundColor: SAGE }} testID="lab-open-pdf" />
         )}
 
-        <Button
-          title={tr(lang, { en: "Discuss with your therapist", pt: "Conversar com o terapeuta" })}
-          variant="ghost" size="md"
-          onPress={() => router.push("/(app)/(clinica)/messages" as any)}
-        />
+        {r.reviewMode === "THERAPIST" && (
+          <Button
+            title={tr(lang, { en: "Discuss with your therapist", pt: "Conversar com o terapeuta" })}
+            variant="ghost" size="md"
+            onPress={() => router.push("/(app)/(clinica)/messages" as any)}
+          />
+        )}
       </View>
     </Screen>
   );

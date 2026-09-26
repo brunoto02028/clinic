@@ -98,10 +98,15 @@ export default function Register() {
       // todos pela mesma causa. Aluno de estúdio não faz avaliação clínica —
       // a rota é bloqueada para o tenant dele —, então esse vai ao seletor.
       const criado = useAuth.getState().user;
+      // A pergunta antes da suposição (083). Mandar todo cadastro para a
+      // triagem clínica era interrogar sobre dor noturna e histórico de câncer
+      // quem baixou o app para comprar um exame de vitamina D. Agora a pessoa
+      // diz o que veio fazer, e a triagem é o caminho de quem escolheu a
+      // clínica. Aluno de estúdio não faz avaliação clínica — vai ao seletor.
       router.replace(
         criado?.clinicType === "PERSONAL_TRAINER"
           ? "/(app)/module-select"
-          : "/(app)/(clinica)/screening"
+          : "/(app)/welcome-choice"
       );
     } catch (e) {
       const status = e instanceof AuthError ? e.status : undefined;

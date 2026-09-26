@@ -22,7 +22,7 @@ export async function GET() {
       where: { id: userId },
       select: {
         id: true, firstName: true, lastName: true, email: true,
-        phone: true, dateOfBirth: true, address: true,
+        phone: true, dateOfBirth: true, address: true, sex: true,
         preferredLocale: true, communicationPreference: true, pushEnabled: true,
         emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
         profileImageUrl: true,
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
     // something that needs the clinic on the phone.
     // `pushEnabled`: a chave que o paciente tem para dizer "chega" sem
     // precisar desinstalar o app (077, T-7).
-    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'pushEnabled', 'dateOfBirth', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'pushEnabled', 'dateOfBirth', 'sex', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
     const data: Record<string, any> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) data[field] = body[field];

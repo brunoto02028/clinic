@@ -52,8 +52,10 @@ export async function auditLab(userId: string, action: string, entity: string, e
  * espera. Conta pedidos, não biomarcadores: um exame é uma decisão.
  */
 export async function labResultsAwaitingRelease(clinicId: string): Promise<number> {
+  // Só o que espera alguém: um pedido direto não tem revisão a fazer, e
+  // contá-lo aqui cobraria da clínica um trabalho que não existe.
   return (prisma as any).labOrder.count({
-    where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null },
+    where: { clinicId, status: "RESULTS_READY", releasedToPatientAt: null, reviewMode: "THERAPIST" },
   });
 }
 

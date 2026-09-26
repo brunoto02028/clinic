@@ -24,7 +24,9 @@ describe("labStage", () => {
     expect(labStage(pedido("KIT_DISPATCHED", { registrations: [{ status: "PENDING" }] }))).toBe("collect_and_post");
   });
   it("resultado chegou mas não liberado = em revisão; liberado = pronto", () => {
-    expect(labStage(pedido("RESULTS_READY"))).toBe("in_review");
+    // `reviewMode` explícito: desde 26/09 um pedido sem relação clínica não
+    // espera revisão nenhuma — ver review-mode.test.ts.
+    expect(labStage(pedido("RESULTS_READY", { reviewMode: "THERAPIST" }))).toBe("in_review");
     expect(labStage(pedido("RESULTS_READY", { releasedToPatientAt: new Date() }))).toBe("released");
     expect(stageNeedsPatient("in_review")).toBe(false);
   });

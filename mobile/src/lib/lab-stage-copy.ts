@@ -35,8 +35,11 @@ export function stageCopy(stage: LabStage, lang: Lang, reviewDays: number): { ti
       pt: { title: "Em revisão com o seu terapeuta", body: `Seu resultado chegou e está com o seu terapeuta. Normalmente leva até ${d} dia${d === 1 ? " útil" : "s úteis"}. Você será avisado quando estiver pronto para ver.` },
     },
     released: {
-      en: { title: "Result ready", body: "Your therapist has reviewed your result and left a note." },
-      pt: { title: "Resultado pronto", body: "Seu terapeuta revisou o seu resultado e deixou uma nota." },
+      // Sem "seu terapeuta revisou": num pedido direto ninguém revisou, e essa
+      // é a frase que dá confiança ao número. A nota, quando existe, a tela do
+      // resultado mostra.
+      en: { title: "Result ready", body: "Your result is in your record." },
+      pt: { title: "Resultado pronto", body: "Seu resultado está no seu prontuário." },
     },
     cancelled: {
       en: { title: "Cancelled", body: "This order was cancelled. Contact the clinic if you believe this is a mistake." },

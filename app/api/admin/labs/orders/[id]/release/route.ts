@@ -32,6 +32,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (order.releasedToPatientAt) {
     return NextResponse.json({ error: "Already released", errorPt: "Já liberado", code: "already_released" }, { status: 409 });
   }
+  if (order.reviewMode !== "THERAPIST") {
+    // Exame comprado por quem não é paciente da clínica: o resultado é dele e
+    // já apareceu quando chegou. Não há o que liberar, e "liberar" daria a
+    // impressão de que alguém segurou.
+    return NextResponse.json(
+      { error: "This order goes straight to the person who bought it.", errorPt: "Este pedido vai direto para quem comprou.", code: "direct_order" },
+      { status: 409 }
+    );
+  }
   if (order.status !== "RESULTS_READY") {
     return NextResponse.json({ error: "The result has not arrived yet", errorPt: "O resultado ainda não chegou", code: "not_ready" }, { status: 409 });
   }

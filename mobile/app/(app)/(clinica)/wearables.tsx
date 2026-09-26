@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Spinner, Card } from "@/components/ui";
 import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { useTheme } from "@/theme/useTheme";
+import { openCheckout } from "@/lib/checkout";
 import {
   fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS,
   fetchMonitoringConsent, acceptMonitoringConsent, resubscribeWithings,
@@ -93,7 +94,9 @@ function WearablesScreen() {
 
   const connectMut = useMutation({
     mutationFn: fetchConnectUrl,
-    onSuccess: (url) => Linking.openURL(url),
+    // A autorização do fabricante também acontece dentro do app: sair para o
+    // Safari no meio de um OAuth é o mesmo defeito do pagamento (083).
+    onSuccess: (url) => { void openCheckout(url); },
     onError: (e) => Alert.alert(
       tr(lang, { en: "Devices", pt: "Dispositivos" }),
       (e as Error).message

@@ -68,7 +68,9 @@ export async function fetchBookingOptions(): Promise<BookingOption> {
 export async function startAppointmentCheckout(appointmentId: string): Promise<string | null> {
   const r = await apiFetch<{ url: string | null }>(
     `/api/patient/appointments/${appointmentId}/checkout`,
-    { method: "POST" }
+    // O header diz ao servidor que o retorno do Stripe deve voltar para o
+    // app, e não para uma página do site (083).
+    { method: "POST", headers: { "x-platform": "mobile" } }
   );
   return r.url ?? null;
 }
@@ -90,4 +92,28 @@ export async function fetchSchedule(): Promise<ScheduleDay[]> {
     `/api/public/schedule${slug ? `?clinic=${encodeURIComponent(slug)}` : ""}`
   );
   return res.schedule ?? [];
+}
+
+/**
+ * Os tratamentos que **esta** clínica oferece (082).
+ *
+ * A tela trazia sete nomes escritos no código ("Initial Assessment",
+ * "Sports Therapy"…) que nenhuma clínica podia mudar — e o servidor descartava
+ * a escolha do paciente de qualquer jeito. Agora a lista é a da clínica,
+ * editável em /admin/treatment-types, e o que ele escolhe fica gravado.
+ *
+ * Lista vazia é resposta legítima: a clínica ainda não cadastrou nenhum. A
+ * tela some em vez de inventar opções.
+ */
+export interface ClinicTreatmentType {
+  id: string;
+  name: string;
+  namePt: string | null;
+  duration: number;
+  price: number;
+}
+
+export async function fetchTreatmentTypes(): Promise<ClinicTreatmentType[]> {
+  const res = await apiFetch<ClinicTreatmentType[]>("/api/patient/treatment-types");
+  return Array.isArray(res) ? res : [];
 }

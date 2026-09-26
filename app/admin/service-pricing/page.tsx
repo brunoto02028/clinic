@@ -45,7 +45,7 @@ import {
   ALL_FEATURE_KEYS, DEFAULT_FREE_FEATURES,
   type ModuleDefinition, type PermissionDefinition,
 } from "@/lib/module-registry";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -249,6 +249,51 @@ export default function ServicePricingPage() {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
+  };
+
+  // Preço por paciente (082): a exceção de uma pessoa, com motivo.
+  const [priceFor, setPriceFor] = useState<{ id: string; firstName: string; lastName: string } | null>(null);
+  const [priceRows, setPriceRows] = useState<any[] | null>(null);
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
+  const [priceNote, setPriceNote] = useState<Record<string, string>>({});
+  const [savingPrice, setSavingPrice] = useState<string | null>(null);
+
+  const openPatientPrices = async (pt: { id: string; firstName: string; lastName: string }) => {
+    setPriceFor(pt); setPriceRows(null); setPriceDraft({}); setPriceNote({});
+    const res = await fetch(`/api/admin/patient-prices?patientId=${pt.id}`);
+    if (!res.ok) { toast({ title: "Error", description: "Could not load this patient's prices.", variant: "destructive" }); return; }
+    const data = await res.json();
+    setPriceRows(data.services);
+    setPriceNote(Object.fromEntries(data.services.map((r: any) => [r.serviceType, r.exception?.note ?? ""])));
+  };
+
+  const savePatientPrice = async (serviceType: string) => {
+    if (!priceFor) return;
+    const raw = priceDraft[serviceType];
+    if (raw === undefined || raw === "") return;
+    const price = Number(raw.replace(",", "."));
+    setSavingPrice(serviceType);
+    try {
+      const res = await fetch("/api/admin/patient-prices", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: priceFor.id, serviceType, price, note: priceNote[serviceType] || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast({ title: "Error", description: data.error, variant: "destructive" }); return; }
+      toast({ title: "Saved", description: `${priceFor.firstName} now pays this price.` });
+      await openPatientPrices(priceFor);
+    } finally { setSavingPrice(null); }
+  };
+
+  const clearPatientPrice = async (id: string) => {
+    if (!priceFor) return;
+    setSavingPrice(id);
+    try {
+      const res = await fetch(`/api/admin/patient-prices?id=${id}`, { method: "DELETE" });
+      if (!res.ok) { toast({ title: "Error", variant: "destructive" }); return; }
+      toast({ title: "Removed", description: "Back to the clinic price." });
+      await openPatientPrices(priceFor);
+    } finally { setSavingPrice(null); }
   };
 
   const searchPatients = async () => {
@@ -503,11 +548,19 @@ export default function ServicePricingPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor={`active-${sp.serviceType}`} className="text-xs text-muted-foreground">Active</Label>
+                    {/* Salva na hora. O interruptor mudava só o estado da
+                        tela e esperava o "Save" — então o Bruno ligou o
+                        Active, fechou a página, e o paciente continuou vendo
+                        o preço antigo. Um botão que decide se dá para marcar
+                        não pode depender de um segundo clique (26/09/2026). */}
                     <Switch
                       id={`active-${sp.serviceType}`}
                       checked={sp.isActive}
+                      disabled={saving === sp.serviceType}
                       onCheckedChange={(checked) => {
-                        setPrices((prev) => prev.map((p) => p.serviceType === sp.serviceType ? { ...p, isActive: checked } : p));
+                        const atualizado = { ...sp, isActive: checked };
+                        setPrices((prev) => prev.map((p) => p.serviceType === sp.serviceType ? atualizado : p));
+                        void savePrice(atualizado);
                       }}
                     />
                   </div>
@@ -593,6 +646,29 @@ export default function ServicePricingPage() {
         })}
       </div>
 
+      {/* Onde criar serviços além destes quatro.
+          Os quatro cards acima são os valores do enum `ServiceType` — os
+          ganchos de cobrança do sistema (primeira consulta, sessão, scan,
+          avaliação). Não dá para criar um quinto sem migração, e isso é de
+          propósito: é neles que o pacote, a assinatura e a marcação se apoiam.
+          O que a clínica cria livremente são os **tratamentos**, e são eles
+          que o paciente vê em "Tipo de consulta" no app. */}
+      <Card>
+        <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Want other services?</p>
+            <p className="text-xs text-muted-foreground max-w-2xl">
+              The four above are the system's billing hooks and are fixed. The services you create yourself — with your own names, prices and durations — live in Treatment Types, and they are what the patient picks under &quot;Appointment type&quot; in the app.
+            </p>
+          </div>
+          <a href="/admin/treatment-types">
+            <Button variant="outline" className="gap-1.5">
+              <Stethoscope className="h-4 w-4" /> Treatment Types
+            </Button>
+          </a>
+        </CardContent>
+      </Card>
+
       {/* Patient Access Override */}
       <Card>
         <CardHeader>
@@ -634,6 +710,14 @@ export default function ServicePricingPage() {
                         <div>
                           <p className="font-medium">{p.firstName} {p.lastName}</p>
                           <p className="text-xs text-muted-foreground">{p.email}</p>
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline mt-1"
+                            onClick={() => openPatientPrices(p)}
+                            data-testid={`patient-price-open-${p.id}`}
+                          >
+                            Set a price for this patient
+                          </button>
                         </div>
                       </td>
                       {SERVICE_TYPES.map((st) => {
@@ -1100,6 +1184,70 @@ export default function ServicePricingPage() {
           </AlertDialogContent>
         </AlertDialog>
       </>}
+
+      {/* Preço por paciente (082). "Para quem isto vale?" é a pergunta da
+          atividade: o preço do serviço vale para a clínica toda, e esta janela
+          é como uma pessoa paga diferente — com motivo, porque daqui a seis
+          meses ninguém lembra por quê. O paciente nunca vê que é exceção. */}
+      <Dialog open={!!priceFor} onOpenChange={(o) => { if (!o) { setPriceFor(null); setPriceRows(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Price for {priceFor?.firstName} {priceFor?.lastName}</DialogTitle>
+            <DialogDescription>
+              Leave a service empty and this patient pays the clinic price. A price here replaces it — for them only, and they never see that it is an exception.
+            </DialogDescription>
+          </DialogHeader>
+
+          {priceRows === null ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> …</div>
+          ) : (
+            <div className="space-y-3">
+              {priceRows.map((r: any) => (
+                <div key={r.serviceType} className="border rounded-lg p-3 space-y-2" data-testid={`patient-price-${r.serviceType}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">{r.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.clinicPrice === null ? "No clinic price set" : `Clinic price: ${r.currency} ${Number(r.clinicPrice).toFixed(2)}`}
+                        {r.exception ? ` · this patient pays ${r.currency} ${Number(r.exception.price).toFixed(2)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="w-28 text-right"
+                        inputMode="decimal"
+                        placeholder={r.clinicPrice === null ? "—" : Number(r.clinicPrice).toFixed(2)}
+                        value={priceDraft[r.serviceType] ?? (r.exception ? String(r.exception.price) : "")}
+                        onChange={(e) => setPriceDraft((d) => ({ ...d, [r.serviceType]: e.target.value }))}
+                        data-testid={`patient-price-input-${r.serviceType}`}
+                      />
+                      <Button size="sm" disabled={savingPrice === r.serviceType} onClick={() => savePatientPrice(r.serviceType)}>
+                        {savingPrice === r.serviceType ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                      </Button>
+                      {r.exception && (
+                        <Button size="sm" variant="outline" disabled={savingPrice === r.exception.id} onClick={() => clearPatientPrice(r.exception.id)}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Why (for you, not for the patient)"
+                    value={priceNote[r.serviceType] ?? ""}
+                    onChange={(e) => setPriceNote((n) => ({ ...n, [r.serviceType]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPriceFor(null); setPriceRows(null); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

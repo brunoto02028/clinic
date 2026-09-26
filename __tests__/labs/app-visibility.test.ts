@@ -30,6 +30,13 @@ describe("a rota de módulos", () => {
   it("o filtro remove exatamente a chave `lab`", () => {
     expect(rota).toMatch(/labOn \? mods : mods\.filter\(\(m\) => m\.key !== "lab"\)/);
   });
+
+  it("e o interruptor CONCEDE, não só remove — ligar tem que ligar", () => {
+    // Escrito só como filtro, ligar o laboratório não ligava nada: o paciente
+    // seguia preso a uma linha DIAGNOSTICS que a BPR nunca teve.
+    expect(rota).toMatch(/if \(labOn && overrideGrants\(overrides\["mod_lab"\]\) !== false\)/);
+    expect(rota).toMatch(/keys\.add\("lab"\)/);
+  });
 });
 
 describe("o app não decide mais sozinho", () => {

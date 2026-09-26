@@ -59,6 +59,8 @@ export interface LabOrder {
   registration: { status: string; registered: boolean; canRegister: boolean } | null;
   released: boolean;
   releasedAt: string | null;
+  /** Quem lê primeiro. `DIRECT`: ninguém — o resultado é de quem comprou. */
+  reviewMode: "THERAPIST" | "DIRECT";
   events: LabOrderEvent[];
 }
 
@@ -75,11 +77,14 @@ export interface LabResultValue {
 }
 
 export interface LabResult {
-  releasedAt: string;
+  reviewMode: "THERAPIST" | "DIRECT";
+  releasedAt: string | null;
   noteEn: string;
   notePt: string;
   values: LabResultValue[];
   pdfAvailable: boolean;
+  /** A frase de não-diagnóstico certa para este pedido — o servidor decide. */
+  nonDiagnostic: { en: string; pt: string };
 }
 
 export interface LabCatalog {

@@ -3,17 +3,13 @@ import { View, Pressable, ScrollView, Alert, TextInput, Linking } from "react-na
 import { Stack, router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout } from "@/api/booking";
+import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { useAuth } from "@/store/auth";
 import { zonedTimeToUtc } from "@/lib/clinic-timezone";
-
-const TYPES = [
-  "Initial Assessment", "Follow-up", "Physiotherapy", "Sports Therapy",
-  "Biomechanical Assessment", "Foot Scan", "Review",
-];
+import { openCheckout } from "@/lib/checkout";
 
 function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
   const dates = [];
@@ -61,6 +57,10 @@ function BookAppointmentScreen() {
   const porta = opcao.data;
   const janela = porta?.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : porta?.kind ? "TREATMENT" : undefined;
 
+  // Os tratamentos desta clínica (082): a lista de "Tipo de consulta" deixou
+  // de ser escrita no código e passou a ser o que a clínica cadastrou.
+  const tipos = useQuery({ queryKey: ["treatment-types"], queryFn: fetchTreatmentTypes });
+
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   // Which days the clinic opens is not something to guess at. When the schedule
   // fails to load, or comes back with no open day at all, `closedDays` was `[]`
@@ -97,15 +97,16 @@ function BookAppointmentScreen() {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       qc.invalidateQueries({ queryKey: ["booking-options"] });
 
-      // Quando o horário só vale depois de pago, o Checkout abre aqui, no
-      // navegador do sistema. A consulta já existe, mas **não** está
-      // confirmada: quem confirma é o webhook, quando o dinheiro entra. Se a
-      // pessoa fechar a aba, o horário não fica preso a ela.
+      // Quando o horário só vale depois de pago, o Checkout abre numa folha
+      // **dentro do app** e fecha sozinha ao voltar (083) — antes, `openURL`
+      // entregava a pessoa ao Safari no meio do pagamento. A consulta já
+      // existe, mas **não** está confirmada: quem confirma é o webhook, quando
+      // o dinheiro entra. Se a pessoa fechar a folha, o horário não fica preso.
       if (porta?.requiresPayment && res?.appointment?.id) {
         try {
           const url = await startAppointmentCheckout(res.appointment.id);
           if (url) {
-            await Linking.openURL(url);
+            await openCheckout(url);
             router.replace("/(app)/(clinica)/(tabs)/appointments");
             return;
           }
@@ -233,18 +234,25 @@ function BookAppointmentScreen() {
           </Card>
         ) : null}
 
-        {/* Type */}
-        <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {TYPES.map(t2 => (
-              <Pressable key={t2} onPress={() => setType(t2)}
-                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === t2 ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === t2 ? t.colors.health : t.colors.borderSubtle }}>
-                <Text variant="caption" color={type === t2 ? t.colors.health : t.colors.textSecondary}>{t2}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
+        {/* Tipo — o que ESTA clínica oferece, não sete nomes escritos no
+            código. Sem tratamento cadastrado a seção não existe: a consulta
+            é marcada do mesmo jeito, e o servidor põe o rótulo. */}
+        {(tipos.data ?? []).length > 0 && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {(tipos.data ?? []).map((tt) => {
+                const rotulo = lang === "pt" ? tt.namePt || tt.name : tt.name;
+                return (
+                  <Pressable key={tt.id} onPress={() => setType(tt.name)} testID={`appointment-type-${tt.id}`}
+                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === tt.name ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === tt.name ? t.colors.health : t.colors.borderSubtle }}>
+                    <Text variant="caption" color={type === tt.name ? t.colors.health : t.colors.textSecondary}>{rotulo}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+        )}
 
         {/* Date */}
         <Card>

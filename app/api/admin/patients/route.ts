@@ -175,6 +175,9 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
 
         role: "PATIENT",
+        // Conta criada pela própria clínica: já é paciente dela (083). Um
+        // cadastro feito pela pessoa nasce `false` e vê só o laboratório.
+        isClinicPatient: true,
         isActive: true,
         emailVerified: new Date(), // Mark as verified since admin created it
         clinicId: actor.clinicId,

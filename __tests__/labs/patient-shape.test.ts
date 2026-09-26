@@ -34,7 +34,7 @@ describe("patientProduct", () => {
 
 describe("patientOrder", () => {
   const pedido = {
-    id: "o1", orderNumber: "LB-2026-00001", status: "RESULTS_READY", total: 59, currency: "GBP", createdAt: new Date(), paidAt: new Date(),
+    id: "o1", orderNumber: "LB-2026-00001", status: "RESULTS_READY", reviewMode: "THERAPIST", total: 59, currency: "GBP", createdAt: new Date(), paidAt: new Date(),
     shippingName: "QA", shippingAddress: "1 Test St", shippingPostcode: "SW1A 1AA",
     releasedToPatientAt: null, releaseNote: "segredo ainda", releaseNotePt: null,
     items: [{ id: "i1", productId: "p1", productName: "Thyroid", quantity: 1, unitPrice: 59, total: 59, unitCost: 31.5 }],

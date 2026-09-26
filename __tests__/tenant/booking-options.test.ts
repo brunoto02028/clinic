@@ -16,13 +16,18 @@ jest.mock("@/lib/db", () => ({
 }));
 jest.mock("@/lib/package-sessions", () => ({ activePackageFor: jest.fn() }));
 jest.mock("@/lib/service-price", () => ({
+  // `servicePricesForPatient` substituiu `servicePricesForClinic` aqui na 082:
+  // a exceção de preço do paciente vence a da clínica, e quem resolve isso é
+  // uma função só. Mantidas as duas no mock para o teste falhar alto se alguém
+  // voltar a chamar a versão sem paciente.
   servicePricesForClinic: jest.fn(),
+  servicePricesForPatient: jest.fn(),
   patientBookingPrice: jest.fn(),
 }));
 
 import { prisma } from "@/lib/db";
 import { activePackageFor } from "@/lib/package-sessions";
-import { servicePricesForClinic, patientBookingPrice } from "@/lib/service-price";
+import { servicePricesForPatient, patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
 
 const users = (prisma as any).user;
@@ -40,7 +45,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   paciente();
   (activePackageFor as jest.Mock).mockResolvedValue(null);
-  (servicePricesForClinic as jest.Mock).mockResolvedValue([
+  (servicePricesForPatient as jest.Mock).mockResolvedValue([
     { serviceType: "CONSULTATION", price: 80, currency: "GBP" },
     { serviceType: "TREATMENT_SESSION", price: 55, currency: "GBP" },
   ]);
