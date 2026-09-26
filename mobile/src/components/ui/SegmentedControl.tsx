@@ -18,7 +18,7 @@ export function SegmentedControl({ options, selected, onSelect, style }: Segment
       style={[
         {
           flexDirection: "row",
-          backgroundColor: "#EBEAE6",
+          backgroundColor: t.colors.segmentTrack,
           borderRadius: 11,
           padding: 3,
         },
@@ -36,7 +36,7 @@ export function SegmentedControl({ options, selected, onSelect, style }: Segment
               paddingVertical: 7,
               borderRadius: 9,
               alignItems: "center",
-              backgroundColor: isActive ? "#FFFFFF" : "transparent",
+              backgroundColor: isActive ? t.colors.segmentThumb : "transparent",
               ...Platform.select<ViewStyle>({
                 ios: isActive
                   ? {
@@ -54,7 +54,8 @@ export function SegmentedControl({ options, selected, onSelect, style }: Segment
               style={{
                 fontSize: 11,
                 fontFamily: "Inter_600SemiBold",
-                color: isActive ? t.colors.text : "#6A6F79",
+                // `#6A6F79` sobre o trilho dava 4,19:1 — reprovava nos **dois** tons.
+                color: isActive ? t.colors.text : t.colors.textMuted,
               }}
             >
               {opt}

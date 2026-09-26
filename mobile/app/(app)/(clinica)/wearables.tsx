@@ -282,7 +282,7 @@ function WearablesScreen() {
                             opacity: resubMut.isPending ? 0.6 : 1,
                           }}
                         >
-                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: t.colors.accentFg }}>
                             {resubMut.isPending ? "..." : tr(lang, { en: "Fix", pt: "Corrigir" })}
                           </Text>
                         </Pressable>
@@ -298,7 +298,7 @@ function WearablesScreen() {
                           opacity: syncMut.isPending ? 0.6 : 1,
                         }}
                       >
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: t.colors.accentFg }}>
                           {syncMut.isPending ? "..." : tr(lang, { en: "Sync", pt: "Sincronizar" })}
                         </Text>
                       </Pressable>
@@ -342,7 +342,7 @@ function WearablesScreen() {
                         opacity: consent && !consent.accepted ? 0.6 : 1,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: consent && !consent.accepted ? t.colors.textMuted : t.colors.primaryFg }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>
                     </Pressable>
                   )}
                 </View>

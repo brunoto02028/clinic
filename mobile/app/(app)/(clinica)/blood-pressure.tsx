@@ -77,8 +77,8 @@ export default function BloodPressureScreen() {
     normal: { label: tr(lang, { en: "Normal", pt: "Normal" }), color: t.colors.ok, bg: t.colors.okSoft },
     elevated: { label: tr(lang, { en: "Elevated", pt: "Elevada" }), color: t.colors.warn, bg: t.colors.warnSoft },
     stage1: { label: tr(lang, { en: "Stage 1", pt: "Estágio 1" }), color: t.colors.bad, bg: t.colors.badSoft },
-    stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: "#FFFFFF", bg: t.colors.bad },
-    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: "#FFFFFF", bg: t.colors.bad },
+    stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: t.colors.accentFg, bg: t.colors.bad },
+    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: t.colors.accentFg, bg: t.colors.bad },
   };
 
   const sys = parseInt(systolic, 10);
@@ -176,15 +176,15 @@ export default function BloodPressureScreen() {
                 }}
                 accessibilityRole="alert"
               >
-                <Ionicons name="warning" size={18} color="#FFFFFF" style={{ marginTop: 1 }} />
+                <Ionicons name="warning" size={18} color={t.colors.accentFg} style={{ marginTop: 1 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>
+                  <Text style={{ color: t.colors.accentFg, fontWeight: "700", fontSize: 14 }}>
                     {tr(lang, {
                       en: "Hypertensive crisis",
                       pt: "Crise hipertensiva",
                     })}
                   </Text>
-                  <Text style={{ color: "#FFFFFF", fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+                  <Text style={{ color: t.colors.accentFg, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
                     {tr(lang, {
                       en: "Do not wait for your therapist. Call 999 if you feel unwell, or 111 for urgent advice.",
                       pt: "Não espere seu terapeuta. Ligue 999 se estiver passando mal, ou 111 para orientação urgente.",

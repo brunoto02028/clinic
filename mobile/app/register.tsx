@@ -355,7 +355,7 @@ export default function Register() {
                     borderColor: active ? t.colors.primary : t.colors.border,
                   }}
                 >
-                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? "#FFFFFF" : t.colors.textSecondary }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? t.colors.primaryFg : t.colors.textSecondary }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>
                 </Pressable>
