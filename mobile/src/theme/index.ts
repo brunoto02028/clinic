@@ -132,9 +132,17 @@ const light: ThemeColors = {
   segmentTrack: "#EBEAE6",
   segmentThumb: palette.card,
 
-  lab: "#65807B",
+  // Escurecidos em 26/09/2026 mantendo o matiz. Os valores anteriores — sage
+  // #65807B e âmbar #B8823A — reprovavam **no claro**, que é o tom em que eles
+  // mais aparecem: 4,26 sobre o card branco e 3,57 sobre o próprio `Soft`; o
+  // âmbar, 3,34 e 2,90. É a cor do preço do exame e do número do resultado
+  // ("21,5 nmol/L"), e era o achado F-7 do QA do tema, aberto desde então.
+  //
+  // Estes são o **mínimo** que passa nos dois fundos — 86% e 77% do brilho de
+  // antes. Escurecer mais afastaria da identidade sem ganhar legibilidade.
+  lab: "#576E6A",
   labSoft: "#E4EDE7",
-  labWarm: "#B8823A",
+  labWarm: "#8E642D",
   labWarmSoft: "#F5EFDD",
 
   ok: palette.ok,

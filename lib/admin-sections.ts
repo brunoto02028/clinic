@@ -116,6 +116,16 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
+        // Quem tem o app, onde está e quanto tempo fica (085, T-3). O dado já
+        // era gravado desde a T-1 e não tinha tela; `/admin/analytics` mostra
+        // visitante do site, que responde outra pergunta.
+        key: "app-usage",
+        label: "App",
+        labelPt: "App",
+        href: "/admin/app-usage",
+        matchRoutes: ["/admin/app-usage"],
+      },
+      {
         // O badge vermelho contava os vídeos e não dizia quais. O backend já
         // respondia `?pending=1` desde a 076 e nenhuma tela perguntava — o
         // único caminho até um vídeo era abrir o prontuário e achar a aba

@@ -301,3 +301,54 @@ describe("a seta de voltar é visível no escuro", () => {
     expect(h).toMatch(/color=\{cor\}/);
   });
 });
+
+describe("o acento do laboratório passa nos DOIS tons (F-7)", () => {
+  /** Contraste WCAG entre dois hex. */
+  const razao = (a: string, b: string) => {
+    const lum = (h: string) => {
+      const [r, g, b2] = [1, 3, 5]
+        .map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b2;
+    };
+    const [x, y] = [lum(a), lum(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  /** O valor de um token numa das paletas. */
+  const token = (paleta: "light" | "dark", nome: string) => {
+    const i = tema.indexOf(`const ${paleta}: ThemeColors`);
+    const bloco = tema.slice(i, tema.indexOf("\n};", i));
+    return bloco.match(new RegExp(`\\b${nome}: "(#[0-9A-Fa-f]{6})"`))![1];
+  };
+
+  it.each([
+    ["lab sobre o card", "lab", "#FFFFFF"],
+    ["lab sobre labSoft", "lab", "labSoft"],
+    ["labWarm sobre o card", "labWarm", "#FFFFFF"],
+    ["labWarm sobre labWarmSoft", "labWarm", "labWarmSoft"],
+  ])("claro: %s", (_nome, tinta, fundo) => {
+    // F-7 do QA do tema, aberto desde 26/09 de manhã: o acento reprovava no
+    // **claro**, que é o tom em que ele mais aparece. É a cor do preço do
+    // exame e do número do resultado.
+    const bg = fundo.startsWith("#") ? fundo : token("light", fundo);
+    expect(razao(token("light", tinta), bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["lab", "lab"],
+    ["labWarm", "labWarm"],
+  ])("escuro: %s sobre a superfície", (_nome, tinta) => {
+    expect(razao(token("dark", tinta), "#20242D")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("e o matiz continua o mesmo — é a identidade, não uma cor nova", () => {
+    // Escurecer mantendo o matiz; inverter ou trocar de tom perderia o sage.
+    const antes = [0x65, 0x80, 0x7b];
+    const agora = [1, 3, 5].map((i) => parseInt(token("light", "lab").slice(i, i + 2), 16));
+    // Verde continua sendo o canal do meio, e o azul segue acima do vermelho.
+    expect(agora[1]).toBeGreaterThan(agora[0]);
+    expect(agora[2]).toBeGreaterThan(agora[0]);
+    expect(agora[1]).toBeLessThan(antes[1]);
+  });
+});
