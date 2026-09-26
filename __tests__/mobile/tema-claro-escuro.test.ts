@@ -135,10 +135,19 @@ describe("nada crava cor onde o tema deveria mandar", () => {
 });
 
 describe("a pessoa escolhe, e a escolha é visível", () => {
-  it("há dois botões, não um interruptor", () => {
-    // Um switch obriga a descobrir o que "desligado" significa.
+  it("há três botões, não um interruptor", () => {
+    // Um switch obriga a descobrir o que "desligado" significa. E o terceiro
+    // chegou no build 16: "o aparelho" é o padrão de quem nunca escolheu.
     expect(conta).toMatch(/testID=\{`theme-\$\{m\}`\}/);
-    expect(conta).toMatch(/\(\["light", "dark"\] as const\)/);
+    expect(conta).toMatch(/\(\["system", "light", "dark"\] as const\)/);
+  });
+
+  it("e o do aparelho vem primeiro", () => {
+    // É o que a maior parte das pessoas quer sem saber que quer: o telefone
+    // escurece à noite e o app acompanha.
+    const i = conta.indexOf('(["system", "light", "dark"] as const)');
+    expect(i).toBeGreaterThan(-1);
+    expect(conta).toMatch(/en: "Phone", pt: "Aparelho"/);
   });
 
   it("nas duas línguas", () => {
@@ -148,17 +157,44 @@ describe("a pessoa escolhe, e a escolha é visível", () => {
   });
 });
 
-describe("seguir o aparelho ainda não existe, e o motivo está escrito", () => {
-  it("o store explica que depende de um build", () => {
-    // `app.json` tem `userInterfaceStyle: "light"`, que força aparência clara
-    // no iOS — então `useColorScheme()` responderia "light" para todo mundo.
-    expect(store).toMatch(/userInterfaceStyle/);
-    expect(store).toMatch(/build novo/);
+describe("seguir o aparelho passou a existir (build 16)", () => {
+  it("o app.json deixa o iOS dizer a verdade", () => {
+    // Era `"light"`, que forçava aparência clara — e com ela
+    // `Appearance.getColorScheme()` respondia "light" para todo mundo,
+    // inclusive para quem usa o telefone no escuro. Trocar muda o fingerprint,
+    // então esperou um build que acontecesse por outro motivo: o do push.
+    const appJson = JSON.parse(ler("app.json"));
+    expect(appJson.expo.userInterfaceStyle).toBe("automatic");
   });
 
-  it("e o app.json segue intocado — este trabalho não pede build", () => {
-    const appJson = JSON.parse(ler("app.json"));
-    expect(appJson.expo.userInterfaceStyle).toBe("light");
+  it("`system` é o padrão de quem nunca escolheu", () => {
+    expect(store).toMatch(/escolha: "system",/);
+    expect(store).toMatch(/\(await ler\(\)\) \?\? "system"/);
+  });
+
+  it("mas quem já escolheu mantém a escolha", () => {
+    // Sobrepor seria decidir de novo por alguém que já decidiu.
+    expect(store).toMatch(/v === "dark" \|\| v === "light" \|\| v === "system" \? v : null/);
+  });
+
+  it("o tom pintado nunca é `system` — é sempre claro ou escuro", () => {
+    // `themes[modo]` não tem entrada "system"; deixar vazar daria `undefined`
+    // em toda cor e o RN pinta transparente.
+    expect(store).toMatch(/modo: e === "system" \? doAparelho\(\) : e/);
+    expect(store).toMatch(/modo: ModoDeCor;/);
+  });
+
+  it("e o app acompanha o aparelho mudando de tom com ele aberto", () => {
+    // O iOS escurece sozinho ao anoitecer. Quem escolheu `system` tem de
+    // acompanhar na hora; quem fixou um tom não pode ser mexido.
+    expect(store).toMatch(/Appearance\.addChangeListener/);
+    expect(store).toMatch(/if \(escolha !== "system"\) return;/);
+  });
+
+  it("alternar sai de `system` de propósito", () => {
+    // Quem toca no botão está pedindo um tom, não pedindo para continuar
+    // seguindo.
+    expect(store).toMatch(/alternar: \(\) => get\(\)\.definir\(get\(\)\.modo === "dark" \? "light" : "dark"\)/);
   });
 });
 

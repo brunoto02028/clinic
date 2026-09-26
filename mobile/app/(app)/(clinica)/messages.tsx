@@ -11,6 +11,7 @@ import {
   sendMessage,
   markMessagesRead,
   attachmentIsImage,
+  attachmentIsAudio,
   attachmentHref,
   ATTACHMENT_MAX_BYTES,
   type ClinicMessage,
@@ -23,6 +24,8 @@ import { explainDeniedPermission } from "@/lib/ask-permission";
 import { t as tr } from "@/lib/i18n";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
+import { GravadorDeVoz } from "@/components/GravadorDeVoz";
+import { AudioDaMensagem } from "@/components/AudioDaMensagem";
 import { LoadFailure } from "@/components/LoadFailure";
 import { PlanGate } from "@/components/PlanGate";
 
@@ -327,7 +330,9 @@ function MessagesScreen() {
                           app — e mandá-la para o Safari deixava um link de
                           documento clínico no histórico de outro aplicativo. */}
                       {m.attachmentUrl && (
-                        attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
+                        attachmentIsAudio(m.attachmentType) && attachmentHref(m) ? (
+                          <AudioDaMensagem uri={attachmentHref(m)!} minha={mine} />
+                        ) : attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
                           <Pressable
                             onPress={() => {
                               const href = attachmentHref(m);
@@ -435,6 +440,15 @@ function MessagesScreen() {
                 onChangeText={setDraft}
                 placeholder={ui.placeholder}
                 multiline
+              />
+            </View>
+            {/* O recado de voz (089). Fica ao lado do enviar porque é a
+                alternativa a digitar, não a anexar: quem segura aqui está
+                dizendo o que diria no campo do lado. */}
+            <View style={{ marginBottom: 4 }}>
+              <GravadorDeVoz
+                desabilitado={send.isPending || !!anexo}
+                onGravou={(a) => setAnexo(a)}
               />
             </View>
             <Pressable

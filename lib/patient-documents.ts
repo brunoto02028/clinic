@@ -18,8 +18,15 @@ import { notifyNewClinicalDocument } from "@/lib/evidence-report";
 export {
   DOCUMENT_ALLOWED_TYPES,
   DOCUMENT_MAX_BYTES,
+  AUDIO_ALLOWED_TYPES,
+  AUDIO_MAX_BYTES,
+  ehAudio,
   validatePatientFile,
 } from "@/lib/patient-documents-shared";
+
+// Reexportar **não** traz o nome para o escopo deste arquivo, e a linha que o
+// usa mais abaixo compilava por acidente de configuração. Importar de verdade.
+import { DOCUMENT_ALLOWED_TYPES, ehAudio } from "@/lib/patient-documents-shared";
 
 export interface StorePatientDocumentInput {
   file: File;
@@ -52,7 +59,11 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
   const tipoReal = sniffSubmissionType(bytes);
   const conteudoReconhecido = !!tipoReal;
   const conteudoAceitavel =
-    tipoReal && (tipoReal.startsWith("image/") || DOCUMENT_ALLOWED_TYPES.includes(tipoReal));
+    tipoReal &&
+    (tipoReal.startsWith("image/") ||
+      // O recado de voz: `audio/mp4` é o que um `.m4a` de iPhone é por dentro.
+      ehAudio(tipoReal) ||
+      DOCUMENT_ALLOWED_TYPES.includes(tipoReal));
   const rotuloExigeAssinatura =
     file.type.startsWith("image/") || file.type === "application/pdf";
 
