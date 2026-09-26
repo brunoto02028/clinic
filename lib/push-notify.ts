@@ -114,3 +114,26 @@ export function pushDocumento(patientId: string) {
     "/(app)/(clinica)/documents"
   );
 }
+
+/**
+ * A clínica mandou o lembrete de atividades — pelo botão, por uma pessoa.
+ *
+ * Nasceu de uma correção: eu tinha ligado push dentro de `notifyPatient`, que
+ * é chamado pelos quatro crons de lembrete. A revisão pegou antes de ir ao ar
+ * (26/09/2026). Aqui ele fica no lugar certo — a rota do botão manual, onde
+ * alguém da clínica já decidiu enviar.
+ *
+ * O texto **não diz quais atividades**. A lista aparece na tela bloqueada se
+ * disser, e "Advanced Core 009, Advanced Core 001…" na tela bloqueada é o
+ * tratamento de alguém à vista de quem estiver por perto.
+ */
+export function pushLembreteDeAtividades(patientId: string) {
+  return avisar(
+    patientId,
+    {
+      en: { title: "Your clinic", body: "A reminder about today's plan is waiting for you." },
+      pt: { title: "Sua clínica", body: "Um lembrete do seu plano de hoje está esperando por você." },
+    },
+    "/(app)/(clinica)/(tabs)/exercises"
+  );
+}

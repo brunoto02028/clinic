@@ -90,14 +90,64 @@ describe("a trava do conteúdo", () => {
     }
   });
 
-  it("uma tabela que não existe não derruba a contagem inteira", () => {
-    // A contagem é informação para decidir; falhar nela não pode virar um
-    // diálogo que não abre.
-    expect(lib).toMatch(/\.catch\(\(\) => 0\)/);
+  it("uma tabela que não existe não derruba a contagem inteira", async () => {
+    /**
+     * **Este teste conferia a string `.catch(() => 0)` no fonte, e passava
+     * enquanto o runtime fazia exatamente o contrário.**
+     *
+     * `prisma.clinicalNote` não existe — o modelo é `SOAPNote`. Ler `.count`
+     * de `undefined` estoura ao **montar** o array, antes de existir promise,
+     * então o `.catch` nunca era anexado. A função rejeitava sempre, e o GET e
+     * o DELETE da rota respondiam 500: a funcionalidade nasceu morta e o teste
+     * dizia que estava viva (revisão de 26/09/2026).
+     *
+     * Agora ele **executa** a contagem contra um prisma de mentira em que uma
+     * tabela some. É a diferença entre ler o código e rodá-lo.
+     */
+    jest.resetModules();
+    jest.doMock("@/lib/db", () => ({
+      prisma: {
+        clinic: { findUnique: async () => ({ id: "c1", name: "X", slug: "x" }) },
+        user: { count: async () => 3 },
+        appointment: { count: async () => 1 },
+        // A que some — como `clinicalNote` sumia de verdade.
+        sOAPNote: undefined,
+        labOrder: { count: async () => 0 },
+        exerciseSubmission: { count: async () => 0 },
+        clinicMessage: { count: async () => 0 },
+      },
+    }));
+    const { conteudoDaClinica } = await import("@/lib/clinic-contents");
+    const r = await conteudoDaClinica("c1");
+    expect(r).not.toBeNull();
+    // Não estourou, e **disse** qual contagem não deu.
+    expect(r!.falhas).toContain("notasClinicas");
+    expect(r!.pacientes).toBe(3);
+    jest.dontMock("@/lib/db");
+    jest.resetModules();
+  });
+
+  it("e o nome do modelo é o que existe de verdade", () => {
+    // Sem tirar os comentários, isto acusa o docstring que **explica** o
+    // defeito. Quinta vez nesta base que um teste lê a explicação como se
+    // fosse o código.
+    expect(lib).toMatch(/p\.sOAPNote\.count/);
+    expect(semComentarios(lib)).not.toMatch(/clinicalNote/);
+  });
+
+  it("uma contagem que falha **impede** a exclusão, não a libera", () => {
+    // Falhando em silêncio, `total` lia zero numa clínica cheia e o DELETE
+    // passava sem `force`. Trava para cascata falha fechada.
+    expect(rota).toMatch(/if \(conteudo\.falhas\.length > 0\)/);
+    expect(rota).toMatch(/\{ status: 503 \}/);
+  });
+
+  it("e ninguém apaga a clínica da própria conta", () => {
+    expect(rota).toMatch(/session\.user as any\)\.clinicId === params\.id/);
   });
 
   it("`total` zero significa que nada se perde", () => {
-    expect(lib).toMatch(/total:\s*\n?\s*pacientes \+ equipe/);
+    expect(lib).toMatch(/total: contagens\.reduce/);
     expect(tela).toMatch(/This clinic is empty\. Nothing is lost\./);
   });
 });

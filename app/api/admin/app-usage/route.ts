@@ -33,10 +33,21 @@ export async function GET(req: NextRequest) {
   const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
   const agora = new Date();
 
+  /**
+   * O teto é grande **e a resposta diz quando bateu nele**.
+   *
+   * Era `take: 2000` calado. Uma pessoa que usa o app todo dia gera de duas a
+   * seis sessões diárias, então trinta dias de vinte pessoas já encostavam no
+   * teto — e como a ordem é a mais recente primeiro, as linhas antigas caíam
+   * fora e o total, o tempo por pessoa e as cidades ficavam errados **sem
+   * nenhum sinal**. Um número errado com cara de certo é pior que um número
+   * ausente (revisão de 26/09/2026).
+   */
+  const TETO = 20000;
   const sessoes = await (prisma as any).appSession.findMany({
     where: { clinicId: actor.clinicId, lastSeenAt: { gte: desde } },
     orderBy: { lastSeenAt: "desc" },
-    take: 2000,
+    take: TETO,
     select: {
       userId: true,
       startedAt: true,
@@ -100,6 +111,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     dias,
+    // Bateu no teto: a tela precisa saber que está olhando uma parte.
+    truncado: sessoes.length >= TETO,
     pessoas,
     // Zero pessoas com o app é uma resposta, e é diferente de "a tela não
     // carregou". O total deixa a tela dizer qual das duas.

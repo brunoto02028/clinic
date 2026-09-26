@@ -85,10 +85,10 @@ export async function GET(request: NextRequest) {
          * Vem junto do `include` que já busca mensagens e perguntas: não é
          * consulta a mais por paciente.
          */
-        exerciseSubmissions: {
-          where: { reviewedAt: null },
-          select: { id: true },
-        },
+        // `select: { id: true }` carregava **todas** as linhas só para medir
+        // o tamanho da lista. Com trinta pacientes e um histórico de vídeos,
+        // é payload sem teto para desenhar um ponto (revisão de 26/09/2026).
+        _count: { select: { exerciseSubmissions: { where: { reviewedAt: null } } } },
         diagnosesAsPatient: {
           orderBy: { createdAt: "desc" as const },
           take: 1,
@@ -102,11 +102,11 @@ export async function GET(request: NextRequest) {
       ...p,
       answeredQCount: p.patientQuestionsReceived?.length ?? 0,
       unreadMessages: p.clinicMessagesReceived?.length ?? 0,
-      videosEsperando: p.exerciseSubmissions?.length ?? 0,
+      videosEsperando: p._count?.exerciseSubmissions ?? 0,
       latestDiagnosisStatus: p.diagnosesAsPatient?.[0]?.status ?? null,
       patientQuestionsReceived: undefined,
       clinicMessagesReceived: undefined,
-      exerciseSubmissions: undefined,
+      _count: undefined,
       diagnosesAsPatient: undefined,
     }));
 

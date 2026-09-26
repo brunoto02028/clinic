@@ -91,6 +91,14 @@ describe("a porta para o app", () => {
     expect(porta).toMatch(/clearTimeout\(t\)/);
   });
 
+  it("o logo aponta para um arquivo que existe", () => {
+    // Era `/logo-ink.png`, que é o nome do arquivo dentro do **app**, não do
+    // site: 404, e a página abria com a imagem quebrada. Eu tinha conferido
+    // que o elemento existia — carregar é outra coisa.
+    const usado = porta.match(/<img src="(\/[^"]+)"/)![1];
+    expect(fs.existsSync(path.join(raiz, "public", usado.slice(1)))).toBe(true);
+  });
+
   it("um destino desconhecido cai no início, não numa tela vazia", () => {
     expect(porta).toMatch(/DESTINOS\[pedido\] \?\? DESTINOS\.inicio/);
   });

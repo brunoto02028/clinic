@@ -2,11 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { patientGate } from "@/lib/patient-gate";
+import { getZonedDateString } from "@/lib/clinic-timezone";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Hoje **no fuso da clínica**, não no do servidor.
+ *
+ * Era `new Date().toISOString()`, que é UTC. Em produção o servidor roda em
+ * UTC e a clínica vive em Londres: durante o horário de verão britânico, entre
+ * meia-noite e uma da manhã, isso dava três defeitos de uma vez — o registro
+ * era arquivado como ontem, a data local de hoje era **recusada como futuro**,
+ * e a sequência não contava um registro que era de hoje (revisão de
+ * 26/09/2026).
+ *
+ * `getZonedDateString` já existia no repositório exatamente para isto, e a
+ * rota de disponibilidade já a usava.
+ */
 function todayStr() {
-  return new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+  return getZonedDateString();
 }
 
 /**
@@ -80,8 +94,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { painLevel, moodLevel, exercisesDone, notes, energyLevel, sleepQuality, stressLevel, hrv } = body;
 
-    if (painLevel === undefined || moodLevel === undefined) {
-      return NextResponse.json({ error: "painLevel and moodLevel are required" }, { status: 400 });
+    // `typeof`, e não `!== undefined`: `{"painLevel": null}` passava, e
+    // `Math.max(0, null)` gravava **0 — sem dor**. Inventar dado clínico é
+    // pior que recusar o pedido (revisão de 26/09/2026).
+    if (typeof painLevel !== "number" || !Number.isFinite(painLevel)) {
+      return NextResponse.json({ error: "painLevel must be a number" }, { status: 400 });
+    }
+    if (typeof moodLevel !== "number" || !Number.isFinite(moodLevel)) {
+      return NextResponse.json({ error: "moodLevel must be a number" }, { status: 400 });
     }
 
     const today = todayStr();
@@ -142,7 +162,9 @@ export async function POST(req: NextRequest) {
       energyLevel:  energyLevel  != null ? Math.min(10, Math.max(1, energyLevel))  : null,
       sleepQuality: sleepQuality != null ? Math.min(10, Math.max(1, sleepQuality)) : null,
       stressLevel:  stressLevel  != null ? Math.min(10, Math.max(1, stressLevel))  : null,
-      hrv:          hrv          != null ? Number(hrv)                              : null,
+      // `Number("x")` é NaN, e o Prisma lança — 500 num valor que o cliente
+      // mandou torto. Torto vira ausente.
+      hrv:          Number.isFinite(Number(hrv)) ? Number(hrv)                      : null,
     };
 
     const checkIn = await (prisma as any).dailyCheckIn.upsert({
@@ -169,6 +191,7 @@ export async function POST(req: NextRequest) {
 
     // Award XP + update streak
     let streak = { current: 0, longest: 0, isNewRecord: false };
+    let xpDado = 0;
     try {
       let progress = await (prisma as any).patientProgress.findUnique({ where: { patientId: userId } });
       if (!progress) {
@@ -206,6 +229,7 @@ export async function POST(req: NextRequest) {
           where: { patientId: userId },
           data: xpData,
         });
+        xpDado = 15;
 
         if (exercisesDone && updated.streakDays > updated.longestStreak) {
           await (prisma as any).patientProgress.update({
@@ -225,7 +249,10 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
-    return NextResponse.json({ checkIn, xpAwarded: 15, streak });
+    // `xpAwarded` era 15 sempre, inclusive num registro retroativo ou num
+    // segundo período do mesmo dia, que não ganham nada. A tela mostrava
+    // "+15 XP" que não existia.
+    return NextResponse.json({ checkIn, xpAwarded: xpDado, streak });
   } catch (err: any) {
     console.error("[daily-checkin POST]", err);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });

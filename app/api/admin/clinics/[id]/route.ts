@@ -71,9 +71,16 @@ export async function GET(
     if (!session || (session.user as any).role !== "SUPERADMIN") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const conteudo = await conteudoDaClinica(params.id);
-    if (!conteudo) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(conteudo);
+    try {
+        const conteudo = await conteudoDaClinica(params.id);
+        if (!conteudo) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return NextResponse.json(conteudo);
+    } catch (e) {
+        // Sem isto, um erro aqui vira 500 sem nome e a tela não abre. O
+        // diálogo precisa saber dizer "não consegui contar".
+        console.error("[clinic-contents] falhou:", e);
+        return NextResponse.json({ error: "Could not count what this clinic holds" }, { status: 503 });
+    }
 }
 
 /**
@@ -100,6 +107,15 @@ export async function DELETE(
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Ninguém apaga a própria clínica: `User.clinicId` cascateia, e quem
+    // clicasse sairia junto — sem conta para desfazer nada.
+    if ((session.user as any).clinicId === params.id) {
+      return NextResponse.json(
+        { error: "You cannot delete the clinic your own account belongs to." },
+        { status: 409 }
+      );
+    }
+
     const conteudo = await conteudoDaClinica(params.id);
     if (!conteudo) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -109,6 +125,19 @@ export async function DELETE(
             { error: "Type the clinic's exact name to confirm", expected: conteudo.name },
             { status: 400 }
         );
+    }
+
+    // Se alguma contagem falhou, `total` é um piso e não um número. Tratar
+    // isso como "não tem nada" faria a trava falhar **aberta**, na operação
+    // mais destrutiva do sistema — exatamente onde ela não pode ceder.
+    if (conteudo.falhas.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Could not count what this clinic holds, so it will not be deleted.",
+          falhas: conteudo.falhas,
+        },
+        { status: 503 }
+      );
     }
 
     const forcar = request.nextUrl.searchParams.get("force") === "1";

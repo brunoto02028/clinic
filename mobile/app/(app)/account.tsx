@@ -272,6 +272,21 @@ export default function Account() {
           size="md"
           testID="sign-out"
         />
+
+        {/* Apagar a conta fica **depois** de sair, e em texto pequeno.
+            A Apple exige que exista e seja alcançável; nada exige que ela
+            divida espaço com as coisas do dia a dia. Quem procura, acha; quem
+            não procura, não esbarra (090). */}
+        <Text
+          variant="caption"
+          color={t.colors.textMuted}
+          onPress={() => router.push("/delete-account")}
+          accessibilityRole="button"
+          testID="ir-apagar-conta"
+          style={{ textAlign: "center", textDecorationLine: "underline", paddingVertical: 12 }}
+        >
+          {tr(lang, { en: "Delete my account", pt: "Apagar minha conta" })}
+        </Text>
       </View>
     </Screen>
   );
