@@ -78,9 +78,10 @@ export function patientOrder(o: OrderRow) {
 
 /** O resultado, e só quando liberado. Antes disso a função devolve `null`. */
 export async function patientResult(o: OrderRow) {
-  // Pedido direto: o resultado é da pessoa assim que chega. Pedido com
-  // terapeuta: só depois que a clínica libera (081, corrigido em 26/09/2026).
-  const liberado = o.reviewMode === "THERAPIST" ? !!o.releasedToPatientAt : o.status === "RESULTS_READY";
+  // O resultado é da pessoa assim que chega — não há mais liberação pela
+  // clínica (26/09/2026). `releasedToPatientAt` segue valendo para os pedidos
+  // que já o tinham gravado.
+  const liberado = o.status === "RESULTS_READY" || !!o.releasedToPatientAt;
   if (!liberado) return null;
   const values = await prisma.labResultValue.findMany({
     where: { registration: { orderId: o.id } },
@@ -94,6 +95,6 @@ export async function patientResult(o: OrderRow) {
     notePt: o.releaseNotePt ?? "",
     values,
     pdfAvailable: o.registrations.some((r) => !!r.resultsPdfPath),
-    nonDiagnostic: nonDiagnosticCopy(o.reviewMode),
+    nonDiagnostic: nonDiagnosticCopy(),
   };
 }

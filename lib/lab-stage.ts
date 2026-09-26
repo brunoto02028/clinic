@@ -22,7 +22,11 @@ export interface StageInput {
   status: LabOrderStatus;
   releasedToPatientAt: Date | string | null;
   registrations: { status: LabRegistrationStatus }[];
-  /** Ausente conta como `DIRECT`: sem relação clínica não há revisão. */
+  /**
+   * Não é mais consultado para decidir estágio (26/09/2026): o resultado sai
+   * direto para a pessoa, sempre. Permanece no tipo porque a coluna permanece
+   * no banco — apagá-la seria perder o que já foi gravado.
+   */
   reviewMode?: LabReviewMode;
 }
 
@@ -44,9 +48,16 @@ export function labStage(o: StageInput): LabStage {
     case "PROCESSING_LAB":
       return "at_lab";
     case "RESULTS_READY":
-      // Sem terapeuta na relação, não há revisão a esperar: o resultado
-      // chegou e é da pessoa (081, corrigido em 26/09/2026).
-      return o.reviewMode === "THERAPIST" ? "in_review" : "released";
+      /**
+       * O resultado chegou, então ele é da pessoa. Ponto.
+       *
+       * Havia aqui um `in_review` para quem tinha relação clínica — a clínica
+       * lia primeiro e liberava. Deixou de existir em 26/09/2026: o exame é um
+       * produto que qualquer pessoa compra, e os termos publicados dizem que
+       * ninguém da clínica lê antes. `in_review` continua no tipo `LabStage`
+       * porque pedidos antigos podem tê-lo gravado, mas nada novo chega lá.
+       */
+      return "released";
   }
 }
 

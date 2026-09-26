@@ -45,8 +45,11 @@ describe("patientOrder", () => {
     ],
   };
   const out = patientOrder(pedido as any);
-  it("resultado chegado e não liberado é 'em revisão', sem nota nem custo no corpo", () => {
-    expect(out.stage).toBe("in_review");
+  it("resultado chegado é resultado liberado — e o custo continua fora do corpo", () => {
+    // Era `in_review`: a clínica lia antes. Desde 26/09/2026 o resultado é da
+    // pessoa assim que chega. O que **não** pode mudar é o vazamento: o
+    // `unitCost` é a nossa margem com o laboratório e nunca sai para o app.
+    expect(out.stage).toBe("released");
     const json = JSON.stringify(out).toLowerCase();
     expect(json).not.toContain("unitcost");
     expect(json).not.toContain("segredo");

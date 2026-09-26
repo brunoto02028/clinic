@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { openFileInApp } from "@/components/FileViewer";
 import { fetchLabOrder, type LabResultValue } from "@/api/labs";
+import { fetchModules } from "@/api/modules";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { API_URL } from "@/api/config";
@@ -33,6 +34,11 @@ export default function LabResult() {
   const t = useTheme();
   const lang = useLang();
   const { id } = useLocalSearchParams<{ id: string }>();
+  // Quem tem a área clínica tem terapeuta aqui. Mesma chave do seletor de
+  // áreas, então na prática é leitura de cache.
+  const { data: modulos } = useQuery({ queryKey: ["modules"], queryFn: fetchModules });
+  const temClinica = !!modulos?.some((m) => m.key === "clinica");
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["lab-order", id],
     queryFn: () => fetchLabOrder(id),
@@ -86,22 +92,21 @@ export default function LabResult() {
           <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 4 }}>
             #{o.orderNumber}
             {r.releasedAt
-              ? ` · ${tr(lang, { en: "reviewed", pt: "revisado em" })} ${new Date(r.releasedAt).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+              ? ` · ${tr(lang, { en: "received", pt: "recebido em" })} ${new Date(r.releasedAt).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`
               : ""}
           </Text>
         </Card>
 
-        {/* A nota só existe onde houve revisão. Num pedido direto ninguém leu
-            antes — e anunciar uma nota vazia seria prometer um cuidado que não
-            aconteceu (081, corrigido em 26/09/2026). */}
-        {r.reviewMode === "THERAPIST" && (
-          <Card style={{ backgroundColor: AMBER_BG, borderWidth: 0 }} testID="lab-therapist-note">
+        {/* Só aparece se houver nota de verdade, e não se anuncia como revisão:
+            desde 26/09/2026 o resultado vai direto para a pessoa e ninguém da
+            clínica lê antes. Pedidos antigos que tenham nota continuam a
+            mostrá-la — apagar o que já foi escrito seria pior. */}
+        {note.trim() !== "" && (
+          <Card style={{ backgroundColor: AMBER_BG, borderWidth: 0 }} testID="lab-clinic-note">
             <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", color: AMBER, marginBottom: 6 }}>
-              {tr(lang, { en: "Your therapist's note", pt: "Nota do seu terapeuta" })}
+              {tr(lang, { en: "A note from the clinic", pt: "Uma nota da clínica" })}
             </Text>
-            <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }}>
-              {note.trim() || tr(lang, { en: "Reviewed. No comments.", pt: "Revisado. Sem comentários." })}
-            </Text>
+            <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }}>{note}</Text>
           </Card>
         )}
 
@@ -131,11 +136,16 @@ export default function LabResult() {
           <Button title={tr(lang, { en: "Open the full report", pt: "Abrir o laudo completo" })} variant="primary" size="lg" onPress={openReport} style={{ backgroundColor: SAGE }} testID="lab-open-pdf" />
         )}
 
-        {r.reviewMode === "THERAPIST" && (
+        {/* O resultado é da pessoa, e o que ela faz com ele é escolha dela. Este
+            botão é a forma mais simples disso que existe hoje: quem tem
+            terapeuta aqui pode mandar a conversa para ele. Depende de ter a área
+            clínica, não de um modo de revisão que deixou de existir. */}
+        {temClinica && (
           <Button
-            title={tr(lang, { en: "Discuss with your therapist", pt: "Conversar com o terapeuta" })}
+            title={tr(lang, { en: "Share with your therapist", pt: "Compartilhar com o terapeuta" })}
             variant="ghost" size="md"
             onPress={() => router.push("/(app)/(clinica)/messages" as any)}
+            testID="lab-share-with-therapist"
           />
         )}
       </View>

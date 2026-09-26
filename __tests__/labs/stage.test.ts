@@ -23,11 +23,15 @@ describe("labStage", () => {
   it("registrado, é coletar e postar", () => {
     expect(labStage(pedido("KIT_DISPATCHED", { registrations: [{ status: "PENDING" }] }))).toBe("collect_and_post");
   });
-  it("resultado chegou mas não liberado = em revisão; liberado = pronto", () => {
-    // `reviewMode` explícito: desde 26/09 um pedido sem relação clínica não
-    // espera revisão nenhuma — ver review-mode.test.ts.
-    expect(labStage(pedido("RESULTS_READY", { reviewMode: "THERAPIST" }))).toBe("in_review");
+  it("resultado que chega é resultado liberado — não há mais revisão", () => {
+    // Era `in_review` para quem tinha relação clínica. Acabou em 26/09/2026: o
+    // resultado é da pessoa, e os termos publicados dizem isso. Nem um pedido
+    // antigo gravado como THERAPIST segura mais nada.
+    expect(labStage(pedido("RESULTS_READY"))).toBe("released");
+    expect(labStage(pedido("RESULTS_READY", { reviewMode: "THERAPIST" }))).toBe("released");
     expect(labStage(pedido("RESULTS_READY", { releasedToPatientAt: new Date() }))).toBe("released");
+    // O estágio sobrevive no tipo para pedidos antigos, e continua sem pedir
+    // nada da pessoa.
     expect(stageNeedsPatient("in_review")).toBe(false);
   });
   it("cancelado vence tudo, inclusive um liberado", () => {
