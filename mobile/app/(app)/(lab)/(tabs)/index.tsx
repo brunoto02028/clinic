@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { View, FlatList, Pressable, ScrollView } from "react-native";
+import { View, FlatList, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,8 +58,22 @@ export default function LabsHub() {
         <View>
           <Text variant="title">{tr(lang, { en: "Blood tests", pt: "Exames de sangue" })}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-            {tr(lang, { en: "A finger-prick kit at home. The result comes straight to you.", pt: "Kit de picada no dedo, em casa. O resultado vem direto para você." })}
+            {tr(lang, { en: "A kit at home or a collection point near you. The result comes straight to you.", pt: "Kit em casa ou um ponto de coleta perto de você. O resultado vem direto para você." })}
           </Text>
+          {/* No menu ela também está, mas ninguém abre um menu para descobrir
+              se pode comprar sem encaminhamento. A pergunta nasce aqui. */}
+          <Pressable
+            onPress={() => router.push("/(app)/(lab)/how-it-works")}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}
+            testID="lab-como-funciona"
+          >
+            <Ionicons name="help-circle-outline" size={15} color={t.colors.lab} />
+            <Text variant="caption" color={t.colors.lab} style={{ fontWeight: "600" }}>
+              {tr(lang, { en: "How it works", pt: "Como funciona" })}
+            </Text>
+          </Pressable>
         </View>
 
         {pendente && (
@@ -88,23 +102,21 @@ export default function LabsHub() {
           icon={<Ionicons name="search-outline" size={18} color={t.colors.textMuted} />}
         />
 
-        {/* `flexGrow: 0` porque um ScrollView horizontal dentro de uma coluna
-            flex tenta ocupar a altura disponível e espreme o conteúdo — os
-            rótulos saíam cortados em cima e embaixo no aparelho do Bruno
-            (26/09/2026). O `paddingVertical` dá o ar que falta para a descida
-            das letras. */}
+        {/* Isto era um ScrollView horizontal, e a última categoria ficava
+            fatiada na borda da tela — "Alle..." em vez de "Allergy", sem nada
+            indicando que dava para arrastar. Numa fileira de filtro, o que está
+            escondido não é usado (aparelho do Bruno, 26/09/2026).
+
+            Quebrar em linha mostra todas de uma vez. São seis rótulos curtos:
+            cabem em duas linhas, e some junto o aperto vertical que o
+            ScrollView dentro de uma coluna flex causava. */}
         {categories.length > 1 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ gap: 8, paddingVertical: 3 }}
-          >
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <Chip label={tr(lang, { en: "All", pt: "Todos" })} selected={category === "all"} onPress={() => setCategory("all")} accentColor={t.colors.lab} />
             {categories.map((cat) => (
               <Chip key={cat} label={cat} selected={category === cat} onPress={() => setCategory(cat)} accentColor={t.colors.lab} />
             ))}
-          </ScrollView>
+          </View>
         )}
 
         {catalog.isLoading ? (

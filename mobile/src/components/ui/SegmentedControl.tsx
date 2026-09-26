@@ -51,8 +51,8 @@ export function SegmentedControl({ options, selected, onSelect, style }: Segment
             }}
           >
             <Text
+              variant="caption"
               style={{
-                fontSize: 11,
                 fontFamily: "Inter_600SemiBold",
                 // `#6A6F79` sobre o trilho dava 4,19:1 — reprovava nos **dois** tons.
                 color: isActive ? t.colors.text : t.colors.textMuted,

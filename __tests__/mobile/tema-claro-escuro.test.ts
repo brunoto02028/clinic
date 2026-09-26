@@ -95,8 +95,24 @@ describe("nada crava cor onde o tema deveria mandar", () => {
     expect(seletor).toMatch(/backgroundColor: t\.colors\.background/);
   });
 
-  it("o logo troca de tom com o tema", () => {
-    expect(seletor).toMatch(/tone=\{t\.isDark \? "bone" : "ink"\}/);
+  it("o logo troca de tom com o tema, e nenhuma tela precisa dizer isso", () => {
+    // As telas de entrada cravavam `tone="ink"` — certo enquanto existia uma
+    // paleta, e um logo invisível no dia em que o tom escuro subiu (aparelho do
+    // Bruno, 26/09/2026). A decisão desceu para o componente.
+    const logo = ler("src", "components", "ui", "Logo.tsx");
+    expect(logo).toMatch(/ART\[tone \?\? \(t\.isDark \? "bone" : "ink"\)\]/);
+    expect(seletor).not.toMatch(/tone=/);
+    for (const tela of ["login.tsx", "register.tsx", "forgot-password.tsx"]) {
+      expect(ler("app", tela)).not.toMatch(/<Logo tone=/);
+    }
+  });
+
+  it("mas quem pinta o próprio fundo escuro continua dizendo", () => {
+    // Boas-vindas, trava e cobertura de privacidade são escuras nos dois tons —
+    // ali o tema não sabe o que o `View` de cima está fazendo.
+    for (const [...p] of [["app", "index.tsx"], ["src", "components", "LockOverlay.tsx"], ["src", "components", "PrivacyCover.tsx"]]) {
+      expect(ler(...p)).toMatch(/<Logo tone="bone"/);
+    }
   });
 
   it("o `View` raiz segue o tema, não o bege", () => {

@@ -1,6 +1,6 @@
 # Atividade 081 — Exames de laboratório pelo app (London Medical Laboratory)
 
-**Status:** em andamento — aprovado em 25/09/2026, começando por T-1 a T-4 (sem token da LML)
+**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 a T-9 esperam o token da LML
 **Data:** 25/09/2026
 
 ## Objetivo
@@ -183,6 +183,9 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 | T-7 | Pedido na LML e registro do kit pelo paciente | T-6 | sim | pendente |
 | T-8 | Webhooks: kit despachado, amostra recebida, resultado pronto | T-1, T-7 | sim | pendente |
 | T-9 | Resultado: biomarcadores, PDF e liberação | T-8 | sim | pendente |
+| T-10 | Código postal como campo próprio, editável no perfil | T-1 | não | **concluído** (26/09) |
+| T-11 | Código postal → coordenada (postcodes.io) | T-10 | não | **concluído** (26/09) |
+| T-12 | "Como funciona": os três caminhos da amostra, e os pontos perto de casa | T-11 | parcial | **concluído** (26/09) — a lista de pontos espera o token |
 
 > Os arquivos `t-N-*.md` foram escritos na ordem anterior (API primeiro). A renumeração acompanha
 > esta tabela quando o plano for aprovado — o conteúdo de cada tarefa não muda, só a ordem.

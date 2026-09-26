@@ -10,6 +10,7 @@ import { ModuleProfile, type ProfileSection } from "@/components/ModuleProfile";
  */
 const LAB_SECTIONS: ProfileSection[] = [
   { title: { en: "My orders", pt: "Meus pedidos" }, icon: "receipt-outline", href: "/(app)/(lab)/(tabs)/orders" },
+  { title: { en: "How it works", pt: "Como funciona" }, icon: "help-circle-outline", href: "/(app)/(lab)/how-it-works" },
   { title: { en: "Terms & privacy", pt: "Termos & privacidade" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
 ];
 

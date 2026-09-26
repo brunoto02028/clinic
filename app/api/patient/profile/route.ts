@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { patientGate } from "@/lib/patient-gate";
+import { normalizarPostcode } from "@/lib/postcode";
 
 // GET — patient profile
 export async function GET() {
@@ -23,6 +24,10 @@ export async function GET() {
       select: {
         id: true, firstName: true, lastName: true, email: true,
         phone: true, dateOfBirth: true, address: true, sex: true,
+        // `city` e `postcode` já existiam na tabela e nunca saíam daqui, então
+        // a tela não tinha como mostrar o que a pessoa cadastrou. O código
+        // postal é o que acha ponto de coleta perto dela (081).
+        city: true, postcode: true,
         preferredLocale: true, communicationPreference: true, pushEnabled: true,
         emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
         profileImageUrl: true,
@@ -61,7 +66,7 @@ export async function PATCH(req: NextRequest) {
     // something that needs the clinic on the phone.
     // `pushEnabled`: a chave que o paciente tem para dizer "chega" sem
     // precisar desinstalar o app (077, T-7).
-    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'preferredLocale', 'communicationPreference', 'pushEnabled', 'dateOfBirth', 'sex', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
+    const allowedFields = ['firstName', 'lastName', 'phone', 'address', 'city', 'postcode', 'preferredLocale', 'communicationPreference', 'pushEnabled', 'dateOfBirth', 'sex', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'];
     const data: Record<string, any> = {};
     for (const field of allowedFields) {
       if (body[field] !== undefined) data[field] = body[field];
@@ -88,6 +93,26 @@ export async function PATCH(req: NextRequest) {
       data[field] = trimmed.slice(0, 100);
     }
 
+    // O código postal é guardado normalizado — "sw1a1aa" e "SW1A 1AA" são o
+    // mesmo lugar, e só uma das duas formas acha ponto de coleta. Forma errada
+    // é recusada aqui, e não descoberta depois na busca.
+    if (typeof data.postcode === 'string') {
+      const limpo = data.postcode.trim();
+      if (limpo) {
+        const normal = normalizarPostcode(limpo);
+        if (!normal) {
+          return NextResponse.json({ error: 'That does not look like a UK postcode' }, { status: 400 });
+        }
+        data.postcode = normal;
+      } else {
+        data.postcode = null;
+      }
+    }
+
+    if (typeof data.city === 'string') {
+      data.city = data.city.trim().slice(0, 80) || null;
+    }
+
     // Convert dateOfBirth string to DateTime
     if (data.dateOfBirth && typeof data.dateOfBirth === 'string') {
       data.dateOfBirth = new Date(data.dateOfBirth);
@@ -102,7 +127,7 @@ export async function PATCH(req: NextRequest) {
     const user = await (prisma as any).user.update({
       where: { id: userId },
       data,
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, preferredLocale: true },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, preferredLocale: true, city: true, postcode: true },
     });
 
     return NextResponse.json({ success: true, user });

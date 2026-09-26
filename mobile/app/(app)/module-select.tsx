@@ -226,7 +226,6 @@ export default function ModuleSelect() {
             porque encostada à esquerda ela parecia um cabeçalho em vez de uma
             abertura. */}
         <Logo
-          tone={t.isDark ? "bone" : "ink"}
           height={84}
           style={{ marginBottom: 32, alignSelf: "center" }}
         />

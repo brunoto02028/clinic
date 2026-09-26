@@ -36,7 +36,10 @@ export default function ProfileSetup() {
         ...(dob.trim() ? { dateOfBirth: isoDate(dob) } : {}),
         ...(sex ? { sex } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
-        ...(address.trim() ? { address: [address.trim(), postcode.trim()].filter(Boolean).join(", ") } : {}),
+        ...(address.trim() ? { address: address.trim() } : {}),
+        // Separado, e não colado no endereço: é por ele que se acha ponto de
+        // coleta, e o serviço de busca procura um código postal, não uma frase.
+        ...(postcode.trim() ? { postcode: postcode.trim() } : {}),
       } as any),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["profile"] });
