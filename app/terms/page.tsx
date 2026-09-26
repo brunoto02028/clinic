@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Scale, Database, Lock, Shield, ArrowLeft } from "lucide-react";
+import { Scale, Database, Lock, Shield, ArrowLeft, FlaskConical } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function TermsPage() {
@@ -219,6 +219,71 @@ export default function TermsPage() {
                 </div>
               </section>
 
+              {/* Laboratory tests — nós damos acesso; a análise é do laboratório;
+                  o resultado é da pessoa (decisão do Bruno, 26/09/2026). */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <FlaskConical className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold">{isPt ? "Exames de Laboratório" : "Laboratory Tests"}</h2>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-5 space-y-4 text-sm text-muted-foreground">
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">17</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "Acesso, não análise" : "Access, not analysis"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Damos a você acesso a exames de laboratório particulares: recebemos o pedido, recebemos o pagamento e providenciamos que o kit chegue a você. Não somos um laboratório, não analisamos amostras e não emitimos diagnósticos."
+                        : "We give you access to private laboratory tests: we take your order, take the payment and arrange for the kit to reach you. We are not a laboratory, we do not analyse samples and we do not issue diagnoses."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">18</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "A análise é responsabilidade do laboratório" : "The laboratory is responsible for the analysis"}</p>
+                      <p className="mt-1">{isPt
+                        ? "A London Medical Laboratory, laboratório acreditado no Reino Unido, faz a análise. O método, a acreditação, o controle de qualidade e o resultado em si são responsabilidade dela, não nossa. Reclamação sobre a análise é encaminhada a eles."
+                        : "London Medical Laboratory, an accredited UK laboratory, performs the analysis. Its method, accreditation, quality control and the result itself are its responsibility, not ours. A complaint about the analysis is passed to them."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">19</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "O resultado é seu" : "The result is yours"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Os resultados vão para você, no app, assim que o laboratório os libera. Ninguém da clínica lê um resultado antes de você, e pedir um exame não cria relação clínica conosco nem faz de você paciente da clínica."
+                        : "Results go to you, in the app, as soon as the laboratory releases them. Nobody at the clinic reads a result before you do, and ordering a test does not create a clinical relationship with us or make you a patient of the clinic."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">20</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "Compartilhar é sua decisão" : "Sharing it is your decision"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Você escolhe quem vê seu resultado — seu médico de família, um especialista, um terapeuta daqui, ou ninguém. Não o enviamos a ninguém em seu nome, e não o interpretamos para você."
+                        : "You choose who sees your result — your GP, a consultant, a therapist here, or nobody. We do not send it to anyone on your behalf, and we do not interpret it for you."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">21</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "A coleta da amostra é sua" : "Collecting the sample is yours to do"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Siga as instruções do kit e poste a amostra no prazo. Amostra coletada incorretamente ou postada tarde pode invalidar o resultado, e o laboratório pode exigir outra. Exames são para maiores de 16 anos."
+                        : "Follow the instructions in the kit and post the sample promptly. A sample collected incorrectly or posted late can invalidate the result, and the laboratory may require a new one. Tests are for people aged 16 or over."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">22</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "Reembolso" : "Refunds"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Até o kit chegar a você, reembolsamos integralmente. Depois de chegar, não conseguimos: o custo já foi feito com o laboratório. Se um kit não chegar, avise que reenviamos ou reembolsamos. Nada disto é serviço de urgência — se você não estiver bem, não espere por um resultado."
+                        : "Until the kit reaches you, we refund in full. Once it has reached you, we cannot: the cost has already been incurred with the laboratory. If a kit never arrives, tell us and we will replace it or refund you. None of this is an emergency service — if you feel unwell, do not wait for a result."}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               {/* Limitation of Liability */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
@@ -227,7 +292,7 @@ export default function TermsPage() {
                 </div>
                 <div className="bg-muted/30 rounded-lg p-5 space-y-4 text-sm text-muted-foreground">
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">17</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">23</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Limitação de Responsabilidade" : "Limitation of Liability"}</p>
                       <p className="mt-1">{isPt
@@ -236,7 +301,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">18</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">24</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Pagamentos e Cancelamentos" : "Payments & Cancellations"}</p>
                       <p className="mt-1">{isPt
@@ -245,7 +310,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">19</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">25</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Legislação Aplicável" : "Governing Law"}</p>
                       <p className="mt-1">{isPt
@@ -254,7 +319,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">20</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">26</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Contato" : "Contact"}</p>
                       <p className="mt-1">{isPt

@@ -5,6 +5,16 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import Stripe from "stripe";
+import { precoDoPacote } from "@/lib/package-price";
+import {
+  reservarCupom,
+  anexarSessao,
+  liberarReserva,
+  cupomStripe,
+  MINIMO_COBRAVEL,
+  ABAIXO_DO_MINIMO,
+  type ResultadoReserva,
+} from "@/lib/coupon-redemption";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +30,10 @@ export async function POST(req: NextRequest) {
   const __gate = await patientGate({ skipConsent: true });
   if (__gate.response) return __gate.response;
 
+  // Fora do `try` porque o `catch` precisa devolver a vaga da campanha quando a
+  // cobrança não nasce — e o `catch` não vê o que foi declarado dentro do `try`.
+  let cupom: ResultadoReserva = { tipo: "sem_cupom" };
+
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) {
@@ -27,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = effectiveUser.userId;
-    const { packageId } = await req.json();
+    const { packageId, couponCode } = await req.json();
 
     if (!packageId) {
       return NextResponse.json({ error: "packageId is required" }, { status: 400 });
@@ -52,25 +66,75 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe();
     const type = pkg.selectedPaymentType;
 
-    let amount: number;
-    let description: string;
+    // A conta saiu daqui para `lib/package-price.ts` (084, T-4): a prévia do
+    // cupom faz a mesma pergunta, e duas implementações dela seriam a tela
+    // prometendo um preço e esta rota cobrando outro.
+    const preco = precoDoPacote(pkg);
+    let amount = preco.amount * 100;
+    const description = preco.description;
 
-    switch (type) {
-      case "PER_SESSION":
-        amount = (pkg.pricePerSession + (pkg.consultationFee / pkg.totalSessions)) * 100;
-        description = `${pkg.name} — Single Session`;
-        break;
-      case "WEEKLY":
-        const weeklyPrice = pkg.pricePerWeek || (pkg.pricePerSession * (pkg.totalSessions / (pkg.protocol?.estimatedWeeks || 12)));
-        amount = (weeklyPrice + (pkg.consultationFee / (pkg.protocol?.estimatedWeeks || 12))) * 100;
-        description = `${pkg.name} — Weekly Payment`;
-        break;
-      case "FULL_PACKAGE":
-      default:
-        const fullPrice = pkg.priceFullPackage || (pkg.pricePerSession * pkg.totalSessions);
-        amount = (fullPrice + pkg.consultationFee) * 100;
-        description = `${pkg.name} — Full Package`;
-        break;
+    /**
+     * O cupom (084, T-4), recalculado aqui a partir do código.
+     *
+     * Na cobrança semanal o desconto **não** pode sair do `unit_amount`: isso
+     * descontaria toda semana, para sempre. Ali ele entra como cupom da Stripe
+     * com `duration: "once"` — vale na adesão, como diz a suposição 7 do plano.
+     */
+    cupom = pkg.clinicId
+      ? await reservarCupom({
+          clinicId: pkg.clinicId,
+          patientId: userId,
+          code: couponCode ?? null,
+          scope: "PACKAGE",
+          amount: preco.amount,
+          currency: preco.currency,
+          targetId: pkg.id,
+          stripe,
+        })
+      : ({ tipo: "sem_cupom" } as const);
+
+    if (cupom.tipo === "recusado") {
+      return NextResponse.json(
+        { error: cupom.recusa.message, errorPt: cupom.recusa.messagePt, reason: cupom.recusa.reason },
+        { status: 409 }
+      );
+    }
+
+    let descontos: { coupon: string }[] | undefined;
+    if (cupom.tipo === "reservado") {
+      if (preco.recurring) {
+        try {
+          descontos = [{ coupon: await cupomStripe(stripe as any, cupom.reserva) }];
+        } catch (e: any) {
+          await liberarReserva(cupom.reserva.redemptionId);
+          console.error("[patient-checkout] cupom da Stripe:", e?.message);
+          return NextResponse.json(
+            { error: "We could not apply that code right now.", errorPt: "Não foi possível aplicar esse código agora." },
+            { status: 502 }
+          );
+        }
+      } else {
+        amount = cupom.reserva.final * 100;
+      }
+    }
+
+    /**
+     * O cupom não pode deixar um valor que a Stripe não cobra — nem zero.
+     *
+     * Ao contrário da consulta, aqui não há caminho de "cortesia total": marcar
+     * um pacote como pago envolve liberações que só o webhook faz hoje, e
+     * duplicá-las por dedução seria pior que recusar. Então a cortesia de 100%
+     * nestas duas compras é uma conversa com a clínica, não um cupom — e a frase
+     * diz isso (A-2 do review, 26/09/2026).
+     */
+    // Só no caminho de cobrança única: na semanal o desconto vai por cupom da
+    // Stripe e o valor unitário fica cheio, então a Stripe cuida do resto.
+    if (cupom.tipo === "reservado" && !preco.recurring && cupom.reserva.final < MINIMO_COBRAVEL) {
+      await liberarReserva(cupom.reserva.redemptionId);
+      return NextResponse.json(
+        { error: ABAIXO_DO_MINIMO.en, errorPt: ABAIXO_DO_MINIMO.pt, code: "amount_too_small" },
+        { status: 409 }
+      );
     }
 
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -83,7 +147,11 @@ export async function POST(req: NextRequest) {
         packageId: pkg.id,
         patientId: userId,
         paymentType: type,
+        ...(cupom.tipo === "reservado"
+          ? { couponCode: cupom.reserva.code, couponRedemptionId: cupom.reserva.redemptionId }
+          : {}),
       },
+      ...(descontos ? { discounts: descontos } : {}),
       ...(type === "WEEKLY" ? {
         subscription_data: {
           metadata: { packageId: pkg.id, patientId: userId, paymentType: type },
@@ -107,11 +175,17 @@ export async function POST(req: NextRequest) {
       cancel_url: `${baseUrl}/dashboard/treatment?payment=cancelled`,
     });
 
+    if (cupom.tipo === "reservado") await anexarSessao(cupom.reserva.redemptionId, checkoutSession.id);
+
     return NextResponse.json({
       success: true,
       checkoutUrl: checkoutSession.url,
     });
   } catch (err: any) {
+    // A cobrança não nasceu: a vaga volta à campanha.
+    if (cupom.tipo === "reservado") {
+      await liberarReserva(cupom.reserva.redemptionId);
+    }
     console.error("[patient-checkout] POST error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

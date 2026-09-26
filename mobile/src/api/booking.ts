@@ -65,12 +65,24 @@ export async function fetchBookingOptions(): Promise<BookingOption> {
 }
 
 /** Abre o pagamento da consulta e devolve a URL do Checkout. */
-export async function startAppointmentCheckout(appointmentId: string): Promise<string | null> {
+export async function startAppointmentCheckout(
+  appointmentId: string,
+  /**
+   * O cupom que a tela mostrou (084). Vai como **código**, nunca como valor:
+   * o servidor recalcula o desconto antes de cobrar, e a prévia da T-3 não
+   * autoriza nada.
+   */
+  couponCode?: string | null
+): Promise<string | null> {
   const r = await apiFetch<{ url: string | null }>(
     `/api/patient/appointments/${appointmentId}/checkout`,
     // O header diz ao servidor que o retorno do Stripe deve voltar para o
     // app, e não para uma página do site (083).
-    { method: "POST", headers: { "x-platform": "mobile" } }
+    {
+      method: "POST",
+      headers: { "x-platform": "mobile" },
+      body: JSON.stringify(couponCode ? { couponCode } : {}),
+    }
   );
   return r.url ?? null;
 }

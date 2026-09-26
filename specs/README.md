@@ -56,6 +56,8 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [074](074-monitoramento-continuo-paciente/) | Monitoramento contínuo: limiares como regra, relatório do paciente, webhook Withings, bloqueio pré-exercício, aparelho da clínica | 🟡 em andamento |
 | [081](081-exames-de-laboratorio-pelo-app/) | Exames de laboratório pelo app (London Medical Laboratory) — revenda com margem, kit de casa | 🟡 T-1..T-4 concluídas; T-5..T-9 esperam o token da LML |
 | [082](082-preco-e-plano-por-paciente/) | Preço e plano por paciente — para todos ou individualizado | 🟡 em andamento |
+| [083](083-o-app-deixa-de-ser-so-da-clinica/) | O app deixa de ser só da clínica — exame independente, conta só-laboratório, bifurcação do cadastro, pagamento no app, tenants por idioma | 🟡 implementada e revisada; QA formal pendente (spec escrita retroativamente) |
+| [084](084-cupom-de-desconto/) | Cupom de desconto — código com prazo e limite, para todos ou para um paciente | 🟡 T-1 a T-4 implementadas; 3 rounds de QA + 2 de review; R-1 corrigido, telas do app sem QA |
 
 > **070 nasceu como 069** e foi renumerada em 22/09/2026: outra sessão criou `069-pressao-arterial-pelo-terapeuta` ao mesmo tempo, e aquela já estava no `main`. Commits anteriores à renumeração citam `069` e `specs/069-app-paciente-clinica`; a 071 era `070-seguranca-api-mobile`.
 

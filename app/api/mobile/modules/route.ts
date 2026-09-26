@@ -81,7 +81,23 @@ export async function GET(request: NextRequest) {
      * para a equipe, senão "esconder" não esconderia de quem testa.
      */
     const labOn = clinic?.labVisibleInApp === true;
-    const semLab = <T extends { key: string }>(mods: T[]): T[] => (labOn ? mods : mods.filter((m) => m.key !== "lab"));
+    /**
+     * A liberação individual vence o interruptor geral (decisão do Bruno,
+     * 26/09/2026).
+     *
+     * O interruptor de /admin/labs é o **padrão da clínica**, não uma chave
+     * mestra: desligado, o laboratório desaparece para todos — menos para quem
+     * tem `mod_lab` liberado na tela de permissões daquele paciente. É o que
+     * permite um piloto de duas pessoas antes de abrir para todo mundo.
+     *
+     * A negação individual continua vencendo nos dois casos: ligado o geral,
+     * `mod_lab` bloqueado ou oculto ainda esconde.
+     */
+    const overrides = (user?.moduleOverrides as Record<string, unknown> | null) || {};
+    const labDele = overrideGrants(overrides["mod_lab"]);
+    const labParaEste = labDele === false ? false : labOn || labDele === true;
+    const semLab = <T extends { key: string }>(mods: T[]): T[] =>
+      labParaEste ? mods : mods.filter((m) => m.key !== "lab");
     if (isPersonalTenant(clinic?.type)) {
       return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
@@ -99,8 +115,6 @@ export async function GET(request: NextRequest) {
     ) {
       return corsJson(withTraining(semLab([...MODULE_DEFS])));
     }
-
-    const overrides = (user?.moduleOverrides as Record<string, boolean> | null) || {};
 
     // Check clinic-level module access
     let clinicModules: string[] = [];
@@ -142,7 +156,7 @@ export async function GET(request: NextRequest) {
     // dependendo de uma linha `DIAGNOSTICS` em ClinicModuleAccess que a BPR
     // nunca teve, e o módulo não aparecia (medido em produção, 26/09/2026).
     // Uma negação explícita do paciente continua valendo.
-    if (labOn && overrideGrants(overrides["mod_lab"]) !== false) {
+    if (labParaEste) {
       keys.add("lab");
     }
     const result = MODULE_DEFS.filter((m) => keys.has(m.key));

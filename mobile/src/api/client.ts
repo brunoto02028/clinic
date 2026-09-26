@@ -82,8 +82,27 @@ export class ApiError extends Error {
    * accepted the terms" — and only one of them is something the patient can
    * fix. Telling them apart needs more than a status code.
    */
-  constructor(public status: number, message: string, public code?: string) {
+  /**
+   * A mesma recusa em português.
+   *
+   * O servidor manda `error` e `errorPt` em toda recusa que o paciente lê, e
+   * este construtor descartava o segundo — então a tela mostrava inglês num
+   * aparelho em português, apesar de a frase certa ter chegado pela rede
+   * (achado do review da 084, 26/09/2026). Inglês é a língua primária aqui, mas
+   * "primária" não é "única".
+   */
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string,
+    public messagePt?: string
+  ) {
     super(message);
+  }
+
+  /** A frase no idioma do aparelho, com o inglês como reserva. */
+  localizada(lang: string): string {
+    return lang === "pt" && this.messagePt ? this.messagePt : this.message;
   }
 }
 
@@ -123,7 +142,8 @@ export async function apiUpload<T>(
     throw new ApiError(
       res.status,
       (data as any)?.error || `Request failed (${res.status})`,
-      (data as any)?.code
+      (data as any)?.code,
+      (data as any)?.errorPt
     );
   }
   return data as T;
@@ -157,7 +177,8 @@ export async function apiFetch<T>(
     throw new ApiError(
       res.status,
       (data as any)?.error || `Request failed (${res.status})`,
-      (data as any)?.code
+      (data as any)?.code,
+      (data as any)?.errorPt
     );
   }
   return data as T;

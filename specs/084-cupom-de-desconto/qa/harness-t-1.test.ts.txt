@@ -1,0 +1,398 @@
+/**
+ * @jest-environment node
+ *
+ * QA da atividade 084, T-1 — harness independente do agente de QA.
+ *
+ * Não é código do projeto: vive no scratchpad da sessão e existe só para gerar
+ * evidência dos cenários 1.1 a 1.13 do qa-spec, com o resultado real impresso.
+ *
+ * O `prisma` daqui não é um mock por caso: é uma tabela em memória com filtro
+ * de verdade (clinicId + code, e contagem por couponId/patientId/confirmedAt),
+ * para que o isolamento por clínica (1.13) seja observado e não presumido.
+ */
+
+const TABELA: any[] = [];
+const RESGATES: any[] = [];
+
+jest.mock("@/lib/db", () => ({
+  prisma: {
+    coupon: {
+      findUnique: async ({ where }: any) => {
+        const { clinicId, code } = where.clinicId_code;
+        return TABELA.find((c) => c.clinicId === clinicId && c.code === code) ?? null;
+      },
+    },
+    couponRedemption: {
+      count: async ({ where }: any) =>
+        RESGATES.filter((r) => {
+          if (r.couponId !== where.couponId) return false;
+          if (where.patientId !== undefined && r.patientId !== where.patientId) return false;
+          if (where.confirmedAt && "not" in where.confirmedAt) {
+            if (where.confirmedAt.not === null && r.confirmedAt === null) return false;
+          }
+          return true;
+        }).length,
+    },
+  },
+}));
+
+import { applyCoupon, resolveCoupon, validateCouponInput } from "@/lib/coupon";
+
+const base = (over: Record<string, unknown> = {}) => ({
+  id: "cup-1",
+  clinicId: "clinic-X",
+  code: "VERAO20",
+  description: "Campanha de verão",
+  discountPercent: 20,
+  discountAmount: null,
+  currency: "GBP",
+  appliesTo: ["CONSULTATION"],
+  patientId: null,
+  startsAt: null,
+  endsAt: null,
+  maxRedemptions: null,
+  maxPerPatient: 1,
+  isActive: true,
+  ...over,
+});
+
+const semear = (...cupons: any[]) => {
+  TABELA.length = 0;
+  RESGATES.length = 0;
+  TABELA.push(...cupons);
+};
+
+const mostrar = (rotulo: string, valor: unknown) =>
+  console.log(`\n[${rotulo}] ${JSON.stringify(valor, null, 2)}`);
+
+const ONTEM = new Date("2026-09-25T00:00:00Z");
+const AMANHA = new Date("2026-09-27T00:00:00Z");
+const AGORA = new Date("2026-09-26T12:00:00Z");
+
+describe("1.1 applyCoupon com cupom ativo, 20%, sobre £100", () => {
+  it("devolve original 100, discount 20, final 80", async () => {
+    semear(base());
+    const r = await applyCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      amount: 100,
+      now: AGORA,
+    });
+    mostrar("1.1", r);
+    expect(r).toMatchObject({ ok: true, original: 100, discount: 20, final: 80 });
+  });
+});
+
+describe("1.2 código em minúsculas", () => {
+  it("`  verao20 ` acha o cupom gravado como VERAO20", async () => {
+    semear(base());
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "  verao20 ",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.2", r);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("1.3 código inexistente", () => {
+  it("not_found, com frase EN e PT", async () => {
+    semear(base());
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "NAOEXISTE",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.3", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toBe("not_found");
+      expect(r.message.length).toBeGreaterThan(0);
+      expect(r.messagePt.length).toBeGreaterThan(0);
+      expect(r.messagePt).not.toBe(r.message);
+    }
+  });
+});
+
+describe("1.4 cupom isActive:false", () => {
+  it("inactive", async () => {
+    semear(base({ isActive: false }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.4", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("inactive");
+  });
+});
+
+describe("1.5 endsAt no passado", () => {
+  it("expired", async () => {
+    semear(base({ endsAt: ONTEM }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.5", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("expired");
+  });
+});
+
+describe("1.6 startsAt no futuro", () => {
+  it("not_started", async () => {
+    semear(base({ startsAt: AMANHA }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.6", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("not_started");
+  });
+});
+
+describe("1.7 escopo CONSULTATION usado numa adesão a plano", () => {
+  it("wrong_scope — na direção que o qa-spec pede", async () => {
+    semear(base({ appliesTo: ["CONSULTATION"] }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "MEMBERSHIP",
+      now: AGORA,
+    });
+    mostrar("1.7", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("wrong_scope");
+  });
+});
+
+describe("1.8 cupom mirado no paciente A, pedido pelo B", () => {
+  it("not_for_you", async () => {
+    semear(base({ patientId: "paciente-teste-A" }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-B",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.8", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("not_for_you");
+  });
+});
+
+describe("1.9 maxRedemptions esgotado", () => {
+  it("limit_reached (2 de 2 resgates confirmados, de outros pacientes)", async () => {
+    semear(base({ maxRedemptions: 2, maxPerPatient: 99 }));
+    RESGATES.push(
+      { couponId: "cup-1", patientId: "outro-1", confirmedAt: new Date() },
+      { couponId: "cup-1", patientId: "outro-2", confirmedAt: new Date() }
+    );
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.9", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("limit_reached");
+  });
+
+  it("resgate NÃO confirmado não consome o limite", async () => {
+    semear(base({ maxRedemptions: 2, maxPerPatient: 99 }));
+    RESGATES.push(
+      { couponId: "cup-1", patientId: "outro-1", confirmedAt: null },
+      { couponId: "cup-1", patientId: "outro-2", confirmedAt: null }
+    );
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.9-abandonado", r);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("1.10 maxPerPatient:1 e o paciente já resgatou", () => {
+  it("already_used", async () => {
+    semear(base({ maxPerPatient: 1 }));
+    RESGATES.push({ couponId: "cup-1", patientId: "paciente-teste-A", confirmedAt: new Date() });
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.10", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("already_used");
+  });
+
+  it("e o mesmo cupom continua valendo para outro paciente", async () => {
+    semear(base({ maxPerPatient: 1 }));
+    RESGATES.push({ couponId: "cup-1", patientId: "paciente-teste-A", confirmedAt: new Date() });
+    const r = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-B",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.10-outro-paciente", r);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("1.11 cupom de 100%", () => {
+  it("final 0 e válido", async () => {
+    semear(base({ discountPercent: 100 }));
+    const r = await applyCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      amount: 100,
+      now: AGORA,
+    });
+    mostrar("1.11", r);
+    expect(r).toMatchObject({ ok: true, original: 100, discount: 100, final: 0 });
+  });
+});
+
+describe("1.12 alcance de exame de laboratório", () => {
+  it("validateCouponInput recusa LAB_TEST sozinho", () => {
+    const erro = validateCouponInput({
+      code: "EXAME30",
+      discountPercent: 30,
+      appliesTo: ["LAB_TEST"],
+    });
+    mostrar("1.12-so-lab", erro);
+    expect(erro).not.toBeNull();
+  });
+
+  it("recusa LAB_TEST misturado com um escopo válido", () => {
+    const erro = validateCouponInput({
+      code: "EXAME30",
+      discountPercent: 30,
+      appliesTo: ["CONSULTATION", "LAB_TEST"],
+    });
+    mostrar("1.12-misturado", erro);
+    expect(erro).not.toBeNull();
+  });
+
+  it("outros nomes plausíveis de exame também são recusados", () => {
+    for (const nome of ["LAB", "LAB_ORDER", "LAB_PANEL", "EXAM", "EXAME", "BLOOD_TEST"]) {
+      const erro = validateCouponInput({
+        code: "EXAME30",
+        discountPercent: 30,
+        appliesTo: [nome],
+      });
+      expect(erro).not.toBeNull();
+    }
+    console.log("\n[1.12-variantes] LAB, LAB_ORDER, LAB_PANEL, EXAM, EXAME, BLOOD_TEST: todos recusados");
+  });
+
+  // O enum do Prisma Client é verificado fora do jest (o harness vive no
+  // scratchpad e não resolve `@prisma/client`): ver o script `enum-check.cjs`.
+});
+
+describe("observações do QA (fora dos 14 cenários)", () => {
+  it("qual motivo `applyCoupon` devolve para um valor inválido", async () => {
+    semear(base());
+    const negativo = await applyCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      amount: -10,
+      now: AGORA,
+    } as any);
+    const naoNumero = await applyCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      amount: Number.NaN,
+      now: AGORA,
+    } as any);
+    mostrar("obs-valor-invalido", { negativo, naoNumero });
+    expect(negativo.ok).toBe(false);
+    expect(naoNumero.ok).toBe(false);
+  });
+
+  it("cupom de valor fixo em GBP sobre um preço em outra moeda", async () => {
+    semear(base({ discountPercent: null, discountAmount: 15, currency: "GBP" }));
+    const r = await applyCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      amount: 100, // suponha BRL: a clínica tem `currency` própria no schema
+      now: AGORA,
+    });
+    mostrar("obs-moeda", r);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("1.13 cupom da clínica X pedido pela clínica Y", () => {
+  it("not_found — nunca 'existe mas não é sua'", async () => {
+    semear(base({ clinicId: "clinic-X" }));
+    const r = await resolveCoupon({
+      clinicId: "clinic-Y",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.13", r);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("not_found");
+  });
+
+  it("a recusa da clínica Y é byte a byte a de um código inexistente", async () => {
+    semear(base({ clinicId: "clinic-X" }));
+    const outraClinica = await resolveCoupon({
+      clinicId: "clinic-Y",
+      patientId: "paciente-teste-A",
+      code: "VERAO20",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    const inexistente = await resolveCoupon({
+      clinicId: "clinic-X",
+      patientId: "paciente-teste-A",
+      code: "NAOEXISTE",
+      scope: "CONSULTATION",
+      now: AGORA,
+    });
+    mostrar("1.13-indistinguivel", { outraClinica, inexistente });
+    expect(outraClinica).toEqual(inexistente);
+  });
+});

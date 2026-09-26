@@ -1,5 +1,5 @@
 import { View, Pressable } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Spinner, Logo } from "@/components/ui";
@@ -64,12 +64,21 @@ export default function ModuleSelect() {
   // account has one area, or this build is the clinic app and the account is a
   // clinic patient. Anyone else still picks — for a studio's student or a
   // lab-only account the chooser is the only way in.
+  //
+  // `?pick=1` desliga o desvio. Quem chega aqui pelo botão "Trocar de área"
+  // **pediu** para escolher; sem isto o desvio o devolvia à clínica no mesmo
+  // instante, e era por isso que o laboratório ligado em /admin/labs não
+  // aparecia em parte alguma do build 15: concedido pelo servidor, inalcançável
+  // pelo app. Vale só para esta visita — o próximo login volta a cair direto.
+  const pediuEscolher = useLocalSearchParams<{ pick?: string }>().pick === "1";
   const skipTo =
-    modules && modules.length === 1
-      ? modules[0].key
-      : CLINIC_ONLY && isClinicPatient
-        ? ("clinica" as const)
-        : null;
+    pediuEscolher
+      ? null
+      : modules && modules.length === 1
+        ? modules[0].key
+        : CLINIC_ONLY && isClinicPatient
+          ? ("clinica" as const)
+          : null;
 
   useEffect(() => {
     if (!skipTo) return;

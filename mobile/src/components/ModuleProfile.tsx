@@ -7,6 +7,7 @@ import { useAuth } from "@/store/auth";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
+import { useAreaSwitch } from "@/lib/areas";
 import Constants from "expo-constants";
 import { runningVersion } from "@/lib/app-updates";
 
@@ -37,6 +38,7 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
   const t = useTheme();
   const lang = useLang();
   const user = useAuth((s) => s.user);
+  const { canSwitch, areaCount, switchArea } = useAreaSwitch();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -93,6 +95,28 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
                 last={i === sections.length - 1}
               />
             ))}
+          </Card>
+        )}
+
+        {/* A saída para as outras áreas da conta — laboratório, BA, o estúdio.
+            Fica aqui, no menu, e não só dentro de "Minha conta", porque é onde
+            a pessoa já está olhando quando procura o que o app tem. Some com
+            uma área só: um botão que abre uma escolha de um item não faz nada.
+            Aparece em todos os módulos, então de qualquer área há volta. */}
+        {canSwitch && (
+          <Card>
+            <ListItem
+              title={tr(lang, { en: "Switch area", pt: "Trocar de área" })}
+              subtitle={tr(lang, {
+                en: `${areaCount} areas on this account`,
+                pt: `${areaCount} áreas nesta conta`,
+              })}
+              icon={<Ionicons name="swap-horizontal-outline" size={18} color={t.colors.text} />}
+              right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
+              onPress={switchArea}
+              last
+              testID="switch-area"
+            />
           </Card>
         )}
 

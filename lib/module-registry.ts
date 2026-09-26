@@ -31,6 +31,8 @@ import {
   Mic,
   Bell,
   Watch,
+  FlaskConical,
+  BriefcaseMedical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,7 +47,8 @@ export interface ModuleDefinition {
   descriptionPt: string;  // Short explanation (Portuguese)
   icon: LucideIcon;
   href: string;           // Dashboard route
-  category: "core" | "clinical" | "wellness" | "content" | "admin_only";
+  /** `app_areas` são as áreas entre as quais o app alterna, não telas da web. */
+  category: "core" | "clinical" | "wellness" | "content" | "admin_only" | "app_areas";
   alwaysVisible?: boolean; // true = always shown in sidebar (dashboard, profile, plans, consent)
   defaultEnabled?: boolean; // true = enabled by default when creating a new plan
   /**
@@ -338,6 +341,49 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultGranted: true,
     defaultEnabled: false,
   },
+
+  /**
+   * ── ÁREAS DO APP ──
+   *
+   * Estas duas não são telas: são as **áreas** entre as quais o app do paciente
+   * alterna. `/api/mobile/modules` já obedecia `mod_lab` e `mod_clinica` desde a
+   * 083 — o que faltava era estarem aqui, porque a tela de permissões monta a
+   * lista a partir deste registro. O servidor sabia respeitar a decisão e o
+   * Bruno não tinha onde tomá-la (26/09/2026).
+   *
+   * `appOnly` porque a web não tem página própria para nenhuma das duas.
+   * `defaultGranted` fica **fora** de propósito: quem concede a área clínica é
+   * ser paciente da clínica (`isClinicPatient`), e quem concede o laboratório é
+   * o interruptor de /admin/labs. A linha aqui é a **exceção** de uma pessoa.
+   */
+  {
+    key: "mod_lab",
+    label: "Laboratory (app area)",
+    labelPt: "Laboratório (área do app)",
+    description:
+      "Blood tests in the app. Released here for one patient even when the clinic-wide switch in Labs is off — which is how a pilot with two people works.",
+    descriptionPt:
+      "Exames de sangue no app. Liberado aqui para um paciente mesmo com o interruptor geral em Labs desligado — é assim que se faz um piloto com duas pessoas.",
+    icon: FlaskConical,
+    href: "",
+    category: "app_areas",
+    defaultEnabled: false,
+    appOnly: true,
+  },
+  {
+    key: "mod_clinica",
+    label: "Clinic (app area)",
+    labelPt: "Clínica (área do app)",
+    description:
+      "Records, exercises and messages. A patient gets this by being treated here; release it explicitly for an account the clinic created but has not seen yet.",
+    descriptionPt:
+      "Prontuário, exercícios e mensagens. O paciente ganha isto ao ser atendido; libere explicitamente uma conta que a clínica criou e ainda não atendeu.",
+    icon: BriefcaseMedical,
+    href: "",
+    category: "app_areas",
+    defaultEnabled: false,
+    appOnly: true,
+  },
 ];
 
 // ─── Permission Definitions ────────────────────────────────
@@ -533,6 +579,7 @@ export const MODULE_CATEGORIES = [
   { key: "clinical", label: "Clinical", labelPt: "Clínico" },
   { key: "wellness", label: "Wellness & Self-Care", labelPt: "Bem-Estar" },
   { key: "content", label: "Content & Education", labelPt: "Conteúdo & Educação" },
+  { key: "app_areas", label: "App areas", labelPt: "Áreas do app" },
 ] as const;
 
 export const PERMISSION_CATEGORIES = [
