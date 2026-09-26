@@ -78,7 +78,7 @@ export default function BloodPressureScreen() {
     elevated: { label: tr(lang, { en: "Elevated", pt: "Elevada" }), color: t.colors.warn, bg: t.colors.warnSoft },
     stage1: { label: tr(lang, { en: "Stage 1", pt: "Estágio 1" }), color: t.colors.bad, bg: t.colors.badSoft },
     stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: "#FFFFFF", bg: t.colors.bad },
-    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: "#FFFFFF", bg: "#8C2F22" },
+    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: "#FFFFFF", bg: t.colors.bad },
   };
 
   const sys = parseInt(systolic, 10);
@@ -167,7 +167,7 @@ export default function BloodPressureScreen() {
               <View
                 style={{
                   marginTop: 12,
-                  backgroundColor: "#8C2F22",
+                  backgroundColor: t.colors.bad,
                   borderRadius: 12,
                   padding: 12,
                   flexDirection: "row",

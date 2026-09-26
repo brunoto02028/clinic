@@ -9,8 +9,6 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { stageCopy } from "@/lib/lab-stage-copy";
 
-const SAGE = "#65807B";
-
 /**
  * O catálogo (081, T-3): o que você quer saber? Nome, o que mede, prazo e o
  * preço de venda. Em cima, quando existe, o pedido que precisa de você —
@@ -66,12 +64,12 @@ export default function LabsHub() {
 
         {pendente && (
           <Pressable onPress={() => router.push(`/(app)/(lab)/order/${pendente.id}`)} testID="lab-pending-banner">
-            <Card style={{ backgroundColor: pendente.stage === "released" ? t.colors.okSoft : "#F5EFDD", borderWidth: 0 }}>
+            <Card style={{ backgroundColor: pendente.stage === "released" ? t.colors.okSoft : t.colors.labWarmSoft, borderWidth: 0 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Ionicons
                   name={pendente.stage === "released" ? "checkmark-circle" : "alert-circle"}
                   size={22}
-                  color={pendente.stage === "released" ? t.colors.ok : "#B8823A"}
+                  color={pendente.stage === "released" ? t.colors.ok : t.colors.labWarm}
                 />
                 <View style={{ flex: 1 }}>
                   <Text variant="label" style={{ fontWeight: "600" }}>{stageCopy(pendente.stage, lang, orders.data?.reviewDays ?? 2).title}</Text>
@@ -102,9 +100,9 @@ export default function LabsHub() {
             style={{ flexGrow: 0 }}
             contentContainerStyle={{ gap: 8, paddingVertical: 3 }}
           >
-            <Chip label={tr(lang, { en: "All", pt: "Todos" })} selected={category === "all"} onPress={() => setCategory("all")} accentColor={SAGE} />
+            <Chip label={tr(lang, { en: "All", pt: "Todos" })} selected={category === "all"} onPress={() => setCategory("all")} accentColor={t.colors.lab} />
             {categories.map((cat) => (
-              <Chip key={cat} label={cat} selected={category === cat} onPress={() => setCategory(cat)} accentColor={SAGE} />
+              <Chip key={cat} label={cat} selected={category === cat} onPress={() => setCategory(cat)} accentColor={t.colors.lab} />
             ))}
           </ScrollView>
         )}
@@ -143,8 +141,8 @@ export default function LabsHub() {
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       {item.category ? (
-                        <View style={{ backgroundColor: "#E4EDE7", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
-                          <Text variant="caption" color={SAGE} style={{ fontSize: 11 }}>{item.category}</Text>
+                        <View style={{ backgroundColor: t.colors.labSoft, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
+                          <Text variant="caption" color={t.colors.lab} style={{ fontSize: 11 }}>{item.category}</Text>
                         </View>
                       ) : null}
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -152,7 +150,7 @@ export default function LabsHub() {
                         <Text variant="caption" color={t.colors.textMuted}>{dias(item.turnaroundDays)}</Text>
                       </View>
                     </View>
-                    <Text variant="subtitle" color={SAGE} style={{ fontWeight: "700" }}>£{item.price.toFixed(2)}</Text>
+                    <Text variant="subtitle" color={t.colors.lab} style={{ fontWeight: "700" }}>£{item.price.toFixed(2)}</Text>
                   </View>
                 </Card>
               </Pressable>

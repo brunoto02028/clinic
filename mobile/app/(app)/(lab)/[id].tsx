@@ -7,9 +7,6 @@ import { fetchLabProduct, fetchLabConsent, acceptLabConsent } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 
-const SAGE = "#65807B";
-const SAGE_FOG = "#E4EDE7";
-const SAGE_DARK = "#4F6864";
 
 /**
  * Um exame (081, T-3): o que mede, que é picada no dedo em casa, e o que
@@ -75,8 +72,8 @@ export default function LabTestDetail() {
         }}
       />
       <View style={{ gap: 14 }}>
-        <Card style={{ backgroundColor: SAGE_FOG, alignItems: "center", paddingVertical: 22 }}>
-          <Ionicons name="flask" size={40} color={SAGE_DARK} />
+        <Card style={{ backgroundColor: t.colors.labSoft, alignItems: "center", paddingVertical: 22 }}>
+          <Ionicons name="flask" size={40} color={t.colors.lab} />
           <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", fontSize: 17, marginTop: 10, textAlign: "center" }}>{p.name}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
             {price}
@@ -85,8 +82,8 @@ export default function LabTestDetail() {
               : ""}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
-            <Ionicons name="water-outline" size={14} color={SAGE_DARK} />
-            <Text variant="caption" color={SAGE_DARK} testID="lab-sample-type">
+            <Ionicons name="water-outline" size={14} color={t.colors.lab} />
+            <Text variant="caption" color={t.colors.lab} testID="lab-sample-type">
               {swab
                 ? tr(lang, { en: "Finger-prick and swab, at home", pt: "Picada no dedo e swab, em casa" })
                 : tr(lang, { en: "Finger-prick, at home", pt: "Picada no dedo, em casa" })}
@@ -108,7 +105,7 @@ export default function LabTestDetail() {
             </Text>
             {p.biomarkers.map((marker, idx) => (
               <View key={idx} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, borderBottomWidth: idx < p.biomarkers.length - 1 ? 1 : 0, borderBottomColor: t.colors.border }}>
-                <Ionicons name="checkmark-circle" size={16} color={SAGE} />
+                <Ionicons name="checkmark-circle" size={16} color={t.colors.lab} />
                 <Text variant="body" style={{ fontFamily: "Sora_600SemiBold", fontSize: 12 }}>{marker}</Text>
               </View>
             ))}
@@ -142,14 +139,14 @@ export default function LabTestDetail() {
               </View>
             ))}
             <Button
-              title={consent.data.text.accept} variant="primary" size="lg" style={{ backgroundColor: SAGE, marginTop: 6 }} testID="lab-consent-accept"
+              title={consent.data.text.accept} variant="primary" size="lg" style={{ backgroundColor: t.colors.lab, marginTop: 6 }} testID="lab-consent-accept"
               onPress={() => aceitar.mutate()} loading={aceitar.isPending} disabled={aceitar.isPending}
             />
           </Card>
         ) : data.orderingEnabled ? (
           <Button
             title={tr(lang, { en: `Continue · ${price}`, pt: `Continuar · ${price}` })}
-            variant="primary" size="lg" style={{ backgroundColor: SAGE }} testID="lab-continue"
+            variant="primary" size="lg" style={{ backgroundColor: t.colors.lab }} testID="lab-continue"
             onPress={() => router.push({ pathname: "/(app)/(lab)/checkout" as any, params: { id: p.id, name: p.name, price: p.price.toFixed(2) } })}
           />
         ) : (

@@ -9,9 +9,6 @@ import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 
-const SAGE = "#65807B";
-const SAGE_FOG = "#E4EDE7";
-
 /**
  * O que traz você aqui? (083)
  *
@@ -83,7 +80,7 @@ export default function WelcomeChoice() {
         </View>
 
         <Opcao
-          icone="flask-outline" cor="#4F6864" fundo={SAGE_FOG} borda={SAGE}
+          icone="flask-outline" cor={t.colors.lab} fundo={t.colors.labSoft} borda={t.colors.lab}
           titulo={tr(lang, { en: "I want a blood test", pt: "Quero fazer um exame de sangue" })}
           corpo={tr(lang, {
             en: "A kit at home, collected with a finger-prick. No consultation, no clinic — the result is yours.",

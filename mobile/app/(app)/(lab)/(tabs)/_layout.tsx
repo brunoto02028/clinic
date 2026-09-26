@@ -11,10 +11,10 @@ export default function LabTabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#65807B",
-        tabBarInactiveTintColor: "#9AA0AC",
+        tabBarActiveTintColor: t.colors.lab,
+        tabBarInactiveTintColor: t.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: t.colors.surface,
           borderTopColor: t.colors.border,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 88 : 64,

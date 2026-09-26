@@ -88,3 +88,35 @@ describe("a hierarquia: liberação individual vence o interruptor geral", () =>
     expect(rota.match(/const overrides = /g)?.length).toBe(1);
   });
 });
+
+describe("a tela não promete um bloqueio que o app não faz", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const tela = fs.readFileSync(
+    path.join(__dirname, "..", "..", "app", "admin", "patients", "[id]", "permissions", "page.tsx"),
+    "utf8"
+  );
+
+  it("as áreas do app não caem no estado derivado do plano", () => {
+    // O Bruno bloqueou, o app continuou aberto, e ninguém estava desobedecendo:
+    // sem override, a linha caía em "plan" e, sem plano, desenhava "Blocked" —
+    // um bloqueio que ninguém pediu e que o app não tinha por que respeitar
+    // (achado dele no aparelho, 26/09/2026).
+    expect(tela).toMatch(/const ehAreaDoApp = m\.category === "app_areas"/);
+    expect(tela).toMatch(/plan: ehAreaDoApp/);
+  });
+
+  it("e dizem de que dependem de verdade", () => {
+    expect(tela).toMatch(/Follows Labs switch/);
+    expect(tela).toMatch(/Follows patient status/);
+  });
+
+  it("o bloqueio real continua sendo o override, e o app o respeita", () => {
+    // Três estados de negação, todos escondem — medido em produção.
+    const rota = fs.readFileSync(
+      path.join(__dirname, "..", "..", "app", "api", "mobile", "modules", "route.ts"),
+      "utf8"
+    );
+    expect(rota).toMatch(/labDele === false \? false/);
+  });
+});

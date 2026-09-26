@@ -1,7 +1,9 @@
 import { Stack } from "expo-router";
 import { HeaderBack } from "@/components/HeaderBack";
 
+import { useTheme } from "@/theme/useTheme";
 export default function NutricaoLayout() {
+  const t = useTheme();
   return <Stack screenOptions={{
         // Estava `false` no grupo inteiro: quem entrava no módulo não tinha
         // como voltar, nem para trocar de área nem para sair de uma tela
@@ -18,8 +20,8 @@ export default function NutricaoLayout() {
         // O toque sempre faz alguma coisa.
         headerBackButtonDisplayMode: "minimal" as const,
         headerLeft: () => <HeaderBack />,
-        headerStyle: { backgroundColor: "#F5F4F1" },
-        headerTintColor: "#20242D",
+        headerStyle: { backgroundColor: t.colors.background },
+        headerTintColor: t.colors.text,
         headerShadowVisible: false,
       }} />;
 }

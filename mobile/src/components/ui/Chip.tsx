@@ -14,7 +14,7 @@ export function Chip({ label, selected, onPress, accentColor, style }: ChipProps
   const t = useTheme();
 
   const bg = selected ? (accentColor ?? t.colors.primary) : t.colors.surface;
-  const fg = selected ? "#FFFFFF" : "#4A4F59";
+  const fg = selected ? t.colors.primaryFg : t.colors.textSecondary;
   const border = selected ? (accentColor ?? t.colors.primary) : t.colors.border;
 
   return (

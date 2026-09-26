@@ -9,10 +9,6 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { API_URL } from "@/api/config";
 
-const SAGE = "#65807B";
-const AMBER = "#B8823A";
-const AMBER_BG = "#F5EFDD";
-
 /**
  * O resultado (081, T-3) — e só depois que o terapeuta liberou. A nota dele
  * vem em cima; embaixo, cada biomarcador com valor, unidade e faixa. O que
@@ -102,8 +98,8 @@ export default function LabResult() {
             clínica lê antes. Pedidos antigos que tenham nota continuam a
             mostrá-la — apagar o que já foi escrito seria pior. */}
         {note.trim() !== "" && (
-          <Card style={{ backgroundColor: AMBER_BG, borderWidth: 0 }} testID="lab-clinic-note">
-            <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", color: AMBER, marginBottom: 6 }}>
+          <Card style={{ backgroundColor: t.colors.labWarmSoft, borderWidth: 0 }} testID="lab-clinic-note">
+            <Text variant="label" style={{ fontFamily: "Sora_600SemiBold", color: t.colors.labWarm, marginBottom: 6 }}>
               {tr(lang, { en: "A note from the clinic", pt: "Uma nota da clínica" })}
             </Text>
             <Text variant="body" style={{ fontSize: 12, lineHeight: 18 }}>{note}</Text>
@@ -116,11 +112,11 @@ export default function LabResult() {
             <View key={v.id} style={{ paddingVertical: 9, borderBottomWidth: i < r.values.length - 1 ? 1 : 0, borderBottomColor: t.colors.border }} testID={`lab-value-${v.biomarker}`}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <Text variant="body" style={{ fontFamily: "Sora_600SemiBold", fontSize: 12, flex: 1 }}>{v.biomarker}</Text>
-                <Text style={{ fontFamily: "Sora_700Bold", fontSize: 13, color: v.outOfRange ? AMBER : t.colors.text }}>{fmtValue(v)}</Text>
+                <Text style={{ fontFamily: "Sora_700Bold", fontSize: 13, color: v.outOfRange ? t.colors.labWarm : t.colors.text }}>{fmtValue(v)}</Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
                 <Text variant="caption" color={t.colors.textMuted}>{fmtRange(v) ? `${tr(lang, { en: "Reference", pt: "Referência" })}: ${fmtRange(v)}` : ""}</Text>
-                {v.outOfRange && <Text variant="caption" color={AMBER}>{tr(lang, { en: "outside range", pt: "fora da faixa" })}</Text>}
+                {v.outOfRange && <Text variant="caption" color={t.colors.labWarm}>{tr(lang, { en: "outside range", pt: "fora da faixa" })}</Text>}
               </View>
             </View>
           ))}
@@ -133,7 +129,7 @@ export default function LabResult() {
         </Text>
 
         {r.pdfAvailable && (
-          <Button title={tr(lang, { en: "Open the full report", pt: "Abrir o laudo completo" })} variant="primary" size="lg" onPress={openReport} style={{ backgroundColor: SAGE }} testID="lab-open-pdf" />
+          <Button title={tr(lang, { en: "Open the full report", pt: "Abrir o laudo completo" })} variant="primary" size="lg" onPress={openReport} style={{ backgroundColor: t.colors.lab }} testID="lab-open-pdf" />
         )}
 
         {/* O resultado é da pessoa, e o que ela faz com ele é escolha dela. Este

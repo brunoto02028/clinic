@@ -330,6 +330,20 @@ export default function PatientPermissionsPage() {
     // so the plan default it falls back to is "yes" — otherwise the row would
     // read "Blocked" beside a module the patient is plainly using.
     const baseGrant = m.grantedByPlan || m.defaultGranted;
+    /**
+     * **As áreas do app não são governadas por plano.**
+     *
+     * O laboratório segue o interruptor da clínica; a área clínica segue ser
+     * paciente. Nenhum dos dois olha `MembershipPlan`. Mas esta linha caía no
+     * estado "plan" quando não havia override e, sem plano, desenhava
+     * **"Blocked"** — então o Bruno leu "bloqueado", foi ao app e encontrou
+     * tudo aberto (achado dele, 26/09/2026).
+     *
+     * Não era o app desobedecendo: era a tela prometendo um bloqueio que
+     * ninguém tinha pedido. Sem override, o honesto é dizer **"Default"** e
+     * explicar de que depende.
+     */
+    const ehAreaDoApp = m.category === "app_areas";
     const state = m.alwaysVisible ? "unlocked" : getModuleState(m.key, baseGrant);
     const effective = m.alwaysVisible || fullAccess ? true : getEffectiveAccess(m.key, baseGrant);
     const isOverridden = state !== "plan";
@@ -338,7 +352,16 @@ export default function PatientPermissionsPage() {
       unlocked: { badge: "bg-emerald-500/20 text-emerald-400", icon: Unlock, label: "Unlocked", ring: "ring-emerald-400" },
       locked: { badge: "bg-amber-500/20 text-amber-400", icon: Lock, label: "Locked", ring: "ring-amber-400" },
       hidden: { badge: "bg-muted text-muted-foreground", icon: EyeOff, label: "Hidden", ring: "ring-muted" },
-      plan: { badge: effective ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400", icon: effective ? Unlock : Lock, label: effective ? "Plan" : "Blocked", ring: "" },
+      plan: ehAreaDoApp
+        ? {
+            // Sem override, quem decide é o interruptor da clínica (laboratório)
+            // ou ser paciente dela (clínica) — nunca o plano.
+            badge: "bg-sky-500/20 text-sky-400",
+            icon: Unlock,
+            label: m.key === "mod_lab" ? "Follows Labs switch" : "Follows patient status",
+            ring: "",
+          }
+        : { badge: effective ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400", icon: effective ? Unlock : Lock, label: effective ? "Plan" : "Blocked", ring: "" },
     };
     const s = fullAccess ? STATE_STYLES.unlocked : STATE_STYLES[state];
     const StateIcon = s.icon;
