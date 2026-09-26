@@ -4656,7 +4656,12 @@ model DailyCheckIn {
   patientId String
   patient   User    @relation("PatientDailyCheckIns", fields: [patientId], references: [id], onDelete: Cascade)
 
-  checkinDate   String // "YYYY-MM-DD" — one per patient per day
+  checkinDate   String // "YYYY-MM-DD"
+  /// Manhã, tarde ou noite (087, 26/09/2026). O Bruno: *"pode piorar de manhã
+  /// à noite"* — e a dor de manhã e a da noite são dois fatos, não um que
+  /// sobrescreve o outro. Quem já registrava antes disto tem `"day"`, que é o
+  /// honesto: aquele registro descreve o dia, sem dizer a hora.
+  period        String @default("day")
   painLevel     Int // 0-10 (0=no pain, 10=severe)
   moodLevel     Int // 1-5 (1=terrible, 5=excellent)
   exercisesDone Boolean @default(false)
@@ -4670,7 +4675,7 @@ model DailyCheckIn {
 
   createdAt DateTime @default(now())
 
-  @@unique([patientId, checkinDate])
+  @@unique([patientId, checkinDate, period])
   @@index([patientId])
   @@index([clinicId])
   @@index([checkinDate])

@@ -25,14 +25,19 @@ export async function GET() {
     const userId = effectiveUser.userId;
     const today = todayStr();
 
-    const [todayCheckIn, history, progress] = await Promise.all([
-      (prisma as any).dailyCheckIn.findUnique({
-        where: { patientId_checkinDate: { patientId: userId, checkinDate: today } },
+    const [todayCheckIns, history, progress] = await Promise.all([
+      // `findMany`, não `findUnique`: um dia pode ter manhã, tarde e noite
+      // desde a 087, e `findUnique` devolveria um dos três sem dizer qual.
+      (prisma as any).dailyCheckIn.findMany({
+        where: { patientId: userId, checkinDate: today },
+        orderBy: { createdAt: "asc" },
       }),
       (prisma as any).dailyCheckIn.findMany({
         where: { patientId: userId },
-        orderBy: { checkinDate: "desc" },
-        take: 7,
+        orderBy: [{ checkinDate: "desc" }, { createdAt: "asc" }],
+        // Catorze dias, que é até onde o registro retroativo vai — e agora
+        // cabem até quatro por dia.
+        take: 60,
       }),
       (prisma as any).patientProgress.findUnique({
         where: { patientId: userId },
@@ -40,7 +45,15 @@ export async function GET() {
       }),
     ]);
 
-    return NextResponse.json({ today: todayCheckIn, history, todayDate: today, progress });
+    return NextResponse.json({
+      // `today` continua sendo um só, para não quebrar quem já lê este campo:
+      // é o registro do dia inteiro se existir, senão o primeiro do dia.
+      today: todayCheckIns.find((c: any) => c.period === "day") ?? todayCheckIns[0] ?? null,
+      todayAll: todayCheckIns,
+      history,
+      todayDate: today,
+      progress,
+    });
   } catch (err: any) {
     console.error("[daily-checkin GET]", err);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
@@ -73,6 +86,58 @@ export async function POST(req: NextRequest) {
 
     const today = todayStr();
 
+    /**
+     * O dia que o registro descreve.
+     *
+     * Era sempre hoje, cravado. O Bruno: *"o paciente pode querer virar todo
+     * dia... então ele colocar uma data e enviar."* Quem esqueceu ontem não
+     * tinha como registrar ontem, e a dor de ontem não deixa de ter existido.
+     *
+     * Duas bordas, e as duas são sobre o registro ser verdade:
+     *
+     * - **nunca o futuro** — ninguém relata a dor que ainda não sentiu;
+     * - **no máximo catorze dias atrás** — além disso não é lembrança, é
+     *   reconstrução, e um gráfico feito de reconstrução engana quem o lê.
+     */
+    const pedida = typeof body.checkinDate === "string" ? body.checkinDate.trim() : "";
+    let checkinDate = today;
+    if (pedida) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pedida)) {
+        return NextResponse.json({ error: "checkinDate must be YYYY-MM-DD" }, { status: 400 });
+      }
+      const limite = new Date(`${today}T12:00:00.000Z`);
+      limite.setUTCDate(limite.getUTCDate() - 14);
+      const maisAntiga = limite.toISOString().slice(0, 10);
+      if (pedida > today) {
+        return NextResponse.json({ error: "You cannot check in for a future date" }, { status: 400 });
+      }
+      if (pedida < maisAntiga) {
+        return NextResponse.json({ error: "You can only go back 14 days", earliest: maisAntiga }, { status: 400 });
+      }
+      checkinDate = pedida;
+    }
+
+    /**
+     * Manhã, tarde ou noite.
+     *
+     * O Bruno: *"pode piorar de manhã à noite."* A dor da manhã e a da noite
+     * são **dois fatos**, e até aqui o segundo sobrescrevia o primeiro — a
+     * chave única era só paciente + dia.
+     *
+     * `day` é o valor de quem não escolhe, e é o que os registros anteriores
+     * a isto têm: eles descrevem o dia, sem dizer a hora. Fingir que eram de
+     * manhã seria inventar dado clínico.
+     */
+    const PERIODOS = ["day", "morning", "afternoon", "evening"] as const;
+    const periodoPedido = typeof body.period === "string" ? body.period.trim() : "";
+    if (periodoPedido && !PERIODOS.includes(periodoPedido as any)) {
+      return NextResponse.json(
+        { error: "period must be one of: " + PERIODOS.join(", ") },
+        { status: 400 }
+      );
+    }
+    const period = periodoPedido || "day";
+
     const bioFields = {
       energyLevel:  energyLevel  != null ? Math.min(10, Math.max(1, energyLevel))  : null,
       sleepQuality: sleepQuality != null ? Math.min(10, Math.max(1, sleepQuality)) : null,
@@ -81,11 +146,12 @@ export async function POST(req: NextRequest) {
     };
 
     const checkIn = await (prisma as any).dailyCheckIn.upsert({
-      where: { patientId_checkinDate: { patientId: userId, checkinDate: today } },
+      where: { patientId_checkinDate_period: { patientId: userId, checkinDate, period } },
       create: {
         patientId: userId,
         clinicId,
-        checkinDate: today,
+        checkinDate,
+        period,
         painLevel: Math.min(10, Math.max(0, painLevel)),
         moodLevel: Math.min(5, Math.max(1, moodLevel)),
         exercisesDone: exercisesDone ?? false,
@@ -116,7 +182,12 @@ export async function POST(req: NextRequest) {
         : null;
       const alreadyActive = lastActive === today;
 
-      if (!alreadyActive) {
+      // XP e sequência só valem para **hoje**. Registrar ontem é corrigir o
+      // histórico, e corrigir o histórico não pode virar moeda: quem voltasse
+      // catorze dias ganharia catorze sequências de uma vez.
+      // Uma vez por dia, não uma por período: três registros num dia são três
+      // olhares sobre o mesmo dia, não três dias de constância.
+      if (!alreadyActive && checkinDate === today) {
         const xpData: any = { xp: { increment: 15 }, totalXpEarned: { increment: 15 }, bprCredits: { increment: 1 }, lastActiveDate: new Date() };
 
         if (exercisesDone) {

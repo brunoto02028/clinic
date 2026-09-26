@@ -321,7 +321,7 @@ function ScreeningScreen() {
         {step === 4 && (
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Previous treatment", pt: "Tratamento anterior" })}</Text>
-            <ChipSelect options={[{ value: "yes", label: tr(lang, { en: "Yes, I had therapy", pt: "Sim, fiz fisioterapia" }) }, { value: "no", label: tr(lang, { en: "No", pt: "Não" }) }]} selected={form.previousPhysio ? "yes" : form.previousPhysio === false ? "no" : null} onSelect={v => set("previousPhysio", v === "yes")} />
+            <ChipSelect options={[{ value: "yes", label: tr(lang, { en: "Yes, I had therapy", pt: "Sim, fiz terapia" }) }, { value: "no", label: tr(lang, { en: "No", pt: "Não" }) }]} selected={form.previousPhysio ? "yes" : form.previousPhysio === false ? "no" : null} onSelect={v => set("previousPhysio", v === "yes")} />
             {form.previousPhysio && <Input label={tr(lang, { en: "Details", pt: "Detalhes" })} value={form.previousPhysioDetails ?? ""} onChangeText={v => set("previousPhysioDetails", v)} placeholder={tr(lang, { en: "When, where, outcome...", pt: "Quando, onde, resultado..." })} multiline style={{ minHeight: 60, textAlignVertical: "top" }} />}
           </Card>
         )}

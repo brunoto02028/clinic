@@ -8,7 +8,7 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
-import { fetchCheckIns, submitCheckIn } from "@/api/daily-checkin";
+import { fetchCheckIns, submitCheckIn, type PeriodoDoDia } from "@/api/daily-checkin";
 
 const MOODS = [
   { v: 1, emoji: "😞" },
@@ -44,7 +44,51 @@ function SliderRow({ label, value, onChange, color }: { label: string; value: nu
   );
 }
 
-function HistoryDots({ history }: { history: Array<{ checkinDate: string; exercisesDone: boolean }> }) {
+/**
+ * Hoje em `YYYY-MM-DD`, pelas partes locais.
+ *
+ * Nunca `toISOString()`: perto da meia-noite ele devolve o dia de ontem em
+ * fuso a oeste e o de amanhã a leste — e o dia mostrado tem de ser o dia
+ * gravado.
+ */
+function textoDeHoje(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** A ordem em que os períodos aparecem, e a que a tela usa como índice. */
+const PERIODOS: PeriodoDoDia[] = ["morning", "afternoon", "evening"];
+
+const NOME_DO_PERIODO: Record<PeriodoDoDia, { en: string; pt: string }> = {
+  morning: { en: "Morning", pt: "Manhã" },
+  afternoon: { en: "Afternoon", pt: "Tarde" },
+  evening: { en: "Evening", pt: "Noite" },
+  day: { en: "All day", pt: "Dia todo" },
+};
+
+/** O período em que estamos agora — o padrão que o relógio já sabe. */
+function periodoDeAgora(d: Date = new Date()): PeriodoDoDia {
+  const h = d.getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+/**
+ * Os últimos sete dias, agora **tocáveis**.
+ *
+ * Eram um histórico de leitura: mostravam que faltou ontem e não davam como
+ * preencher. Pedido do Bruno em 26/09/2026 — *"ele colocar uma data e
+ * enviar"* —, e o lugar já existia: quem olha para o buraco quer tapá-lo.
+ */
+function HistoryDots({
+  history,
+  selecionado,
+  onEscolher,
+}: {
+  history: Array<{ checkinDate: string; exercisesDone: boolean }>;
+  selecionado?: string;
+  onEscolher?: (d: string) => void;
+}) {
   const t = useTheme();
   const lang = useLang();
   const last7 = [];
@@ -54,7 +98,7 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
     // Local parts, not UTC: the weekday label comes from `getDay()` in the
     // phone's timezone, so a UTC date string would mark the wrong dot near
     // midnight — the day shown and the day matched must be the same day.
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const dateStr = textoDeHoje(d);
     const entry = history.find(h => h.checkinDate === dateStr);
     last7.push({ date: dateStr, day: DAY_LABELS[lang][d.getDay()], entry });
   }
@@ -62,22 +106,40 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
   return (
     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
       {last7.map(d => (
-        <View key={d.date} style={{ alignItems: "center", gap: 4 }}>
+        <Pressable
+          key={d.date}
+          onPress={() => onEscolher?.(d.date)}
+          disabled={!onEscolher}
+          accessibilityRole={onEscolher ? "button" : undefined}
+          accessibilityState={{ selected: d.date === selecionado }}
+          testID={`checkin-dia-${d.date}`}
+          style={{ alignItems: "center", gap: 4 }}
+        >
           <View style={{
             width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
             backgroundColor: d.entry
               ? d.entry.exercisesDone ? t.colors.okSoft : t.colors.warnSoft
               : t.colors.surfaceMuted,
-            borderWidth: 1.5,
-            borderColor: d.entry
-              ? d.entry.exercisesDone ? t.colors.ok : t.colors.warn
-              : t.colors.borderSubtle,
+            // O dia escolhido é o único com anel grosso: sem isso, trocar de
+            // dia não dá resposta nenhuma e a pessoa não sabe o que vai gravar.
+            borderWidth: d.date === selecionado ? 2.5 : 1.5,
+            borderColor: d.date === selecionado
+              ? t.colors.health
+              : d.entry
+                ? d.entry.exercisesDone ? t.colors.ok : t.colors.warn
+                : t.colors.borderSubtle,
           }}>
             {d.entry && d.entry.exercisesDone && <Ionicons name="checkmark" size={16} color={t.colors.ok} />}
             {d.entry && !d.entry.exercisesDone && <Ionicons name="remove" size={14} color={t.colors.warn} />}
           </View>
-          <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{d.day}</Text>
-        </View>
+          <Text
+            variant="caption"
+            color={d.date === selecionado ? t.colors.health : t.colors.textMuted}
+            style={{ fontSize: 10, fontWeight: d.date === selecionado ? "700" : "400" }}
+          >
+            {d.day}
+          </Text>
+        </Pressable>
       ))}
     </View>
   );
@@ -102,18 +164,42 @@ function DailyCheckInScreen() {
   const [stress, setStress] = useState(5);
   const [exercises, setExercises] = useState(false);
   const [notes, setNotes] = useState("");
+  /**
+   * O dia que este registro descreve.
+   *
+   * O Bruno: *"o paciente pode querer virar todo dia. Pode piorar de manhã à
+   * noite, então ele colocar uma data e enviar."* Quem esqueceu ontem não
+   * tinha como registrar ontem — e a dor de ontem não deixou de existir.
+   */
+  const [dia, setDia] = useState<string>(() => textoDeHoje());
+  /**
+   * Manhã, tarde ou noite — e o padrão é a hora que é agora.
+   *
+   * Quem abre às nove da manhã quer registrar a manhã, e pedir isso de novo
+   * seria pedir o que o relógio já sabe.
+   */
+  const [periodo, setPeriodo] = useState<PeriodoDoDia>(() => periodoDeAgora());
 
+  // Trocar de dia carrega o que já foi registrado nele, ou volta ao padrão.
+  // Sem isto, escolher ontem manteria os números de hoje na tela e a pessoa
+  // gravaria a dor de hoje com a data de ontem.
   useEffect(() => {
-    if (!data?.today) return;
-    const ci = data.today;
-    setPain(ci.painLevel ?? 3);
-    setMood(ci.moodLevel ?? 3);
-    setEnergy(ci.energyLevel ?? 5);
-    setSleep(ci.sleepQuality ?? 5);
-    setStress(ci.stressLevel ?? 5);
-    setExercises(ci.exercisesDone ?? false);
-    setNotes(ci.notes ?? "");
-  }, [data?.today]);
+    // Dia **e** período: com três registros possíveis por dia, achar só pela
+    // data traria o da manhã para quem está preenchendo a noite.
+    const todos = dia === data?.todayDate ? (data?.todayAll ?? []) : (data?.history ?? []);
+    const ci =
+      todos.find((h) => h.checkinDate === dia && h.period === periodo) ??
+      // Um registro anterior a esta mudança descreve o dia inteiro: ele é o
+      // ponto de partida honesto quando não há um do período.
+      todos.find((h) => h.checkinDate === dia && h.period === "day");
+    setPain(ci?.painLevel ?? 3);
+    setMood(ci?.moodLevel ?? 3);
+    setEnergy(ci?.energyLevel ?? 5);
+    setSleep(ci?.sleepQuality ?? 5);
+    setStress(ci?.stressLevel ?? 5);
+    setExercises(ci?.exercisesDone ?? false);
+    setNotes(ci?.notes ?? "");
+  }, [dia, periodo, data?.todayAll, data?.history, data?.todayDate]);
 
   const mutation = useMutation({
     mutationFn: submitCheckIn,
@@ -132,6 +218,8 @@ function DailyCheckInScreen() {
 
   const handleSave = () => {
     mutation.mutate({
+      checkinDate: dia,
+      period: periodo,
       painLevel: pain, moodLevel: mood, energyLevel: energy,
       sleepQuality: sleep, stressLevel: stress, exercisesDone: exercises,
       notes: notes || undefined,
@@ -229,7 +317,48 @@ function DailyCheckInScreen() {
           {data?.history && data.history.length > 0 && (
             <Card>
               <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Last 7 days", pt: "Últimos 7 dias" })}</Text>
-              <HistoryDots history={data.history} />
+              <HistoryDots history={data.history} selecionado={dia} onEscolher={setDia} />
+              {/* A dor da manhã e a da noite são dois fatos. Até aqui o
+                  segundo sobrescrevia o primeiro, porque só cabia um por dia. */}
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                {PERIODOS.map((p) => {
+                  const ativo = periodo === p;
+                  const temRegistro = (dia === data.todayDate ? (data.todayAll ?? []) : data.history)
+                    .some((h) => h.checkinDate === dia && h.period === p);
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => setPeriodo(p)}
+                      testID={`checkin-periodo-${p}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: ativo }}
+                      style={{
+                        flex: 1,
+                        alignItems: "center",
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: ativo ? 2 : 1,
+                        borderColor: ativo ? t.colors.health : t.colors.border,
+                        backgroundColor: ativo ? t.colors.healthSoft : t.colors.surface,
+                      }}
+                    >
+                      <Text
+                        variant="caption"
+                        color={ativo ? t.colors.health : t.colors.textSecondary}
+                        style={{ fontWeight: ativo ? "700" : "400" }}
+                      >
+                        {tr(lang, NOME_DO_PERIODO[p])}
+                      </Text>
+                      {/* Um ponto onde já existe registro: é o que diz "este
+                          você já preencheu" sem precisar tocar para descobrir. */}
+                      <View style={{
+                        width: 4, height: 4, borderRadius: 2, marginTop: 3,
+                        backgroundColor: temRegistro ? t.colors.ok : "transparent",
+                      }} />
+                    </Pressable>
+                  );
+                })}
+              </View>
               <View style={{ flexDirection: "row", gap: 16, marginTop: 12, justifyContent: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.ok }} />
