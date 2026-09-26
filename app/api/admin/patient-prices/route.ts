@@ -82,7 +82,10 @@ export async function PUT(request: NextRequest) {
   const guard = await staff(request);
   if ("response" in guard) return guard.response;
   const { clinicId, userId, role } = guard.actor;
-  if (role !== "SUPERADMIN" && role !== "ADMIN") {
+  // Só o dono da plataforma precifica, e é a decisão do Bruno (26/09/2026): a
+  // tela que abre esta janela já é superadmin-only, e uma rota que prometia
+  // ADMIN dizia uma coisa enquanto a tela fazia outra (QA da 082, F1).
+  if (role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Only the clinic owner sets prices", errorPt: "Só o dono da clínica define preços" }, { status: 403 });
   }
 
@@ -134,7 +137,7 @@ export async function DELETE(request: NextRequest) {
   const guard = await staff(request);
   if ("response" in guard) return guard.response;
   const { clinicId, userId, role } = guard.actor;
-  if (role !== "SUPERADMIN" && role !== "ADMIN") {
+  if (role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Only the clinic owner sets prices" }, { status: 403 });
   }
 

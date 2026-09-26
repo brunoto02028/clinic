@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendOrderConfirmationEmail } from "@/lib/order-emails";
+import { confirmarPorSessao, descartarPorSessao } from "@/lib/coupon-redemption";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,19 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+
+        /**
+         * O cupom só conta quando o dinheiro entra (084, T-4).
+         *
+         * Até aqui o resgate é uma **reserva**: ocupa a vaga por uma hora para
+         * que dois pacientes não usem o mesmo cupom de uso único ao mesmo
+         * tempo, mas não é um uso. Confirmar é o que o torna permanente.
+         *
+         * Achado pela sessão, que a nossa rota gravou ao criá-la. `updateMany`
+         * com `confirmedAt: null` torna o reenvio inofensivo — a Stripe reenvia
+         * webhook, e a segunda vez não acha nada para mudar.
+         */
+        await confirmarPorSessao(session.id);
         const packageId = session.metadata?.packageId;
         const isMembership = session.metadata?.type === "membership_subscription";
         const appointmentId = session.metadata?.appointmentId;
@@ -249,6 +263,18 @@ export async function POST(req: NextRequest) {
             })().catch(err => console.error('[stripe-webhook] admin package alert error:', err));
           }
         }
+        break;
+      }
+
+      /**
+       * A sessão expirou sem pagamento: a vaga volta à campanha antes de a
+       * janela de uma hora passar. Só descarta reserva **não** confirmada — um
+       * pagamento que entrou e um evento de expiração que chega depois não
+       * podem apagar o resgate cobrado.
+       */
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await descartarPorSessao(session.id);
         break;
       }
 

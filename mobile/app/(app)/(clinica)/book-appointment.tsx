@@ -10,6 +10,9 @@ import { PlanGate } from "@/components/PlanGate";
 import { useAuth } from "@/store/auth";
 import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 import { openCheckout } from "@/lib/checkout";
+import { ApiError } from "@/api/client";
+import { CouponField, PrecoComCupom } from "@/components/CouponField";
+import type { CouponPreviewOk } from "@/api/coupons";
 
 function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
   const dates = [];
@@ -81,6 +84,10 @@ function BookAppointmentScreen() {
   const detalhados = availability.data?.detailedSlots ?? [];
   const vagasDe = (hora: string) => detalhados.find((s) => s.time === hora)?.spacesLeft ?? null;
 
+  // O cupom aplicado nesta tela (084). `null` é o caso normal: quem não
+  // digita nada paga o preço da 082.
+  const [cupom, setCupom] = useState<CouponPreviewOk | null>(null);
+
   const mutation = useMutation({
     mutationFn: () => {
       if (!type || !selectedDate || !selectedTime) throw new Error(tr(lang, { en: "Please fill in every field.", pt: "Preencha todos os campos." }));
@@ -104,13 +111,40 @@ function BookAppointmentScreen() {
       // o dinheiro entra. Se a pessoa fechar a folha, o horário não fica preso.
       if (porta?.requiresPayment && res?.appointment?.id) {
         try {
-          const url = await startAppointmentCheckout(res.appointment.id);
+          // O **código**, não o valor: o servidor recalcula antes de cobrar.
+          const url = await startAppointmentCheckout(res.appointment.id, cupom?.code ?? null);
           if (url) {
             await openCheckout(url);
             router.replace("/(app)/(clinica)/(tabs)/appointments");
             return;
           }
-        } catch {
+        } catch (e) {
+          /**
+           * A recusa do cupom tem de chegar **inteira** à pessoa.
+           *
+           * Este `catch` engolia tudo e dizia "marcado, ainda não pago — abra
+           * Consultas para pagar", numa tela que não tem botão de pagar. Quem
+           * digitou um código expirado ficava com uma consulta pendente e nenhuma
+           * pista do motivo (achado do review das correções, 26/09/2026).
+           *
+           * Agora o motivo do servidor aparece, no idioma do aparelho, e a frase
+           * diz o que fazer: tirar o código e marcar de novo.
+           */
+          const cupomRecusado =
+            e instanceof ApiError && (e.code === "coupon_rejected" || e.code === "amount_too_small");
+          if (cupomRecusado) {
+            Alert.alert(
+              tr(lang, { en: "That code did not apply", pt: "Esse código não valeu" }),
+              `${(e as ApiError).localizada(lang)}
+
+${tr(lang, {
+                en: "Your slot is held. Remove the code and confirm again to pay the normal price.",
+                pt: "Seu horário está reservado. Remova o código e confirme de novo para pagar o preço normal.",
+              })}`
+            );
+            router.replace("/(app)/(clinica)/(tabs)/appointments");
+            return;
+          }
           Alert.alert(
             tr(lang, { en: "Booked, not paid yet", pt: "Marcado, ainda não pago" }),
             tr(lang, {
@@ -224,13 +258,26 @@ function BookAppointmentScreen() {
                 ? tr(lang, { en: "First consultation", pt: "Primeira consulta" })
                 : tr(lang, { en: "Extra session", pt: "Sessão extra" })}
             </Text>
-            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
-              {porta.currency} {porta.price.toFixed(2)}
-              {" · "}
-              {porta.requiresPayment
-                ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
-                : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })}
-            </Text>
+            <View style={{ marginTop: 4, gap: 10 }}>
+              <PrecoComCupom
+                currency={porta.currency}
+                original={porta.price}
+                cupom={cupom}
+                suffix={
+                  porta.requiresPayment
+                    ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
+                    : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })
+                }
+              />
+              {/* Só onde há o que descontar: numa sessão do pacote não há nada
+                  a pagar, e oferecer cupom ali seria oferecer desconto no nada. */}
+              {porta.price > 0 && (
+                <CouponField
+                  scope={porta.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT_SESSION"}
+                  onChange={setCupom}
+                />
+              )}
+            </View>
           </Card>
         ) : null}
 

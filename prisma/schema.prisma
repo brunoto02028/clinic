@@ -557,6 +557,7 @@ model Clinic {
   exerciseSubmissions    ExerciseSubmission[]
   labOrders              LabOrder[]
   patientServicePrices   PatientServicePrice[]
+  coupons                Coupon[]
 
   @@index([slug])
   @@index([isActive])
@@ -731,6 +732,8 @@ model User {
 
   outcomeMeasures        PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
   servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
+  couponsTargeted        Coupon[]                @relation("CouponTarget")
+  couponRedemptions      CouponRedemption[]      @relation("CouponRedemptions")
 
   // Profile Image
   profileImageUrl  String?
@@ -4756,6 +4759,120 @@ model PatientServicePrice {
   @@unique([patientId, serviceType])
   @@index([clinicId])
   @@index([patientId])
+}
+
+/// O cupom de desconto (084) — um código com prazo e limite.
+///
+/// Diferente da exceção de preço da 082: aquela é a clínica decidindo o que uma
+/// pessoa paga, e vale enquanto existir. Este é uma campanha — tem janela, tem
+/// limite, e a pessoa participa dela digitando algo.
+///
+/// **Exame de laboratório não é um alcance possível**, e é decisão do Bruno
+/// (26/09/2026). A razão de fundo confirma: em 081 nós revendemos, então um
+/// desconto no exame sai da nossa margem e não do custo da LML. Não existir no
+/// enum é garantia mais forte que qualquer validação — nem um cupom mal
+/// configurado alcança um exame.
+enum CouponScope {
+  CONSULTATION
+  TREATMENT_SESSION
+  /// Pacote de sessões (`/api/patient/packages/checkout`).
+  PACKAGE
+  /// Plano de tratamento (`/api/patient/treatment-plans/checkout`) — compra
+  /// distinta do pacote, e as duas são "plano de pacote de tratamento".
+  TREATMENT_PLAN
+  /// Adesão a uma assinatura da clínica. Vale na adesão, não numa mensalidade
+  /// que já corre: mexer nisso é mexer na `Subscription` do Stripe.
+  MEMBERSHIP
+}
+
+model Coupon {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// Gravado em maiúsculas. A comparação normaliza a entrada, então `verao10` e
+  /// `VERAO10` são o mesmo cupom — o paciente digita como quiser.
+  code        String
+  /// O nome da campanha, que o paciente vê quando o cupom pega. Um desconto sem
+  /// nome parece erro de cálculo.
+  description String?
+
+  /// Um dos dois, nunca os dois somados. "Exatamente um destes" não é algo que
+  /// o banco saiba dizer, então quem garante é `lib/coupon.ts` e a rota.
+  discountPercent Float?
+  discountAmount  Float?
+  currency        String @default("GBP")
+
+  /// Onde vale. Lista vazia não vale para nada, e a tela não deixa salvar assim.
+  appliesTo CouponScope[]
+
+  /// Mirado numa pessoa, ou aberto a qualquer paciente da clínica — a mesma
+  /// pergunta da 082: para quem isto vale?
+  patientId String?
+  patient   User?   @relation("CouponTarget", fields: [patientId], references: [id], onDelete: Cascade)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+  /// `null` = sem limite total.
+  maxRedemptions Int?
+  maxPerPatient  Int  @default(1)
+
+  isActive Boolean @default(true)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions CouponRedemption[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+/// Um resgate, guardado mesmo depois de o cupom ser desativado: o histórico de
+/// uma cobrança não se apaga. É por isso que apagar um cupom que já foi usado
+/// desativa em vez de remover.
+model CouponRedemption {
+  id       String @id @default(cuid())
+  couponId String
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("CouponRedemptions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  scope          CouponScope
+  /**
+   * **Qual compra** este resgate desconta: o id da consulta, do pacote, do
+   * plano ou da assinatura.
+   *
+   * Sem isto, o reaproveitamento da reserva não distinguia *dois toques na
+   * mesma compra* de *duas compras diferentes do mesmo tipo*: com um cupom de
+   * um uso por paciente, a pessoa abria duas consultas, ganhava duas sessões
+   * descontadas e o banco registrava **um** resgate (R-1 do reteste,
+   * 26/09/2026). Agora a chave do reaproveitamento é
+   * (cupom, paciente, escopo, compra).
+   *
+   * Opcional porque resgates gravados antes desta coluna não têm o dado — e
+   * porque um caminho futuro pode descontar algo sem id próprio.
+   */
+  targetId       String?
+  originalAmount Float
+  discountAmount Float
+  finalAmount    Float
+
+  /// A sessão do Stripe que este resgate pagou, e o instante em que o webhook
+  /// confirmou. Resgate sem confirmação **não** conta para o limite: senão um
+  /// checkout abandonado consumiria a campanha de graça.
+  stripeSessionId String?
+  confirmedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([couponId, patientId])
+  @@index([couponId, patientId, scope, targetId])
+  @@index([patientId])
+  @@index([stripeSessionId])
 }
 
 model ServicePrice {

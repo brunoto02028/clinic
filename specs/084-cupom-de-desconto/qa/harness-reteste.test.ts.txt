@@ -1,0 +1,552 @@
+/**
+ * @jest-environment node
+ *
+ * Harness do RETESTE — 084, depois das correcoes (26/09/2026).
+ *
+ * Executa as ROTAS REAIS contra o Postgres local. Duas trocas, e so duas:
+ *   - a Stripe vira um gravador (nada sai para a rede);
+ *   - a autenticacao devolve o paciente de teste.
+ * Todo o resto e o codigo de producao: reservarCupom, resolveCoupon, o Prisma.
+ *
+ * Medido contra:
+ *   lib/coupon.ts            f5a9a045aab68f0febcdecb8022cd805
+ *   lib/coupon-redemption.ts 7e638d816fa3b49a7fdfee7304e9e54d
+ */
+
+const dados = require("./dados.json");
+
+const A = dados.patientA;
+const B = dados.patientB;
+
+// ── A Stripe, gravada ───────────────────────────────────────────────────────
+const sessoes: any[] = [];
+const cuponsStripe: any[] = [];
+let cupomExiste = false;
+
+(globalThis as any).__qa = {
+  checkout: {
+    sessions: {
+      create: async (params: any) => {
+        sessoes.push(params);
+        return { id: `cs_rt_${sessoes.length}`, url: "https://checkout.stripe.test/rt" };
+      },
+    },
+  },
+  coupons: {
+    retrieve: async (id: string) => {
+      if (cupomExiste) return { id };
+      throw new Error("No such coupon: " + id);
+    },
+    create: async (params: any) => {
+      cuponsStripe.push(params);
+      return params;
+    },
+  },
+};
+
+jest.mock("stripe", () => ({
+  __esModule: true,
+  default: function () {
+    return (globalThis as any).__qa;
+  },
+}));
+jest.mock("@/lib/stripe", () => ({
+  get stripe() {
+    return (globalThis as any).__qa;
+  },
+}));
+
+// ── Autenticacao: o paciente de teste, nunca um paciente real ───────────────
+let atual = A;
+jest.mock("@/lib/patient-gate", () => ({
+  patientGate: async () => ({
+    gate: { userId: atual, clinicId: dados.clinicId, isImpersonating: false, role: "PATIENT", patient: {} },
+  }),
+}));
+jest.mock("@/lib/get-effective-user", () => ({
+  getEffectiveUser: async () => ({ userId: atual, role: "PATIENT", isImpersonating: false }),
+}));
+jest.mock("next-auth", () => ({
+  getServerSession: async () => ({
+    user: { id: atual, email: "qa084.patient@example.com", role: "PATIENT", clinicId: dados.clinicId },
+  }),
+}));
+
+process.env.STRIPE_SECRET_KEY = "sk_test_qa084_reteste_nunca_vai_a_rede";
+
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
+import { confirmarPorSessao, descartarPorSessao, JANELA_RESERVA_MS } from "@/lib/coupon-redemption";
+
+const POST_previa = require("@/app/api/patient/coupons/preview/route").POST;
+const POST_consulta = require("@/app/api/patient/appointments/[id]/checkout/route").POST;
+const POST_pacote = require("@/app/api/patient/packages/checkout/route").POST;
+const POST_plano = require("@/app/api/patient/treatment-plans/checkout/route").POST;
+const POST_assinatura = require("@/app/api/patient/membership/subscribe/route").POST;
+
+const req = (url: string, body: any) =>
+  new NextRequest(url, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json", "x-platform": "mobile" },
+  });
+
+const consulta = async (id: string, body: any) => {
+  const r = await POST_consulta(req(`http://localhost:4100/api/patient/appointments/${id}/checkout`, body), {
+    params: { id },
+  });
+  return { status: r.status, body: await r.json() };
+};
+const plano = async (body: any) => {
+  const r = await POST_plano(req("http://localhost:4100/api/patient/treatment-plans/checkout", body));
+  return { status: r.status, body: await r.json() };
+};
+const pacote = async (body: any) => {
+  const r = await POST_pacote(req("http://localhost:4100/api/patient/packages/checkout", body));
+  return { status: r.status, body: await r.json() };
+};
+const assinatura = async (body: any) => {
+  const r = await POST_assinatura(req("http://localhost:4100/api/patient/membership/subscribe", body));
+  return { status: r.status, body: await r.json() };
+};
+const previa = async (body: any) => {
+  const r = await POST_previa(req("http://localhost:4100/api/patient/coupons/preview", body));
+  return { status: r.status, body: await r.json() };
+};
+
+const unitAmount = (s: any) => s?.line_items?.[0]?.price_data?.unit_amount ?? null;
+
+/** So o que pertence a clinica de teste: o Postgres local e compartilhado entre worktrees. */
+const resgates = (code?: string) =>
+  prisma.couponRedemption.findMany({
+    where: { coupon: { clinicId: dados.clinicId, ...(code ? { code } : {}) } },
+    select: {
+      id: true,
+      patientId: true,
+      scope: true,
+      originalAmount: true,
+      discountAmount: true,
+      finalAmount: true,
+      stripeSessionId: true,
+      confirmedAt: true,
+      createdAt: true,
+      coupon: { select: { code: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+const resumo = (rs: any[]) =>
+  rs.map((r) => ({
+    code: r.coupon.code,
+    quem: r.patientId === A ? "A" : r.patientId === B ? "B" : r.patientId,
+    escopo: r.scope,
+    orig: r.originalAmount,
+    desc: r.discountAmount,
+    final: r.finalAmount,
+    sessao: r.stripeSessionId,
+    confirmado: r.confirmedAt ? "sim" : "nao",
+  }));
+const limpar = () => prisma.couponRedemption.deleteMany({ where: { coupon: { clinicId: dados.clinicId } } });
+
+const statusConsulta = async (id: string) => {
+  const a = await prisma.appointment.findUnique({ where: { id }, select: { status: true, price: true } });
+  return a;
+};
+const voltarParaPendente = (id: string) =>
+  prisma.appointment.update({ where: { id }, data: { status: "PENDING" } });
+
+const log = (titulo: string, o: any) => console.log(`\n### ${titulo}\n${JSON.stringify(o, null, 1)}`);
+
+beforeEach(async () => {
+  await limpar();
+  sessoes.length = 0;
+  cuponsStripe.length = 0;
+  cupomExiste = false;
+  atual = A;
+});
+
+afterAll(async () => {
+  await limpar();
+  // Todas as consultas de teste voltam a PENDING para o QA poder ser repetido.
+  for (const id of dados.consultasA) await voltarParaPendente(id).catch(() => {});
+  await voltarParaPendente(dados.consultaB).catch(() => {});
+  await prisma.$disconnect();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEFEITO 1 — A-1: o 2o pedido do MESMO paciente
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("D1 · A-1 — o segundo pedido de pagamento do mesmo paciente", () => {
+  it("D1a · maxPerPatient:1 — 2o toque funciona e REAPROVEITA a reserva (1 resgate, sem already_used)", async () => {
+    const id = dados.consultasA[0];
+    const t1 = await consulta(id, { couponCode: "QA084-RT-PER1" });
+    const t2 = await consulta(id, { couponCode: "QA084-RT-PER1" });
+    const rs = await resgates("QA084-RT-PER1");
+    log("D1a  dois toques, maxPerPatient:1, maxRedemptions:null", {
+      toque1: { status: t1.status, body: t1.body },
+      toque2: { status: t2.status, body: t2.body },
+      unit_amounts: sessoes.map(unitAmount),
+      sessoes: sessoes.map((_, i) => `cs_rt_${i + 1}`),
+      linhas_de_resgate: resumo(rs),
+      mesma_linha_reaproveitada: rs.length === 1,
+    });
+    expect(t1.status).toBe(200);
+    expect(t2.status).toBe(200);
+    expect(JSON.stringify(t2.body)).not.toContain("already_used");
+    expect(rs).toHaveLength(1);
+    expect(rs[0].stripeSessionId).toBe("cs_rt_2");
+    expect(sessoes.map(unitAmount)).toEqual([8000, 8000]);
+  });
+
+  it("D1a2 · maxPerPatient:1 E maxRedemptions:1 — o 2o toque do mesmo paciente tambem passa", async () => {
+    const id = dados.consultasA[1];
+    const t1 = await consulta(id, { couponCode: "QA084-ONE" });
+    const t2 = await consulta(id, { couponCode: "QA084-ONE" });
+    const rs = await resgates("QA084-ONE");
+    log("D1a2 dois toques no cupom de uso unico (maxRed 1, maxPer 1)", {
+      toque1: { status: t1.status, body: t1.body },
+      toque2: { status: t2.status, body: t2.body },
+      linhas_de_resgate: resumo(rs),
+    });
+    expect(t1.status).toBe(200);
+    expect(t2.status).toBe(200);
+    expect(rs).toHaveLength(1);
+  });
+
+  it("D1b · maxRedemptions:1 — o SEGUNDO paciente e bloqueado pela reserva em andamento do primeiro", async () => {
+    atual = A;
+    const rA = await consulta(dados.consultasA[2], { couponCode: "QA084-ONE" });
+    const reservaDeA = await resgates("QA084-ONE");
+
+    atual = B;
+    const pB = await previa({ code: "QA084-ONE", scope: "CONSULTATION" });
+    const rB = await consulta(dados.consultaB, { couponCode: "QA084-ONE" });
+    const depois = await resgates("QA084-ONE");
+    log("D1b  A reserva (nao confirmado) e B tenta", {
+      A_checkout: { status: rA.status, body: rA.body },
+      reserva_de_A: resumo(reservaDeA),
+      B_previa: { status: pB.status, body: pB.body },
+      B_checkout: { status: rB.status, body: rB.body },
+      resgates_ao_fim: resumo(depois),
+    });
+    expect(rA.status).toBe(200);
+    expect(rB.status).toBe(409);
+    expect(rB.body.reason).toBe("limit_reached");
+    expect(depois).toHaveLength(1);
+    expect(depois[0].patientId).toBe(A);
+  });
+
+  it("D1c · o limite DA PESSOA conta o confirmado: com o resgate pago, o proprio A e recusado", async () => {
+    atual = A;
+    const t1 = await consulta(dados.consultasA[3], { couponCode: "QA084-RT-PER1" });
+    const confirmadas = await confirmarPorSessao("cs_rt_1");
+    const t2 = await consulta(dados.consultasA[4], { couponCode: "QA084-RT-PER1" });
+    const rs = await resgates("QA084-RT-PER1");
+    log("D1c  A paga e tenta de novo", {
+      toque1: { status: t1.status, sessao: "cs_rt_1" },
+      confirmarPorSessao: confirmadas,
+      toque2_depois_de_pago: { status: t2.status, body: t2.body },
+      resgates: resumo(rs),
+    });
+    expect(confirmadas).toBe(1);
+    expect(t2.status).toBe(409);
+    expect(t2.body.reason).toBe("already_used");
+    expect(rs).toHaveLength(1);
+  });
+
+  it("D1d · N-1 (a): o mesmo paciente NAO consegue o mesmo cupom de uso unico em dois escopos", async () => {
+    // QA084-RT-DOIS: maxRedemptions 1, maxPerPatient 1, vale em CONSULTATION e MEMBERSHIP.
+    atual = A;
+    const c1 = await consulta(dados.consultasA[5], { couponCode: "QA084-RT-DOIS" });
+    const a1 = await assinatura({ planId: dados.planoAssinatura, couponCode: "QA084-RT-DOIS" });
+    const rs = await resgates("QA084-RT-DOIS");
+    log("D1d  consulta e assinatura com o mesmo cupom de uso unico", {
+      consulta: { status: c1.status, body: c1.body },
+      assinatura: { status: a1.status, body: a1.body },
+      resgates: resumo(rs),
+      sessoes_criadas: sessoes.length,
+    });
+    expect(c1.status).toBe(200);
+    expect(a1.status).toBe(409);
+    expect(rs).toHaveLength(1);
+  });
+
+  it("D1e · N-1 (b): a janela da reserva e de 24h — igual a vida da sessao do Stripe", async () => {
+    const horas = JANELA_RESERVA_MS / 3600000;
+    atual = A;
+    const t1 = await consulta(dados.consultasA[6], { couponCode: "QA084-ONE" });
+    const r1 = await resgates("QA084-ONE");
+
+    // Reserva envelhecida 23h: ainda dentro da janela -> outro paciente barrado.
+    await prisma.couponRedemption.update({
+      where: { id: r1[0].id },
+      data: { createdAt: new Date(Date.now() - 23 * 3600000) },
+    });
+    atual = B;
+    const b23 = await consulta(dados.consultaB, { couponCode: "QA084-ONE" });
+
+    // Reserva envelhecida 25h: fora da janela -> a vaga volta (e a sessao do
+    // Stripe ja morreu, porque uma sessao de Checkout vive 24h).
+    await prisma.couponRedemption.update({
+      where: { id: r1[0].id },
+      data: { createdAt: new Date(Date.now() - 25 * 3600000) },
+    });
+    const b25 = await consulta(dados.consultaB, { couponCode: "QA084-ONE" });
+    log("D1e  a janela da reserva", {
+      JANELA_RESERVA_MS: `${JANELA_RESERVA_MS} ms = ${horas}h`,
+      A_reservou: t1.status,
+      B_com_reserva_de_23h: { status: b23.status, body: b23.body },
+      B_com_reserva_de_25h: { status: b25.status, body: b25.body },
+      resgates: resumo(await resgates("QA084-ONE")),
+    });
+    expect(horas).toBe(24);
+    expect(b23.status).toBe(409);
+    expect(b23.body.reason).toBe("limit_reached");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEFEITO 2 — A-2 / F-2: o cupom de 100%
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("D2 · A-2/F-2 — o cupom que zera o preco", () => {
+  it("D2a · consulta: 100% confirma na hora, devolve url:null + covered:true e marca o resgate", async () => {
+    const id = dados.consultasA[0];
+    await voltarParaPendente(id);
+    const antes = await statusConsulta(id);
+    const r = await consulta(id, { couponCode: "QA084-FULL" });
+    const depois = await statusConsulta(id);
+    const rs = await resgates("QA084-FULL");
+    log("D2a  cortesia de 100% numa consulta de 100", {
+      consulta_antes: antes,
+      resposta: { status: r.status, body: r.body },
+      consulta_depois: depois,
+      sessoes_da_stripe_criadas: sessoes.length,
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.url).toBeNull();
+    expect(r.body.covered).toBe(true);
+    expect(antes!.status).toBe("PENDING");
+    expect(depois!.status).toBe("CONFIRMED");
+    expect(sessoes).toHaveLength(0);
+    expect(rs).toHaveLength(1);
+    expect(rs[0].confirmedAt).not.toBeNull();
+    expect(rs[0].finalAmount).toBe(0);
+  });
+
+  it("D2b · duplo toque sequencial no 100% nao confirma duas vezes", async () => {
+    const id = dados.consultasA[1];
+    await voltarParaPendente(id);
+    const t1 = await consulta(id, { couponCode: "QA084-FULL" });
+    const t2 = await consulta(id, { couponCode: "QA084-FULL" });
+    const rs = await resgates("QA084-FULL");
+    const confirmados = rs.filter((r) => r.confirmedAt !== null);
+    log("D2b  dois toques sequenciais na cortesia", {
+      toque1: { status: t1.status, body: t1.body },
+      toque2: { status: t2.status, body: t2.body },
+      consulta: await statusConsulta(id),
+      resgates: resumo(rs),
+      quantos_confirmados: confirmados.length,
+    });
+    expect(t1.status).toBe(200);
+    expect(rs).toHaveLength(1);
+    expect(confirmados).toHaveLength(1);
+  });
+
+  it("D2c · duplo toque SIMULTANEO no 100%: uma confirmacao so", async () => {
+    const id = dados.consultasA[2];
+    await voltarParaPendente(id);
+    const [t1, t2] = await Promise.all([
+      consulta(id, { couponCode: "QA084-FULL" }),
+      consulta(id, { couponCode: "QA084-FULL" }),
+    ]);
+    const rs = await resgates("QA084-FULL");
+    const confirmados = rs.filter((r) => r.confirmedAt !== null);
+    log("D2c  dois toques simultaneos na cortesia", {
+      toque1: { status: t1.status, body: t1.body },
+      toque2: { status: t2.status, body: t2.body },
+      consulta: await statusConsulta(id),
+      resgates: resumo(rs),
+      quantos_confirmados: confirmados.length,
+    });
+    expect(confirmados.length).toBeLessThanOrEqual(1);
+  });
+
+  it("D2d · consulta: valor final de 0,20 e recusado com amount_too_small e a reserva volta", async () => {
+    const id = dados.consultasA[3];
+    await voltarParaPendente(id);
+    const r = await consulta(id, { couponCode: "QA084-RT-CON020" });
+    const rs = await resgates("QA084-RT-CON020");
+    log("D2d  consulta de 100 com cupom fixo de 99,80 (final 0,20)", {
+      resposta: { status: r.status, body: r.body },
+      consulta: await statusConsulta(id),
+      sessoes: sessoes.length,
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe("amount_too_small");
+    expect(rs).toHaveLength(0);
+    expect(sessoes).toHaveLength(0);
+  });
+
+  it("D2e · plano de tratamento: 100% (zero) e recusado e a reserva volta", async () => {
+    const r = await plano({ treatmentPlanId: dados.planoTratamentoA, couponCode: "QA084-RT-ZERO" });
+    const rs = await resgates("QA084-RT-ZERO");
+    log("D2e  plano de tratamento de 200 com 100%", {
+      resposta: { status: r.status, body: r.body },
+      sessoes: sessoes.length,
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe("amount_too_small");
+    expect(rs).toHaveLength(0);
+    expect(sessoes).toHaveLength(0);
+  });
+
+  it("D2f · plano de tratamento: final de 0,20 e recusado e a reserva volta", async () => {
+    const r = await plano({ treatmentPlanId: dados.planoTratamentoA, couponCode: "QA084-RT-PLAN020" });
+    const rs = await resgates("QA084-RT-PLAN020");
+    log("D2f  plano de 200 com cupom fixo de 199,80 (final 0,20)", {
+      resposta: { status: r.status, body: r.body },
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe("amount_too_small");
+    expect(rs).toHaveLength(0);
+  });
+
+  it("D2g · pacote de cobranca unica: 100% (zero) e recusado e a reserva volta", async () => {
+    const r = await pacote({ packageId: dados.pacoteCheioA, couponCode: "QA084-RT-ZERO" });
+    const rs = await resgates("QA084-RT-ZERO");
+    log("D2g  pacote cheio de 400 com 100%", {
+      resposta: { status: r.status, body: r.body },
+      sessoes: sessoes.length,
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe("amount_too_small");
+    expect(rs).toHaveLength(0);
+  });
+
+  it("D2h · pacote de cobranca unica: final de 0,20 e recusado e a reserva volta", async () => {
+    // O pacote cheio custa 500 (pacote 400 + taxa de consulta 100), medido em D2i.
+    const r = await pacote({ packageId: dados.pacoteCheioA, couponCode: "QA084-RT-PKG2" });
+    const rs = await resgates("QA084-RT-PKG2");
+    log("D2h  pacote de 500 com cupom fixo de 499,80 (final 0,20)", {
+      resposta: { status: r.status, body: r.body },
+      resgates: resumo(rs),
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe("amount_too_small");
+    expect(rs).toHaveLength(0);
+  });
+
+  it("D2i · controle: 20% continua cobrando o valor descontado (plano 200->160, pacote 500->400)", async () => {
+    const p = await plano({ treatmentPlanId: dados.planoTratamentoA, couponCode: "QA084-20" });
+    const uaPlano = unitAmount(sessoes[sessoes.length - 1]);
+    const k = await pacote({ packageId: dados.pacoteCheioA, couponCode: "QA084-20" });
+    const uaPacote = unitAmount(sessoes[sessoes.length - 1]);
+    log("D2i  controle com 20%", {
+      plano: { status: p.status, unit_amount: uaPlano },
+      pacote: { status: k.status, unit_amount: uaPacote },
+      resgates: resumo(await resgates("QA084-20")),
+    });
+    expect(p.status).toBe(200);
+    expect(uaPlano).toBe(16000);
+    expect(k.status).toBe(200);
+    expect(uaPacote).toBe(40000);
+  });
+
+  it("D2j · pacote SEMANAL: o minimo nao e checado ali (desconto vai por cupom da Stripe)", async () => {
+    const r = await pacote({ packageId: dados.pacoteSemanalA, couponCode: "QA084-RT-PKG020" });
+    log("D2j  pacote semanal de 100/semana com cupom fixo de 399,80", {
+      resposta: { status: r.status, body: r.body },
+      sessao: sessoes[sessoes.length - 1]
+        ? {
+            mode: sessoes[sessoes.length - 1].mode,
+            line_items: sessoes[sessoes.length - 1].line_items,
+            discounts: sessoes[sessoes.length - 1].discounts,
+          }
+        : null,
+      cupons_criados_na_stripe: cuponsStripe,
+      resgates: resumo(await resgates("QA084-RT-PKG020")),
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Risco adjacente: a reserva reaproveitada e a sessao antiga que continua viva
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Guarda nova do webhook — a conferencia final do limite", () => {
+  it("W1 · confirmarPorSessao grita quando o limite foi estourado, e nao desfaz o resgate", async () => {
+    const cupom = await prisma.coupon.findFirst({
+      where: { clinicId: dados.clinicId, code: "QA084-ONE" },
+      select: { id: true, maxRedemptions: true },
+    });
+    // Duas linhas do mesmo cupom de uso unico: uma ja paga, outra pagando agora.
+    await prisma.couponRedemption.create({
+      data: {
+        couponId: cupom!.id,
+        patientId: A,
+        scope: "CONSULTATION",
+        originalAmount: 100,
+        discountAmount: 20,
+        finalAmount: 80,
+        stripeSessionId: "cs_rt_ja_pago",
+        confirmedAt: new Date(),
+      },
+    });
+    await prisma.couponRedemption.create({
+      data: {
+        couponId: cupom!.id,
+        patientId: B,
+        scope: "CONSULTATION",
+        originalAmount: 100,
+        discountAmount: 20,
+        finalAmount: 80,
+        stripeSessionId: "cs_rt_segundo",
+      },
+    });
+    const erros: string[] = [];
+    const orig = console.error;
+    console.error = (...a: any[]) => erros.push(a.join(" "));
+    const n = await confirmarPorSessao("cs_rt_segundo");
+    console.error = orig;
+    const rs = await resgates("QA084-ONE");
+    log("W1  o webhook do segundo pagamento num cupom de 1 uso", {
+      maxRedemptions: cupom!.maxRedemptions,
+      confirmarPorSessao: n,
+      gritou_no_log: erros,
+      resgates: resumo(rs),
+      confirmados: rs.filter((r) => r.confirmedAt).length,
+    });
+    expect(n).toBe(1);
+    expect(erros.join(" ")).toContain("LIMITE ESTOURADO");
+    expect(rs.filter((r) => r.confirmedAt)).toHaveLength(2);
+  });
+});
+
+describe("Risco adjacente — duas consultas, um resgate", () => {
+  it("R1 · maxPerPatient:1, duas consultas diferentes: duas sessoes descontadas, UM resgate", async () => {
+    const id1 = dados.consultasA[6];
+    const id2 = dados.consultasA[7];
+    await voltarParaPendente(id1);
+    await voltarParaPendente(id2);
+    const t1 = await consulta(id1, { couponCode: "QA084-RT-PER1" });
+    const t2 = await consulta(id2, { couponCode: "QA084-RT-PER1" });
+    const rs = await resgates("QA084-RT-PER1");
+    // O webhook de cada sessao, como a Stripe mandaria se as duas fossem pagas.
+    const c1 = await confirmarPorSessao("cs_rt_1");
+    const c2 = await confirmarPorSessao("cs_rt_2");
+    log("R1  duas consultas, o mesmo cupom de 1 uso por paciente", {
+      toque_consulta_1: { status: t1.status, unit_amount: unitAmount(sessoes[0]) },
+      toque_consulta_2: { status: t2.status, unit_amount: unitAmount(sessoes[1]) },
+      resgates_apos_os_dois: resumo(rs),
+      webhook_da_sessao_1: c1,
+      webhook_da_sessao_2: c2,
+      resgates_ao_fim: resumo(await resgates("QA084-RT-PER1")),
+    });
+  });
+});

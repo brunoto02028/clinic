@@ -1,0 +1,477 @@
+/**
+ * @jest-environment node
+ *
+ * Harness de QA — 084, T-3 + T-4.
+ *
+ * Pergunta central: o valor que a previa mostra e o valor que vai a Stripe?
+ * O teste do projeto (__tests__/coupon/checkout-amount.test.ts) responde isso
+ * lendo o TEXTO do arquivo. Aqui as rotas sao executadas contra o Postgres
+ * local, com a Stripe trocada por um gravador — o unit_amount observado e o que
+ * o objeto entregue ao SDK carrega.
+ */
+
+const dados = require("./dados.json");
+
+const A = dados.patientA.id;
+const B = dados.patientB.id;
+
+// ── A Stripe, gravada ───────────────────────────────────────────────────────
+const sessoes: any[] = [];
+const cuponsStripe: any[] = [];
+let falharSessao = false;
+let cupomExiste = false;
+
+(globalThis as any).__qa = {
+  checkout: {
+    sessions: {
+      create: async (params: any) => {
+        sessoes.push(params);
+        if (falharSessao) throw new Error("QA084: falha simulada ao criar a sessao");
+        return { id: `cs_qa084_${sessoes.length}`, url: "https://checkout.stripe.test/qa084" };
+      },
+    },
+  },
+  coupons: {
+    retrieve: async (id: string) => {
+      if (cupomExiste) return { id };
+      throw new Error("No such coupon: " + id);
+    },
+    create: async (params: any) => {
+      cuponsStripe.push(params);
+      return params;
+    },
+  },
+};
+
+jest.mock("stripe", () => ({
+  __esModule: true,
+  default: function () {
+    return (globalThis as any).__qa;
+  },
+}));
+jest.mock("@/lib/stripe", () => ({
+  get stripe() {
+    return (globalThis as any).__qa;
+  },
+}));
+
+// ── Autenticacao: o paciente de teste, nunca um paciente real ───────────────
+let atual = A;
+jest.mock("@/lib/patient-gate", () => ({
+  patientGate: async () => ({
+    gate: { userId: atual, clinicId: dados.clinicId, isImpersonating: false, role: "PATIENT", patient: {} },
+  }),
+}));
+jest.mock("@/lib/get-effective-user", () => ({
+  getEffectiveUser: async () => ({ userId: atual, role: "PATIENT", isImpersonating: false }),
+}));
+
+process.env.STRIPE_SECRET_KEY = "sk_test_qa084_falso_nunca_vai_a_rede";
+
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
+import { confirmarPorSessao, descartarPorSessao } from "@/lib/coupon-redemption";
+
+const POST_previa = require("@/app/api/patient/coupons/preview/route").POST;
+const POST_consulta = require("@/app/api/patient/appointments/[id]/checkout/route").POST;
+const POST_pacote = require("@/app/api/patient/packages/checkout/route").POST;
+const POST_plano = require("@/app/api/patient/treatment-plans/checkout/route").POST;
+const POST_assinatura = require("@/app/api/patient/membership/subscribe/route").POST;
+
+const req = (url: string, body: any) =>
+  new NextRequest(url, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json", "x-platform": "mobile" },
+  });
+
+const previa = async (body: any) => {
+  const r = await POST_previa(req("http://localhost:4100/api/patient/coupons/preview", body));
+  return { status: r.status, json: await r.json() };
+};
+const consulta = async (id: string, body: any) => {
+  const r = await POST_consulta(req(`http://localhost:4100/api/patient/appointments/${id}/checkout`, body), {
+    params: { id },
+  });
+  return { status: r.status, json: await r.json() };
+};
+const ultimaSessao = () => sessoes[sessoes.length - 1];
+const ultimaSessaoId = () => `cs_qa084_${sessoes.length}`;
+const unitAmount = (s: any) => s?.line_items?.[0]?.price_data?.unit_amount ?? null;
+
+const resgates = (code: string, patientId?: string) =>
+  prisma.couponRedemption.findMany({
+    where: { coupon: { code }, ...(patientId ? { patientId } : {}) },
+    orderBy: { createdAt: "asc" },
+  });
+const limpar = async (code: string) => {
+  await prisma.couponRedemption.deleteMany({ where: { coupon: { code } } });
+};
+/** Conta so o que pertence a clinica de teste: o Postgres local e compartilhado entre worktrees. */
+const contarTudo = () =>
+  prisma.couponRedemption.count({ where: { coupon: { clinicId: dados.clinicId } } });
+const limparTudo = () =>
+  prisma.couponRedemption.deleteMany({ where: { coupon: { clinicId: dados.clinicId } } });
+
+beforeEach(async () => {
+  await limparTudo();
+  sessoes.length = 0;
+  cuponsStripe.length = 0;
+  falharSessao = false;
+  cupomExiste = false;
+  atual = A;
+});
+
+const ver = (rotulo: string, v: any) =>
+  console.log(`   ${rotulo}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
+
+describe("4.1 — o valor cobrado e o valor mostrado", () => {
+  it("consulta: previa 80 e unit_amount 8000", async () => {
+    await limpar("QA084-20");
+    const p = await previa({ code: "QA084-20", scope: "CONSULTATION" });
+    ver("previa", p.json);
+    const c = await consulta(dados.appointments.c1, { couponCode: "QA084-20" });
+    ver("status do checkout", c.status);
+    ver("unit_amount enviado a Stripe", unitAmount(ultimaSessao()));
+    ver("metadata", ultimaSessao().metadata);
+    const linhas = await resgates("QA084-20", A);
+    ver(
+      "CouponRedemption",
+      linhas.map((l) => ({
+        orig: l.originalAmount,
+        desc: l.discountAmount,
+        final: l.finalAmount,
+        sessao: l.stripeSessionId,
+        confirmado: l.confirmedAt,
+      }))
+    );
+    expect(p.json.final).toBe(80);
+    expect(unitAmount(ultimaSessao())).toBe(8000);
+    expect(unitAmount(ultimaSessao())).toBe(Math.round(p.json.final * 100));
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].finalAmount).toBe(80);
+    expect(linhas[0].stripeSessionId).toBe(ultimaSessaoId());
+  });
+
+  it("sem cupom: cobra o preco cheio (100 -> 10000)", async () => {
+    await limpar("QA084-20");
+    const c = await consulta(dados.appointments.c2, {});
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    ver("metadata", ultimaSessao().metadata);
+    expect(c.status).toBe(200);
+    expect(unitAmount(ultimaSessao())).toBe(10000);
+    expect(ultimaSessao().metadata.couponCode).toBeUndefined();
+    expect(await contarTudo()).toBe(0);
+  });
+
+  it("valor fixo de 15: unit_amount 8500", async () => {
+    await limpar("QA084-FIX15");
+    const p = await previa({ code: "QA084-FIX15", scope: "CONSULTATION" });
+    const c = await consulta(dados.appointments.c3, { couponCode: "qa084-fix15" });
+    ver("previa", p.json);
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    expect(c.status).toBe(200);
+    expect(unitAmount(ultimaSessao())).toBe(8500);
+    expect(unitAmount(ultimaSessao())).toBe(Math.round(p.json.final * 100));
+    await limpar("QA084-FIX15");
+  });
+});
+
+describe("4.2 — manipulacao no corpo", () => {
+  it("discount/final/amount enviados pelo cliente sao ignorados", async () => {
+    await limpar("QA084-20");
+    const c = await consulta(dados.appointments.c4, {
+      couponCode: "QA084-20",
+      discount: 99,
+      final: 1,
+      amount: 1,
+      price: 1,
+      unit_amount: 1,
+      original: 10000,
+      couponId: "qualquer",
+    });
+    ver("corpo enviado", { couponCode: "QA084-20", discount: 99, final: 1, amount: 1, price: 1, original: 10000 });
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    const linhas = await resgates("QA084-20", A);
+    ver("resgate gravado", linhas.map((l) => ({ orig: l.originalAmount, desc: l.discountAmount, final: l.finalAmount })));
+    expect(c.status).toBe(200);
+    expect(unitAmount(ultimaSessao())).toBe(8000);
+    expect(linhas[0].finalAmount).toBe(80);
+    await limpar("QA084-20");
+  });
+
+  it("sem codigo, mas com desconto no corpo: cobra cheio", async () => {
+    const c = await consulta(dados.appointments.c5, { discount: 90, final: 10, amount: 10 });
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    expect(c.status).toBe(200);
+    expect(unitAmount(ultimaSessao())).toBe(10000);
+    expect(await contarTudo()).toBe(0);
+  });
+});
+
+describe("4.3 — dois toques, um resgate", () => {
+  it("duas chamadas seguidas geram uma linha so", async () => {
+    await limpar("QA084-20");
+    const c1 = await consulta(dados.appointments.c6, { couponCode: "QA084-20" });
+    const s1 = ultimaSessaoId();
+    const c2 = await consulta(dados.appointments.c6, { couponCode: "QA084-20" });
+    const s2 = ultimaSessaoId();
+    const linhas = await resgates("QA084-20", A);
+    ver("status dos dois toques", [c1.status, c2.status]);
+    ver("sessoes criadas", [s1, s2]);
+    ver("linhas de resgate", linhas.map((l) => ({ id: l.id, sessao: l.stripeSessionId, final: l.finalAmount })));
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].stripeSessionId).toBe(s2);
+    await limpar("QA084-20");
+  });
+});
+
+describe("4.4 — Checkout que falha nao deixa resgate", () => {
+  it("a Stripe recusa e a vaga volta", async () => {
+    await limpar("QA084-20");
+    falharSessao = true;
+    const c = await consulta(dados.appointments.c7, { couponCode: "QA084-20" });
+    ver("resposta", { status: c.status, body: c.json });
+    const linhas = await resgates("QA084-20");
+    ver("resgates apos a falha", linhas.length);
+    expect(c.status).toBe(502);
+    expect(linhas).toHaveLength(0);
+  });
+});
+
+describe("4.5 — idempotencia e expiracao", () => {
+  it("confirmarPorSessao duas vezes confirma uma; descartar nao apaga o confirmado", async () => {
+    await limpar("QA084-20");
+    await consulta(dados.appointments.c8, { couponCode: "QA084-20" });
+    const sessao = ultimaSessaoId();
+    const primeiro = await confirmarPorSessao(sessao);
+    const segundo = await confirmarPorSessao(sessao);
+    ver("confirmarPorSessao 1a vez (linhas alteradas)", primeiro);
+    ver("confirmarPorSessao 2a vez (linhas alteradas)", segundo);
+    const apagadas = await descartarPorSessao(sessao);
+    const aindaLa = await resgates("QA084-20", A);
+    ver("descartarPorSessao sobre o confirmado (linhas apagadas)", apagadas);
+    ver("resgate continua no banco", aindaLa.map((l) => ({ sessao: l.stripeSessionId, confirmado: l.confirmedAt })));
+    expect(primeiro).toBe(1);
+    expect(segundo).toBe(0);
+    expect(apagadas).toBe(0);
+    expect(aindaLa).toHaveLength(1);
+    expect(aindaLa[0].confirmedAt).not.toBeNull();
+    await limpar("QA084-20");
+  });
+
+  it("sessao expirada sem pagamento devolve a vaga", async () => {
+    await limpar("QA084-ONE");
+    await consulta(dados.appointments.c1, { couponCode: "QA084-ONE" });
+    const sessao = ultimaSessaoId();
+    const antes = await resgates("QA084-ONE");
+    atual = B;
+    const bloqueado = await previa({ code: "QA084-ONE", scope: "CONSULTATION" });
+    atual = A;
+    const apagadas = await descartarPorSessao(sessao);
+    atual = B;
+    const liberado = await previa({ code: "QA084-ONE", scope: "CONSULTATION" });
+    atual = A;
+    ver("reserva do A", antes.map((l) => ({ sessao: l.stripeSessionId, confirmado: l.confirmedAt })));
+    ver("previa do B com a vaga ocupada", bloqueado.json);
+    ver("descartarPorSessao (linhas apagadas)", apagadas);
+    ver("previa do B depois de a sessao expirar", liberado.json);
+    expect(antes).toHaveLength(1);
+    expect(bloqueado.json.reason).toBe("limit_reached");
+    expect(apagadas).toBe(1);
+    expect(liberado.json.ok).toBe(true);
+    await limpar("QA084-ONE");
+  });
+});
+
+describe("4.6 — limite esgotado entre a previa e o pagamento", () => {
+  it("o segundo paciente e recusado com frase, nao com 500", async () => {
+    await limpar("QA084-ONE");
+    const pA = await previa({ code: "QA084-ONE", scope: "CONSULTATION" });
+    atual = B;
+    const pB = await previa({ code: "QA084-ONE", scope: "CONSULTATION" });
+    atual = A;
+    const cA = await consulta(dados.appointments.c2, { couponCode: "QA084-ONE" });
+    atual = B;
+    const cB = await consulta(dados.appointmentB, { couponCode: "QA084-ONE" });
+    atual = A;
+    ver("previa de A e de B antes de qualquer resgate", [pA.json.final, pB.json.final]);
+    ver("A paga", { status: cA.status, unit_amount: unitAmount(ultimaSessao()) });
+    ver("B tenta pagar", { status: cB.status, body: cB.json });
+    const linhas = await resgates("QA084-ONE");
+    ver("resgates do cupom de uso unico", linhas.map((l) => ({ paciente: l.patientId === A ? "A" : "B", final: l.finalAmount })));
+    expect(cA.status).toBe(200);
+    expect(cB.status).toBe(409);
+    expect(cB.json.reason).toBe("limit_reached");
+    expect(cB.json.error).toBe("That code has reached its limit.");
+    expect(cB.json.errorPt).toBe("Esse codigo atingiu o limite de usos.".replace("codigo", "código"));
+    expect(linhas).toHaveLength(1);
+    await limpar("QA084-ONE");
+  });
+});
+
+describe("4.9 — cupom que nao vale para esta compra nunca desconta", () => {
+  it("cupom de assinatura numa consulta: 409 e nenhum resgate", async () => {
+    const c = await consulta(dados.appointments.c3, { couponCode: "QA084-PLANONLY" });
+    ver("resposta", { status: c.status, body: c.json });
+    ver("sessoes criadas", sessoes.length);
+    expect(c.status).toBe(409);
+    expect(c.json.reason).toBe("wrong_scope");
+    expect(sessoes).toHaveLength(0);
+    expect(await contarTudo()).toBe(0);
+  });
+
+  it("cupom de outro paciente: 409 e nenhum resgate", async () => {
+    atual = B;
+    const c = await consulta(dados.appointmentB, { couponCode: "QA084-MINE" });
+    atual = A;
+    ver("resposta", { status: c.status, body: c.json });
+    expect(c.status).toBe(409);
+    expect(c.json.reason).toBe("not_for_you");
+    expect(await contarTudo()).toBe(0);
+  });
+});
+
+describe("as outras portas do escopo", () => {
+  it("plano de tratamento inline: unit_amount = final da previa", async () => {
+    await limpar("QA084-20");
+    const p = await previa({ code: "QA084-20", scope: "TREATMENT_PLAN", targetId: dados.treatmentPlanId });
+    const r = await POST_plano(
+      req("http://localhost:4100/api/patient/treatment-plans/checkout", {
+        treatmentPlanId: dados.treatmentPlanId,
+        couponCode: "QA084-20",
+        final: 1,
+        discount: 199,
+      })
+    );
+    const body = await r.json();
+    ver("previa", p.json);
+    ver("resposta", { status: r.status, body });
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    ver("discounts", ultimaSessao().discounts ?? null);
+    expect(p.json.final).toBe(160);
+    expect(unitAmount(ultimaSessao())).toBe(16000);
+    await limpar("QA084-20");
+  });
+
+  it("pacote de cobranca unica: unit_amount = final da previa", async () => {
+    await limpar("QA084-20");
+    const p = await previa({ code: "QA084-20", scope: "PACKAGE", targetId: dados.packageFullId });
+    const r = await POST_pacote(
+      req("http://localhost:4100/api/patient/packages/checkout", {
+        packageId: dados.packageFullId,
+        couponCode: "QA084-20",
+        amount: 1,
+        final: 1,
+      })
+    );
+    const body = await r.json();
+    ver("previa", p.json);
+    ver("resposta", { status: r.status, body });
+    ver("unit_amount", unitAmount(ultimaSessao()));
+    ver("mode", ultimaSessao().mode);
+    expect(p.json.final).toBe(400);
+    expect(unitAmount(ultimaSessao())).toBe(40000);
+    await limpar("QA084-20");
+  });
+
+  it("pacote semanal: unit_amount intacto e desconto como cupom da Stripe (once)", async () => {
+    await limpar("QA084-20");
+    const p = await previa({ code: "QA084-20", scope: "PACKAGE", targetId: dados.packageWeeklyId });
+    const r = await POST_pacote(
+      req("http://localhost:4100/api/patient/packages/checkout", {
+        packageId: dados.packageWeeklyId,
+        couponCode: "QA084-20",
+      })
+    );
+    const body = await r.json();
+    ver("previa (o que a tela mostraria)", p.json);
+    ver("resposta", { status: r.status, body });
+    ver("unit_amount (semanal, sem desconto)", unitAmount(ultimaSessao()));
+    ver("recurring", ultimaSessao().line_items[0].price_data.recurring);
+    ver("discounts", ultimaSessao().discounts);
+    ver("cupom criado na Stripe", cuponsStripe);
+    expect(unitAmount(ultimaSessao())).toBe(11000);
+    expect(ultimaSessao().discounts[0].coupon).toBe("bpr-pct-QA084-20-20");
+    expect(cuponsStripe[0]).toMatchObject({ duration: "once", percent_off: 20 });
+    await limpar("QA084-20");
+  });
+
+  it("assinatura: price do catalogo intacto e desconto por cupom da Stripe", async () => {
+    await limpar("QA084-20");
+    const p = await previa({ code: "QA084-20", scope: "MEMBERSHIP", targetId: dados.membershipPlanId });
+    const r = await POST_assinatura(
+      req("http://localhost:4100/api/patient/membership/subscribe", {
+        planId: dados.membershipPlanId,
+        couponCode: "QA084-20",
+      })
+    );
+    const body = await r.json();
+    ver("previa", p.json);
+    ver("resposta", { status: r.status, body });
+    ver("line_items", ultimaSessao().line_items);
+    ver("discounts", ultimaSessao().discounts);
+    ver("cupom criado na Stripe", cuponsStripe);
+    expect(ultimaSessao().line_items[0].price).toBe("price_qa084_fake");
+    expect(unitAmount(ultimaSessao())).toBeNull();
+    expect(ultimaSessao().discounts[0].coupon).toBe("bpr-pct-QA084-20-20");
+    expect(cuponsStripe[0]).toMatchObject({ duration: "once", percent_off: 20 });
+    await limpar("QA084-20");
+  });
+
+  it("o cupom da Stripe e reaproveitado quando ja existe (id deterministico)", async () => {
+    await limpar("QA084-20");
+    cupomExiste = true;
+    const r = await POST_assinatura(
+      req("http://localhost:4100/api/patient/membership/subscribe", {
+        planId: dados.membershipPlanId,
+        couponCode: "QA084-20",
+      })
+    );
+    await r.json();
+    ver("cupons criados (deve ser nenhum)", cuponsStripe);
+    ver("discounts", ultimaSessao().discounts);
+    expect(cuponsStripe).toHaveLength(0);
+    expect(ultimaSessao().discounts[0].coupon).toBe("bpr-pct-QA084-20-20");
+    await limpar("QA084-20");
+  });
+});
+
+describe("3.6 / suposicao 8 — cupom de 100%", () => {
+  it("consulta com cupom de 100%: o que a rota faz de verdade", async () => {
+    await limpar("QA084-FULL");
+    const p = await previa({ code: "QA084-FULL", scope: "CONSULTATION" });
+    const c = await consulta(dados.appointments.c4, { couponCode: "QA084-FULL" });
+    const linhas = await resgates("QA084-FULL");
+    const ap = await prisma.appointment.findUnique({
+      where: { id: dados.appointments.c4 },
+      select: { status: true, price: true },
+    });
+    ver("previa", p.json);
+    ver("resposta do checkout", { status: c.status, body: c.json });
+    ver("sessoes da Stripe criadas", sessoes.length);
+    ver("resgates gravados", linhas.length);
+    ver("consulta depois", ap);
+    expect(p.json.final).toBe(0);
+    console.log(`   >> OBSERVADO: a rota respondeu ${c.status} ${JSON.stringify(c.json)} e a consulta seguiu ${ap?.status}`);
+  });
+});
+
+describe("4.3b — dois toques com maxPerPatient = 1 (o padrao do modelo)", () => {
+  it("o segundo toque do MESMO paciente", async () => {
+    await limpar("QA084-ONE");
+    const t1 = await consulta(dados.appointments.c5, { couponCode: "QA084-ONE" });
+    const s1 = ultimaSessaoId();
+    const t2 = await consulta(dados.appointments.c5, { couponCode: "QA084-ONE" });
+    const linhas = await resgates("QA084-ONE", A);
+    ver("1o toque", { status: t1.status, unit_amount: unitAmount(ultimaSessao()), sessao: s1 });
+    ver("2o toque", { status: t2.status, body: t2.json });
+    ver("linhas de resgate", linhas.map((l) => ({ sessao: l.stripeSessionId, final: l.finalAmount })));
+    console.log(`   >> OBSERVADO: 1o toque ${t1.status}, 2o toque ${t2.status} ${JSON.stringify(t2.json)}, resgates=${linhas.length}`);
+    await limpar("QA084-ONE");
+  });
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});

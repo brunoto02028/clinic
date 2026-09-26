@@ -74,8 +74,8 @@ Cancelar também, porque uma assinatura que só a clínica cancela é uma armadi
    substitui, não empilha.
 2. **A exceção vale enquanto existir.** Sem data de validade nesta atividade; apagar a linha
    devolve o paciente ao preço da clínica.
-3. **Quem define é o dono.** Mesma regra dos preços de serviço: SUPERADMIN/ADMIN definem,
-   terapeuta vê.
+3. ~~**Quem define é o dono.**~~ **RESOLVIDO em 26/09/2026:** só SUPERADMIN. A tela que abre a
+   janela já era superadmin-only, e a rota prometia ADMIN — a rota foi alinhada à tela.
 4. **Zero é um preço válido** — cortesia registrada, diferente de "não precificado" (`null`).
 5. **A assinatura paga continua exigindo `stripePriceId`.** Plano pago sem ele é recusado, como
    já é hoje (atividade 52, T-6) — nada de ativar de graça por engano.

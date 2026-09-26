@@ -483,6 +483,14 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         superadminOnly: true,
       },
       {
+        key: "coupons",
+        label: "Coupons",
+        labelPt: "Cupons",
+        href: "/admin/coupons",
+        // Mesma mão que define preço define desconto (084): superadmin.
+        superadminOnly: true,
+      },
+      {
         key: "memberships",
         label: "Memberships",
         labelPt: "Memberships",
@@ -504,6 +512,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     matchRoutes: [
       "/admin/finance",
       "/admin/service-pricing",
+      "/admin/coupons",
       "/admin/memberships",
       "/admin/marketplace",
       "/admin/stripe-branding",

@@ -8,6 +8,9 @@ import { fetchPlans, fetchSubscription, subscribeToPlan, cancelSubscription } fr
 import { useTheme } from "@/theme/useTheme";
 import { openCheckout } from "@/lib/checkout";
 import { useLang, t as tr } from "@/lib/i18n";
+import { CouponField, PrecoComCupom } from "@/components/CouponField";
+import { ApiError } from "@/api/client";
+import type { CouponPreviewOk } from "@/api/coupons";
 
 /**
  * Os planos da clínica, na área do paciente da clínica (082, T-3).
@@ -28,6 +31,9 @@ export default function ClinicPlans() {
   const plans = useQuery({ queryKey: ["plans"], queryFn: fetchPlans });
   const sub = useQuery({ queryKey: ["subscription"], queryFn: fetchSubscription });
   const [notice, setNotice] = useState<string | null>(null);
+  // Um cupom por plano (084): o desconto é daquele preço, e a pessoa pode
+  // estar comparando dois antes de escolher.
+  const [cupons, setCupons] = useState<Record<string, CouponPreviewOk | null>>({});
 
   // O Checkout abre fora e volta por deep link; sem isto a tela continuava
   // mostrando "sem plano" depois de um pagamento que deu certo.
@@ -44,7 +50,8 @@ export default function ClinicPlans() {
   }, [qc, lang]);
 
   const subscribeMutation = useMutation({
-    mutationFn: (planId: string) => subscribeToPlan(planId),
+    // O **código**, não o valor: o servidor recalcula o desconto antes de cobrar.
+    mutationFn: (planId: string) => subscribeToPlan(planId, cupons[planId]?.code ?? null),
     onSuccess: (res) => {
       if (res.checkoutUrl) {
         // Dentro do app, e a folha fecha sozinha quando o Stripe volta (083).
@@ -64,7 +71,14 @@ export default function ClinicPlans() {
         qc.invalidateQueries({ queryKey: ["subscription"] });
       }
     },
-    onError: (e) => setNotice((e as Error).message || tr(lang, { en: "That did not go through.", pt: "Não deu certo." })),
+    // A recusa do servidor vem nas duas línguas; usar só `message` mostrava
+    // inglês num aparelho em português apesar de a frase certa ter chegado.
+    onError: (e) =>
+      setNotice(
+        e instanceof ApiError
+          ? e.localizada(lang)
+          : (e as Error).message || tr(lang, { en: "That did not go through.", pt: "Não deu certo." })
+      ),
   });
 
   const cancelMutation = useMutation({
@@ -73,7 +87,14 @@ export default function ClinicPlans() {
       setNotice(res.message || tr(lang, { en: "Your plan was cancelled.", pt: "Seu plano foi cancelado." }));
       qc.invalidateQueries({ queryKey: ["subscription"] });
     },
-    onError: (e) => setNotice((e as Error).message || tr(lang, { en: "That did not go through.", pt: "Não deu certo." })),
+    // A recusa do servidor vem nas duas línguas; usar só `message` mostrava
+    // inglês num aparelho em português apesar de a frase certa ter chegado.
+    onError: (e) =>
+      setNotice(
+        e instanceof ApiError
+          ? e.localizada(lang)
+          : (e as Error).message || tr(lang, { en: "That did not go through.", pt: "Não deu certo." })
+      ),
   });
 
   const confirmCancel = () =>
@@ -180,11 +201,38 @@ export default function ClinicPlans() {
                 {item.description ? (
                   <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>{item.description}</Text>
                 ) : null}
-                <Text variant="label" color={t.colors.health} style={{ fontWeight: "700", marginTop: 8 }}>
-                  {item.isFree || item.price === 0
-                    ? tr(lang, { en: "Included", pt: "Incluído" })
-                    : `£${item.price.toFixed(2)} / ${String(item.interval).toLowerCase()}`}
-                </Text>
+                {item.isFree || item.price === 0 ? (
+                  <Text variant="label" color={t.colors.health} style={{ fontWeight: "700", marginTop: 8 }}>
+                    {tr(lang, { en: "Included", pt: "Incluído" })}
+                  </Text>
+                ) : (
+                  <View style={{ marginTop: 8, gap: 10 }}>
+                    <PrecoComCupom
+                      currency="£"
+                      original={item.price}
+                      cupom={cupons[item.id] ?? null}
+                      /* O cupom vale na **adesão**, não em toda mensalidade: o
+                         desconto vai à Stripe com `duration: "once"`. A tela
+                         mostrava "£40 / monthly" e o cartão cobrava £50 do
+                         segundo mês — prometer mais do que se cobra é a N4 da
+                         080 pelo avesso (A-3 do review e F-1 do QA da T-4). */
+                      suffix={
+                        cupons[item.id]
+                          ? tr(lang, {
+                              en: `on your first payment, then £${item.price.toFixed(2)} / ${String(item.interval).toLowerCase()}`,
+                              pt: `no primeiro pagamento, depois £${item.price.toFixed(2)} / ${String(item.interval).toLowerCase()}`,
+                            })
+                          : `/ ${String(item.interval).toLowerCase()}`
+                      }
+                    />
+                    <CouponField
+                      scope="MEMBERSHIP"
+                      targetId={item.id}
+                      testID={`coupon-${item.id}`}
+                      onChange={(c) => setCupons((prev) => ({ ...prev, [item.id]: c }))}
+                    />
+                  </View>
+                )}
                 <Button
                   title={
                     item.isFree || item.price === 0

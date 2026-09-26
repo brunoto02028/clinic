@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
+import { reservarCupom, anexarSessao, liberarReserva, cupomStripe } from "@/lib/coupon-redemption";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, clinicId: true } });
     const userEmail = user?.email || '';
     const clinicId = user?.clinicId || null;
-    const { planId } = await request.json();
+    const { planId, couponCode } = await request.json();
 
     if (!planId) {
       return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
@@ -136,19 +137,79 @@ export async function POST(request: NextRequest) {
       ? "bprclinic://membership?status=cancelled"
       : `${BASE_URL}/dashboard/membership?cancelled=true`;
 
-    const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer_email: userEmail,
-      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-      metadata: {
-        patientId: userId,
-        planId: plan.id,
-        clinicId: clinicId || plan.clinicId,
-        type: "membership_subscription",
-      },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-    });
+    /**
+     * O cupom (084, T-4).
+     *
+     * Recalculado aqui a partir do **código**: a prévia da T-3 é uma tela.
+     * Recusa devolve 409 com o motivo — não ativa a assinatura sem desconto por
+     * conta própria, porque quem digitou um código escolheu aquele preço e
+     * merece a chance de desistir.
+     */
+    const cupom = clinicId
+      ? await reservarCupom({
+          clinicId,
+          patientId: userId,
+          code: couponCode ?? null,
+          scope: "MEMBERSHIP",
+          amount: plan.price,
+          currency: "GBP",
+          targetId: plan.id,
+          stripe,
+        })
+      : ({ tipo: "sem_cupom" } as const);
+
+    if (cupom.tipo === "recusado") {
+      return NextResponse.json(
+        { error: cupom.recusa.message, errorPt: cupom.recusa.messagePt, reason: cupom.recusa.reason },
+        { status: 409 }
+      );
+    }
+
+    // A assinatura usa um `price` do catálogo da Stripe, então o desconto entra
+    // como cupom deles — não dá para mandar um `unit_amount` já descontado.
+    let descontos: { coupon: string }[] | undefined;
+    if (cupom.tipo === "reservado") {
+      try {
+        descontos = [{ coupon: await cupomStripe(stripe as any, cupom.reserva) }];
+      } catch (e: any) {
+        await liberarReserva(cupom.reserva.redemptionId);
+        console.error("[membership/subscribe] cupom da Stripe:", e?.message);
+        return NextResponse.json(
+          {
+            error: "We could not apply that code right now. Please try again.",
+            errorPt: "Não foi possível aplicar esse código agora. Tente de novo.",
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    let checkoutSession;
+    try {
+      checkoutSession = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer_email: userEmail,
+        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+        ...(descontos ? { discounts: descontos } : {}),
+        metadata: {
+          patientId: userId,
+          planId: plan.id,
+          clinicId: clinicId || plan.clinicId,
+          type: "membership_subscription",
+          ...(cupom.tipo === "reservado"
+            ? { couponCode: cupom.reserva.code, couponRedemptionId: cupom.reserva.redemptionId }
+            : {}),
+        },
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      });
+    } catch (e: any) {
+      // A cobrança não nasceu: a vaga volta à campanha.
+      if (cupom.tipo === "reservado") await liberarReserva(cupom.reserva.redemptionId);
+      throw e;
+    }
+
+    if (cupom.tipo === "reservado") await anexarSessao(cupom.reserva.redemptionId, checkoutSession.id);
 
     return NextResponse.json({
       checkoutUrl: checkoutSession.url,
