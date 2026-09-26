@@ -1,0 +1,24 @@
+# O que não precisa subir para o build (26/09/2026).
+#
+# O arquivo enviado tinha 489 MB. `node_modules` e `dist` já estão no
+# `.gitignore`, e mesmo assim subiam: este projeto vive num **git worktree**,
+# onde `.git` é um arquivo e não uma pasta — o empacotador do EAS não consegue
+# ler o gitignore por ali e acaba mandando tudo.
+#
+# O `.easignore` é lido direto, sem depender do git, e por isso resolve.
+#
+# A máquina de build roda `npm ci` a partir do `package-lock.json`: mandar
+# `node_modules` daqui não economiza nada lá e ainda pode atrapalhar, porque
+# são binários compilados para Windows.
+
+node_modules/
+
+# A exportação do `eas update` — 41 MB de bundle web que o build não usa.
+dist/
+web-build/
+.expo/
+
+# Ruído de desenvolvimento
+*.log
+.DS_Store
+coverage/
