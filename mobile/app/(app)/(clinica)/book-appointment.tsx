@@ -179,6 +179,29 @@ function BookAppointmentScreen() {
               />
             </View>
           </Card>
+        ) : porta?.blockedReason === "price_not_set" ? (
+          /* A clínica não precificou isto. Antes, este caso virava £60
+             inventados na tela do paciente — um número que ninguém escolheu. */
+          <Card>
+            <View style={{ gap: 10 }}>
+              <Text variant="label">
+                {tr(lang, { en: "Booking is not open yet", pt: "A marcação ainda não está aberta" })}
+              </Text>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                {tr(lang, {
+                  en: "Your clinic has not set the price for this yet. Send them a message and they will sort it out.",
+                  pt: "Sua clínica ainda não definiu o preço disto. Mande uma mensagem e eles resolvem.",
+                })}
+              </Text>
+              <Button
+                title={tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" })}
+                variant="health"
+                size="md"
+                onPress={() => router.push("/(app)/(clinica)/messages")}
+                testID="booking-price-not-set-cta"
+              />
+            </View>
+          </Card>
         ) : porta?.kind === "PACKAGE_SESSION" ? (
           <Card>
             <Text variant="label">

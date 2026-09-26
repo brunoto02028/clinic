@@ -38,15 +38,36 @@ export async function servicePricesForClinic(clinicId: string | null): Promise<P
   return [...own, ...defaults.filter((p) => !priced.has(p.serviceType))] as PatientServicePrice[];
 }
 
-// The price stored on a session a patient books themself — the same figure the
-// booking form shows ("Estimated price"), never a number sent by the browser.
-// Without a configured consultation price a clinic keeps its historical £60
-// default; a personal studio charges nothing through here (its sessions are
-// paid in person — activity 52, T-7).
-export async function patientBookingPrice(clinicId: string): Promise<number> {
+/**
+ * O preço da consulta que o paciente marca sozinho — a mesma cifra que a tela
+ * mostra e a que fica gravada, nunca um número vindo do navegador.
+ *
+ * `null` quer dizer **a clínica não precificou isto**. Antes, esse caso virava
+ * £60 inventados: o Bruno digitou 100 em /admin/service-pricing, deixou o
+ * interruptor "Active" desligado, e o app cobrou 60 — um número que ninguém
+ * escolheu, sem aviso em lugar nenhum (26/09/2026). Vender por um preço que
+ * ninguém decidiu é pior que não vender: quem chama trata o `null`.
+ *
+ * Estúdio de personal continua em 0 de propósito: as sessões dele são pagas
+ * presencialmente (atividade 52, T-7), então zero é uma decisão, não um buraco.
+ */
+export async function patientBookingPrice(clinicId: string): Promise<number | null> {
   const prices = await servicePricesForClinic(clinicId);
   const consultation = prices.find((p) => p.serviceType === "CONSULTATION");
   if (consultation) return consultation.price;
   const clinic = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { type: true } });
-  return isPersonalTenant(clinic?.type) ? 0 : 60;
+  return isPersonalTenant(clinic?.type) ? 0 : null;
+}
+
+/**
+ * O que a clínica precificou, do ponto de vista de quem administra — inclusive
+ * as linhas desligadas, que é justamente o que a tela precisa mostrar para o
+ * interruptor deixar de ser invisível.
+ */
+export async function servicePricesForAdmin(clinicId: string | null) {
+  if (!clinicId) return [];
+  const own = await prisma.servicePrice.findMany({ where: { clinicId }, orderBy: { serviceType: "asc" } });
+  const priced = new Set(own.map((p) => p.serviceType));
+  const defaults = await prisma.servicePrice.findMany({ where: { clinicId: null }, orderBy: { serviceType: "asc" } });
+  return [...own, ...defaults.filter((p) => !priced.has(p.serviceType))];
 }

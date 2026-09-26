@@ -274,11 +274,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // A clínica pode marcar sem preço configurado (ela cobra fora do app, e é
+    // ela quem abre exceção); o paciente, não — cobrar um número que ninguém
+    // escolheu foi o que o £60 fixo fazia.
+    const precoConfigurado = await patientBookingPrice(actor.clinicId);
+    if (isPatient && !opcao && precoConfigurado === null) {
+      return NextResponse.json(
+        {
+          error: "The clinic has not set a price for this yet.",
+          errorPt: "A clínica ainda não definiu um preço para isto.",
+          code: "price_not_set",
+        },
+        { status: 409 }
+      );
+    }
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
       : opcao
         ? opcao.price
-        : await patientBookingPrice(actor.clinicId);
+        : precoConfigurado ?? 0;
 
     const appointment = await prisma.appointment.create({
       data: {

@@ -52,7 +52,7 @@ export async function fetchAvailability(date: string, kind?: string): Promise<Av
  */
 export interface BookingOption {
   kind: "FIRST_CONSULTATION" | "PACKAGE_SESSION" | "EXTRA_SESSION" | null;
-  blockedReason?: "screening_required" | "no_clinic";
+  blockedReason?: "screening_required" | "no_clinic" | "price_not_set";
   price: number;
   currency: string;
   requiresPayment: boolean;
