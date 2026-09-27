@@ -56,6 +56,7 @@ import {
   Mail,
   MapPin,
   Video,
+  BellRing,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -77,6 +78,13 @@ interface Appointment {
   price: number;
   paymentMethod?: string;
   notes: string | null;
+  /**
+   * Presencial ou por vídeo. O dado sempre veio — o GET da agenda usa `include`
+   * sem `select`, então todo campo escalar da consulta chega aqui — mas esta
+   * interface não o declarava, e a agenda principal era o único lugar que criava
+   * uma consulta por vídeo sem depois mostrar que ela era por vídeo.
+   */
+  mode?: "IN_PERSON" | "VIDEO" | null;
   patient: { id: string; firstName: string; lastName: string; email: string };
   therapist: { id: string; firstName: string; lastName: string };
 }
@@ -517,6 +525,65 @@ export default function AdminAppointmentsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  /**
+   * Entrar na sala e chamar o paciente, aqui na agenda.
+   *
+   * Existia só em `/admin/video-consultations`, uma tela separada — e a agenda é
+   * onde o terapeuta olha o dia. Quem marcasse uma consulta por vídeo por aqui
+   * não tinha por onde entrar nela sem trocar de tela.
+   *
+   * A janela (dez minutos antes até trinta depois) é decidida no servidor, não
+   * aqui: o botão aparece sempre e a recusa explica a partir de quando. Um
+   * relógio de navegador escondendo o botão erraria em fuso e em máquina atrasada.
+   */
+  const [chamando, setChamando] = useState<string | null>(null);
+
+  const entrarNaSala = (id: string) => {
+    window.open(`/video-room/${id}`, "_blank", "noopener,noreferrer");
+  };
+
+  const chamarPaciente = async (id: string) => {
+    setChamando(id);
+    try {
+      const res = await fetch(`/api/appointments/${id}/video/call`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: isPt ? "Não foi possível chamar" : "Could not call",
+          description: (isPt ? data.errorPt : data.error) || data.error || `HTTP ${res.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      // Zero aparelho é notícia, não erro: o paciente não tem o app ou desligou
+      // os avisos, e o terapeuta precisa saber antes de esperar dez minutos.
+      toast(
+        data.aparelhos > 0
+          ? {
+              title: isPt ? "Paciente chamado" : "Patient called",
+              description: isPt
+                ? `O telefone dele está tocando em ${data.aparelhos} aparelho${data.aparelhos > 1 ? "s" : ""}.`
+                : `Their phone is ringing on ${data.aparelhos} device${data.aparelhos > 1 ? "s" : ""}.`,
+            }
+          : {
+              title: isPt ? "Ninguém para chamar" : "Nobody to ring",
+              description: isPt
+                ? "Este paciente não tem aparelho registrado, ou desligou os avisos. Avise por outro caminho."
+                : "This patient has no device registered, or has notifications off. Reach them another way.",
+              variant: "destructive",
+            }
+      );
+    } catch {
+      toast({
+        title: isPt ? "Não foi possível chamar" : "Could not call",
+        description: isPt ? "Tente de novo." : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setChamando(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "COMPLETED":
@@ -679,7 +746,12 @@ export default function AdminAppointmentsPage() {
                           >
                             <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
                             <p className="truncate opacity-80">{a.treatmentType}</p>
-                            <p className="opacity-60">{new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}</p>
+                            <p className="opacity-60 flex items-center gap-1">
+                              {new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
+                              {/* No mês inteiro não cabe texto, e saber que a
+                                  consulta é remota muda o dia de quem organiza. */}
+                              {a.mode === "VIDEO" && <Video className="h-2.5 w-2.5" />}
+                            </p>
                           </button>
                         ))}
                       </div>
@@ -759,6 +831,12 @@ export default function AdminAppointmentsPage() {
                           <StatusIcon className="h-3 w-3" />
                           {appointment.status}
                         </span>
+                        {appointment.mode === "VIDEO" && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-violet-600">
+                            <Video className="h-3 w-3" />
+                            {isPt ? "Por vídeo" : "Video"}
+                          </span>
+                        )}
                         {appointment.paymentMethod === "IN_PERSON" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600">
                             {isPt ? "Pagar no local" : "Pay in person"}
@@ -792,6 +870,36 @@ export default function AdminAppointmentsPage() {
                       </div>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
+                      {/* Vêm primeiro porque, no dia da consulta, é o que o
+                          terapeuta vai apertar. Some quando a consulta não vai
+                          mais acontecer ou já aconteceu. */}
+                      {appointment.mode === "VIDEO" &&
+                        !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(appointment.status) && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs px-2"
+                              onClick={() => entrarNaSala(appointment.id)}
+                            >
+                              <Video className="h-3.5 w-3.5 sm:mr-1" />
+                              <span className="hidden sm:inline">{isPt ? "Entrar" : "Join"}</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs px-2"
+                              disabled={chamando === appointment.id}
+                              onClick={() => chamarPaciente(appointment.id)}
+                            >
+                              <BellRing className="h-3.5 w-3.5 sm:mr-1" />
+                              <span className="hidden sm:inline">
+                                {chamando === appointment.id
+                                  ? isPt ? "Chamando…" : "Calling…"
+                                  : isPt ? "Chamar paciente" : "Call patient"}
+                              </span>
+                            </Button>
+                          </>
+                        )}
                       {appointment.status === "PENDING" && (
                         <>
                           <Button
