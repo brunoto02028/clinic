@@ -111,11 +111,15 @@ export default function EducationDetail() {
                   </Pressable>
                 ))}
               </View>
+              {/* Mesma cor medida do "Mark as done" do exercício (095 T-4):
+                  concluir é a mesma ação, e vinha na mesma greige que sumia no
+                  fundo — 1,53:1 no claro. */}
               <Button
+                variant="health"
                 title={tr(lang, { en: "Mark as completed", pt: "Marcar como concluído" })}
                 onPress={() => completeMutation.mutate()}
                 loading={completeMutation.isPending}
-                icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}
+                icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.accentFg} />}
               />
             </Card>
           )}

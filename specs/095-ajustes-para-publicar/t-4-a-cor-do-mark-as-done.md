@@ -1,6 +1,6 @@
 # T-4: A cor do "Mark as done"
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -42,3 +42,37 @@ para 3,2). Desta vez: medir a atual, medir a nova, mostrar os dois números.
 - [ ] O da nova também, e é maior
 - [ ] Os dois temas foram olhados
 - [ ] O Bruno viu os números antes de aplicar
+
+---
+
+## A medição, antes e depois
+
+O botão vinha na variante **padrão** do `Button`, que é `greige` — `#CDC7BE` no
+tema claro, um bege quente que se lê como marrom. Era isso.
+
+Mas o texto dentro dele estava em **9,42:1**, bem acima do exigido. **Não era
+legibilidade de texto.** Era o botão sumindo no fundo:
+
+| | contra o fundo | texto dentro |
+|---|---|---|
+| greige, tema claro | **1,53:1** | 9,42:1 |
+| greige, tema escuro | **1,29:1** | — |
+| **health (moss), claro** | **4,82:1** | 5,31:1 |
+| **health (moss), escuro** | **5,85:1** | 5,85:1 |
+
+A regra para um controle é **3:1 contra o que está atrás dele** (WCAG 1.4.11). A
+1,5:1 ele não parece um botão — parece um retângulo bege sobre um fundo bege, e
+é por isso que a leitura ficou "muito ruim" mesmo com o texto legível.
+
+`health` é o **moss da própria clínica** (#4F7361 no claro, #7FA890 no escuro), e
+o `Button` já tinha essa variante. A mudança é uma palavra por botão: a cor do
+produto na ação principal do produto.
+
+**Onde entrou:** concluir o exercício e concluir o conteúdo — a mesma ação. Em
+`tasks` e `treatment-protocol` o "concluir" é um `Alert` nativo do sistema, que
+não aceita cor nossa.
+
+**O que eu não pude fazer:** ler o pixel no aparelho dele. A medição é sobre os
+tokens do tema, que é o que o aparelho desenha — e o número que explicava a
+queixa apareceu ali. Se no telefone estiver diferente, é outro defeito, e a
+medida acima é o ponto de partida para achá-lo.
