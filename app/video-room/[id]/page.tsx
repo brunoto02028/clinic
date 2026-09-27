@@ -37,7 +37,10 @@ export default function SalaDeVideo() {
         if (!vivo) return;
 
         if (!res.ok) {
-          setErro({ texto: data.errorPt || data.error || "Não foi possível abrir a consulta.", code: data.code });
+          // `data.error` sai da reserva: ele é a frase em inglês para o
+          // desenvolvedor, e já chegou à tela como "Not found". Se o servidor
+          // não mandou português, a frase genérica daqui é melhor que a dele.
+          setErro({ texto: data.errorPt || "Não foi possível abrir a consulta.", code: data.code });
           return;
         }
 

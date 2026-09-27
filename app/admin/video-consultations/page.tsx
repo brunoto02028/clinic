@@ -185,7 +185,25 @@ export default function VideoConsultationsPage() {
     );
   }
 
-  const upcoming = appointments.filter((a) => ["PENDING", "CONFIRMED"].includes(a.status));
+  /**
+   * "Upcoming" passa a significar **a janela ainda aberta**, e não "hoje".
+   *
+   * O QA de 27/09/2026 viu o painel oferecer "Join Video Call" numa consulta das
+   * 16:35 cuja janela fechou às 17:05 — o botão ativo, e o clique levando a
+   * "esta consulta já terminou". O servidor recusava certo; era a tela prometendo
+   * o que não entrega.
+   *
+   * A mesma folga do servidor (`FOLGA_DEPOIS_MIN`), para as duas pontas
+   * concordarem sobre quando uma consulta deixa de estar por vir.
+   */
+  const FIM_COM_FOLGA_MIN = 30;
+  const aindaPorVir = (a: VideoAppointment) => {
+    const fim = new Date(a.dateTime).getTime() + ((a.duration ?? 60) + FIM_COM_FOLGA_MIN) * 60_000;
+    return Date.now() <= fim;
+  };
+  const upcoming = appointments.filter(
+    (a) => ["PENDING", "CONFIRMED"].includes(a.status) && aindaPorVir(a)
+  );
   const past = appointments.filter((a) => ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(a.status));
 
   return (

@@ -145,7 +145,18 @@ describe("quem entra", () => {
 
   it("quem não participa recebe 'não existe'", () => {
     expect(rota).toMatch(/if \(!consulta \|\| \(!ehPaciente && !ehTerapeuta\)\)/);
-    expect(rota).toMatch(/\{ error: "Not found" \}, \{ status: 404 \}/);
+    expect(rota).toMatch(/code: "not_found"/);
+    expect(rota).toMatch(/\{ status: 404 \}/);
+  });
+
+  it("**e a recusa é uma frase, não uma string de desenvolvedor**", () => {
+    // Era `{"error":"Not found"}`, e a página da sala mostra `errorPt || error`
+    // — então a pessoa lia "Not found" cru, em inglês, numa tela em português.
+    // Achado 2 do QA de 27/09/2026.
+    expect(rota).toMatch(/errorPt: "Esta consulta não está disponível\."/);
+    expect(rota).toMatch(/errorPt: "Entre de novo para acessar esta consulta\."/);
+    expect(rota).not.toMatch(/\{ error: "Not found" \}/);
+    expect(rota).not.toMatch(/\{ error: "Unauthorized" \}/);
   });
 
   it("consulta presencial não abre sala", () => {

@@ -43,7 +43,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const session = await getRequestSession(req);
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Com `errorPt`: a página da sala mostra `errorPt || error`, e sem o
+    // português a pessoa lia "Unauthorized" cru no meio de uma tela em
+    // português (achado 2 do QA de 27/09/2026).
+    return NextResponse.json(
+      {
+        error: "Sign in again to join this consultation.",
+        errorPt: "Entre de novo para acessar esta consulta.",
+        code: "unauthorized",
+      },
+      { status: 401 }
+    );
   }
   const quemPede = (session.user as any).id as string;
 
@@ -78,7 +88,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const ehPaciente = consulta?.patientId === quemPede;
   const ehTerapeuta = consulta?.therapistId === quemPede;
   if (!consulta || (!ehPaciente && !ehTerapeuta)) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    /**
+     * A frase é a mesma para "não existe" e "não é sua", de propósito — distinguir
+     * as duas contaria a um estranho que aquela consulta existe.
+     *
+     * Mas ela **é** uma frase agora: era `{"error":"Not found"}`, e a pessoa lia
+     * "Not found" cru, em inglês, numa página em português. String de
+     * desenvolvedor virando texto de paciente (achado 2 do QA de 27/09/2026).
+     */
+    return NextResponse.json(
+      {
+        error: "This consultation is not available.",
+        errorPt: "Esta consulta não está disponível.",
+        code: "not_found",
+      },
+      { status: 404 }
+    );
   }
 
   if (consulta.mode !== "VIDEO") {
