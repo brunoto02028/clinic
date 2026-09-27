@@ -1,6 +1,6 @@
 # T-2: Onde ver, e como testar, uma consulta por vídeo
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -51,3 +51,19 @@ quando alguém já marcou vídeo não ensina ninguém a marcar.
 - [ ] A agenda filtra por vídeo
 - [ ] Existe um caminho de teste que não usa paciente real
 - [ ] O roteiro está escrito e foi seguido uma vez, do começo ao fim
+
+---
+
+## O que mudou
+
+| passo | como ficou |
+|---|---|
+| 1 | A tela vazia diz **os dois caminhos** — agendar ali, ou abrir a consulta na agenda e mudar o formato — e explica a janela da sala, que é o que mais confunde |
+| 2 | **O formato entrou na edição.** A rota `PUT /api/appointments/[id]` aceita `mode`, validado, e a guarda do paciente continua recusando tudo que não seja cancelar |
+| 3 | Filtro **"Só por vídeo"** na agenda, com a contagem ao lado — porque "tenho alguma hoje?" é a pergunta mais comum |
+| 4 | **"Test it now"**: preenche a hora para daqui a cinco minutos (a sala abre dez antes, então já nasce aberta), duração 30 e o tipo `TEST — video call`. **Não inventa paciente** — quem escolhe é quem clica, porque QA usa paciente de teste *identificado* |
+| 5 | Roteiro de ponta a ponta em [como-testar-video.md](como-testar-video.md), incluindo o que fazer quando não funciona |
+
+**O que eu não fiz, e por quê:** o atalho de teste não cria um paciente. Um botão
+que cria gente encheria a lista de nomes que não existem, e seria eu decidindo
+qual paciente é de teste — decisão de quem conhece a clínica.

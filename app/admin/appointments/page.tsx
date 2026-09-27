@@ -103,6 +103,14 @@ export default function AdminAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  /**
+   * Ver só as consultas por vídeo (095 T-2).
+   *
+   * Numa agenda de presenciais, uma consulta por vídeo se perde — e foi
+   * perdendo-se que ela pareceu não existir. O filtro também responde a
+   * pergunta oposta, que é a mais comum: "tenho alguma hoje?".
+   */
+  const [soVideo, setSoVideo] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -136,6 +144,9 @@ export default function AdminAppointmentsPage() {
   });
   const [aiNotesLoading, setAiNotesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
+    // Presencial ou por vídeo, **também na edição** (095 T-2): antes só dava
+    // para escolher ao criar, e transformar uma consulta exigia apagá-la.
+    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO",
     dateTime: "",
     duration: 0,
     treatmentType: "",
@@ -440,6 +451,8 @@ export default function AdminAppointmentsPage() {
       treatmentType: appointment.treatmentType,
       price: appointment.price,
       notes: appointment.notes || "",
+      // Consulta antiga não tem `mode` gravado; ela é presencial.
+      mode: appointment.mode === "VIDEO" ? "VIDEO" : "IN_PERSON",
     });
     setShowEditDialog(true);
   };
@@ -458,6 +471,7 @@ export default function AdminAppointmentsPage() {
           treatmentType: editForm.treatmentType,
           price: Number(editForm.price),
           notes: editForm.notes,
+          mode: editForm.mode,
         }),
       });
 
@@ -523,7 +537,8 @@ export default function AdminAppointmentsPage() {
       a.patient.lastName.toLowerCase().includes(search.toLowerCase()) ||
       a.treatmentType.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesModo = !soVideo || a.mode === "VIDEO";
+    return matchesSearch && matchesStatus && matchesModo;
   });
 
   /**
@@ -766,7 +781,7 @@ export default function AdminAppointmentsPage() {
                         {dayAppts.map((a) => (
                           <button
                             key={a.id}
-                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "" }); }}
+                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : "IN_PERSON" }); }}
                             className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
                           >
                             <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
@@ -803,6 +818,18 @@ export default function AdminAppointmentsPage() {
           />
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={soVideo ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setSoVideo((v) => !v)}
+          >
+            <Video className="h-3.5 w-3.5" />
+            {isPt ? "Só por vídeo" : "Video only"}
+            <span className="ml-1 text-xs opacity-70">
+              ({appointments.filter((a) => a.mode === "VIDEO").length})
+            </span>
+          </Button>
           {Object.entries(statusCounts).map(([status, count]) => (
             <Button
               key={status}
@@ -1389,6 +1416,46 @@ export default function AdminAppointmentsPage() {
                   setEditForm({ ...editForm, price: Number(e.target.value) })
                 }
               />
+            </div>
+            {/* Presencial ou por vídeo, na edição (095 T-2).
+                O modo só existia na criação, e por isso a videochamada parecia
+                não existir: a agenda estava cheia de presenciais e não havia
+                por onde transformar uma sem apagá-la e perder o horário. */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{isPt ? "Formato" : "Format"}</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, mode: "IN_PERSON" })}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    editForm.mode === "IN_PERSON"
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <MapPin className="h-4 w-4" />
+                  {isPt ? "Presencial" : "In person"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, mode: "VIDEO" })}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    editForm.mode === "VIDEO"
+                      ? "border-violet-500/40 bg-violet-500/15 text-violet-400"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <Video className="h-4 w-4" />
+                  {isPt ? "À distância" : "Remote"}
+                </button>
+              </div>
+              {editForm.mode === "VIDEO" && (
+                <p className="text-[11px] text-muted-foreground">
+                  {isPt
+                    ? "O paciente vê que é por vídeo e entra pelo app. A sala abre dez minutos antes."
+                    : "The patient sees it is by video and joins from the app. The room opens ten minutes before."}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
