@@ -17,7 +17,7 @@ o produto ficando bom o bastante para outra pessoa usar.
 | T-2 | Onde ver, e como testar, uma consulta por vídeo | — | **feita** (27/09) — roteiro em [como-testar-video.md](como-testar-video.md) |
 | T-3 | Cadastrar menor exige dizer a relação com ele | — | **feita** (27/09) |
 | T-4 | A cor do "Mark as done" | — | **feita** (27/09) — medida, ver a tarefa |
-| T-5 | Enviar exercício avulso, não a pasta inteira | — | pendente |
+| T-5 | Enviar exercício avulso, não a pasta inteira | — | **feita** (27/09) |
 | T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | pendente |
 | T-7 | Pain Trend: o paciente relata por data | — | pendente |
 | T-8 | O calendário mostra disponibilidade de verdade | T-2 | pendente |

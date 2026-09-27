@@ -1,6 +1,6 @@
 # T-5: Enviar exercício avulso, não a pasta inteira
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -51,3 +51,26 @@ ser é **a unidade de envio**.
 - [ ] O paciente não vê nome de pasta da clínica
 - [ ] Séries e repetições valem para o avulso
 - [ ] Nada sai para o paciente sem alguém apertar um botão
+
+---
+
+## Como ficou
+
+**O modelo já sabia.** `ExercisePrescription` é uma linha por exercício, e a
+rota do painel já aceitava `exercises: [...]`. O que não existia era a porta: a
+única forma de prescrever pelo painel era a pasta inteira — e foi isso que fez o
+card de aderência cobrar dez exercícios por dia.
+
+| o quê | onde |
+|---|---|
+| **Add one** | na aba de exercícios do paciente, **antes** do "Add folder", porque é o caso mais comum |
+| busca na biblioteca | com o nome da pasta embaixo de cada item — para **quem prescreve** se situar |
+| sem plano pendurado | `protocolId` nulo: arquivar um plano não leva o avulso junto |
+| tirar um | já existia e continua: remover uma prescrição não mexe nas outras |
+| a pasta | continua funcionando, para quem manda um programa inteiro |
+
+**E o paciente deixou de receber o nome da pasta.** A rota `/api/exercises`
+mandava `exercise.folder.name` — nome da nossa estante, "Advanced Core" — para o
+aparelho dele. Agora manda `grupo`, que é o `displayGroup` da prescrição **dele**
+e pode ser nenhum. Ninguém consumia o campo antigo, então nada quebrou; o que
+some é a exposição da organização interna da clínica.
