@@ -22,6 +22,10 @@ import path from "path";
  * Em todos, o teste acusava a explicação como se fosse o defeito — ou, pior,
  * passava porque a explicação existia.
  *
+ * **O contrário também morde:** `//` não é só comentário. `https://algo` perde
+ * tudo depois dos dois traços, e a asserção que procura o endereço não acha
+ * nada. Para essas, use `ler` — e diga no teste por que ele é cru.
+ *
  * Treze arquivos tinham a própria cópia desta função, e o décimo quarto
  * esqueceu de escrevê-la. Uma função copiada treze vezes é uma função que
  * devia morar num lugar só.

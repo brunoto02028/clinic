@@ -32,7 +32,17 @@ import { prisma } from "@/lib/db";
  * limite, dez deles são 16+ por serem de hormônio ou saúde sexual, menor de 18
  * é sempre pedido por quem responde por ele, e ter conta é 16+.
  */
-export const TERMS_VERSION = "1.2";
+/**
+ * 1.3 (27/09/2026): a cláusula de **quem você cuida** — consentimento, quem
+ * acompanha o menor, o que o responsável vê e o que acontece aos 16 — e a frase
+ * dizendo que a **consulta por vídeo não é gravada**.
+ *
+ * Esta constante e a `TERMS_CONTENT_VERSION` de `lib/terms-content.ts` são a
+ * mesma versão vista de dois lugares: uma é o que a pessoa lê, a outra é o que
+ * fica gravado em `ConsentLog` de quem aceitou. Andam juntas ou o log passa a
+ * mentir sobre qual texto foi aceito — e existe um teste que falha se divergirem.
+ */
+export const TERMS_VERSION = "1.3";
 
 /**
  * Registra o aceite dos termos, com versão, IP e aparelho.

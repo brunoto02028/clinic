@@ -88,6 +88,8 @@ enquanto fala é o gesto que toda gente já conhece, e soltar termina.
 | T-4 | Áudio passa a ser anexo aceito | — | **concluída** (27/09) |
 | T-5 | Gravar e enviar voz no app | T-4 | **concluída** (27/09) — e dá para **desfazer** |
 | T-6 | Ouvir a voz — no app e no painel da clínica | T-5 | **concluída** — as duas pontas |
+| T-8 | O terapeuta **chama** o paciente, e a agenda mostra o vídeo | T-3 | **feita** (27/09) — em QA |
+| T-9 | Os termos: quem você cuida, e o vídeo não é gravado | T-3 | **feita** (27/09) — em QA |
 
 ## A decisão que bloqueia a T-1
 

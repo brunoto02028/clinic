@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   Video,
+  BellRing,
   Plus,
   Phone,
   Calendar,
@@ -168,6 +169,69 @@ export default function VideoConsultationsPage() {
    * token nosso, preso a esta pessoa e a janela do horario, e quem o emite e o
    * servidor — por isso o caminho e a pagina, que pede o token, e nao o link.
    */
+  /**
+   * Chamar o paciente — a metade da videochamada que não existia.
+   *
+   * O terapeuta conseguia entrar na sala e esperar, e **nada avisava o
+   * paciente**. Se ele não estivesse com o app aberto naquele minuto, a consulta
+   * não acontecia.
+   *
+   * É botão e não automático ao entrar, de propósito: abrir a sala cedo para
+   * testar o microfone faria o telefone do paciente tocar sem ninguém ter
+   * decidido. E a resposta diz **quantos aparelhos tocaram** — zero é notícia,
+   * não erro: quer dizer que ele não tem o app ou desligou os avisos, e o
+   * terapeuta precisa saber disso antes de esperar dez minutos.
+   */
+  const [chamando, setChamando] = useState<string | null>(null);
+
+  const chamarPaciente = async (appointment: VideoAppointment) => {
+    setChamando(appointment.id);
+    try {
+      const res = await fetch(`/api/appointments/${appointment.id}/video/call`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: relabel("Could not call"),
+          description: data.error || `HTTP ${res.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast(
+        data.aparelhos > 0
+          ? {
+              title: relabel("Patient called"),
+              description: relabel(
+                `Their phone is ringing on ${data.aparelhos} device${data.aparelhos > 1 ? "s" : ""}.`
+              ),
+            }
+          : data.falhas > 0
+            ? {
+                // `falhas > 0` com `aparelhos: 0` é envio que não saiu — não é
+                // um fato sobre o paciente (achado 4 do QA da T-8).
+                title: relabel("The call did not go out"),
+                description: relabel(
+                  "The patient has a device, but the send failed. Try again, and reach them another way if it persists."
+                ),
+                variant: "destructive" as const,
+              }
+          : {
+              // Sem aparelho não é falha da chamada: é um fato sobre o paciente, e
+              // o terapeuta tem de saber para avisar por outro caminho.
+              title: relabel("Nobody to ring"),
+              description: relabel(
+                "This patient has no device registered, or has notifications off. Reach them another way."
+              ),
+              variant: "destructive",
+            }
+      );
+    } catch {
+      toast({ title: relabel("Could not call"), description: relabel("Try again."), variant: "destructive" });
+    } finally {
+      setChamando(null);
+    }
+  };
+
   const startCall = (appointment: VideoAppointment) => {
     window.open(`/video-room/${appointment.id}`, "_blank");
   };
@@ -259,9 +323,24 @@ export default function VideoConsultationsPage() {
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{new Date(apt.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
                     <span>{apt.duration} min</span>
                   </div>
-                  <Button size="sm" className="gap-1 w-full" onClick={() => startCall(apt)}>
-                    <Phone className="h-3.5 w-3.5" /> Join Video Call
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="gap-1 flex-1" onClick={() => startCall(apt)}>
+                      <Phone className="h-3.5 w-3.5" /> Join Video Call
+                    </Button>
+                    {/* Chamar vem ao lado de entrar, e não no lugar: são duas
+                        coisas, e o terapeuta costuma fazer as duas — entra, vê
+                        que está sozinho, chama. */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      disabled={chamando === apt.id}
+                      onClick={() => chamarPaciente(apt)}
+                    >
+                      <BellRing className="h-3.5 w-3.5" />
+                      {chamando === apt.id ? relabel("Calling...") : relabel("Call patient")}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

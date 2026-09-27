@@ -83,7 +83,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [079](079-revisao-notifications/) | Revisão das notificações | 🟡 só `qa/` — **sem `plan.md`** |
 | [087](087-o-video-tem-onde-chegar-e-a-agenda-tem-forma/) | O vídeo tem onde chegar, e a agenda tem forma (fila no admin + calendário diário/semanal/mensal) | ✅ 6 concluídas |
 | [088](088-o-aviso-toca-no-telefone/) | O aviso toca no telefone | 🟡 T-2 concluída; T-1 escrita, esperava o dia do build |
-| [089](089-a-voz-e-a-cara/) | A voz e a cara (videochamada + recado de voz) | 🟡 T-1 estava bloqueada na escolha do provedor — **decidido: Daily.co**. Ver a nota abaixo |
+| [089](089-a-voz-e-a-cara/) | A voz e a cara (videochamada + recado de voz) | 🟢 T-1..T-6 feitas; chave no Coolify e videochamada **ligada em produção** (27/09). T-8 (o terapeuta chama, e a agenda mostra) e T-9 (termos 1.3) feitas, em QA. Ver a nota abaixo |
 | [090](090-pronto-para-a-apple/) | Prontidão para a App Store (auditoria) | 🟡 **sem `plan.md`** — é auditoria: `prontidao.md`, `categoria-e-classificacao.md`, `exame-para-um-filho.md`. Dos 5 bloqueios, o 1º (apagar conta) caiu |
 | [091](091-exame-para-quem-voce-cuida/) | Exame para quem você cuida, e onde ele é feito (paciente gerido, consentimento em duas vozes) | 🟡 **em produção** desde 27/09, mas o QA reprovou 4 cenários e **1 segue aberto** — ver abaixo |
 | [092](092-a-pressao-a-chamada-e-os-ajustes/) | A pressão, a chamada, e os ajustes do app | 🟡 T-1 e T-4 concluídas; T-2/T-3/T-6 esperam re-medição; T-5 não existe; T-7 bloqueada (sem Stripe em prod) |
@@ -210,6 +210,6 @@ código está inerte esperando:
 
 | falta lá | trava |
 |---|---|
-| `STRIPE_SECRET_KEY` e as outras `STRIPE_*` | **028** (cobrança do personal) e **092 T-7** (o pagamento de £1). Não existe nenhuma `STRIPE_*` na aplicação, e no `.env` local as três estão comentadas — nunca foi questão de modo de teste |
+| `STRIPE_SECRET_KEY` **live** e `STRIPE_WEBHOOK_SECRET` | **028** (cobrança do personal) e o pagamento de £1. Atualizado 27/09: o `.env` local tem chave `sk_test_` e ela **funciona** (produto e Checkout de £1 criados). Produção segue sem nenhuma `STRIPE_*`, de propósito — chave de teste lá confirmaria consulta de verdade com cartão de brinquedo. E a conta tem **zero webhooks**: sem o secret, pagamento entra e a consulta fica `PENDING` para sempre |
 | `LML_API_KEY` + `LAB_ORDERING_ENABLED` | **081 T-5..T-9**, os exames de laboratório |
-| `DAILY_API_KEY` + `VIDEO_CALLS_ENABLED` | **089** e **092 T-5**, a videochamada |
+| ~~`DAILY_API_KEY` + `VIDEO_CALLS_ENABLED`~~ | **resolvido em 27/09**: as duas estão no Coolify, e a videochamada responde em produção |

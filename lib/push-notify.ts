@@ -87,6 +87,41 @@ export function pushConsulta(patientId: string, tipo: "marcada" | "remarcada" | 
 }
 
 /**
+ * **O terapeuta está esperando na consulta por vídeo** (089).
+ *
+ * Sem isto, a videochamada não acontece. O terapeuta conseguia entrar na sala e
+ * esperar, e **nada avisava o paciente** — se ele não estivesse com o app aberto
+ * na hora exata, a consulta simplesmente não ocorria. "Chamar alguém" é metade
+ * do que uma videochamada é, e essa metade não existia.
+ *
+ * O toque leva **direto para a chamada**, e não para a lista: quem está sendo
+ * chamado não deve ter de procurar.
+ *
+ * E o aviso diz quem espera, não o que será tratado — ele aparece na tela
+ * bloqueada, à vista de quem estiver por perto.
+ *
+ * Quando o paciente é uma pessoa gerida, o aviso chega a **quem responde por
+ * ela**, com o nome dela no corpo: `lib/push-send.ts` faz essa tradução num
+ * lugar só, e uma criança não tem aparelho para onde o aviso pudesse ir.
+ */
+export function pushChamadaComecou(patientId: string, appointmentId: string) {
+  return avisar(
+    patientId,
+    {
+      en: {
+        title: "Your therapist is waiting",
+        body: "Your video consultation is open. Tap to join.",
+      },
+      pt: {
+        title: "Seu terapeuta está esperando",
+        body: "Sua consulta por vídeo está aberta. Toque para entrar.",
+      },
+    },
+    `/(app)/(clinica)/consulta-video?id=${appointmentId}`
+  );
+}
+
+/**
  * A clínica criou uma ação para o paciente resolver.
  *
  * O título da tarefa é texto livre de quem a criou — "assinar consentimento
