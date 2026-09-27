@@ -13,7 +13,7 @@ o produto ficando bom o bastante para outra pessoa usar.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | O aviso não chega ao telefone do Bruno | — | pendente |
+| T-1 | O aviso não chega ao telefone do Bruno | — | **feita** (27/09) — em QA |
 | T-2 | Onde ver, e como testar, uma consulta por vídeo | — | pendente |
 | T-3 | Cadastrar menor exige dizer a relação com ele | — | pendente |
 | T-4 | A cor do "Mark as done" | — | pendente |
@@ -21,11 +21,16 @@ o produto ficando bom o bastante para outra pessoa usar.
 | T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | pendente |
 | T-7 | Pain Trend: o paciente relata por data | — | pendente |
 | T-8 | O calendário mostra disponibilidade de verdade | T-2 | pendente |
+| T-9 | Onde o paciente lê o aviso (link, separação, lido) | T-1 | pendente |
+
+A T-9 entrou depois, em 27/09: *"quando eu enviar a um paciente ou todos os
+usuários, eles recebem e leem onde?"*. A resposta é **Mensagens, no app** — e
+rastreá-la mostrou dois furos de entorno que a tarefa conserta.
 
 **Ordem sugerida:** T-1 e T-2 primeiro, porque sem eles você não consegue
 **testar** o resto. Depois T-3 (é regra de segurança, não estética), T-4 e T-5
-(são rápidas e aparecem toda hora), e por fim T-6, T-7 e T-8, que são telas
-novas.
+(são rápidas e aparecem toda hora), e por fim T-6, T-7, T-8 e T-9, que são
+telas novas. A T-9 anda junto da T-1: as duas são sobre o aviso chegar.
 
 ## Decisões que já tomei, e você pode derrubar
 

@@ -115,3 +115,19 @@ respondeu pela criança; se a relação não sai impressa, o campo é decoraçã
 
 **A que mais importa:** 8.3 e 8.7. Oferecer horário que não existe é marcar em
 cima de outro paciente.
+
+## T-9 — Onde o paciente lê o aviso
+
+| # | passos | esperado |
+|---|---|---|
+| 9.1 | enviar aviso a um paciente | aparece em Mensagens, no app, com o título em destaque |
+| 9.2 | tocar no push | abre a tela de mensagens, no aviso |
+| 9.3 | o link do e-mail/WhatsApp, em quem tem o app | abre o app, não o portal web |
+| 9.4 | o mesmo, em quem não tem o app | cai no endereço web, e não numa porta fechada |
+| 9.5 | aviso × mensagem do terapeuta, na mesma tela | dá para distinguir sem ler o conteúdo |
+| 9.6 | o paciente abre o aviso | o painel passa a mostrar que foi lido |
+| 9.7 | contador de não lidos | conta o aviso |
+| 9.8 | a prévia do envio | diz onde o aviso vai aparecer |
+
+**A que mais importa:** 9.3. Depois do lançamento o paciente perde a web — um
+link para o portal é um aviso que morre no clique.
