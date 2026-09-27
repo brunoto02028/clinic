@@ -9,6 +9,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { removeBackground } from "@/lib/remove-bg";
 import { uploadToS3 } from "@/lib/s3";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 const execFileAsync = promisify(execFile);
 
@@ -45,7 +46,7 @@ export async function POST(
       return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
     }
 
-    const formData = await request.formData();
+    const formData = await camposDoFormulario(request);
     const file = formData.get("image") as File | null;
     const view = formData.get("view") as string | null;
 

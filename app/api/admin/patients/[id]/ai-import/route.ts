@@ -10,6 +10,7 @@ import { extractText } from "@/lib/docling";
 import { patientPseudonym } from "@/lib/pseudonymize";
 import fs from "fs";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 const RED_FLAG_KEYS = [
   "unexplainedWeightLoss", "nightPain", "traumaHistory", "neurologicalSymptoms",
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
-  const formData = await req.formData();
+  const formData = await camposDoFormulario(req);
   const clinicalText = (formData.get("clinicalText") as string) || "";
   const files = formData.getAll("files") as File[];
 

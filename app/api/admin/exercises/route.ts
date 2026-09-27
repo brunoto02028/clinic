@@ -14,6 +14,7 @@ import {
   type StoredExerciseMedia,
 } from "@/lib/exercise-media";
 import { uploadToR2 } from "@/lib/r2";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
   let storedMedia: StoredExerciseMedia | null = null;
 
   try {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const clinicId = await resolveClinicId(session);
     const userId = (session.user as any)?.id;
 

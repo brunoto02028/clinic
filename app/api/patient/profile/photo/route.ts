@@ -8,6 +8,7 @@ import { patientOnlyWriteRefusal } from '@/lib/patient-only-write';
 import { MAX_THUMBNAIL_BYTES } from '@/lib/exercise-media';
 import { rateLimit } from '@/lib/rate-limit';
 import { isR2Configured, uploadToR2, deleteR2Url, deleteFromR2, r2PublicUrl } from '@/lib/r2';
+import { camposDoFormulario } from "@/lib/form-fields";
 
 /**
  * A foto de perfil do paciente.
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
     // genérico isso virava 500 — um pedido malformado é 400, não falha nossa.
     let form: FormData;
     try {
-      form = await req.formData();
+      form = await camposDoFormulario(req);
     } catch {
       return NextResponse.json(
         { error: 'Send the image as multipart/form-data', code: 'bad_request' },

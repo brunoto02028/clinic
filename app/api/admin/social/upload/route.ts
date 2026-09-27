@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { getSessionStaffActor } from '@/lib/tenant-access';
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     const actor = await getSessionStaffActor(req);
     if (!actor || actor.role === 'THERAPIST') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const files = formData.getAll('files') as File[];
 
     if (!files.length) {

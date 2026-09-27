@@ -9,6 +9,7 @@ import {
   storeExerciseSubmission,
   MAX_DURATION_SECONDS,
 } from "@/lib/exercise-submission";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 /**
  * O que o paciente mandou do exercício feito em casa.
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
   let form: FormData;
   try {
-    form = await req.formData();
+    form = await camposDoFormulario(req);
   } catch {
     // Corpo malformado é 400, não falha nossa.
     return NextResponse.json(

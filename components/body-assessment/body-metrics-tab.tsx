@@ -489,6 +489,23 @@ interface BodyMetricsTabProps {
   onSave: (data: any) => Promise<void>;
 }
 
+/**
+ * Idade em anos a partir da data de nascimento, ou `undefined`.
+ *
+ * Comparação de datas, e não divisão de milissegundos: ano bissexto e horário de
+ * verão fazem a divisão errar por um dia, e "um dia" decide maioridade.
+ */
+function idadeDe(nascimento?: string | Date | null): number | undefined {
+  if (!nascimento) return undefined;
+  const d = new Date(nascimento);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const hoje = new Date();
+  let anos = hoje.getFullYear() - d.getFullYear();
+  const m = hoje.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < d.getDate())) anos--;
+  return anos >= 0 && anos < 130 ? anos : undefined;
+}
+
 // Safe parseFloat that returns undefined instead of NaN
 function safeFloat(val: string): number | undefined {
   if (!val || val.trim() === "") return undefined;
@@ -593,113 +610,69 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
         stepsPerDay: parseInt(stepsPerDay) || null,
       };
 
-      // FIX: Compute health metrics from available form data
-      const h = parseFloat(height) / 100;
-      const w = parseFloat(weightKg) || 0;
-      const bmi = (h > 0 && w > 0) ? w / (h * h) : null;
-      const whr = (parseFloat(waistCm) && parseFloat(hipCm))
-        ? parseFloat(waistCm) / parseFloat(hipCm) : null;
-      const bf = parseFloat(bodyFatPercent) || null;
-      const bps = parseFloat(bloodPressureSystolic);
-      const bpd = parseFloat(bloodPressureDiastolic);
-      const hr = parseFloat(restingHeartRate);
-      const smoke = smokingStatus === 'current' ? 2 : smokingStatus === 'former' ? 1 : 0;
-      const alcohol = alcoholConsumption === 'high' ? 2 : alcoholConsumption === 'moderate' ? 1 : 0;
-      const sitting = parseFloat(sittingHoursPerDay) || 0;
-      const steps = parseInt(stepsPerDay) || 0;
-      const activityMap: Record<string, number> = {
-        sedentary: 0, light: 1, moderate: 2, active: 3, very_active: 4
-      };
-      const activity = activityMap[activityLevel || 'sedentary'] || 0;
+      /**
+       * As métricas vinham de um bloco reimplementado aqui, e ele **quebrava a
+       * gravação inteira** (27/09/2026).
+       *
+       * O bloco referenciava oito nomes que não existem neste componente —
+       * `height` (o estado é `heightCm`), `bloodPressureSystolic`,
+       * `bloodPressureDiastolic`, `restingHeartRate`, `smokingStatus`,
+       * `alcoholConsumption`, `gender` e `age_`. O primeiro deles levantava
+       * `ReferenceError`, e como este `handleSave` tem `finally` mas **não tem
+       * `catch`**, a exceção escapava: nada nesta aba era salvo, nunca, e a tela
+       * não dizia nada.
+       *
+       * Havia dois problemas embutidos além disso:
+       *
+       * 1. **Risco clínico calculado sobre dados que não existem.** Pressão,
+       *    fumo, álcool e frequência cardíaca não estão neste formulário **nem no
+       *    model** `BodyAssessment`. Com `parseFloat(undefined)` virando `NaN`,
+       *    todo `bps > 140` dava falso — ou seja, paciente hipertenso sairia
+       *    classificado como sem risco. Um padrão silencioso que tranquiliza é o
+       *    pior tipo de padrão num número clínico.
+       * 2. **Tipo errado no banco.** Mandava `cardiovascularRisk` e
+       *    `metabolicRisk` como número (0–4), e as colunas são `String?`
+       *    (`low|moderate|high|very_high`).
+       *
+       * `lib/health-metrics.ts` já faz isso, e a página que contém esta aba já o
+       * usa para desenhar o `HealthMetricsCard`. Ele decide o que **pode** ser
+       * calculado: BMR só com idade e sexo, relação cintura/quadril só com as
+       * duas medidas, gordura corporal só com o que o método exige. O que falta
+       * volta `null` em vez de virar palpite.
+       */
+      const alturaCm = safeFloat(heightCm);
+      const pesoKg = safeFloat(weightKg);
 
-      // BMI Classification
-      let bmiClass = 'Normal';
-      if (bmi !== null) {
-        if (bmi < 18.5) bmiClass = 'Underweight';
-        else if (bmi < 25) bmiClass = 'Normal';
-        else if (bmi < 30) bmiClass = 'Overweight';
-        else bmiClass = 'Obese';
-      }
+      // Sem altura e peso não há métrica derivada nenhuma — e forçar zero aqui
+      // daria BMI infinito. As medidas cruas seguem sendo salvas.
+      const computed =
+        alturaCm && pesoKg
+          ? computeAllMetrics({
+              heightCm: alturaCm,
+              weightKg: pesoKg,
+              waistCm: safeFloat(waistCm),
+              hipCm: safeFloat(hipCm),
+              neckCm: safeFloat(neckCm),
+              // Idade e sexo não são campos desta aba. Quando a página os trouxer
+              // no `assessment`, o BMR passa a sair; até lá ele vem `null`, que é
+              // a resposta honesta.
+              sex: assessment?.patient?.gender === "male" || assessment?.patient?.gender === "female"
+                ? assessment.patient.gender
+                : undefined,
+              age: idadeDe(assessment?.patient?.dateOfBirth),
+              activityLevel: activityLevel || undefined,
+              sittingHoursPerDay: safeFloat(sittingHoursPerDay),
+              walkingMinutesDay: safeFloat(walkingMinutesDay),
+              bodyFatPercent: safeFloat(bodyFatPercent),
+              bodyFatMethod: (bodyFatMethod || undefined) as any,
+            })
+          : null;
 
-      // BMR (Mifflin-St Jeor)
-      const age = parseInt(age_) || 30;
-      const maleBmr = 10 * w + 6.25 * (parseFloat(height) || 0) - 5 * age + 5;
-      const femaleBmr = 10 * w + 6.25 * (parseFloat(height) || 0) - 5 * age - 161;
-      const bmr = gender === 'male' ? maleBmr : gender === 'female' ? femaleBmr : (maleBmr + femaleBmr) / 2;
-
-      // Lean and fat mass
-      const leanMass = bf && bf > 0 ? w * (1 - bf / 100) : null;
-      const fatMass = bf && bf > 0 ? w * (bf / 100) : null;
-
-      // Cardiovascular risk: 0=none, 1=low, 2=moderate, 3=high, 4=very high
-      let cvRisk = 0;
-      if (bmi !== null && bmi >= 30) cvRisk += 2;
-      else if (bmi !== null && bmi >= 25) cvRisk += 1;
-      if (whr !== null && whr > 1.0) cvRisk += 1;
-      if (bps > 140 || bpd > 90) cvRisk += 2;
-      else if (bps > 130 || bpd > 85) cvRisk += 1;
-      if (smoke >= 1) cvRisk += 1;
-      if (sitting > 8) cvRisk += 1;
-      if (steps < 5000) cvRisk += 1;
-      cvRisk = Math.min(4, cvRisk);
-
-      // Metabolic risk: 0=none, 1=low, 2=moderate, 3=high
-      let metRisk = 0;
-      if (bmi !== null && bmi >= 30) metRisk += 2;
-      else if (bmi !== null && bmi >= 25) metRisk += 1;
-      if (whr !== null && whr > 1.0) metRisk += 1;
-      if (bps > 130 || bpd > 85) metRisk += 1;
-      if (hr > 80) metRisk += 1;
-      if (activity === 0) metRisk += 1;
-      metRisk = Math.min(3, metRisk);
-
-      // Composite health score (0-100, higher = healthier)
-      let healthScore = 100;
-      if (bmi !== null) {
-        if (bmi < 18.5 || bmi >= 30) healthScore -= 15;
-        else if (bmi >= 25) healthScore -= 5;
-      }
-      healthScore -= cvRisk * 10;
-      healthScore -= metRisk * 5;
-      if (smoke === 2) healthScore -= 15;
-      if (smoke === 1) healthScore -= 5;
-      if (alcohol === 2) healthScore -= 5;
-      if (activity >= 3) healthScore += 5;
-      healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
-
-      // Risk factors
-      const healthRiskFactors: string[] = [];
-      if (bmi !== null && bmi >= 30) healthRiskFactors.push('Obesity (BMI)');
-      else if (bmi !== null && bmi >= 25) healthRiskFactors.push('Overweight (BMI)');
-      if (bps > 140 || bpd > 90) healthRiskFactors.push('Hypertension');
-      else if (bps > 130 || bpd > 85) healthRiskFactors.push('Elevated BP');
-      if (smoke === 2) healthRiskFactors.push('Active smoker');
-      else if (smoke === 1) healthRiskFactors.push('Former smoker');
-      if (sitting > 8) healthRiskFactors.push('Sedentary behaviour');
-      if (steps < 5000) healthRiskFactors.push('Low physical activity');
-      if (whr !== null && whr > 1.0) healthRiskFactors.push('Abdominal obesity (WHR)');
-
-      const computed = {
-        bmi: bmi !== null ? Math.round(bmi * 10) / 10 : null,
-        bmiClassification: bmiClass,
-        waistHipRatio: whr !== null ? Math.round(whr * 100) / 100 : null,
-        bodyFatPercent: bf,
-        bodyFatMethod: bodyFatMethod || null,
-        leanMassKg: leanMass !== null ? Math.round(leanMass * 10) / 10 : null,
-        fatMassKg: fatMass !== null ? Math.round(fatMass * 10) / 10 : null,
-        basalMetabolicRate: Math.round(bmr),
-        cardiovascularRisk: cvRisk,
-        metabolicRisk: metRisk,
-        healthScore,
-        healthRiskFactors,
-      };
-
-      // Add computed metrics
       if (computed) {
         data.bmi = computed.bmi;
         data.bmiClassification = computed.bmiClassification;
         data.waistHipRatio = computed.waistHipRatio;
-        data.bodyFatPercent = computed.bodyFatPercent || (parseFloat(bodyFatPercent) || null);
+        data.bodyFatPercent = computed.bodyFatPercent ?? safeFloat(bodyFatPercent) ?? null;
         data.bodyFatMethod = computed.bodyFatMethod || bodyFatMethod || null;
         data.leanMassKg = computed.leanMassKg;
         data.fatMassKg = computed.fatMassKg;

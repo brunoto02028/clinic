@@ -6,6 +6,7 @@ import { storePatientDocument, validatePatientFile } from "@/lib/patient-documen
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { signFileToken } from "@/lib/file-access-token";
 import { patientGate } from "@/lib/patient-gate";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     const userId = effectiveUser.userId;
     const _u = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } }); const clinicId = _u?.clinicId || null;
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File;
     const title = (formData.get("title") as string) || null;
     const description = (formData.get("description") as string) || null;

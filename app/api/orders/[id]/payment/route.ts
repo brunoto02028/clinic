@@ -47,6 +47,26 @@ export async function POST(
     }
     
     // Check order is in payable state
+    /**
+     * Sem chave, resposta honesta — e não TypeError (27/09/2026).
+     *
+     * `stripe` nasce `null` quando `STRIPE_SECRET_KEY` não existe, e **hoje ela
+     * não existe**: conferi as variáveis da aplicação no Coolify e não há
+     * nenhuma `STRIPE_*`; no `.env` local as três estão comentadas. Ou seja,
+     * esta rota, em produção, ia direto para `null.paymentIntents` — 500 com
+     * stack, onde o certo é dizer que pagamento não está configurado.
+     */
+    if (!stripe) {
+      return NextResponse.json(
+        {
+          error: "Payments are not set up yet.",
+          errorPt: "O pagamento ainda não está configurado.",
+          code: "payments_unavailable",
+        },
+        { status: 503 }
+      );
+    }
+
     if (!['DRAFT', 'PENDING_PAYMENT'].includes(order.status)) {
       return NextResponse.json({ error: 'Order cannot be paid in current status' }, { status: 400 });
     }
@@ -128,6 +148,19 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid payment intent' }, { status: 400 });
     }
     
+    // A mesma guarda do POST acima, e por isto ela não é redundante: são dois
+    // handlers, e o `stripe` do módulo é nulo para os dois quando a chave falta.
+    if (!stripe) {
+      return NextResponse.json(
+        {
+          error: "Payments are not set up yet.",
+          errorPt: "O pagamento ainda não está configurado.",
+          code: "payments_unavailable",
+        },
+        { status: 503 }
+      );
+    }
+
     // Verify payment with Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     

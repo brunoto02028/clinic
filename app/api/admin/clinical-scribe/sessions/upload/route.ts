@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getActor, isStaff } from "@/lib/tenant-access";
 import { uploadToR2 } from "@/lib/r2";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `File too large (max ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB)` }, { status: 413 });
   }
 
-  const formData = await req.formData().catch(() => null) as FormData | null;
+  const formData = await camposDoFormulario(req).catch(() => null) as FormData | null;
   const audio = formData?.get("audio");
   const patientIdRaw = formData?.get("patientId");
   const languageRaw = formData?.get("language");

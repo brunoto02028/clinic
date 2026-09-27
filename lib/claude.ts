@@ -415,7 +415,11 @@ export async function claudeVision(
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        // `openRouterKey`, e nao `OPENROUTER_API_KEY`: o identificador em maiuscula
+        // nao existe neste escopo, e este caminho de visao levantava
+        // ReferenceError na primeira execucao. A chave vem do
+        // `resolveClaudeConfig()` no topo da funcao.
+        Authorization: `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://bpr.clinic',
         'X-Title': 'BPR Clinic AI',
@@ -440,7 +444,8 @@ export async function claudeVision(
   };
 
   try {
-    return await tryModel(DEFAULT_MODEL);
+    // Idem: `defaultModel`, desestruturado no topo. `DEFAULT_MODEL` nao existe.
+    return await tryModel(defaultModel);
   } catch (err: any) {
     console.warn('[claude] Vision primary model failed, trying fallback:', err.message);
     return tryModel(OPENROUTER_FALLBACK_MODEL);
