@@ -156,8 +156,29 @@ const light: ThemeColors = {
   labWarm: "#8E642D",
   labWarmSoft: "#F5EFDD",
 
-  agendaLivre: "#2F8F5B",
-  agendaQuaseCheio: "#C07A16",
+  /**
+   * As bolinhas do calendário. **Escurecidas em 27/09/2026** — o QA mediu e o
+   * que eu tinha feito era pior no claro do que o que substituiu.
+   *
+   * Sobre `bone` (#F5F4F1):
+   *
+   * | | antes (`ok`/`warn`) | minha 1ª versão | agora |
+   * |---|---|---|---|
+   * | livre | #55705F, 4,93:1 | #2F8F5B, **3,67:1** | #25784A, 4,94:1 |
+   * | quase cheio | #826637, 4,89:1 | #C07A16, **3,16:1** | #9A5F0E, 4,75:1 |
+   *
+   * Passavam o piso de 3:1 de elemento não-textual, mas eu tinha **trocado
+   * 4,9 por 3,2** e escrito no plano que estava melhorando a legibilidade. O
+   * que realmente ajudou foi o tamanho (5px → 7px) e a saturação, não a
+   * luminosidade — e o diagnóstico de que as cores antigas eram "invisíveis no
+   * escuro" não se sustenta: lá elas já davam 6,43 e 7,13.
+   *
+   * Estes valores voltam ao contraste de antes **mantendo** a saturação, que é
+   * o que de fato separava livre de quase cheio. No escuro (9,19 e 9,03) nada
+   * muda.
+   */
+  agendaLivre: "#25784A",
+  agendaQuaseCheio: "#9A5F0E",
   ok: palette.ok,
   okSoft: palette.okSoft,
   warn: palette.warn,

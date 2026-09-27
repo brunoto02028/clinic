@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
+import { expireStaleSessions } from "@/lib/clinic-device";
 import { ingestWithings } from "@/lib/withings-ingest";
 
 /**
@@ -42,11 +43,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Janela fechada não busca nada. Sem isto, tocar no botão numa sessão
+  // cancelada ou vencida ia à Withings, trazia a leitura e a jogava na caixa
+  // de entrada — e a tela respondia "encontrei", apontando para uma sessão que
+  // não existe mais. A resposta certa é dizer que a janela fechou, e que é
+  // preciso abrir outra (achado do review de 27/09/2026).
+  await expireStaleSessions(session.connectionId);
+  const aindaAberta = session.status === "OPEN" && session.expiresAt.getTime() > Date.now();
+  if (!aindaAberta) {
+    return NextResponse.json(
+      {
+        error: "This measurement window is closed. Open a new one and measure again.",
+        errorPt: "Esta janela de medição está fechada. Abra outra e meça de novo.",
+        code: "session_closed",
+        status: session.status,
+      },
+      { status: 409 }
+    );
+  }
+
   const connection = await (prisma as any).wearableConnection.findUnique({
     where: { id: session.connectionId },
     select: {
       id: true, userId: true, accessToken: true, refreshToken: true,
       tokenExpiresAt: true, status: true, isClinicDevice: true, clinicId: true,
+      // A regra do aparelho compartilhado (092 T-1) decide pelo `providerUserId`
+      // se esta conta também é a da clínica. Sem ele aqui, este caminho
+      // discordaria do webhook e da varredura diária.
+      providerUserId: true,
     },
   });
   if (!connection || connection.status !== "CONNECTED") {
@@ -71,11 +95,33 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const since = new Date(session.openedAt.getTime() - FOLGA_MS);
   const until = new Date(Math.min(Date.now() + FOLGA_MS, session.expiresAt.getTime() + FOLGA_MS));
 
-  const counts = await ingestWithings(connection.userId, connection, {
-    since,
-    until,
-    kinds: ["bp"],
-  });
+  /**
+   * A ida à Withings é a única parte daqui que depende de terceiro, e é a que
+   * mais falha: token que não renova, API fora, rede do consultório.
+   *
+   * Sem este `catch` o terapeuta recebia 500 e a tela dizia "erro" — a mesma
+   * palavra para "a Withings está fora do ar" e "há um defeito nosso". Ele
+   * apertaria de novo para sempre sem saber qual dos dois. Achado do review de
+   * 27/09/2026.
+   */
+  let counts;
+  try {
+    counts = await ingestWithings(connection.userId, connection, {
+      since,
+      until,
+      kinds: ["bp"],
+    });
+  } catch (e: any) {
+    console.error("[measurement-fetch] withings failed:", e?.message);
+    return NextResponse.json(
+      {
+        error: "Could not reach the device's account just now. Try again in a moment.",
+        errorPt: "Não foi possível falar com a conta do aparelho agora. Tente de novo em instantes.",
+        code: "provider_unavailable",
+      },
+      { status: 502 }
+    );
+  }
 
   // Relê a sessão: `ingestWithings` roda a atribuição, e se a leitura casou
   // esta janela ela já está ligada aqui.
@@ -91,9 +137,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     found: !!depois?.reading,
     reading: depois?.reading ?? null,
     status: depois?.status ?? session.status,
-    // Quantas leituras vieram da Withings nesta janela, mesmo que nenhuma
-    // tenha casado. Zero e "veio uma mas foi para a caixa de entrada" são
-    // situações diferentes, e a tela precisa poder dizer qual é.
-    lidas: counts.bloodPressure,
+    // Quantas leituras **vieram** da Withings nesta janela, salvas ou não.
+    // Estava contando as salvas — e aí, no caso exato em que a distinção
+    // importa (veio uma e foi para a caixa), o número era zero e a tela dizia
+    // "nada veio do aparelho". O terapeuta apertaria para sempre com a leitura
+    // já esperando na caixa. Achado do review de 27/09/2026.
+    lidas: counts.bloodPressureRead,
   });
 }

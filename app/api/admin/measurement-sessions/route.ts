@@ -53,7 +53,10 @@ export async function GET(req: NextRequest) {
     device: {
       id: device.id,
       label: device.deviceLabel,
-      delivery: deliveryState(device),
+      // `soPressao`: este aparelho é um manguito. Passos e sono nunca serão
+      // confirmados nele, e exigi-los fazia `partial` ser o estado permanente —
+      // um aviso âmbar que nunca apagava. Ver `deliveryState`.
+      delivery: deliveryState(device, { soPressao: true }),
       daysSilent: daysSilent(device),
       silent: isSilent(device, limite),
       /**

@@ -411,6 +411,30 @@ export async function middleware(request: NextRequest) {
 
   // If no token, redirect to login
   if (!token) {
+    /**
+     * Uma chamada de API sem sessão recebe 401 em JSON, não o redirect.
+     *
+     * O redirect é a resposta certa para uma **página** — a pessoa vai ao
+     * login e volta. Para um `fetch()` de dentro de uma tela ele é um desastre
+     * silencioso: o navegador **segue** o 307, recebe 200 com o HTML do
+     * `/login`, e o `res.json()` do chamador estoura num erro de parse. A
+     * terapeuta não lê "sua sessão expirou", lê um erro de sintaxe — e todo o
+     * esforço de dar `code` e `errorPt` a cada falha morre nesse caso.
+     *
+     * O arquivo já tinha este cuidado em dois lugares (o 404 do tenant
+     * pessoal, o 403 do paciente em rota de equipe); faltava no caso mais
+     * comum de todos. Achado do QA da 092, cenário 2.5.
+     */
+    if (pathname.startsWith('/api')) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Your session has expired. Sign in again.',
+          errorPt: 'Sua sessão expirou. Entre de novo.',
+          code: 'session_expired',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS } }
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);

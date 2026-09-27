@@ -7,19 +7,29 @@ Escrita junto com o plano. Cenários agrupados por tarefa; o que não puder ser 
 
 ## T-1 — O webhook para de sortear
 
+**Reescrita em 27/09/2026, depois do code review.** A versão anterior descrevia
+"sem sessão → dono do aparelho". Essa regra foi **derrubada**: o terapeuta que
+esquece de abrir a janela produz o mesmo estado que o dono medindo em si, e o
+atalho mandava pressão de paciente para o prontuário do dono, em silêncio.
+
+A regra que vale: num aparelho compartilhado, **só a conexão da clínica
+processa pressão**; a pessoal da mesma conta se cala.
+
 | # | passos | esperado |
 |---|---|---|
-| 1.1 | duas conexões WITHINGS com o **mesmo** `providerUserId` (uma de clínica, uma pessoal), sessão aberta | a leitura vai para o **paciente da sessão** |
-| 1.2 | as mesmas duas, **sem** sessão aberta | vai para o **dono pessoal** do aparelho |
-| 1.3 | só conexão de clínica, sessão aberta | como sempre: paciente da sessão |
-| 1.4 | só conexão de clínica, sem sessão | caixa de entrada |
-| 1.5 | só conexão pessoal | prontuário do dono, sem passar por atribuição |
-| 1.6 | duas sessões abertas ao mesmo tempo | caixa de entrada — ambiguidade não se adivinha |
-| 1.7 | `providerUserId` desconhecido | responde `{"status":0}` e não grava nada |
-| 1.8 | conexão existe mas não está `CONNECTED` | não grava **e registra o descarte** (ver T-3) |
+| 1.1 | conexão da clínica, sessão aberta | leitura vai para o **paciente da sessão** |
+| 1.2 | conexão da clínica, **sem** sessão | **caixa de entrada** — nunca para o dono |
+| 1.3 | conexão pessoal cuja conta **também** é da clínica | não grava pressão nenhuma |
+| 1.4 | conexão pessoal de conta que **não** é da clínica | grava no prontuário do dono, como sempre |
+| 1.5 | duas sessões abertas ao mesmo tempo | caixa — ambiguidade não se adivinha |
+| 1.6 | conexão pessoal sem `providerUserId` | grava normal (na dúvida, não se cala) |
+| 1.7 | `providerUserId` desconhecido no webhook | responde `{"status":0}` e não grava |
+| 1.8 | webhook com clínica e pessoal casando | escolhe a **da clínica**, sempre — sem sorteio |
+| 1.9 | a regra pura `ignoraPressao` | é **chamada** pelo ingest, não reimplementada ao lado |
 
-**A que mais importa:** 1.1 e 1.2 com as duas conexões coexistindo. É o caso que ninguém previu e
-que hoje é sorteado.
+**A que mais importa:** 1.2 e 1.3. A 1.2 é o atalho derrubado; a 1.3 é o defeito
+que já existia antes da 092 — o cron diário processava as duas conexões, e a
+pessoal engolia as medições dos pacientes disparando os alertas delas.
 
 ## T-2 — "Já medi — busca agora"
 
@@ -41,13 +51,22 @@ que hoje é sorteado.
 | 3.2 | painel da clínica | mostra estado da conexão e **quando chegou a última leitura** |
 | 3.3 | leitura sem sessão que cai na caixa | a caixa diz de que aparelho veio e quando |
 
-## T-4 — O índice único
+## T-4 — O índice que não protegia
+
+**Reescrita em 27/09/2026.** Eu havia acrescentado
+`@@unique([provider, providerUserId, userId])` anunciando "a trava voltou". O
+review mostrou que ela é **implicada** por `@@unique([userId, provider])`, que
+já existia: não restringia nada. Foi removida.
 
 | # | passos | esperado |
 |---|---|---|
-| 4.1 | `prisma migrate diff` | **não** propõe mais `DROP INDEX WearableConnection_provider_providerUserId_key` |
-| 4.2 | tentar duas conexões do mesmo papel na mesma conta Withings | recusado pelo banco |
-| 4.3 | uma de clínica + uma pessoal, mesma conta | permitido |
+| 4.1 | `prisma migrate diff` | não propõe nada sobre índice de `WearableConnection` |
+| 4.2 | o schema | **não** tem `(provider, providerUserId, userId)` nem `(provider, providerUserId)` |
+| 4.3 | o schema | explica qual seria a trava certa (`isClinicDevice`) e por que ela não está lá |
+| 4.4 | duas conexões pessoais na mesma conta | permitido pelo banco — e **as duas** ignoram pressão |
+
+A 4.4 é o que torna a ausência do índice segura: o roteamento não depende de
+unicidade nenhuma.
 
 ## T-5 — Videochamada
 
