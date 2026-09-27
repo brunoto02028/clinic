@@ -1,6 +1,6 @@
 # T-6: Responder ao vídeo do paciente, e arquivá-lo
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -48,3 +48,28 @@ forma, e nada sai da fila depois de visto.
 - [ ] Arquivar tira da fila e não apaga nada
 - [ ] Dá para ver e desarquivar
 - [ ] O paciente só recebe depois de alguém apertar enviar
+
+---
+
+## Como ficou
+
+**Responder.** O anexo (áudio ou vídeo) vai pela rota de mensagens do painel,
+que **já sabia** guardar anexo de conversa — então a resposta chega ao paciente
+onde ele lê, e não numa anotação que só a clínica vê. O texto continua indo para
+o `reviewNote`, que é a anotação clínica.
+
+A ordem importa: **a mídia primeiro, a revisão depois**. Se o anexo falhar, o
+envio continua na fila — uma fila com um item a mais é melhor que um paciente
+marcado como respondido sem ter recebido o que o terapeuta gravou para ele.
+
+E o card guarda `replyKind` (`audio` ou `video`), porque áudio não cabe numa
+anotação de texto e, sem o rastro, o envio respondido parece um "vi e não disse
+nada".
+
+**Arquivar.** `archivedAt` + `archivedById`. Sai da lista, **não sai do
+prontuário** — o vídeo é a execução de um exercício numa data, e o pedido era
+limpar o painel, não perder registro. Um botão "Ver arquivados" traz de volta, e
+é a prova de que nada foi apagado.
+
+**O paciente não é avisado de arrumação nossa.** "Sua gravação foi arquivada"
+soa como se algo tivesse sido perdido, e é decisão de organização interna.
