@@ -484,8 +484,11 @@ export default function NotificationsPage() {
               {/* A prévia dizia só "no app", e o servidor manda e-mail/WhatsApp
                   para todos por padrão — a linha que contava isso ficava
                   abaixo do botão, em cinza de 10px (QA de 25/09, R5). */}
+              {/* Onde, e não só para quantos: quem escreve precisa saber
+                  em que tela aquilo vai aparecer para escrever certo (T-9). */}
               <p className="text-xs text-muted-foreground">
-                In the app for <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
+                It lands in <strong>Messages</strong>, in the app — where they read what the clinic
+                writes. For <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
                 , and by e-mail or WhatsApp as each one prefers
                 {pushNotify ? (
                   preview.devices > 0 ? (

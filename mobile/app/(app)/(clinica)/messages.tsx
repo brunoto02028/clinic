@@ -348,18 +348,45 @@ function MessagesScreen() {
               ) : (
                 messages.map((m: ClinicMessage) => {
                   const mine = m.senderRole === "patient";
+                  /**
+                   * Aviso da clínica não é conversa (095 T-9).
+                   *
+                   * Um comunicado para todos os pacientes aparecia no mesmo fio
+                   * em que a pessoa fala com quem a atende, com a mesma forma
+                   * de balão. Funciona, e confunde duas coisas de naturezas
+                   * diferentes: uma é conversa, a outra é mural — e o mural
+                   * some no meio do histórico.
+                   *
+                   * Então o aviso ocupa a largura toda, encostado à esquerda
+                   * com uma faixa, em vez de virar balão. O histórico não muda
+                   * de lugar: muda de cara.
+                   */
+                  const aviso = m.kind !== "message";
                   return (
                     <View
                       key={m.id}
-                      style={{
-                        alignSelf: mine ? "flex-end" : "flex-start",
-                        maxWidth: "86%",
-                        backgroundColor: mine ? t.colors.health : t.colors.surfaceMuted,
-                        borderRadius: 14,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        gap: 4,
-                      }}
+                      style={
+                        aviso
+                          ? {
+                              alignSelf: "stretch",
+                              backgroundColor: t.colors.surfaceMuted,
+                              borderLeftWidth: 3,
+                              borderLeftColor: t.colors.health,
+                              borderRadius: 10,
+                              paddingHorizontal: 14,
+                              paddingVertical: 12,
+                              gap: 4,
+                            }
+                          : {
+                              alignSelf: mine ? "flex-end" : "flex-start",
+                              maxWidth: "86%",
+                              backgroundColor: mine ? t.colors.health : t.colors.surfaceMuted,
+                              borderRadius: 14,
+                              paddingHorizontal: 14,
+                              paddingVertical: 10,
+                              gap: 4,
+                            }
+                      }
                     >
                       {m.kind !== "message" && (
                         <Text

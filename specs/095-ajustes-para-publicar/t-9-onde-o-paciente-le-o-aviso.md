@@ -1,6 +1,6 @@
 # T-9: Onde o paciente lê o aviso
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** T-1
 
 ## Objetivo
@@ -68,3 +68,22 @@ portal" num cinza de 10px, e não mostra a cara do que o paciente vai ver.
 - [ ] O painel mostra quantos leram o aviso
 - [ ] A prévia diz onde o aviso vai aparecer
 - [ ] O contador de não lidos conta o aviso
+
+---
+
+## Como ficou
+
+| furo | o que mudou |
+|---|---|
+| **1 — o link ia para o portal web** | o texto manda **abrir Mensagens no app**, e o endereço fica como alternativa para quem ainda usa o navegador. Não virou `bprclinic://` porque um esquema de app num e-mail não abre nada para quem não instalou — link morto é pior que uma frase dizendo onde está |
+| **2 — aviso vestido de conversa** | no app, o aviso ocupa a largura toda com uma faixa à esquerda, em vez de virar balão. O histórico não muda de lugar: muda de cara |
+| **3 — quem envia não via onde caía** | a prévia agora diz *"It lands in **Messages**, in the app"* antes do número de pessoas |
+
+**O que já existia e eu prendi com teste:** o `readAt` por destinatário — o
+histórico já mostrava quem leu, e isso não pode se perder numa refatoração da
+tela.
+
+**O que fica para quando houver App Site Association:** um *universal link*, que
+é o único jeito de um endereço `https` abrir direto no app de quem o tem e no
+site de quem não tem. Hoje isso não está configurado, e fingir que está seria
+entregar o link morto de novo, em outra forma.
