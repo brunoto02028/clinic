@@ -34,7 +34,12 @@ export default function LabTestDetail() {
     enabled: !!data?.orderingEnabled,
   });
   const aceitar = useMutation({
-    mutationFn: acceptLabConsent,
+    // Envolvido, e não passado direto: `acceptLabConsent` ganhou um argumento
+    // opcional na 091 T-4 (por quem se aceita), e passá-la direto faria o
+    // react-query exigir esse argumento em todo `mutate()`. Aqui é sempre para
+    // si — quem aceita por outra pessoa faz isso no checkout, onde a pessoa é
+    // escolhida.
+    mutationFn: () => acceptLabConsent(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lab-consent"] }),
   });
 
@@ -124,7 +129,7 @@ export default function LabTestDetail() {
           ))}
           {p.notUnder16 && (
             <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 4 }}>
-              {tr(lang, { en: "Not advisable under the age of 16.", pt: "Não indicado para menores de 16 anos." })}
+              {tr(lang, { en: "From the age of 16.", pt: "A partir dos 16 anos." })}
             </Text>
           )}
         </Card>

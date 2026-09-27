@@ -34,9 +34,19 @@ export interface SecaoDosTermos {
 
 /**
  * A versão do texto. Sobe quando o conteúdo muda de forma que valha um
- * novo aceite — ver .
+ * novo aceite — ver `lib/terms-version.ts`, que é quem grava o aceite.
+ *
+ * 1.2 (091 T-6): a idade ganhou item próprio e mudou de conteúdo. A 1.1 dizia
+ * *"exames são para maiores de 16 anos"*, colado ao fim do item sobre coleta —
+ * uma regra geral que nunca foi verdade, já que `lib/lab-catalog.ts` marca
+ * `notUnder16` em dez dos vinte e dois exames, e só neles.
+ *
+ * Subir esta versão **não tranca ninguém**: o portão do paciente olha
+ * `consentAcceptedAt`, não a versão — ver o docstring de `terms-version.ts`.
+ * O que a versão responde é *o que* cada pessoa leu. Pedir novo aceite a quem
+ * já aceitou continua sendo decisão de produto, do Bruno, e não minha.
  */
-export const TERMS_CONTENT_VERSION = "1.1";
+export const TERMS_CONTENT_VERSION = "1.2";
 
 export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
   {
@@ -219,12 +229,25 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         n: 21,
         titulo: { en: "Collecting the sample is yours to do", pt: "A coleta da amostra é sua" },
         corpo: {
-          en: "Follow the instructions in the kit and post the sample promptly. A sample collected incorrectly or posted late can invalidate the result, and the laboratory may require a new one. Tests are for people aged 16 or over.",
-          pt: "Siga as instruções do kit e poste a amostra no prazo. Amostra coletada incorretamente ou postada tarde pode invalidar o resultado, e o laboratório pode exigir outra. Exames são para maiores de 16 anos.",
+          en: "Follow the instructions in the kit and post the sample promptly. A sample collected incorrectly or posted late can invalidate the result, and the laboratory may require a new one.",
+          pt: "Siga as instruções do kit e poste a amostra no prazo. Amostra coletada incorretamente ou postada tarde pode invalidar o resultado, e o laboratório pode exigir outra.",
         },
       },
       {
+        // A idade ganhou item próprio na 091 T-6. Ela morava colada ao fim do
+        // item da coleta — que é onde uma regra se esconde — e dizia "exames
+        // são para maiores de 16 anos", uma regra geral que nunca foi verdade:
+        // `lib/lab-catalog.ts` marca `notUnder16` em dez dos vinte e dois
+        // exames, e só neles.
         n: 22,
+        titulo: { en: "Age, and ordering for someone you look after", pt: "Idade, e pedir por quem você cuida" },
+        corpo: {
+          en: "Most tests have no age limit. Some — the hormone and sexual-health ones — are from 16, and each test page says so before you pay. Anyone under 18 is ordered for, and consented for, by whoever is responsible for them: you add that person to your account, the test is issued in their name, and the result comes to you. Holding an account here is for people aged 16 or over.",
+          pt: "A maior parte dos exames não tem limite de idade. Alguns — os de hormônios e saúde sexual — são a partir dos 16 anos, e a página de cada exame diz isso antes de você pagar. Quem tem menos de 18 anos é sempre pedido, e consentido, por quem responde por ele: você adiciona essa pessoa à sua conta, o exame sai no nome dela, e o resultado chega a você. Ter conta aqui é para maiores de 16 anos.",
+        },
+      },
+      {
+        n: 23,
         titulo: { en: "Refunds", pt: "Reembolso" },
         corpo: {
           en: "Until the kit reaches you, we refund in full. Once it has reached you, we cannot: the cost has already been incurred with the laboratory. If a kit never arrives, tell us and we will replace it or refund you. None of this is an emergency service — if you feel unwell, do not wait for a result.",
@@ -238,7 +261,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
     titulo: { en: "Limitation of Liability & General Terms", pt: "Limitação de Responsabilidade e Termos Gerais" },
     itens: [
       {
-        n: 23,
+        n: 24,
         titulo: { en: "Limitation of Liability", pt: "Limitação de Responsabilidade" },
         corpo: {
           en: "To the fullest extent permitted by law: the Platform is provided \"as is\"; we are not liable for any indirect, incidental, or consequential damages arising from the use of the Platform; our total liability shall not exceed the fees paid by you in the 12 months preceding the claim. Nothing in these terms excludes liability for death or personal injury caused by negligence, fraud, or any other liability that cannot be excluded by law.",
@@ -246,7 +269,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 24,
+        n: 25,
         titulo: { en: "Payments & Cancellations", pt: "Pagamentos e Cancelamentos" },
         corpo: {
           en: "Service packages and appointments are subject to our cancellation policy. Refunds are processed in accordance with the Consumer Rights Act 2015. You have 14 days to cancel a service package from the date of purchase if no services have been used (cooling-off period under the Consumer Contracts Regulations 2013).",
@@ -254,7 +277,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 25,
+        n: 26,
         titulo: { en: "Governing Law", pt: "Legislação Aplicável" },
         corpo: {
           en: "These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.",
@@ -262,7 +285,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 26,
+        n: 27,
         titulo: { en: "Contact", pt: "Contato" },
         corpo: {
           en: "For data protection queries or to exercise your rights, contact Bruno Physical Rehabilitation via WhatsApp or the enquiry form at bpr.clinic. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk.",

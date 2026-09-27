@@ -122,8 +122,8 @@ describe("comprar exame continua não fazendo ninguém paciente", () => {
 
 describe("o texto e o código dizem a mesma coisa", () => {
   it("o consentimento promete o que o código faz", async () => {
-    const { LAB_TESTS_CONSENT } = await import("../../lib/lab-consent");
-    const en = LAB_TESTS_CONSENT["en-GB"].points.join(" ");
+    const { labConsentFor } = await import("../../lib/lab-consent");
+    const en = labConsentFor("en-GB").points.join(" ");
     expect(en).toMatch(/Nobody at the clinic reads it first/);
     // E o código concorda: nenhum caminho devolve THERAPIST.
     expect(await reviewModeFor("p1", "clinic-A")).toBe("DIRECT");

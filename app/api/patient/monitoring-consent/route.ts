@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   if (effectiveUser.isImpersonating) {
     // A therapist looking at a patient's screen must not be able to accept on
     // their behalf — this is the patient's statement, not the clinic's.
-    return NextResponse.json({ error: "Read-only during impersonation" }, { status: 403 });
+    return NextResponse.json({ error: "Read-only while viewing as someone else", errorPt: "Somente leitura durante a visualização" }, { status: 403 });
   }
 
   const log = await prisma.consentLog.create({

@@ -11,6 +11,9 @@ import { ModuleProfile, type ProfileSection } from "@/components/ModuleProfile";
 const LAB_SECTIONS: ProfileSection[] = [
   { title: { en: "My orders", pt: "Meus pedidos" }, icon: "receipt-outline", href: "/(app)/(lab)/(tabs)/orders" },
   { title: { en: "How it works", pt: "Como funciona" }, icon: "help-circle-outline", href: "/(app)/(lab)/how-it-works" },
+  // O Bruno, 27/09: *"se um pai ou uma mãe quiser cadastrar um dependente para
+  // que esses exames saiam no nome da criança, precisamos ter essa opção."*
+  { title: { en: "People I order for", pt: "Pessoas por quem eu peço" }, icon: "people-outline", href: "/(app)/(lab)/dependents" },
   { title: { en: "Terms & privacy", pt: "Termos & privacidade" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
 ];
 

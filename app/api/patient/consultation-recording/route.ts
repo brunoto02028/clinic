@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   // the patient's own words. Blocked during impersonation, like other
   // patient-initiated writes (app/api/patient/profile, .../consent).
   if (effective.isImpersonating) {
-    return NextResponse.json({ error: "Cannot upload a recording while impersonating" }, { status: 403 });
+    return NextResponse.json({ error: "Cannot upload a recording while viewing as someone else", errorPt: "Não dá para enviar uma gravação enquanto você vê como outra pessoa" }, { status: 403 });
   }
 
   const userId = effective.userId;

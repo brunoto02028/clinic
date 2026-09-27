@@ -143,7 +143,10 @@ describe("manhã, tarde e noite são três fatos", () => {
   it("quem já registrava antes disto continua válido", () => {
     // `day` é honesto: aquele registro descreve o dia, sem dizer a hora.
     // Marcá-lo como "manhã" seria inventar dado clínico.
-    expect(schema).toMatch(/period\s+String @default\("day"\)/);
+    // `\s+` dos dois lados: o `prisma format` realinha as colunas sempre que
+    // um modelo vizinho muda de tamanho, e a promessa aqui é o valor padrão,
+    // não a quantidade de espaços.
+    expect(schema).toMatch(/period\s+String\s+@default\("day"\)/);
   });
 
   it("a rota recusa um período que não existe", () => {

@@ -1,6 +1,7 @@
 import { View, Alert } from "react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { openFileInApp } from "@/components/FileViewer";
 import { fetchLabOrder, type LabResultValue } from "@/api/labs";
@@ -85,6 +86,22 @@ export default function LabResult() {
       <View style={{ gap: 14 }}>
         <Card>
           <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", fontSize: 14 }}>{testName}</Text>
+          {/* De quem é este resultado (091 T-5).
+              É a tela onde a atribuição errada custa mais caro: um laudo lido
+              como se fosse de outra pessoa, com faixa de referência de outra
+              idade. Numa conta que pede para mais de uma pessoa, o nome não é
+              enfeite — é parte do resultado. */}
+          {o.subject && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 }} testID="resultado-sujeito">
+              <Ionicons name="person-outline" size={14} color={t.colors.lab} />
+              <Text variant="caption" color={t.colors.lab} style={{ fontWeight: "700" }}>
+                {o.subject.firstName} {o.subject.lastName}
+                {o.subject.idade != null
+                  ? ` · ${tr(lang, { en: `${o.subject.idade} yrs`, pt: `${o.subject.idade} anos` })}`
+                  : ""}
+              </Text>
+            </View>
+          )}
           <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 4 }}>
             #{o.orderNumber}
             {r.releasedAt

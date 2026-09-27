@@ -96,6 +96,35 @@ export async function validateCredentials(
       throw new Error("Invalid email or password");
     }
 
+    /**
+     * Conta gerida não entra — nunca (091 T-7).
+     *
+     * O Bruno: *"se o paciente é uma criança, a mãe tem que fazer o cadastro e
+     * colocar a criança como uma dependente. E é a criança que está fazendo o
+     * tratamento de reabilitação."*
+     *
+     * A criança precisa de prontuário de verdade — consulta, protocolo, nota
+     * clínica —, e são 45 relações clínicas penduradas em `User`. Por isso ela
+     * **é** um `User`, e por isso esta recusa existe.
+     *
+     * Ela vem antes de tudo de propósito. O endereço de e-mail de uma conta
+     * gerida é sintético e não recebe nada, e a senha é nula, então na prática
+     * não há por onde entrar. Mas "na prática" é frágil: basta alguém, um dia,
+     * acrescentar um login por link ou definir uma senha por script. Esta
+     * linha é a camada que não depende de ninguém lembrar.
+     *
+     * A mensagem é a genérica de propósito: dizer "esta conta é gerida"
+     * confirmaria, a quem estivesse tentando, que aquela pessoa existe.
+     */
+    if (user.managedById) {
+      sysLog.auth(`Login refused: managed account ${user.id}`, {
+        level: "WARN",
+        details: { userId: user.id, reason: "managed_account" },
+        source: "auth",
+      });
+      throw new Error("Invalid email or password");
+    }
+
     if (!user.isActive) {
       // isActive carries two very different meanings: an account the clinic
       // switched off, and one that simply never finished email verification.

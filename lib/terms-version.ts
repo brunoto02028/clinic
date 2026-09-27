@@ -25,7 +25,14 @@ import { prisma } from "@/lib/db";
  * valendo. O que a versão responde é outra coisa: *o que* cada um leu. Pedir
  * novo aceite a quem já aceitou é decisão de produto, e não é minha.
  */
-export const TERMS_VERSION = "1.1";
+/**
+ * 1.2 (091 T-6, 27/09/2026): a idade saiu de onde estava escondida — colada ao
+ * fim do item sobre coleta, como *"exames são para maiores de 16 anos"* — e
+ * virou item próprio, com o conteúdo certo: a maior parte dos exames não tem
+ * limite, dez deles são 16+ por serem de hormônio ou saúde sexual, menor de 18
+ * é sempre pedido por quem responde por ele, e ter conta é 16+.
+ */
+export const TERMS_VERSION = "1.2";
 
 /**
  * Registra o aceite dos termos, com versão, IP e aparelho.

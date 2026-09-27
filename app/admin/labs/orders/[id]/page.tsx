@@ -31,6 +31,8 @@ interface Order {
   releasedToPatientAt: string | null; releaseNote: string | null; releaseNotePt: string | null;
   awaitingRelease: boolean; hasValues: boolean;
   patient: { id: string; firstName: string; lastName: string; email: string; preferredLocale: string | null };
+  /** De quem e o exame, quando nao e de quem pagou (091 T-5). */
+  subject: { id: string; firstName: string; lastName: string; dateOfBirth: string | null } | null;
   items: { productName: string; quantity: number; unitPrice: number; unitCost: number }[];
   registrations: Registration[]; events: Event[];
 }
@@ -49,7 +51,7 @@ const STATUS: Record<string, { en: string; pt: string }> = {
 
 const UI = {
   "en-GB": {
-    back: "Orders", patient: "Patient", tests: "Tests", sold: "Sold", cost: "Cost", margin: "Margin",
+    back: "Orders", patient: "Patient", orderedBy: "ordered by", tests: "Tests", sold: "Sold", cost: "Cost", margin: "Margin",
     waitingLab: "Waiting for the laboratory. Nothing to review yet.",
     released: (d: string) => `Released to the patient on ${d}.`,
     result: "Result", biomarker: "Biomarker", value: "Value", range: "Reference range", outOfRange: "outside range",
@@ -63,7 +65,7 @@ const UI = {
     yourNote: "Your therapist's note",
   },
   "pt-BR": {
-    back: "Pedidos", patient: "Paciente", tests: "Exames", sold: "Vendido", cost: "Custo", margin: "Margem",
+    back: "Pedidos", patient: "Paciente", orderedBy: "pedido por", tests: "Exames", sold: "Vendido", cost: "Custo", margin: "Margem",
     waitingLab: "Esperando o laboratório. Nada para revisar ainda.",
     released: (d: string) => `Liberado ao paciente em ${d}.`,
     result: "Resultado", biomarker: "Biomarcador", value: "Valor", range: "Faixa de referência", outOfRange: "fora da faixa",
@@ -166,9 +168,28 @@ export default function LabOrderReleasePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card><CardContent className="pt-5 space-y-1 text-sm">
+          {/* De quem é o exame (091 T-5). A lista já mostrava; este detalhe —
+              onde se lê os valores e se escreve a nota clínica — dizia só o
+              nome de quem pagou. Achado do review de 27/09/2026. */}
           <p className="text-xs text-muted-foreground">{ui.patient}</p>
-          <p className="font-medium">{order.patient.firstName} {order.patient.lastName}</p>
-          <p className="text-muted-foreground">{order.patient.email}</p>
+          {order.subject ? (
+            <>
+              <p className="font-medium">
+                {order.subject.firstName} {order.subject.lastName}
+                {order.subject.dateOfBirth
+                  ? ` · ${new Date(order.subject.dateOfBirth).toLocaleDateString(pt ? "pt-BR" : "en-GB")}`
+                  : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {ui.orderedBy} {order.patient.firstName} {order.patient.lastName} · {order.patient.email}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">{order.patient.firstName} {order.patient.lastName}</p>
+              <p className="text-muted-foreground">{order.patient.email}</p>
+            </>
+          )}
         </CardContent></Card>
         <Card><CardContent className="pt-5 space-y-1 text-sm">
           <p className="text-xs text-muted-foreground">{ui.tests}</p>

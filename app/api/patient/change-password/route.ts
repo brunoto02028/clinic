@@ -19,6 +19,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    /**
+     * Ninguém define senha na conta de outra pessoa (091 T-7).
+     *
+     * Este era o buraco mais sério do review de 27/09/2026, e ele já existia:
+     * um admin impersonando um paciente pela web podia trocar a senha dele.
+     * Com a sessão emprestada, quem responde pela criança ganhava o mesmo — e
+     * pior, porque a conta gerida tem `password: null`, então o
+     * `if (currentPassword && user.password)` abaixo **nem chegava a rodar**.
+     *
+     * O dano não é imediato: o login recusa `managedById`. Mas no dia em que a
+     * pessoa for promovida a conta própria — o caminho óbvio quando ela faz 18
+     * e o vínculo é desfeito — existiria uma credencial válida que ninguém
+     * sabe que foi criada.
+     */
+    if (effectiveUser.isImpersonating) {
+      return NextResponse.json(
+        {
+          error: "Read-only: you cannot set a password on someone else's account.",
+          errorPt: "Somente leitura: você não pode definir a senha da conta de outra pessoa.",
+        },
+        { status: 403 }
+      );
+    }
+
     const userId = effectiveUser.userId;
     const { currentPassword, newPassword } = await req.json();
 

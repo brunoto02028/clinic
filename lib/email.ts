@@ -37,6 +37,26 @@ async function getResend(): Promise<Resend> {
     return new Resend(key);
 }
 
+/**
+ * Os destinatários para os quais faz sentido tentar entregar (091 T-7).
+ *
+ * Desde que a criança passou a ser um `User` com `role: PATIENT`, toda rotina
+ * que varre pacientes pode alcançá-la — lembrete, confirmação de consulta,
+ * campanha. O endereço dela é sintético, em domínio `.invalid` reservado pela
+ * RFC 2606, então a entrega falharia sozinha; o que esta função evita é a
+ * **tentativa**: bounce contínuo estraga a reputação do domínio de envio, e um
+ * erro por criança em cada rodada esconde os erros de verdade.
+ *
+ * Numa lista mista ela tira só a criança. Descartar a lista inteira por causa
+ * de um endereço sintético seria pior que o problema — a mãe deixaria de
+ * receber o aviso dela.
+ */
+export const DOMINIO_SEM_ENTREGA = "@no-mail.invalid";
+
+export function destinosEntregaveis(to: string | string[]): string[] {
+    return [to].flat().filter((e) => !String(e).toLowerCase().endsWith(DOMINIO_SEM_ENTREGA));
+}
+
 export async function sendEmail({
     to,
     subject,
@@ -54,6 +74,39 @@ export async function sendEmail({
     bcc?: string | string[];
     attachments?: { filename: string; content: Buffer }[];
 }) {
+    /**
+     * Conta gerida não recebe e-mail (091 T-7).
+     *
+     * Desde que a criança passou a ser um `User` com `role: PATIENT`, toda
+     * rotina que varre pacientes — lembrete, confirmação de consulta, campanha
+     * — pode alcançá-la. O endereço dela é sintético, em domínio `.invalid`,
+     * então a entrega falharia de qualquer jeito; o que esta guarda evita é a
+     * **tentativa**: bounce contínuo estraga a reputação do domínio de envio,
+     * e um erro por criança em cada rodada esconde os erros de verdade.
+     *
+     * O que é da criança vai para quem responde por ela. Aqui o envio
+     * simplesmente não acontece, e diz por quê.
+     */
+    const destinos = destinosEntregaveis(to);
+    if (destinos.length === 0) {
+        /**
+         * `success: true`, e a palavra importa.
+         *
+         * Os outros oito `return` desta função devolvem `{ success }`. Este
+         * devolvia só `{ skipped }`, então `!sent.success` era verdadeiro e
+         * quem chamava lia um pulo deliberado como falha de entrega — em
+         * `admin/clinics/[id]/welcome-email` isso **desfazia a troca de senha
+         * do dono da clínica** e respondia 502. Achado do review de
+         * 27/09/2026; hoje nenhum desses caminhos recebe endereço gerido, mas
+         * a forma estava errada e quebraria na primeira varredura que
+         * recebesse.
+         *
+         * Não falhou: não havia para quem enviar.
+         */
+        return { success: true, skipped: "managed_account" as const };
+    }
+    to = Array.isArray(to) ? destinos : destinos[0];
+
     try {
         const resend = await getResend();
         const toList = [to].flat();

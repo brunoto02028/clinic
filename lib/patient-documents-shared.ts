@@ -43,9 +43,65 @@ export function ehAudio(type: string): boolean {
   return AUDIO_ALLOWED_TYPES.includes(type);
 }
 
-export function validatePatientFile(file: { type: string; size: number }): string | null {
-  const audio = ehAudio(file.type);
-  if (!audio && !file.type.startsWith("image/") && !DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
+/**
+ * Rótulos que não dizem nada.
+ *
+ * O iPhone manda isto com frequência quando o arquivo vem de um diretório de
+ * cache, e o `storePatientDocument` já parte do princípio de que **o rótulo é
+ * pouco confiável** — ele julga pelos bytes. Este portão não julgava, e era o
+ * único lugar do caminho que ainda tratava o rótulo como verdade.
+ */
+const ROTULOS_VAGOS = ["", "application/octet-stream", "binary/octet-stream"];
+
+/**
+ * `.mp4` **não** está aqui, e a ausência é deliberada.
+ *
+ * Um `.mp4` legítimo é vídeo, e o iPhone manda rótulo vago também para vídeo.
+ * Com ele na lista, `aula.mp4` caía no teto de 10 MB da voz e era recusado com
+ * "Voice message too large" — ou, se coubesse, era farejado como `video/mp4` e
+ * recusado com *"That file is not what it says it is."* para um arquivo que é
+ * exatamente o que diz que é. Duas mentiras no lugar de um "tipo não aceito".
+ */
+const EXTENSOES_DE_AUDIO = [".m4a", ".aac", ".mp3"];
+
+/**
+ * O rótulo diz que é áudio, e é um dos que a gente aceita.
+ *
+ * **Não é `audio/*`.** A primeira versão desta correção abriu o portão para o
+ * prefixo inteiro, contra o que o docstring de `AUDIO_ALLOWED_TYPES` manda — e
+ * a segunda metade da proteção não cobria o buraco: `payload.bin` enviado como
+ * `audio/ogg` passava, o conteúdo não era reconhecido, o nome não prometia
+ * áudio, **nenhuma checagem de byte rodava**, e o arquivo era gravado e
+ * servido como áudio. A tela do terapeuta então desenhava um player apontando
+ * para bytes que não são som. Achado do review de 27/09/2026.
+ */
+export function ehRotuloDeAudio(type: string): boolean {
+  return AUDIO_ALLOWED_TYPES.includes(type.toLowerCase()) || type.toLowerCase() === "audio/x-m4a";
+}
+
+/** O nome do arquivo diz que é voz. Quem confirma são os bytes, não ele. */
+export function ehAudioPeloNome(name: string | undefined): boolean {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  return EXTENSOES_DE_AUDIO.some((e) => n.endsWith(e));
+}
+
+/**
+ * O portão de entrada — e **ele não é o juiz**.
+ *
+ * A lista fechada de `AUDIO_ALLOWED_TYPES` continua certa para decidir o que o
+ * *conteúdo farejado* pode ser. Como regra de entrada ela estava errada, e o
+ * recado de voz do build 17 morreu aqui: o app enviou um `.m4a` legítimo, o
+ * rótulo chegou genérico, e a recusa aconteceu antes de alguém olhar um byte.
+ *
+ * Agora um rótulo de áudio — ou um rótulo vago com nome de áudio — passa para
+ * a checagem de conteúdo. Quem recusa um arquivo que mente é o
+ * `storePatientDocument`, que exige assinatura quando o nome promete áudio.
+ */
+export function validatePatientFile(file: { type: string; size: number; name?: string }): string | null {
+  const rotulo = (file.type || "").toLowerCase();
+  const audio = ehRotuloDeAudio(rotulo) || (ROTULOS_VAGOS.includes(rotulo) && ehAudioPeloNome(file.name));
+  if (!audio && !rotulo.startsWith("image/") && !DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
     return "Invalid file type. Allowed: images, PDF, Word, TXT, CSV, voice message";
   }
   // O áudio tem teto próprio, menor: é voz, não arquivo.

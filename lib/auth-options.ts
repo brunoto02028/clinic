@@ -73,6 +73,22 @@ export const authOptions: NextAuthOptions = {
           const existingUser = await prisma.user.findUnique({ where: { email } });
 
           if (existingUser) {
+            /**
+             * Conta gerida não entra por aqui também (091 T-7).
+             *
+             * A recusa em `lib/auth-credentials.ts` vale só para o provider de
+             * senha. **O Google era uma segunda porta**, e o review de
+             * segurança de 27/09/2026 mostrou o caminho: basta a conta da
+             * criança acabar com um e-mail real — por troca de e-mail ou por
+             * um admin editando o cadastro — e ela entraria com sessão de 30
+             * dias, `isImpersonating: false`, e todas as recusas de escrita
+             * contornadas.
+             *
+             * A criança não faz login. Ponto — e agora nas duas portas.
+             */
+            if (existingUser.managedById) {
+              return "/login?error=AccessDenied";
+            }
             // User exists — allow sign-in if active
             if (!existingUser.isActive) {
               return "/login?error=AccountDeactivated";

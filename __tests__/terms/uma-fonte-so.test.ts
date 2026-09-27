@@ -39,11 +39,13 @@ describe("o conteúdo está completo e nas duas línguas", () => {
     ]);
   });
 
-  it("são vinte e seis itens, numerados de 1 a 26 sem buraco", () => {
-    // O app mostrava nove destes.
+  it("são vinte e sete itens, numerados sem buraco", () => {
+    // O app mostrava nove destes. Foram vinte e seis até a 091 T-6, quando a
+    // idade saiu de dentro do item sobre coleta e virou item próprio — que é
+    // onde uma regra sobre quem pode fazer exame precisa estar para ser lida.
     const ns = SECOES_DOS_TERMOS.flatMap((s) => s.itens.map((i) => i.n)).sort((a, b) => a - b);
-    expect(ns).toEqual(Array.from({ length: 26 }, (_, i) => i + 1));
-    expect(totalDeItens()).toBe(26);
+    expect(ns).toEqual(Array.from({ length: ns.length }, (_, i) => i + 1));
+    expect(totalDeItens()).toBe(27);
   });
 
   it("todo item tem título e corpo nas duas línguas, e nada vazio", () => {
@@ -63,7 +65,7 @@ describe("o conteúdo está completo e nas duas línguas", () => {
     // É a que faltava inteira no app — e é a que diz de quem é a
     // responsabilidade pelo exame e para quem vai o resultado.
     const lab = SECOES_DOS_TERMOS.find((s) => s.chave === "laboratorio")!;
-    expect(lab.itens).toHaveLength(6);
+    expect(lab.itens).toHaveLength(7);
     const tudo = lab.itens.map((i) => i.corpo.en).join(" ");
     expect(tudo).toMatch(/laborator/i);
   });

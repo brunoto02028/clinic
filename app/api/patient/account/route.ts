@@ -40,7 +40,7 @@ export async function DELETE(req: NextRequest) {
   // mais destrutiva do sistema disponível justamente no modo de leitura.
   if (effectiveUser.isImpersonating) {
     return NextResponse.json(
-      { error: "Cannot delete an account while impersonating" },
+      { error: "Cannot delete an account while viewing as someone else", errorPt: "Não dá para apagar uma conta enquanto você vê como outra pessoa" },
       { status: 403 }
     );
   }
@@ -80,6 +80,22 @@ export async function DELETE(req: NextRequest) {
         password: await bcrypt.hash(randomBytes(32).toString("hex"), 10),
         pushEnabled: false,
       },
+    });
+
+    /**
+     * Quem ele cuidava sai junto (091 T-7, achado do QA de 27/09/2026).
+     *
+     * Sem isto, apagar a conta da mãe deixava a filha **ativa e inalcançável**:
+     * apontando para uma conta morta, sem sessão possível — ninguém consegue
+     * pedir a sessão dela, porque quem podia não existe mais — e ainda
+     * contando como paciente ativa da clínica.
+     *
+     * Desligar, e não apagar: ela tem prontuário, e a mesma razão que impede
+     * `user.delete` aqui em cima vale para ela.
+     */
+    await (tx as any).user.updateMany({
+      where: { managedById: userId, deletedAt: null },
+      data: { deletedAt: agora, isActive: false, pushEnabled: false },
     });
 
     // Os aparelhos param de receber aviso. Sem isto, uma conta apagada

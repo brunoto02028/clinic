@@ -14,11 +14,15 @@
 
 import fs from "fs";
 import path from "path";
-import {
-  LAB_TESTS_CONSENT,
-  LAB_TESTS_CONSENT_VERSION,
-  labConsentFor,
-} from "../../lib/lab-consent";
+import { LAB_TESTS_CONSENT_VERSION, labConsentFor } from "../../lib/lab-consent";
+
+// A constante virou privada na 091 T-4, quando cada ponto ganhou duas
+// redacoes — para si e por quem se cuida. O que estes testes medem e o texto
+// **como a pessoa le**, que e o que `labConsentFor` devolve.
+const LAB_TESTS_CONSENT = {
+  "en-GB": labConsentFor("en-GB"),
+  "pt-BR": labConsentFor("pt-BR"),
+} as const;
 
 // O texto dos termos saiu do JSX e virou dado em `lib/terms-content.ts`
 // (26/09/2026): o app tinha a própria cópia, com nove dos vinte e seis itens,
@@ -63,9 +67,9 @@ describe("o consentimento não promete revisão nenhuma", () => {
   });
 
   it("o inglês é o padrão para qualquer locale que não seja pt-BR", () => {
-    expect(labConsentFor(null)).toBe(LAB_TESTS_CONSENT["en-GB"]);
-    expect(labConsentFor("es-ES")).toBe(LAB_TESTS_CONSENT["en-GB"]);
-    expect(labConsentFor("pt-BR")).toBe(LAB_TESTS_CONSENT["pt-BR"]);
+    expect(labConsentFor(null)).toEqual(LAB_TESTS_CONSENT["en-GB"]);
+    expect(labConsentFor("es-ES")).toEqual(LAB_TESTS_CONSENT["en-GB"]);
+    expect(labConsentFor("pt-BR")).toEqual(LAB_TESTS_CONSENT["pt-BR"]);
   });
 });
 
@@ -113,7 +117,7 @@ describe("o aceite dos termos passa a ter versão", () => {
 
   it("existe uma fonte única da versão", () => {
     const lib = lerT("lib", "terms-version.ts");
-    expect(lib).toMatch(/export const TERMS_VERSION = "1\.1"/);
+    expect(lib).toMatch(/export const TERMS_VERSION = "1\.\d+"/);
   });
 
   it("a versão subiu junto com a seção de laboratório nos termos", () => {
@@ -151,7 +155,41 @@ describe("o aceite dos termos passa a ter versão", () => {
   });
 
   it("a idade está confirmada, não suposta", () => {
-    expect(lerT("lib", "lab-consent.ts")).toMatch(/16, decisão do Bruno/);
+    // A regra geral dos 16 que morava aqui **era** suposição, e caiu na 091
+    // T-4. O que ficou tem procedência: 16 para hormônios e saúde sexual vem
+    // do catálogo da LML (`notUnder16`), e "menor sempre com responsável" é
+    // decisão do Bruno em 27/09/2026.
+    const src = lerT("lib", "lab-consent.ts");
+    expect(src).toMatch(/A idade está confirmada, não suposta/);
+    expect(src).toMatch(/decisão do Bruno em 27\/09\/2026/);
+    expect(src).toMatch(/notUnder16/);
+  });
+
+  it("e a regra geral dos 16 anos não existe mais no texto que a pessoa lê", () => {
+    // Ela transformava a regra de dez exames na regra dos vinte e dois.
+    for (const loc of ["en-GB", "pt-BR"] as const) {
+      const texto = labConsentFor(loc).points.join(" ");
+      expect(texto).not.toMatch(/Laboratory tests are for people aged 16 or over/);
+      expect(texto).not.toMatch(/Exames de laboratório são para maiores de 16 anos/);
+    }
+  });
+
+  it("o texto por quem se cuida é outra voz, não o mesmo texto", () => {
+    // Não era só a linha da idade: cinco cláusulas falavam na segunda pessoa.
+    const minha = labConsentFor("en-GB").points.join(" ");
+    const dela = labConsentFor("en-GB", "Ana").points.join(" ");
+    expect(dela).not.toBe(minha);
+    expect(dela).toMatch(/The result is Ana's, and it comes to you/);
+    expect(dela).toMatch(/or Ana's with you alongside/);
+    // E nenhum marcador sobra sem substituir.
+    expect(dela).not.toMatch(/\{nome\}/);
+    expect(labConsentFor("pt-BR", "Ana").points.join(" ")).not.toMatch(/\{nome\}/);
+  });
+
+  it("e as duas vozes têm o mesmo número de pontos, nas duas línguas", () => {
+    for (const loc of ["en-GB", "pt-BR"] as const) {
+      expect(labConsentFor(loc, "Ana").points.length).toBe(labConsentFor(loc).points.length);
+    }
   });
 });
 

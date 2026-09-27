@@ -66,6 +66,9 @@ export async function labResultsAwaitingRelease(_clinicId: string): Promise<numb
 export function labOrderInclude() {
   return {
     patient: { select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } },
+    // De quem e o exame (091 T-5). A lista ja mostrava; o detalhe — que e onde
+    // se le os valores e se escreve a nota — nem recebia o dado.
+    subject: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true } },
     items: { include: { product: { select: { id: true, name: true, lmlProductId: true, biomarkers: true } } } },
     registrations: { include: { values: { orderBy: { biomarker: "asc" as const } } }, orderBy: { createdAt: "asc" as const } },
     events: { orderBy: { createdAt: "desc" as const } },
@@ -73,18 +76,39 @@ export function labOrderInclude() {
 }
 
 /**
- * Os valores anteriores dos mesmos biomarcadores, deste paciente, para a tela
- * de liberação mostrar a linha do tempo. É onde o valor compõe: a terceira
- * ferritina vale mais que a primeira. Só resultados **liberados** — um valor
- * que a clínica ainda não olhou não vira histórico.
+ * Os valores anteriores dos mesmos biomarcadores, **da mesma pessoa**, para a
+ * tela de liberação mostrar a linha do tempo. É onde o valor compõe: a
+ * terceira ferritina vale mais que a primeira. Só resultados **liberados** —
+ * um valor que a clínica ainda não olhou não vira histórico.
+ *
+ * ## O agrupamento era por quem paga, e isso virou defeito clínico
+ *
+ * Até o review de 27/09/2026 isto filtrava por `patientId` — o titular. Desde
+ * que `subjectId` existe (091 T-3), quem paga e quem faz o exame podem ser
+ * pessoas diferentes: a mãe pediu ferritina para si em março e para a filha em
+ * outubro, e a tela desenhava as duas como uma linha do tempo só.
+ *
+ * **Tendência de dois corpos num gráfico é pior que gráfico nenhum**, e esta é
+ * a tela onde o terapeuta escreve nota clínica. O mesmo argumento que fez o
+ * nome do sujeito aparecer na lista vale em dobro aqui.
+ *
+ * `sujeitoId` é o `subjectId` quando há, e o `patientId` quando não há — a
+ * mesma regra que o resto do módulo usa para dizer de quem é o exame.
  */
-export async function previousValuesFor(clinicId: string, patientId: string, excludeOrderId: string, biomarkers: string[]) {
+export async function previousValuesFor(clinicId: string, sujeitoId: string, excludeOrderId: string, biomarkers: string[]) {
   if (biomarkers.length === 0) return [];
   return (prisma as any).labResultValue.findMany({
     where: {
       biomarker: { in: biomarkers },
       registration: {
-        order: { clinicId, patientId, id: { not: excludeOrderId }, releasedToPatientAt: { not: null } },
+        order: {
+          clinicId,
+          id: { not: excludeOrderId },
+          releasedToPatientAt: { not: null },
+          // Pedidos **desta pessoa**: os em que ela é o sujeito, e os antigos
+          // em que ela é o titular e não há sujeito (que querem dizer o mesmo).
+          OR: [{ subjectId: sujeitoId }, { subjectId: null, patientId: sujeitoId }],
+        },
       },
     },
     select: {

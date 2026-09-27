@@ -32,6 +32,28 @@ export async function POST(request: NextRequest) {
     // deleteMany (not delete) so a duplicate/concurrent confirm request — e.g. an email
     // security scanner prefetching the link, or a double-submit — is a harmless no-op
     // instead of throwing "record to delete does not exist".
+    /**
+     * O terceiro elo, fechado aqui também (091 T-7).
+     *
+     * Esta rota é pública por desenho — quem autoriza é o token do e-mail — e
+     * por isso ela não pode confiar em quem a chama. Se um token de troca
+     * existir para uma conta gerida, ele não vale: a criança não tem e-mail
+     * próprio, e dar um a ela é dar-lhe uma porta de entrada.
+     *
+     * Fechar só o pedido não bastaria: um token emitido antes desta correção,
+     * ou por um caminho de admin, continuaria funcionando.
+     */
+    const alvo = await prisma.user.findUnique({
+      where: { id: changeToken.userId },
+      select: { managedById: true },
+    });
+    if (alvo?.managedById) {
+      return NextResponse.json(
+        { error: "This account cannot have its own email address." },
+        { status: 403 }
+      );
+    }
+
     await prisma.$transaction([
       prisma.user.update({
         where: { id: changeToken.userId },
