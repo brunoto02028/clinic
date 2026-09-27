@@ -84,7 +84,14 @@
           "microphonePermission": "BPR uses the microphone so you can send your therapist a voice message and take part in a video consultation. Nothing is recorded unless you hold the record button, and consultations are never recorded."
         }
       ],
-      "@config-plugins/react-native-webrtc"
+      "@config-plugins/react-native-webrtc",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "extra": {
       "router": {},

@@ -132,6 +132,25 @@ export default function NotificationsPage() {
     }
   };
 
+  /**
+   * Por que o botão está apagado.
+   *
+   * Ele desliga sem título **em inglês** e sem texto em inglês — e não dizia
+   * isso. O Bruno escreveu só o corpo em português, viu um botão cinza, e
+   * concluiu que a notificação não chegava ao telefone dele. Não chegava porque
+   * nunca foi enviada.
+   *
+   * A frase fica **junto do botão**, e não num toast ao clicar: ninguém clica
+   * num botão apagado para descobrir por que ele está apagado.
+   */
+  const faltaPara = (): string | null => {
+    if (!title.trim()) return "Write the English title — it is what every patient gets.";
+    if (!content.trim()) return "Write the English text.";
+    if (audience === "selected" && selectedIds.size === 0) return "Pick at least one patient.";
+    if (schedule && !scheduledFor) return "Choose when it goes out.";
+    return null;
+  };
+
   const send = async () => {
     if (!title.trim() || !content.trim()) return;
     if (audience === "selected" && selectedIds.size === 0) {
@@ -165,7 +184,13 @@ export default function NotificationsPage() {
         description: data.scheduled
           ? `Will be sent on ${new Date(data.scheduledFor).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}.`
           : `Delivered to ${data.recipientCount} patient${data.recipientCount > 1 ? "s" : ""}.` +
-            (data.push ? ` Phone: ${data.push.sent} device${data.push.sent === 1 ? "" : "s"}.` : ""),
+            // Falha de envio não é "nenhum aparelho": uma diz que o telefone
+            // não recebeu, a outra que não havia telefone.
+            (data.push
+              ? ` Phone: ${data.push.sent} device${data.push.sent === 1 ? "" : "s"}` +
+                (data.push.failed ? `, ${data.push.failed} failed` : "") +
+                "."
+              : ""),
       });
       setTitle("");
       setContent("");
@@ -186,6 +211,40 @@ export default function NotificationsPage() {
       setSending(false);
     }
   };
+
+  /**
+   * Quantos aparelhos receberiam, **antes** da prévia.
+   *
+   * O número já existia, e só aparecia depois de "Review and send" — que é
+   * tarde: é durante a escrita que se decide se vale marcar o push. E zero
+   * aparelhos é a resposta mais útil das duas, porque explica um silêncio que
+   * de outro modo parece defeito.
+   */
+  const [aparelhos, setAparelhos] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!pushNotify || schedule) {
+      setAparelhos(null);
+      return;
+    }
+    let vivo = true;
+    fetch("/api/admin/broadcasts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audience,
+        patientIds: audience === "selected" ? Array.from(selectedIds) : [],
+      }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (vivo && d) setAparelhos(d.devices ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [pushNotify, schedule, audience, selectedIds]);
 
   const removeBroadcast = async (id: string) => {
     if (!confirm("Delete this notification? Patients will no longer see it.")) return;
@@ -380,6 +439,20 @@ export default function NotificationsPage() {
                   A push notification for whoever has the app. It shows on the lock screen — write it
                   as something anyone nearby could read.
                 </span>
+                {/* O número aparece assim que o push é marcado. Zero não é um
+                    detalhe: é a diferença entre "ninguém recebeu" e "ninguém
+                    podia receber". */}
+                {pushNotify && aparelhos !== null && (
+                  <span
+                    className={`block text-[10px] mt-0.5 font-medium ${
+                      aparelhos === 0 ? "text-destructive" : "text-muted-foreground"
+                    }`}
+                  >
+                    {aparelhos === 0
+                      ? "No phone will ring — nobody in this selection has the app with notifications on."
+                      : `${aparelhos} device${aparelhos === 1 ? "" : "s"} will ring.`}
+                  </span>
+                )}
               </span>
             </label>
           )}
@@ -433,10 +506,18 @@ export default function NotificationsPage() {
               </div>
             </div>
           ) : (
-            <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-1.5">
+              {/* Um botão apagado que não diz o que falta é um beco sem saída:
+                  foi assim que uma notificação nunca saiu e pareceu um defeito
+                  de entrega. */}
+              {faltaPara() && (
+                <p className="text-xs text-muted-foreground" data-testid="broadcast-falta">
+                  {faltaPara()}
+                </p>
+              )}
               <Button
                 onClick={schedule ? send : abrirPreview}
-                disabled={sending || loadingPreview || !title.trim() || !content.trim()}
+                disabled={sending || loadingPreview || !!faltaPara()}
                 className="gap-2"
               >
                 {sending || loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : schedule ? <CalendarClock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
