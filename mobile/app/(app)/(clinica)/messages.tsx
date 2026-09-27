@@ -15,6 +15,8 @@ import {
   attachmentHref,
   ATTACHMENT_MAX_BYTES,
   type ClinicMessage,
+  apagarMensagem,
+  podeApagar,
   type OutgoingAttachment,
 } from "@/api/messages";
 import * as ImagePicker from "expo-image-picker";
@@ -44,6 +46,15 @@ const UI = {
     sendFailed: "Your message was not sent. Try again.",
     attachment: "Attachment",
     notice: "Notice",
+    undo: "Delete",
+    undoAsk: "Delete this message?",
+    undoAskBody: "The clinic has not seen it yet, so it will be removed — including the voice recording.",
+    undoCancel: "Keep it",
+    undoConfirm: "Delete",
+    undoFailed: "It was not deleted. Try again.",
+    seenByClinic: "Seen by the clinic",
+    sendCorrection: "Send a correction",
+    tooLate: "The clinic has already seen this message. Send a correction instead.",
   },
   pt: {
     header: "Mensagens",
@@ -58,6 +69,15 @@ const UI = {
     sendFailed: "Sua mensagem não foi enviada. Tente de novo.",
     attachment: "Anexo",
     notice: "Aviso",
+    undo: "Apagar",
+    undoAsk: "Apagar esta mensagem?",
+    undoAskBody: "A clínica ainda não viu, então ela será removida — inclusive a gravação de voz.",
+    undoCancel: "Manter",
+    undoConfirm: "Apagar",
+    undoFailed: "Não foi apagada. Tente de novo.",
+    seenByClinic: "Vista pela clínica",
+    sendCorrection: "Enviar uma correção",
+    tooLate: "A clínica já viu esta mensagem. Mande uma correção.",
   },
 } as const;
 
@@ -97,7 +117,7 @@ function MessagesScreen() {
   // Reading the thread is what marks it read — the same thing the web does on
   // open. Fire and forget: failing to clear the badge must not break the screen.
   useEffect(() => {
-    if (messages.some((m) => m.senderRole === "staff" && !m.readAt)) {
+    if (messages.some((m: ClinicMessage) => m.senderRole === "staff" && !m.readAt)) {
       markMessagesRead()
         .then(() => qc.invalidateQueries({ queryKey: ["messages"] }))
         .catch(() => {});
@@ -112,6 +132,36 @@ function MessagesScreen() {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
   });
+
+  /**
+   * Desfazer o recado que acabou de sair.
+   *
+   * Quem decide é o servidor: ele confere que o recado é do paciente e que
+   * `readAt` é nulo, e leva junto o documento e o arquivo do áudio — um recado de
+   * voz é três coisas, e apagar só a mensagem deixaria o áudio na lista de
+   * documentos.
+   *
+   * O 409 `already_read` não é falha: é a notícia de que alguem ja ouviu. Nesse
+   * caso a conversa é recarregada, o `readAt` chega, e a bolha passa a mostrar
+   * "vista pela clínica" com a oferta de mandar uma correção.
+   */
+  const apagar = useMutation({
+    mutationFn: (id: string) => apagarMensagem(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["messages"] }),
+    onError: (e: any) => {
+      const jaViu = String(e?.message ?? "").includes("already_read") || e?.status === 409;
+      qc.invalidateQueries({ queryKey: ["messages"] });
+      Alert.alert(jaViu ? ui.seenByClinic : ui.undoFailed, jaViu ? ui.tooLate : undefined);
+    },
+  });
+
+  const pedirParaApagar = (m: ClinicMessage) => {
+    // Pergunta antes, porque nao tem volta: o audio vai junto.
+    Alert.alert(ui.undoAsk, ui.undoAskBody, [
+      { text: ui.undoCancel, style: "cancel" },
+      { text: ui.undoConfirm, style: "destructive", onPress: () => apagar.mutate(m.id) },
+    ]);
+  };
 
   /**
    * Anexar uma imagem.
@@ -369,14 +419,55 @@ function MessagesScreen() {
                           </Pressable>
                         )
                       )}
-                      <Text
-                        variant="caption"
-                        color={mine ? t.colors.accentFgSoft : t.colors.textMuted}
-                        style={{ fontSize: 10 }}
-                      >
-                        {!mine && m.sender ? `${m.sender.firstName} · ` : ""}
-                        {formatWhen(m.createdAt, lang)}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <Text
+                          variant="caption"
+                          color={mine ? t.colors.accentFgSoft : t.colors.textMuted}
+                          style={{ fontSize: 10 }}
+                        >
+                          {!mine && m.sender ? `${m.sender.firstName} · ` : ""}
+                          {formatWhen(m.createdAt, lang)}
+                        </Text>
+
+                        {/* Desfazer, enquanto ninguem viu. Depois de vista, a
+                            bolha diz isso e oferece a correcao — "apagar" o que
+                            ja foi ouvido esconderia de quem mandou, e nao de
+                            quem ouviu. */}
+                        {mine && podeApagar(m) && (
+                          <Pressable
+                            onPress={() => pedirParaApagar(m)}
+                            disabled={apagar.isPending}
+                            accessibilityRole="button"
+                            accessibilityLabel={ui.undo}
+                            hitSlop={10}
+                          >
+                            <Text
+                              variant="caption"
+                              color={t.colors.accentFgSoft}
+                              style={{ fontSize: 10, textDecorationLine: "underline" }}
+                            >
+                              {ui.undo}
+                            </Text>
+                          </Pressable>
+                        )}
+
+                        {mine && !podeApagar(m) && (
+                          <>
+                            <Text variant="caption" color={t.colors.accentFgSoft} style={{ fontSize: 10 }}>
+                              {ui.seenByClinic}
+                            </Text>
+                            {/* Orientacao, e nao botao: o `Input` do projeto nao
+                                repassa ref, e acrescentar `forwardRef` a um
+                                componente usado em toda a app so para abrir o
+                                teclado seria mexer em muita coisa por pouco. O
+                                campo de escrever esta logo abaixo, na mesma
+                                tela. */}
+                            <Text variant="caption" color={t.colors.accentFgSoft} style={{ fontSize: 10 }}>
+                              {ui.sendCorrection}
+                            </Text>
+                          </>
+                        )}
+                      </View>
                     </View>
                   );
                 })

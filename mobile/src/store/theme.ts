@@ -31,6 +31,32 @@ function doAparelho(): ModoDeCor {
   return Appearance.getColorScheme() === "dark" ? "dark" : "light";
 }
 
+/**
+ * Conta a escolha à **camada nativa**, e não só ao React.
+ *
+ * O cabeçalho do iOS desenha os botões dentro de uma cápsula, e a cor dela vem
+ * da aparência que o **sistema** acha que o app tem — não do nosso tema. Com
+ * `userInterfaceStyle: "automatic"`, isso é a aparência do aparelho.
+ *
+ * Então quem põe o app no escuro com o telefone no claro via as telas escuras e
+ * a cápsula do voltar e a do próprio botão de tom **claras**, com o ícone quase
+ * sumindo dentro delas. Foi o que o Bruno fotografou em 27/09/2026.
+ *
+ * `Appearance.setColorScheme` resolve porque muda a aparência do app inteiro, e
+ * não só o que a gente pinta. `null` devolve o controle ao aparelho, que é o que
+ * "seguir o sistema" quer dizer.
+ *
+ * É API de runtime: não mexe no `app.json`, não muda a digital, e chega por
+ * `eas update` no build que já está instalado.
+ */
+function aplicarNoNativo(e: EscolhaDeTema): void {
+  try {
+    Appearance.setColorScheme?.(e === "system" ? null : e);
+  } catch {
+    /* web, ou versão sem a API: o tema do React continua valendo */
+  }
+}
+
 async function ler(): Promise<EscolhaDeTema | null> {
   try {
     const v = isWeb ? globalThis.localStorage?.getItem(CHAVE) : await SecureStore.getItemAsync(CHAVE);
@@ -66,6 +92,12 @@ export const useThemeStore = create<EstadoDoTema>((set, get) => ({
   escolha: "system",
   carregado: false,
   definir: (e) => {
+    // **Antes** de ler o aparelho, e a ordem é o detalhe que faz funcionar:
+    // depois de um `setColorScheme("dark")`, o próprio `getColorScheme()` passa
+    // a responder `"dark"`. Voltar para "seguir o aparelho" lendo primeiro
+    // devolveria o tom que nós mesmos tínhamos imposto, e a pessoa ficaria
+    // presa nele.
+    aplicarNoNativo(e);
     set({ escolha: e, modo: e === "system" ? doAparelho() : e });
     void gravar(e);
   },
@@ -74,6 +106,9 @@ export const useThemeStore = create<EstadoDoTema>((set, get) => ({
   alternar: () => get().definir(get().modo === "dark" ? "light" : "dark"),
   carregar: async () => {
     const guardado = (await ler()) ?? "system";
+    // Na abertura também: sem isto, quem escolheu escuro numa sessão anterior
+    // reabria o app com as telas escuras e a cápsula clara, até tocar no botão.
+    aplicarNoNativo(guardado);
     set({
       escolha: guardado,
       modo: guardado === "system" ? doAparelho() : guardado,

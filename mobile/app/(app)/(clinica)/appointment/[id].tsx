@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
+import { janelaAberta } from "@/api/video";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
@@ -160,6 +161,69 @@ function AppointmentDetailScreen() {
               </View>
 
               <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
+
+              {/* A consulta por vídeo, quando é uma (089 T-3).
+                  A janela é conferida aqui **só para decidir o que mostrar** —
+                  quem autoriza é o servidor, e ele confere de novo. Fora da hora
+                  a linha continua dizendo que a consulta é por vídeo, em vez de
+                  sumir: saber o formato importa antes da hora, e mais que na
+                  hora. */}
+              {data.mode === "VIDEO" && (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      backgroundColor: t.colors.healthSoft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <Ionicons name="videocam-outline" size={20} color={t.colors.health} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="caption" color={t.colors.textMuted}>
+                        {tr(lang, { en: "Format", pt: "Formato" })}
+                      </Text>
+                      <Text variant="label" style={{ fontWeight: "600" }}>
+                        {tr(lang, { en: "Video consultation", pt: "Consulta por vídeo" })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {janelaAberta(data.dateTime, data.duration) ? (
+                    <Pressable
+                      onPress={() => router.push(`/(app)/(clinica)/consulta-video?id=${data.id}` as never)}
+                      accessibilityRole="button"
+                      testID="entrar-na-consulta"
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        paddingVertical: 14,
+                        borderRadius: 12,
+                        backgroundColor: t.colors.health,
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <Ionicons name="videocam" size={18} color={t.colors.accentFg} />
+                      <Text variant="label" color={t.colors.accentFg} style={{ fontWeight: "700" }}>
+                        {tr(lang, { en: "Join the consultation", pt: "Entrar na consulta" })}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Text variant="caption" color={t.colors.textMuted}>
+                      {tr(lang, {
+                        en: "You can join from ten minutes before the start time.",
+                        pt: "Você pode entrar a partir de dez minutos antes do horário.",
+                      })}
+                    </Text>
+                  )}
+
+                  <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
+                </>
+              )}
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{
