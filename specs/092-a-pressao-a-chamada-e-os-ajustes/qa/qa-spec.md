@@ -42,14 +42,36 @@ pessoal engolia as medições dos pacientes disparando os alertas delas.
 | 2.5 | sem sessão de equipe | 401 |
 | 2.6 | webhook chega **e** o botão é tocado | uma leitura só — a deduplicação segura |
 | 2.7 | cancelar a sessão | janela fecha, e leitura posterior não entra nela |
+| 2.8 | botão em janela cancelada ou vencida | 409 `session_closed`, e a recusa vem **antes** da ida à Withings |
+| 2.9 | a Withings fora do ar / token que não renova | 502 `provider_unavailable`, não 500 |
+
+**Sobre 2.5, e como medir de novo.** Na primeira rodada devolveu **307**: o `middleware.ts`
+redirecionava para `/login` antes de a rota responder. O navegador **segue** o 307, recebe 200 com
+HTML, e o `res.json()` do chamador estoura em erro de parse — a terapeuta lia erro de sintaxe. Agora
+`/api` sem sessão dá 401 em JSON com `code: 'session_expired'`. Ao re-medir, conferir também que uma
+**página** sem sessão continua indo ao `/login`: trocar os dois seria pior que o defeito.
+
+**Sobre 2.8, e como não se enganar.** A ordem é o conserto, e ela é verificável: monte uma sessão
+vencida **e** um token que não abre. 409 significa que a janela foi conferida primeiro; 502
+significaria que foi à Withings antes.
 
 ## T-3 — Descarte faz barulho
 
 | # | passos | esperado |
 |---|---|---|
-| 3.1 | webhook para conexão não conectada | continua respondendo `status: 0` à Withings **e** registra o motivo |
+| 3.1a | webhook para conexão não conectada | continua respondendo `status: 0` à Withings, e não grava |
+| 3.1b | …**e registra o motivo** | uma linha em `SystemLog`, nível WARN, com o motivo |
+| 3.1c | o motivo distingue os dois casos | "conta desconhecida" (assinatura órfã, esperada) × "conexão `<status>`" (o defeito) |
+| 3.1d | o registro falhando | **não** impede o `{"status":0}` — a obrigação com a Withings vem primeiro |
 | 3.2 | painel da clínica | mostra estado da conexão e **quando chegou a última leitura** |
 | 3.3 | leitura sem sessão que cai na caixa | a caixa diz de que aparelho veio e quando |
+| 3.4 | manguito com **só pressao** confirmada | painel diz `receiving` — e não "a Withings não confirmou" |
+| 3.5 | manguito com pressao **faltando** | painel diz `partial` — o alarme que serve |
+| 3.6 | telas do **paciente** | continuam exigindo os quatro `appli`; lá o aparelho pode ser balança ou relógio |
+
+3.1b foi o reprovado da primeira rodada, e 3.4 é achado do próprio QA: exigir passos e sono de um
+BPM Connect fazia `partial` ser o estado **permanente** dele. Alarme que nunca apaga ensina a
+clínica a ignorar alarme.
 
 ## T-4 — O índice que não protegia
 
@@ -100,7 +122,18 @@ Cenários entram quando a decisão sair.
 | A.2 | sair para outro app e voltar em menos de 2 min | não pede o rosto de novo |
 | A.3 | sair por mais de 2 min | pede, e sem piscar |
 | A.4 | calendário no tom escuro, à noite | as marcas de livre/quase cheio **se distinguem** do fundo |
-| A.5 | calendário no tom claro | idem |
+| A.5 | calendário no tom claro | idem — e **este é o que mais importa**, ao contrário do que eu supunha |
+| A.7 | as duas marcas lado a lado | dá para dizer qual é qual — ver a ressalva abaixo |
+
+**A.5 antes de A.4, e por quê.** O QA mediu: no escuro as cores antigas já passavam (6,43 e 7,13),
+e as minhas novas **pioravam** o claro (3,67 e 3,16 contra 4,93 e 4,89). O diagnóstico de
+"invisíveis no escuro" no `plan.md` não se sustentava; o que ajudou foi o tamanho (5→7px) e a
+saturação. Corrigido para `#25784A` e `#9A5F0E`, que voltam ao contraste de antes.
+
+**A ressalva do A.7, que nenhum número resolve:** as duas cores têm quase a mesma luminância, e o
+ponto é o **único** sinal da célula. Quem não distingue verde de âmbar não distingue os dois
+pontos. A.7 é para registrar isso quando alguem olhar com o aparelho na mão, não para reprovar: a
+saída é um segundo canal, e é decisão de produto.
 | A.6 | recado de voz na conversa da clínica | grava, envia e **toca ali mesmo**, sem baixar |
 
 A.6 é a confirmação do que foi deployado hoje às 08:38 — o Bruno testou antes e falhou.

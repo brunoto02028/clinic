@@ -92,19 +92,33 @@ Decisões que tomei sem perguntar. Se alguma estiver errada, ela muda o desenho:
 
 ## Tarefas
 
-Estado em **27/09/2026**. Nada está "concluído" porque o QA está re-medindo agora; o code review
-destas quatro já foi feito, e as correções dele estão dentro.
+Estado em **27/09/2026, fim da tarde**, depois do QA (`qa/report-092.md`: 24 passaram, 2 reprovaram,
+13 não executados) e do code review.
 
 | | | |
 |---|---|---|
-| T-1 | O webhook para de sortear: roteamento determinístico da leitura | em revisão |
+| T-1 | O webhook para de sortear: roteamento determinístico da leitura | **concluída** |
 | T-2 | "Já medi — busca agora", e o cancelar ao lado | em revisão |
 | T-3 | Leitura descartada faz barulho; estado da conexão visível | em revisão |
-| T-4 | ~~O índice único volta~~ → **o índice que não protegia, e saiu** | em revisão |
+| T-4 | ~~O índice único volta~~ → **o índice que não protegia, e saiu** | **concluída** |
 | T-5 | Videochamada: sala por consulta, token na janela do horário | pendente |
 | T-6 | O alternador de tema onde se alcança | em revisão |
-| T-7 | Pagamento de £1 de ponta a ponta | pendente (falta saber o modo da Stripe) |
+| T-7 | Pagamento de £1 de ponta a ponta | **bloqueada** — a Stripe não existe em produção |
 | T-8 | Push de quem se cuida vai para quem responde (herdada da 091) | pendente |
+
+**Por que só duas fecharam.** T-1 (9 de 9) e T-4 (4 de 4) passaram inteiras, exercitadas contra o
+banco, e têm review — fecham. T-2 e T-3 tiveram um cenário reprovado cada (2.5 e 3.1b), os dois
+**consertados na mesma tarde**, e o conserto ainda não foi medido: fechar agora seria dar por
+aprovado o que ninguém re-mediu. T-6 depende de tela de app, que Playwright não alcança — espera o
+Bruno com o aparelho.
+
+**T-7 não está esperando decisão, está bloqueada.** Consultei as variáveis da aplicação no Coolify:
+não existe **nenhuma** `STRIPE_*` lá, e no `.env` local as três estão comentadas. Não é "modo de
+teste ou de produção", é que a Stripe nunca foi configurada em lugar nenhum — todo caminho de
+cobrança do produto está inerte por ausência de chave. O código pode ser escrito antes; a cobrança
+de £1 de verdade depende de o Bruno abrir a conta e pôr as chaves. No mesmo levantamento faltam
+`LAB_ORDERING_ENABLED`, `LML_API_KEY`, `DAILY_API_KEY` e `VIDEO_CALLS_ENABLED` — ou seja,
+laboratório e videochamada também não funcionam em produção até isso subir.
 
 ### O que o code review achou, e que já está corrigido
 
@@ -124,6 +138,23 @@ E o QA achou uma que nenhum review pegou: **`ignoraPressao` era código morto.**
 existia, os testes dela passavam, e o `withings-ingest.ts` reimplementava a mesma condição inline.
 Duas cópias da mesma regra é exatamente a armadilha que a função pura deveria evitar — mudar uma
 deixaria o teste verde medindo a outra. Agora o ingest a chama, e há um teste que assere a chamada.
+
+### E o que o QA achou por cima disso
+
+Relatório inteiro, com evidência e screenshots, em `qa/report-092.md`. Os quatro foram corrigidos
+no mesmo dia:
+
+| | |
+|---|---|
+| **3.1b** ❌ | o descarte do webhook não registrava nada. Agora grava `SystemLog` WARN com o motivo, e separa assinatura órfã (esperada) do aparelho da clínica emudecendo (o defeito) |
+| **2.5** ❌ | o 401 da rota era inalcançável: o `middleware.ts` devolvia **307** antes. O navegador segue o redirect, recebe o HTML do `/login`, e o `res.json()` do chamador estoura em erro de parse — a terapeuta lia erro de sintaxe onde devia ler "sua sessão expirou" |
+| **o manguito com alarme eterno** | `partial` exigia passos e sono, que um BPM Connect nunca produz. O painel dizia para sempre "a Withings não confirmou" com a pressão confirmada. Agora o painel pede `soPressao: true` |
+| **as bolinhas pioraram no claro** | as minhas cores novas mediam 3,67 e 3,16 contra 4,93 e 4,89 das que saíram. Eu tinha piorado a legibilidade anunciando que estava consertando. Voltaram ao contraste de antes mantendo a saturação |
+
+E uma coisa que o QA destapou e que **não** foi consertada: o ponto colorido é o único sinal da
+célula do calendário, e verde e âmbar agora têm quase a mesma luminância — quem não distingue as
+duas cores não distingue os dois pontos. Já valia para `ok`/`warn`, então não é regressão, e a saída
+é um segundo canal (forma, anel, ou o número de vagas). Decisão de produto, anotada.
 
 ### Já feito hoje, fora de tarefa formal — e que precisa de QA
 
