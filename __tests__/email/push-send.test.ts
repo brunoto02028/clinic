@@ -27,8 +27,10 @@ import { sendPushToUsers, countPushDevices, isExpoPushToken } from "@/lib/push-s
 const users = (prisma as any).user;
 const devices = (prisma as any).pushDeviceToken;
 
+// `userId` entrou com a 092 T-8: é por ele que o envio sabe se aquele aparelho
+// está recebendo por conta própria ou por conta de quem a pessoa cuida.
 const tokensDe = (n: number) =>
-  Array.from({ length: n }, (_, i) => ({ id: `d${i}`, token: `ExponentPushToken[t${i}]` }));
+  Array.from({ length: n }, (_, i) => ({ id: `d${i}`, token: `ExponentPushToken[t${i}]`, userId: "u1" }));
 
 const okPara = (n: number) => ({
   ok: true,
@@ -38,7 +40,9 @@ const okPara = (n: number) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   (outboundAllowed as jest.Mock).mockReturnValue(true);
-  users.findMany.mockResolvedValue([{ id: "u1" }]);
+  // Serve as duas consultas: a de `pedidos` (que lê `managedById`) e a do
+  // portão (`pushEnabled`). Um paciente comum é destinatário de si mesmo.
+  users.findMany.mockResolvedValue([{ id: "u1", firstName: "Paciente", managedById: null }]);
   devices.findMany.mockResolvedValue(tokensDe(1));
   devices.updateMany.mockResolvedValue({ count: 0 });
   global.fetch = jest.fn(async () => okPara(1)) as any;
@@ -56,14 +60,90 @@ describe("isExpoPushToken", () => {
 
 describe("sendPushToUsers", () => {
   it("não manda para quem desligou o aviso", async () => {
-    users.findMany.mockResolvedValue([]); // ninguém com pushEnabled: true
+    /**
+     * Dois `Once`, e isso é o ponto: "a pessoa não existe" e "a pessoa desligou
+     * o aviso" passaram a ser estados **diferentes** (092 T-8).
+     *
+     * Antes havia uma consulta só, e um `[]` nela significava as duas coisas.
+     * Agora a primeira responde quem é a pessoa (e por conta de quem ela
+     * recebe), e a segunda é o portão do `pushEnabled`. O mock com um `[]`
+     * único virou "usuário inexistente", que sai antes do portão — e foi assim
+     * que este teste reprovou, medindo um cenário que não era o do título.
+     */
+    users.findMany
+      .mockResolvedValueOnce([{ id: "u1", firstName: "Paciente", managedById: null }])
+      .mockResolvedValueOnce([]); // ...e ela desligou o aviso
 
     const r = await sendPushToUsers(["u1"], { title: "t", body: "b" });
 
     expect(r).toEqual({ sent: 0, failed: 0, deactivated: 0 });
     expect(global.fetch).not.toHaveBeenCalled();
-    // A regra de silêncio é aplicada aqui, e não em cada chamador
-    expect(users.findMany.mock.calls[0][0].where.pushEnabled).toBe(true);
+    /**
+     * A regra de silêncio é aplicada aqui, e não em cada chamador — **e em
+     * SQL**, não num filtro de JavaScript, que é mais fácil de furar sem
+     * perceber.
+     *
+     * A asserção era `calls[0][0].where.pushEnabled` e reprovou quando a 092 T-8
+     * acrescentou uma consulta antes desta, para achar quem responde por quem é
+     * gerido. Estava medindo a **ordem das consultas**, que não é a garantia;
+     * a garantia é que o portão exista em alguma delas.
+     */
+    const comPortao = users.findMany.mock.calls.filter(
+      (c: any[]) => c[0]?.where?.pushEnabled === true
+    );
+    expect(comPortao).toHaveLength(1);
+  });
+
+  /**
+   * Quem é gerido não tem aparelho: o aviso dela é de quem responde por ela
+   * (092 T-8).
+   *
+   * Dois `mockResolvedValueOnce` em sequência porque o caminho faz duas
+   * consultas de propósito: a primeira descobre que `u1` é gerida pela `mae`, a
+   * segunda confere o `pushEnabled` **da mãe** — se ela desligou os avisos, o da
+   * filha também se cala, senão a criança seria um jeito de furar o silêncio que
+   * a mãe pediu.
+   */
+  it("**o aviso de quem é gerido vai para quem responde, com o nome dela**", async () => {
+    users.findMany
+      .mockResolvedValueOnce([{ id: "u1", firstName: "Ana", managedById: "mae" }])
+      .mockResolvedValueOnce([{ id: "mae" }]);
+    devices.findMany.mockResolvedValue([
+      { id: "d0", token: "ExponentPushToken[t0]", userId: "mae" },
+    ]);
+
+    const r = await sendPushToUsers(["u1"], { title: "Consulta", body: "sua sessão é amanhã às 15h" });
+
+    expect(r.sent).toBe(1);
+    const corpo = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    // Sem o nome, a mãe leria "sua sessão é amanhã às 15h" e iria ela mesma.
+    expect(corpo[0].body).toBe("Ana: sua sessão é amanhã às 15h");
+    expect(corpo[0].data.porContaDe).toBe("Ana");
+    // O aparelho consultado é o da mãe, não o da filha, que não existe.
+    expect(devices.findMany.mock.calls[0][0].where.userId.in).toEqual(["mae"]);
+  });
+
+  it("e o nome **não** entra quando o aviso é sobre quem recebe", async () => {
+    // Um comunicado geral chega à mãe como recado da clínica, uma vez, sem
+    // prefixo — e não como se fosse sobre a filha.
+    users.findMany
+      .mockResolvedValueOnce([
+        { id: "mae", firstName: "Maria", managedById: null },
+        { id: "u1", firstName: "Ana", managedById: "mae" },
+      ])
+      .mockResolvedValueOnce([{ id: "mae" }]);
+    devices.findMany.mockResolvedValue([
+      { id: "d0", token: "ExponentPushToken[t0]", userId: "mae" },
+    ]);
+
+    const r = await sendPushToUsers(["mae", "u1"], { title: "Aviso", body: "a clínica abre mais tarde" });
+
+    // Um telefone, uma mensagem — não duas.
+    expect(r.sent).toBe(1);
+    const corpo = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(corpo).toHaveLength(1);
+    expect(corpo[0].body).toBe("a clínica abre mais tarde");
+    expect(corpo[0].data.porContaDe).toBeUndefined();
   });
 
   it("250 aparelhos viram 3 chamadas, não 250", async () => {
