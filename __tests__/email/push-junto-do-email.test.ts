@@ -91,7 +91,11 @@ describe("as duas travas que já existiam continuam valendo", () => {
   it("quem desligou o aviso não recebe", () => {
     // `pushEnabled` é a chave que o paciente tem para dizer "chega" sem
     // desinstalar o app.
-    expect(envio).toMatch(/where: \{ id: \{ in: userIds \}, pushEnabled: true \}/);
+    //
+    // A trava continua em SQL, mas o conjunto que ela filtra deixou de ser
+    // `userIds` e passou a ser `destinos` (092 T-8): quem é gerido não tem
+    // aparelho, e o `pushEnabled` que vale é o de **quem recebe**.
+    expect(envio).toMatch(/where: \{ id: \{ in: destinos \}, pushEnabled: true \}/);
   });
 
   it("e o portão de saída de QA segura push como segura e-mail", () => {

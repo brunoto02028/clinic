@@ -1,6 +1,17 @@
 # Atividade 089 — A voz e a cara
 
-**Status:** plano escrito — **T-1 bloqueada numa decisão do Bruno** (provedor de vídeo)
+**Status:** plano escrito — **T-1 desbloqueada em 27/09/2026: o provedor é o Daily.co**, e a chave
+já está no `.env` local. Nada implementado ainda.
+
+> **Atenção: a mesma videochamada está listada como T-5 da [092](../092-a-pressao-a-chamada-e-os-ajustes/plan.md).**
+> Quem for implementar usa **este** plano, que tem as tarefas quebradas; da 092 vem o gate
+> `VIDEO_CALLS_ENABLED` e a regra de nunca gravar. E falta subir `DAILY_API_KEY` e
+> `VIDEO_CALLS_ENABLED` no Coolify — hoje a chave existe só na minha máquina, então nada disso
+> funcionaria em produção.
+>
+> O SDK React Native da Daily exige o plugin `@daily-co/config-plugin-rn-daily-js` e, com ele, um
+> **build novo** — não chega por `eas update`. São 10.000 minutos-participante grátis por mês,
+> depois US$ 0,004/min.
 **Data:** 26/09/2026
 
 ## Objetivo
@@ -71,7 +82,7 @@ enquanto fala é o gesto que toda gente já conhece, e soltar termina.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | Provedor de vídeo: conta, chave e a sala | **decisão do Bruno** | **bloqueada** |
+| T-1 | Provedor de vídeo: conta, chave e a sala | — | pendente — **Daily.co decidido**, falta a chave no Coolify |
 | T-2 | A sala nasce com a consulta em modo vídeo | T-1 | pendente |
 | T-3 | O paciente entra pela consulta, na hora certa | T-2 | pendente |
 | T-4 | Áudio passa a ser anexo aceito | — | pendente |

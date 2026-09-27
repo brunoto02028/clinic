@@ -83,13 +83,36 @@ Decisões que tomei sem perguntar — se alguma estiver errada, ela muda o desen
 
 | | | |
 |---|---|---|
-| T-1 | Onde se faz o exame: tela própria e busca por postcode | código pronto, QA pendente |
+| T-1 | Onde se faz o exame: tela própria e busca por postcode | **concluída** — QA + review |
 | T-2 | Dependente: o modelo, e a garantia de que ele não loga | **substituída por T-7** |
-| T-3 | O pedido sabe de quem é o exame | código pronto, QA pendente |
-| T-4 | Consentimento em duas vozes: por mim, e por quem eu cuido | código pronto, QA pendente |
-| T-7 | A criança como paciente da clínica | código pronto, QA pendente |
-| T-5 | O resultado arquiva sob o sujeito | código pronto, QA pendente |
-| T-6 | Termos, consentimento e a ficha da Apple dizendo a mesma coisa | código pronto, QA pendente |
+| T-3 | O pedido sabe de quem é o exame | **concluída** — QA + review |
+| T-4 | Consentimento em duas vozes: por mim, e por quem eu cuido | **concluída** — QA + review |
+| T-7 | A criança como paciente da clínica | **não fecha** — QA + review feitos, mas o achado 5 é dela |
+| T-5 | O resultado arquiva sob o sujeito | **concluída** — QA + review |
+| T-6 | Termos, consentimento e a ficha da Apple dizendo a mesma coisa | **concluída** — QA + review |
+
+### Estado real, em 27/09/2026
+
+Estava escrito "código pronto, QA pendente" em todas as sete. O QA rodou
+(`qa/report-091.md`: **aprovado com ressalvas**, 4 cenários reprovados), o review rodou, e tudo
+está **em produção** desde o merge da PR #138.
+
+Dos 4 reprovados, **3 foram consertados no mesmo dia:**
+
+| | |
+|---|---|
+| **1** | a área de quem responde não lia nada da criança — o portão exigia um aceite que ela nunca deu. `lib/patient-gate.ts` passou a olhar o aceite **do responsável**, que é quem de fato aceitou e quem de fato está usando |
+| **3** | `POST /api/patient/change-password` **gravava** durante a sessão de leitura, e trocou a senha da criança. `middleware.ts` recusa qualquer não-GET vindo de sessão emprestada, num ponto só (`lib/sessao-emprestada.ts`) |
+| **6** | o detalhe do pedido no admin mostrava quem pagou, não de quem era o exame. Agora mostra o sujeito e a data de nascimento |
+
+**E um não foi — é o que falta para fechar a 091:**
+
+| | |
+|---|---|
+| **5** ❌ | apagar a conta de quem responde deixa a criança **ativa e inalcançável**. `closePatientAccount` (`lib/account-closure.ts`) não conhece `managedPatients`, e a criança tem e-mail sintético e `password: null` — ninguém consegue entrar por ela, e ninguém consegue apagá-la. A tela promete "os dependentes vão junto" e eles não vão |
+
+A Apple exige que apagar a conta apague **tudo** o que ela criou, então isto também é item de
+prontidão da loja, não só de correção — ver [090](../090-pronto-para-a-apple/prontidao.md).
 
 T-1 não depende de nenhuma das outras e é a que o Bruno consegue testar primeiro.
 T-2 → T-3 → T-4 → T-5 são uma linha. T-6 fecha, e só fecha depois de T-4.

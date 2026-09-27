@@ -1,11 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
-import { prisma } from "@/lib/db";
+import { AccountClosureError, closePatientAccount } from "@/lib/account-closure";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { logAudit } from "@/lib/system-logger";
 
 /**
  * Apagar a própria conta, de dentro do app (090).
@@ -46,72 +43,44 @@ export async function DELETE(req: NextRequest) {
   }
 
   const userId = effectiveUser.userId;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, email: true, role: true, deletedAt: true },
-  });
-  if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  // Só paciente. Um terapeuta que some leva junto o acesso da clínica ao
-  // próprio trabalho dele, e isso é decisão de quem administra, não dele.
-  if (user.role !== "PATIENT") {
+  /**
+   * As checagens de "é paciente?" e "já está fechada?" moraram aqui e agora
+   * moram no helper.
+   *
+   * Não é economia de linha: enquanto estavam nos dois lugares, um dos dois
+   * caminhos de fechamento podia divergir do outro — e foi exatamente o que
+   * aconteceu. Uma regra, um lugar.
+   */
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    null;
+
+  try {
+    const { closedAt, geridasDesligadas } = await closePatientAccount({
+      userId,
+      ipAddress: ip,
+      userAgent: req.headers.get("user-agent"),
+    });
+    // `deletedAt` mantido no nome antigo: e o que a tela do app le hoje, e
+    // trocar o contrato exigiria um update do app para nada.
+    return NextResponse.json({
+      success: true,
+      deletedAt: closedAt,
+      managedPatientsClosed: geridasDesligadas,
+    });
+  } catch (e) {
+    if (e instanceof AccountClosureError) {
+      return NextResponse.json({ error: e.message, code: e.code }, { status: e.status });
+    }
+    console.error("[patient/account] close failed:", (e as any)?.message);
     return NextResponse.json(
-      { error: "Only a patient account can be deleted from the app. Ask the clinic." },
-      { status: 403 }
+      {
+        error: "Could not close the account just now. Try again.",
+        errorPt: "Não foi possível fechar a conta agora. Tente de novo.",
+      },
+      { status: 500 }
     );
   }
-
-  if (user.deletedAt) {
-    // Já apagada. Responder sucesso de novo é mais honesto que um erro: o
-    // estado que a pessoa pediu é o estado em que a conta está.
-    return NextResponse.json({ success: true, deletedAt: user.deletedAt });
-  }
-
-  const agora = new Date();
-
-  await prisma.$transaction(async (tx) => {
-    await (tx as any).user.update({
-      where: { id: userId },
-      data: {
-        deletedAt: agora,
-        isActive: false,
-        // Uma senha que ninguém conhece, nem quem sabia a antiga. Deixar a
-        // anterior faria "conta apagada" significar "conta esperando".
-        password: await bcrypt.hash(randomBytes(32).toString("hex"), 10),
-        pushEnabled: false,
-      },
-    });
-
-    /**
-     * Quem ele cuidava sai junto (091 T-7, achado do QA de 27/09/2026).
-     *
-     * Sem isto, apagar a conta da mãe deixava a filha **ativa e inalcançável**:
-     * apontando para uma conta morta, sem sessão possível — ninguém consegue
-     * pedir a sessão dela, porque quem podia não existe mais — e ainda
-     * contando como paciente ativa da clínica.
-     *
-     * Desligar, e não apagar: ela tem prontuário, e a mesma razão que impede
-     * `user.delete` aqui em cima vale para ela.
-     */
-    await (tx as any).user.updateMany({
-      where: { managedById: userId, deletedAt: null },
-      data: { deletedAt: agora, isActive: false, pushEnabled: false },
-    });
-
-    // Os aparelhos param de receber aviso. Sem isto, uma conta apagada
-    // continuaria fazendo o telefone tocar.
-    await (tx as any).pushDeviceToken
-      .deleteMany({ where: { userId } })
-      .catch(() => {});
-  });
-
-  await logAudit({
-    userId,
-    action: "PATIENT_ACCOUNT_DELETED",
-    entityType: "User",
-    entityId: userId,
-    description: `Patient deleted their own account from the app. Clinical records retained under the published retention period.`,
-  }).catch(() => {});
-
-  return NextResponse.json({ success: true, deletedAt: agora });
 }
