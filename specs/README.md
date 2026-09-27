@@ -9,14 +9,25 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 **Nova atividade:** use o próximo número livre (hoje **093**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > **Recuperado em 27/09/2026.** O índice estava 21 atividades atrasado — faltavam 065–069,
-> 070-fatura, 071-alerta, as duas 072, 073, 075–080 e 087–092 — e ainda mandava usar o 075, que
-> existe desde 23/09. Como este arquivo é o que se consulta ao retomar trabalho, estar errado nele
+> 070-fatura, 071-alerta, as duas 072, 073, 075–080 e 087–092 — e ainda mandava usar o 076, quando
+> a 092 já existia. Como este arquivo é o que se consulta ao retomar trabalho, estar errado nele
 > custa mais que não existir. As linhas abaixo saem do `plan.md` de cada pasta, não de memória.
+
+> **Quatro números foram usados duas vezes**, sempre pelo mesmo acidente: duas sessões criando pasta
+> ao mesmo tempo, cada uma pegando o que parecia o próximo livre. Nenhum conteúdo se perdeu — os
+> nomes das pastas são únicos — e as duas entradas ficam, porque os commits citam os dois caminhos.
 >
-> **E três números foram usados duas vezes** (sessões paralelas criando pasta ao mesmo tempo, o
-> mesmo acidente da 069/070 descrito adiante). Ficam os dois, porque os commits citam os dois
-> caminhos: **070** (app do paciente · fatura em PDF), **071** (segurança da API mobile · alerta de
-> adesão), **072** (fatura estruturada · motor de acompanhamento).
+> | número | as duas pastas |
+> |---|---|
+> | **070** | `070-app-paciente-clinica` · `070-fatura-pdf-em-vez-de-html` |
+> | **071** | `071-seguranca-api-mobile` · `071-alerta-adesao-staff` |
+> | **072** | `072-fatura-estruturada-e-organizacao` · `072-motor-acompanhamento-paciente` |
+> | **074** | `074-monitoramento-continuo-paciente` · `074-cadastro-paciente-no-admin` |
+>
+> A **074** foi a única que eu não tinha visto ao recuperar o índice: a segunda pasta chegou ao
+> `main` por outra sessão e o meu branch não a tinha, então a minha conferência de "toda pasta tem
+> linha" passou sem enxergar a metade que faltava. Foi o conflito de merge que a mostrou — e é a
+> razão de a conferência valer só depois de trazer o `main`.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -146,6 +157,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [073](073-melhorias-finance/) | Melhorias no Finance (dashboard, Stripe, recorrência, categorias) | ✅ 4 concluídas |
 | [080](080-primeira-consulta-sessao-e-extra/) | Primeira consulta, sessão do pacote e sessão extra; agenda configurável | 🟡 5 implementadas; 4 aguardam QA, 1 aguarda aparelho |
 | [064](064-gravacao-robusta-consultas-diarizacao/) | Gravação robusta de consultas ao vivo (multi-hora) com distinção de voz (diarização, AssemblyAI) | ⏸ |
+| [074](074-cadastro-paciente-no-admin/) | Cadastro do paciente visível/editável no admin | 🟡 plano em aprovação |
 
 ## App mobile
 

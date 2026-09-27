@@ -40,6 +40,10 @@ export async function GET(
           role: true, isActive: true, createdAt: true, updatedAt: true,
           fullAccessOverride: true, profileCompleted: true, consentAcceptedAt: true,
           intakeToken: true, intakeTokenExpiry: true, password: true, preferredLocale: true,
+          // Registration card (activity 074) — was only ever visible/editable
+          // via the patient's own self-service profile, nowhere on the admin side.
+          address: true, dateOfBirth: true,
+          emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
         },
       }),
       safe(prisma.medicalScreening.findUnique({ where: { userId: patientId } }), null),
@@ -133,6 +137,95 @@ export async function PATCH(
     const patientForClinic = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
     const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
     if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
+
+    // Registration card (activity 074) — name, phone, address, DOB, emergency
+    // contact. Email is deliberately not editable here: the patient's own
+    // self-service flow gates an email change behind a confirmation link, and
+    // a direct overwrite from admin would bypass that without the same
+    // safeguard (see specs/074-cadastro-paciente-no-admin/plan.md).
+    if (body.action === "edit_registration") {
+      const ALLOWED_FIELDS = [
+        "firstName", "lastName", "phone", "address", "dateOfBirth",
+        "emergencyContactName", "emergencyContactPhone", "emergencyContactRelation",
+      ] as const;
+
+      const before = await prisma.user.findUnique({
+        where: { id: patientId },
+        select: Object.fromEntries(ALLOWED_FIELDS.map((f) => [f, true])) as Record<(typeof ALLOWED_FIELDS)[number], true>,
+      });
+      if (!before) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+
+      if (body.firstName !== undefined && !String(body.firstName).trim()) {
+        return NextResponse.json({ error: "First name cannot be empty" }, { status: 400 });
+      }
+      if (body.lastName !== undefined && !String(body.lastName).trim()) {
+        return NextResponse.json({ error: "Last name cannot be empty" }, { status: 400 });
+      }
+
+      const updateData: Record<string, any> = {};
+      for (const field of ALLOWED_FIELDS) {
+        if (body[field] === undefined) continue; // omitted → leave as-is
+        if (field === "dateOfBirth") continue; // handled separately below
+        // Trimmed before comparing, so "  " counts as empty too (not just
+        // "") and a name saved with stray leading/trailing spaces doesn't
+        // slip through the door the "" → null rule was supposed to guard
+        // (code review, activity 074). Empty means "clear the field" for
+        // the optional ones; firstName/lastName already rejected above
+        // before reaching here, so they only ever land here non-blank.
+        const trimmed = typeof body[field] === "string" ? body[field].trim() : body[field];
+        updateData[field] = trimmed === "" ? null : trimmed;
+      }
+      if (body.dateOfBirth !== undefined) {
+        if (body.dateOfBirth === "" || body.dateOfBirth === null) {
+          updateData.dateOfBirth = null;
+        } else {
+          const parsed = new Date(body.dateOfBirth);
+          if (isNaN(parsed.getTime())) {
+            return NextResponse.json({ error: "Invalid date of birth" }, { status: 400 });
+          }
+          updateData.dateOfBirth = parsed;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: patientId },
+        data: updateData,
+        select: {
+          id: true, firstName: true, lastName: true, phone: true, address: true, dateOfBirth: true,
+          emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
+        },
+      });
+
+      const changedFields = Object.keys(updateData).filter((f) => {
+        const beforeVal = (before as any)[f] instanceof Date ? (before as any)[f]?.toISOString() : (before as any)[f];
+        const afterVal = updateData[f] instanceof Date ? updateData[f]?.toISOString() : updateData[f];
+        return beforeVal !== afterVal;
+      });
+      if (changedFields.length > 0) {
+        // therapistId/session.user were already resolved above — the
+        // description names the staff member, same as the add_clinical_note
+        // branch does for its author (code review, activity 074): who
+        // changed a patient's registration data is exactly the kind of
+        // thing an audit trail exists for.
+        const staffUser = session.user as any;
+        const staffName = [staffUser.firstName, staffUser.lastName].filter(Boolean).join(" ") || staffUser.email || therapistId;
+        await logAudit({
+          userId: patientId,
+          userEmail: "",
+          userRole: "PATIENT",
+          action: "PATIENT_REGISTRATION_UPDATED",
+          entity: "User",
+          entityId: patientId,
+          description: `Registration fields updated by ${staffName}: ${changedFields.join(", ")}`,
+        });
+      }
+
+      return NextResponse.json({ success: true, patient: updated });
+    }
 
     // If adding a manual clinical note / history
     if (body.action === "add_clinical_note") {
