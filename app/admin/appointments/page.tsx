@@ -58,6 +58,7 @@ import {
   MapPin,
   Video,
   BellRing,
+  Users,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -86,7 +87,16 @@ interface Appointment {
    * uma consulta por vídeo sem depois mostrar que ela era por vídeo.
    */
   mode?: "IN_PERSON" | "VIDEO" | null;
-  patient: { id: string; firstName: string; lastName: string; email: string };
+  patient: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dateOfBirth?: string | null;
+    guardian?: { firstName: string; lastName: string } | null;
+    managedRelationship?: string | null;
+    managedRelationshipOther?: string | null;
+  };
   therapist: { id: string; firstName: string; lastName: string };
 }
 
@@ -624,6 +634,24 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  /**
+   * Menos de 18 — a conta feita aqui, com o nascimento que a rota mandou.
+   *
+   * Por comparação de data e não por divisão de milissegundos: a divisão erra
+   * o aniversário de quem nasceu em 29 de fevereiro, e "faz 18 hoje" é
+   * exatamente o caso em que a resposta precisa estar certa.
+   */
+  const ehMenor = (nascimento?: string | null): boolean => {
+    if (!nascimento) return false;
+    const d = new Date(nascimento);
+    if (isNaN(d.getTime())) return false;
+    const hoje = new Date();
+    let anos = hoje.getUTCFullYear() - d.getUTCFullYear();
+    const m = hoje.getUTCMonth() - d.getUTCMonth();
+    if (m < 0 || (m === 0 && hoje.getUTCDate() < d.getUTCDate())) anos--;
+    return anos < 18;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "COMPLETED":
@@ -883,6 +911,22 @@ export default function AdminAppointmentsPage() {
                           <StatusIcon className="h-3 w-3" />
                           {appointment.status}
                         </span>
+                        {/* A regra sai do texto dos termos e aparece onde se
+                            lê na hora: ninguém da clínica fica sozinho com uma
+                            criança, e é o responsável que a acompanha —
+                            presencialmente ou na videochamada (095 T-3). */}
+                        {ehMenor(appointment.patient.dateOfBirth) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600">
+                            <Users className="h-3 w-3" />
+                            {appointment.patient.guardian
+                              ? isPt
+                                ? `Menor — com ${appointment.patient.guardian.firstName}`
+                                : `Minor — with ${appointment.patient.guardian.firstName}`
+                              : isPt
+                                ? "Menor — acompanhado"
+                                : "Minor — accompanied"}
+                          </span>
+                        )}
                         {appointment.mode === "VIDEO" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-violet-600">
                             <Video className="h-3 w-3" />

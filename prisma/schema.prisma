@@ -978,6 +978,12 @@ model User {
   /// era **descartado em silencio**: a tabela `Dependent` tinha a coluna, o
   /// `User` nao, e a unificacao esqueceu de trazer.
   managedRelationship String?
+  // A descrição de "outro" — só preenchida quando `managedRelationship` é
+  // `OTHER`, e obrigatória nesse caso (095 T-3). Coluna separada, e não um
+  // "OTHER: texto" encaixado na de cima, porque valor codificado dentro de
+  // valor é o tipo de coisa que alguém um dia lê inteiro como se fosse o
+  // parentesco.
+  managedRelationshipOther String?
   managedById         String?
   guardian            User?      @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
   /// SetNull e nao Cascade de proposito: apagar um responsavel nunca pode

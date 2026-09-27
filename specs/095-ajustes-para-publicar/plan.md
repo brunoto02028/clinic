@@ -15,7 +15,7 @@ o produto ficando bom o bastante para outra pessoa usar.
 |---|---|---|---|
 | T-1 | O aviso não chega ao telefone do Bruno | — | **feita** (27/09) — em QA |
 | T-2 | Onde ver, e como testar, uma consulta por vídeo | — | **feita** (27/09) — roteiro em [como-testar-video.md](como-testar-video.md) |
-| T-3 | Cadastrar menor exige dizer a relação com ele | — | pendente |
+| T-3 | Cadastrar menor exige dizer a relação com ele | — | **feita** (27/09) |
 | T-4 | A cor do "Mark as done" | — | pendente |
 | T-5 | Enviar exercício avulso, não a pasta inteira | — | pendente |
 | T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | pendente |

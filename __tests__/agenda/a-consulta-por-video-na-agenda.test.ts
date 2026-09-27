@@ -17,11 +17,20 @@ const agenda = lerCodigo("app", "admin", "appointments", "page.tsx");
 const rota = lerCodigo("app", "api", "appointments", "[id]", "video", "call", "route.ts");
 const push = lerCodigo("lib", "push-notify.ts");
 
-/** O corpo de uma função/`const` até a linha que a fecha na coluna dela. */
-function bloco(src: string, abertura: string): string {
+/**
+ * O corpo de uma função, do começo até um marcador da própria função.
+ *
+ * Fatiar 4000 caracteres cegos alcançava o código **vizinho**: quando um helper
+ * novo nasceu logo abaixo de `chamarPaciente`, a asserção "não usa `new Date()`
+ * aqui" passou a acusar o helper. A fatia agora termina onde a função termina.
+ */
+function bloco(src: string, abertura: string, fim?: string): string {
   const i = src.indexOf(abertura);
   if (i < 0) throw new Error(`não achei ${abertura}`);
-  return src.slice(i, i + 4000);
+  if (!fim) return src.slice(i, i + 4000);
+  const j = src.indexOf(fim, i);
+  if (j < 0) throw new Error(`não achei o fim ${fim} depois de ${abertura}`);
+  return src.slice(i, j);
 }
 
 describe("a agenda diz que a consulta é por vídeo", () => {
@@ -53,12 +62,12 @@ describe("a agenda diz que a consulta é por vídeo", () => {
   it("a janela é decidida no servidor, e não escondendo o botão", () => {
     // Um relógio de navegador erraria em fuso e em máquina atrasada: o botão
     // apareceria fechado, ou não apareceria com a consulta aberta.
-    const acao = bloco(agenda, "const chamarPaciente =");
+    const acao = bloco(agenda, "const chamarPaciente =", "setChamando(null);");
     expect(acao).not.toMatch(/Date\.now\(\)|new Date\(\)/);
   });
 
   it("zero aparelho é notícia, não erro engolido", () => {
-    const acao = bloco(agenda, "const chamarPaciente =");
+    const acao = bloco(agenda, "const chamarPaciente =", "setChamando(null);");
     expect(acao).toMatch(/data\.aparelhos > 0/);
     expect(acao).toMatch(/Ninguém para chamar|Nobody to ring/);
   });
@@ -67,7 +76,7 @@ describe("a agenda diz que a consulta é por vídeo", () => {
     // `aparelhos: 0` com `falhas: N` é a Expo recusando o token ou a rede
     // caindo. Dizer "este paciente não tem aparelho" seria contar sobre ele
     // uma coisa que não aconteceu com ele (achado 4 do QA da T-8).
-    const acao = bloco(agenda, "const chamarPaciente =");
+    const acao = bloco(agenda, "const chamarPaciente =", "setChamando(null);");
     expect(acao).toMatch(/data\.falhas > 0/);
     expect(acao).toMatch(/O aviso não saiu|The call did not go out/);
   });

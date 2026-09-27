@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { relacaoPorExtenso } from "@/lib/managed-patients";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { LAB_TESTS_CONSENT_VERSION, labConsentFor, hasLabConsent } from "@/lib/lab-consent";
@@ -28,10 +29,23 @@ async function sujeito(req: NextRequest, guardianId: string) {
 
   const pessoa = await prisma.user.findFirst({
     where: { id, managedById: guardianId, deletedAt: null },
-    select: { id: true, firstName: true },
+    select: {
+      id: true,
+      firstName: true,
+      // O parentesco entra no texto do consentimento e no registro do aceite
+      // (095 T-3): é ele que responde, depois, quem autorizou o atendimento.
+      managedRelationship: true,
+      managedRelationshipOther: true,
+    },
   });
   if (!pessoa) return null;
-  return { id: pessoa.id, nome: pessoa.firstName, proprio: false };
+  return {
+    id: pessoa.id,
+    nome: pessoa.firstName,
+    proprio: false,
+    relacao: pessoa.managedRelationship,
+    relacaoOutro: pessoa.managedRelationshipOther,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -48,7 +62,16 @@ export async function GET(req: NextRequest) {
     acceptedAt,
     version: LAB_TESTS_CONSENT_VERSION,
     // A voz sai de `proprio`, que a rota já sabe — não da presença do nome.
-    text: labConsentFor(locale, alvo.nome, !alvo.proprio),
+    text: labConsentFor(
+      locale,
+      alvo.nome,
+      !alvo.proprio,
+      relacaoPorExtenso(
+        (alvo as any).relacao,
+        (alvo as any).relacaoOutro,
+        locale === "pt-BR" ? "pt" : "en"
+      )
+    ),
     forName: alvo.nome,
   });
 }
@@ -77,7 +100,15 @@ export async function POST(req: NextRequest) {
       // responsável é registro, não caixinha marcada.
       metadata: alvo.proprio
         ? { where: "labs" }
-        : { where: "labs", consentedById: user.userId, onBehalf: true },
+        : {
+            where: "labs",
+            consentedById: user.userId,
+            onBehalf: true,
+            // **Em que qualidade.** É a pergunta que fica quando alguém volta
+            // a este registro meses depois.
+            relationship: (alvo as any).relacao ?? null,
+            relationshipOther: (alvo as any).relacaoOutro ?? null,
+          },
     },
     select: { createdAt: true },
   });

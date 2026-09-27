@@ -121,7 +121,7 @@ describe("a criança é paciente de verdade", () => {
     // Herdar a clínica é o que impede um paciente de nascer fora de qualquer
     // tenant — o estado em que as rotas antigas vazavam.
     create.mockResolvedValue(FILHA);
-    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10" }));
+    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", relationship: "MOTHER" }));
     const dados = create.mock.calls[0][0].data;
     expect(dados.role).toBe("PATIENT");
     expect(dados.clinicId).toBe("c1");
@@ -130,7 +130,7 @@ describe("a criança é paciente de verdade", () => {
 
   it("e nada chega ao telefone dela — ela não tem aparelho aqui", async () => {
     create.mockResolvedValue(FILHA);
-    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10" }));
+    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", relationship: "MOTHER" }));
     expect(create.mock.calls[0][0].data.pushEnabled).toBe(false);
   });
 
@@ -159,13 +159,13 @@ describe("o responsável vem da sessão, e de mais lugar nenhum", () => {
 
   it("e um dono no corpo é ignorado", async () => {
     create.mockResolvedValue(FILHA);
-    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", managedById: "invasor" }));
+    await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", relationship: "MOTHER", managedById: "invasor" }));
     expect(create.mock.calls[0][0].data.managedById).toBe("mae-1");
   });
 
   it("a criança de outra conta **não existe** — 404, sem confirmar o id", async () => {
     findFirst.mockResolvedValue(null);
-    const res = await PATCH(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10" }), {
+    const res = await PATCH(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", relationship: "MOTHER" }), {
       params: Promise.resolve({ id: "de-outra-mae" }),
     });
     expect(res.status).toBe(404);
@@ -192,7 +192,7 @@ describe("o que a pessoa digita é conferido", () => {
 
   it("nome e sobrenome são obrigatórios", () => {
     for (const b of [{}, { firstName: "Ana" }, { lastName: "Souza" }, { firstName: "  ", lastName: "Souza" }]) {
-      expect(validarPessoa({ ...b, dateOfBirth: "2015-06-10" }, agora)).toHaveProperty("erro");
+      expect(validarPessoa({ ...b, dateOfBirth: "2015-06-10", relationship: "MOTHER" }, agora)).toHaveProperty("erro");
     }
   });
 
@@ -202,7 +202,7 @@ describe("o que a pessoa digita é conferido", () => {
   });
 
   it("e o nome vem limpo", () => {
-    const r = validarPessoa({ firstName: "  Ana   Lúcia ", lastName: " Souza ", dateOfBirth: "2015-06-10" }, agora);
+    const r = validarPessoa({ firstName: "  Ana   Lúcia ", lastName: " Souza ", dateOfBirth: "2015-06-10", relationship: "MOTHER" }, agora);
     expect((r as any).pessoa.firstName).toBe("Ana Lúcia");
   });
 });
@@ -253,8 +253,73 @@ describe("o que sai para o app", () => {
 
   it("há um teto por conta", async () => {
     count.mockResolvedValue(10);
-    const res = await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10" }));
+    const res = await POST(corpo({ firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10", relationship: "MOTHER" }));
     expect(res.status).toBe(400);
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("o parentesco, para quem é menor (095 T-3)", () => {
+  const agora = new Date("2026-09-27T12:00:00Z");
+  const base = { firstName: "Ana", lastName: "Souza", dateOfBirth: "2015-06-10" };
+
+  it("**menor sem parentesco é recusado**", () => {
+    /**
+     * Palavras do Bruno: *"precisa ser obrigado a colocar a relação com a
+     * criança… pois a responsabilidade é do maior responsável pela criança"*.
+     * Quem consente pelo tratamento de um menor é o adulto, e até aqui não se
+     * registrava **em que qualidade** ele consentiu.
+     */
+    const r = validarPessoa(base, agora) as any;
+    expect(r.erro).toMatch(/what you are to this child/i);
+    expect(r.erroPt).toMatch(/o que você é desta criança/i);
+  });
+
+  it("e um parentesco fora da lista também", () => {
+    // O campo era livre, e o que se ganhava era "resp", "mae", "Mãe " — nada
+    // disso responde a pergunta meses depois.
+    const r = validarPessoa({ ...base, relationship: "mãe" }, agora) as any;
+    expect(r.erro).toMatch(/not one of the relationships/i);
+  });
+
+  it('"outro" sem descrever é o campo obrigatório contornado', () => {
+    const r = validarPessoa({ ...base, relationship: "OTHER" }, agora) as any;
+    expect(r.erro).toMatch(/describe the relationship/i);
+  });
+
+  it("com a descrição, passa — e a descrição fica", () => {
+    const r = validarPessoa(
+      { ...base, relationship: "OTHER", relationshipOther: "Família acolhedora" },
+      agora
+    ) as any;
+    expect(r.pessoa.relationship).toBe("OTHER");
+    expect(r.pessoa.relationshipOther).toBe("Família acolhedora");
+  });
+
+  it("e a descrição some quando o parentesco não é 'outro'", () => {
+    // Senão sobra um texto órfão dizendo uma coisa e o parentesco dizendo outra.
+    const r = validarPessoa(
+      { ...base, relationship: "MOTHER", relationshipOther: "Família acolhedora" },
+      agora
+    ) as any;
+    expect(r.pessoa.relationshipOther).toBeNull();
+  });
+
+  it("maior de idade gerido continua sem a exigência", () => {
+    // Quem cuida de um pai idoso também usa isto, e ali a relação ajuda mas não
+    // é o que responde pela pessoa. A exigência acompanha a razão dela.
+    const r = validarPessoa({ ...base, dateOfBirth: "1950-06-10" }, agora) as any;
+    expect(r.pessoa).toBeDefined();
+    expect(r.pessoa.relationship).toBeNull();
+  });
+
+  it("e a lista é a mesma no app e no servidor", () => {
+    // Duas cópias que precisam concordar — o mesmo arranjo dos termos.
+    const { RELACOES } = require("@/lib/managed-patients");
+    const noApp = ler("mobile", "src", "lib", "parentesco.ts")
+      .match(/export const RELACOES = \[([\s\S]*?)\]/)![1]
+      .match(/"[A-Z_]+"/g)!
+      .map((x: string) => x.replace(/"/g, ""));
+    expect(noApp).toEqual([...RELACOES]);
   });
 });
