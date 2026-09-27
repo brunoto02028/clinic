@@ -31,9 +31,23 @@ export type MotivoDeNaoEntrar =
 export class NaoDeuParaEntrar extends Error {
   constructor(
     public motivo: MotivoDeNaoEntrar,
-    public texto: string
+    /** O ingles, que e a lingua primaria e a reserva. */
+    message: string,
+    /** O portugues, quando o servidor mandou. */
+    public messagePt?: string
   ) {
-    super(texto);
+    super(message);
+  }
+
+  /**
+   * A frase no idioma do aparelho.
+   *
+   * A escolha mora aqui e nao no modulo de API porque quem sabe o idioma e a
+   * **tela** — `localizada(lang)` do `ApiError` pede o idioma justamente por
+   * isso, e eu estava chamando sem argumento.
+   */
+  texto(lang: string): string {
+    return lang === "pt" && this.messagePt ? this.messagePt : this.message;
   }
 }
 
@@ -44,14 +58,23 @@ export async function entrarNaConsulta(appointmentId: string): Promise<EntradaNa
     });
   } catch (e: any) {
     /**
-     * O corpo do erro carrega `code` e `errorPt`, e os dois importam: o `code`
-     * decide o que a tela oferece (esperar, voltar, avisar a clínica) e o texto
-     * é o que a pessoa lê. Sem separar, todo problema vira "erro".
+     * O erro vem como `ApiError`, e e dele que sai o texto na lingua certa.
+     *
+     * Eu lia `e.body ?? e.data` — **nenhum dos dois existe**. O `apiFetch` lanca
+     * `ApiError(status, message, code, messagePt)`. O resultado: `corpo` era
+     * sempre `{}`, o motivo era sempre "desconhecido" (a uniao inteira virava
+     * codigo morto), e o texto caia no `e.message`, que e o ingles. Uma paciente
+     * em pt-BR lia "This consultation has not opened yet."
+     *
+     * E a mesma regressao que o docstring do `ApiError` diz ter consertado em
+     * 26/09. Achado do code review de 27/09/2026.
      */
-    const corpo = e?.body ?? e?.data ?? {};
-    const motivo = (corpo.code as MotivoDeNaoEntrar) ?? "desconhecido";
-    const texto = corpo.errorPt || corpo.error || e?.message || "Não foi possível entrar na consulta.";
-    throw new NaoDeuParaEntrar(motivo, texto);
+    const motivo = (e?.code as MotivoDeNaoEntrar) ?? "desconhecido";
+    throw new NaoDeuParaEntrar(
+      motivo,
+      e?.message || "Could not join the consultation.",
+      e?.messagePt
+    );
   }
 }
 

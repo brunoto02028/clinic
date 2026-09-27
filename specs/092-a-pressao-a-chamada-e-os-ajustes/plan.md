@@ -101,10 +101,10 @@ Estado em **27/09/2026, fim da tarde**, depois do QA (`qa/report-092.md`: 24 pas
 | T-2 | "Já medi — busca agora", e o cancelar ao lado | em revisão |
 | T-3 | Leitura descartada faz barulho; estado da conexão visível | em revisão |
 | T-4 | ~~O índice único volta~~ → **o índice que não protegia, e saiu** | **concluída** |
-| T-5 | Videochamada: sala por consulta, token na janela do horário | pendente |
+| T-5 | Videochamada: sala por consulta, token na janela do horário | **feita na 089** — em QA |
 | T-6 | O alternador de tema onde se alcança | em revisão |
-| T-7 | Pagamento de £1 de ponta a ponta | **bloqueada** — a Stripe não existe em produção |
-| T-8 | Push de quem se cuida vai para quem responde (herdada da 091) | pendente |
+| T-7 | Pagamento de £1 de ponta a ponta | **desbloqueada** — chave de teste funciona; falta a `whsec_` |
+| T-8 | Push de quem se cuida vai para quem responde (herdada da 091) | **concluída** |
 
 **Por que só duas fecharam.** T-1 (9 de 9) e T-4 (4 de 4) passaram inteiras, exercitadas contra o
 banco, e têm review — fecham. T-2 e T-3 tiveram um cenário reprovado cada (2.5 e 3.1b), os dois
@@ -112,13 +112,17 @@ banco, e têm review — fecham. T-2 e T-3 tiveram um cenário reprovado cada (2
 aprovado o que ninguém re-mediu. T-6 depende de tela de app, que Playwright não alcança — espera o
 Bruno com o aparelho.
 
-**T-7 não está esperando decisão, está bloqueada.** Consultei as variáveis da aplicação no Coolify:
-não existe **nenhuma** `STRIPE_*` lá, e no `.env` local as três estão comentadas. Não é "modo de
-teste ou de produção", é que a Stripe nunca foi configurada em lugar nenhum — todo caminho de
-cobrança do produto está inerte por ausência de chave. O código pode ser escrito antes; a cobrança
-de £1 de verdade depende de o Bruno abrir a conta e pôr as chaves. No mesmo levantamento faltam
-`LAB_ORDERING_ENABLED`, `LML_API_KEY`, `DAILY_API_KEY` e `VIDEO_CALLS_ENABLED` — ou seja,
-laboratório e videochamada também não funcionam em produção até isso subir.
+**T-7 deixou de estar bloqueada em 27/09, às 18h.** O Bruno pôs a chave de teste no `.env`, e
+ela funciona: conta `BPR Physical Rehabilitation sandbox`, Reino Unido, GBP. Criei um Checkout de
+£1 pela mesma forma que a rota de consulta usa (`price_data`, `unit_amount: 100`) e ele nasceu em
+**modo teste** — ou seja, o caminho de cobrança está provado.
+
+Falta a outra ponta: sem `STRIPE_WEBHOOK_SECRET`, `/api/webhooks/stripe` recusa toda notificação,
+então o pagamento completaria na Stripe e o sistema nunca ficaria sabendo. A `whsec_` sai do painel
+quando o endpoint de webhook for criado.
+
+E em **produção** continua tudo ausente: nenhuma `STRIPE_*` no Coolify. O que está provado é o
+caminho, na máquina local.
 
 ### O que o code review achou, e que já está corrigido
 

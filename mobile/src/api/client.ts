@@ -127,7 +127,7 @@ export async function apiUpload<T>(
   // eu deixava o anexo passar com o token emprestado, argumentando que o vídeo
   // era da criança — mas isso é uma escrita no prontuário dela vinda de uma
   // sessão que não é dela, e liberá-la é decisão a tomar de propósito.
-  recusaSeEscritaEmprestada(method);
+  recusaSeEscritaEmprestada(method, path);
 
   const send = async (): Promise<Response> => {
     const access = tokenEmprestado() ?? (await tokenStorage.getAccess());
@@ -173,8 +173,19 @@ export async function apiUpload<T>(
  * própria o que é grave — comprar exame, trocar credencial, gerir pessoas —,
  * e a auditoria rota a rota fica para ser feita de propósito, não às pressas.
  */
-function recusaSeEscritaEmprestada(method: string | undefined): void {
+function recusaSeEscritaEmprestada(method: string | undefined, path?: string): void {
   if (!tokenEmprestado()) return;
+  /**
+   * Entrar na consulta por video e a excecao (089, review de 27/09/2026).
+   *
+   * Sem ela, uma mae nao consegue entrar na consulta da filha — e a filha nao
+   * tem credencial propria, porque o login recusa quem tem `managedById`. A
+   * consulta a distancia de menor simplesmente nao acontecia.
+   *
+   * O servidor tem a mesma excecao, em `lib/sessao-emprestada.ts`, e e la que
+   * ela vale. Esta aqui existe so para o toque nao morrer no aparelho.
+   */
+  if (path && /^\/api\/appointments\/[^/]+\/video$/.test(path)) return;
   const verbo = (method ?? "GET").toUpperCase();
   if (verbo === "GET" || verbo === "HEAD" || verbo === "OPTIONS") return;
   throw new ApiError(

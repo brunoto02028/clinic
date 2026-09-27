@@ -6,6 +6,14 @@ export interface BookingRequest {
   duration?: number;
   treatmentType: string;
   notes?: string;
+  /**
+   * Para quem é a consulta, quando não é para quem está marcando (089/091).
+   *
+   * Ausente quer dizer "para mim", que é o caso comum. Quem valida é o servidor:
+   * a pessoa tem de ser **gerida por quem está pedindo**, e quem não for recebe
+   * 404 — dizer "existe, mas não é seu" contaria a um estranho que ela existe.
+   */
+  dependentId?: string;
 }
 
 export async function bookAppointment(data: BookingRequest) {

@@ -107,14 +107,50 @@ export function nomeDaSala(appointmentId: string): string {
 export interface SalaCriada {
   name: string;
   url: string;
+  config?: { exp?: number };
+}
+
+/** As propriedades da sala, num lugar só — usadas ao criar e ao atualizar. */
+function propriedadesDaSala(fim: number) {
+  return {
+    exp: fim,
+    eject_at_room_exp: true,
+    // Sem gravação: nenhuma propriedade de gravação é enviada, e isto é uma
+    // decisão, não um esquecimento (092 T-5).
+    enable_chat: true,
+    enable_screenshare: true,
+    /**
+     * A sala pergunta antes de pôr a pessoa no ar (review de 27/09/2026).
+     *
+     * Sem isto, tocar em "Entrar agora" já transmitia: a paciente que abre dez
+     * minutos antes, da cama, aparece — e o terapeuta que abre `/video-room`
+     * "só para ver se funciona" entra ao vivo para quem já estava lá. Numa
+     * consulta, esse meio segundo é a diferença entre entrar e ser flagrado.
+     */
+    enable_prejoin_ui: true,
+    start_video_off: false,
+    start_audio_off: false,
+  };
 }
 
 /**
- * Cria a sala da consulta, ou devolve a que já existe.
+ * Cria a sala da consulta, ou devolve a que já existe — com a validade certa.
  *
  * Idempotente de propósito: marcar a consulta como vídeo duas vezes, ou um
  * retry de rede, não pode produzir duas salas — a segunda ficaria órfã e a
  * consulta apontaria para uma delas.
+ *
+ * ## E a sala reagendada, que ficava morta para sempre
+ *
+ * O nome é derivado do id da consulta e o `exp` era gravado **só na criação**.
+ * Reagendar muda o `dateTime` e não tocava na Daily: a consulta de hoje às 10h
+ * criava uma sala válida até 11h30 de hoje; movida para terça, a entrada de
+ * terça reencontrava **aquela** sala, já expirada. Com `eject_at_room_exp`, quem
+ * entrasse era expulso na hora — e como o nome é determinístico, toda tentativa
+ * caía na mesma sala morta, sem nenhum caminho de conserto pela interface.
+ *
+ * Por isso o `GET` compara e, se divergir, atualiza. Achado do review de
+ * 27/09/2026.
  */
 export async function criarSalaDaConsulta(opts: {
   appointmentId: string;
@@ -127,37 +163,44 @@ export async function criarSalaDaConsulta(opts: {
   try {
     return await daily<SalaCriada>("/rooms", {
       method: "POST",
-      body: JSON.stringify({
-        name,
-        privacy: "private",
-        properties: {
-          exp: fim,
-          eject_at_room_exp: true,
-          // Sem gravação: nenhuma propriedade de gravação é enviada, e isto é
-          // uma decisão, não um esquecimento (092 T-5).
-          enable_chat: true,
-          enable_screenshare: true,
-          start_video_off: false,
-          start_audio_off: false,
-        },
-      }),
+      body: JSON.stringify({ name, privacy: "private", properties: propriedadesDaSala(fim) }),
     });
   } catch (e) {
     // Sala que já existe volta 400 da Daily. Buscar é o caminho idempotente.
-    if (e instanceof VideoCallError && e.code === "provider_error") {
-      return await daily<SalaCriada>(`/rooms/${name}`, { method: "GET" });
+    if (!(e instanceof VideoCallError) || e.code !== "provider_error") throw e;
+
+    const existente = await daily<SalaCriada>(`/rooms/${name}`, { method: "GET" });
+
+    // A validade guardada é a do horário de antes do reagendamento. Igualar é
+    // o que impede a sala morta.
+    if (existente.config?.exp !== fim) {
+      return await daily<SalaCriada>(`/rooms/${name}`, {
+        method: "POST",
+        body: JSON.stringify({ properties: propriedadesDaSala(fim) }),
+      });
     }
-    throw e;
+
+    return existente;
   }
 }
 
 /**
- * O token de quem vai entrar — só dentro da janela.
+ * A hora está dentro da janela? Lança dizendo qual das duas pontas falhou.
  *
- * A checagem de horário mora **aqui**, e não na tela: a tela decide o que
- * mostrar, e isto decide o que existe. Um botão escondido continua sendo uma
- * requisição que alguém pode fazer à mão.
+ * Separada de `tokenParaEntrar` no review de 27/09/2026. Estava **dentro** dele,
+ * e o chamador criava a sala antes — então abrir uma consulta da semana passada
+ * tentava criar uma sala com `exp` no passado, a Daily recusava, e a pessoa lia
+ * *"o serviço de vídeo recusou o pedido"* em vez de *"esta consulta já
+ * terminou"*. Pior: qualquer toque no endpoint criava sala, contrariando o
+ * "a sala só existe se alguém de fato vai usá-la".
  */
+export function exigirJanelaAberta(dateTime: Date, duracaoMin: number, agora = new Date()): void {
+  const { inicio, fim } = janelaDaConsulta(dateTime, duracaoMin);
+  const t = Math.floor(agora.getTime() / 1000);
+  if (t < inicio) throw new VideoCallError("This consultation has not opened yet.", 409, "too_early");
+  if (t > fim) throw new VideoCallError("This consultation has ended.", 409, "too_late");
+}
+
 export async function tokenParaEntrar(opts: {
   appointmentId: string;
   dateTime: Date;
@@ -167,14 +210,9 @@ export async function tokenParaEntrar(opts: {
   agora?: Date;
 }): Promise<string> {
   const { inicio, fim } = janelaDaConsulta(opts.dateTime, opts.duracaoMin);
-  const agora = Math.floor((opts.agora ?? new Date()).getTime() / 1000);
-
-  if (agora < inicio) {
-    throw new VideoCallError("This consultation has not opened yet.", 409, "too_early");
-  }
-  if (agora > fim) {
-    throw new VideoCallError("This consultation has ended.", 409, "too_late");
-  }
+  // Conferida de novo aqui: quem chama pode esquecer, e emitir token fora da
+  // janela e a guarda de quem chama não são a mesma garantia.
+  exigirJanelaAberta(opts.dateTime, opts.duracaoMin, opts.agora);
 
   const r = await daily<{ token: string }>("/meeting-tokens", {
     method: "POST",
@@ -187,7 +225,18 @@ export async function tokenParaEntrar(opts: {
         is_owner: opts.ehTerapeuta,
         nbf: inicio,
         exp: fim,
-        enable_recording: false,
+        /**
+         * A garantia de nao gravar e a **sala**, nao este campo.
+         *
+         * `enable_recording` no meeting-token espera uma string (`"cloud"`,
+         * `"local"`, `"raw-tracks"`), e o `false` que estava aqui era
+         * codificado como `er: ""` no JWT — engolido em silencio. O QA de
+         * 27/09/2026 mediu isso.
+         *
+         * Nao mando mais nada: a sala nao tem propriedade de gravacao nenhuma,
+         * e e de la que a garantia vem. Um campo que parece impedir e nao
+         * impede e pior que campo nenhum, porque quem le para de procurar.
+         */
       },
     }),
   });

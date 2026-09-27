@@ -140,7 +140,9 @@ export default function Dependentes() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: tr(lang, { en: "People I order for", pt: "Pessoas por quem eu peço" }),
+          // "Pessoas por quem eu peço" era o nome de quando isto só servia para
+          // pedir exame. Cuidar de alguém também é marcar a consulta dela.
+          title: tr(lang, { en: "People I look after", pt: "Quem eu cuido" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -150,8 +152,8 @@ export default function Dependentes() {
       <View style={{ gap: 16 }}>
         <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 19 }}>
           {tr(lang, {
-            en: "You can order a blood test for someone you look after — a child, most often. The test comes out in their name, and the result comes to you.",
-            pt: "Você pode pedir um exame de sangue para alguém de quem cuida — em geral um filho. O exame sai no nome dessa pessoa, e o resultado chega a você.",
+            en: "Someone you look after — a child, most often. You can book their consultation and order their blood test: it comes out in their name, and the result comes to you.",
+            pt: "Alguém de quem você cuida — em geral um filho. Você pode marcar a consulta e pedir o exame dessa pessoa: sai no nome dela, e o resultado chega a você.",
           })}
         </Text>
 
@@ -168,7 +170,7 @@ export default function Dependentes() {
           <Spinner center />
         ) : (
           <View style={{ gap: 10 }}>
-            {(lista.data ?? []).map((d) => (
+            {(lista.data ?? []).map((d: Dependente) => (
               <Card key={d.id} testID={`dependente-${d.id}`}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <View style={{ flex: 1, gap: 2 }}>
@@ -263,8 +265,8 @@ export default function Dependentes() {
                   não num aviso genérico depois do erro. */}
               <Text variant="caption" color={t.colors.textMuted} style={{ lineHeight: 18 }}>
                 {tr(lang, {
-                  en: "The laboratory needs it: the reference range of a result depends on age.",
-                  pt: "O laboratório precisa dela: a faixa de referência de um resultado depende da idade.",
+                  en: "Age matters to both: a result's reference range depends on it, and a minor is always accompanied.",
+                  pt: "A idade importa nos dois: a faixa de referência de um resultado depende dela, e um menor está sempre acompanhado.",
                 })}
               </Text>
               <Input

@@ -3,13 +3,14 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
-import { fetchAppointments } from "@/api/appointments";
+import { fetchAppointments, type Appointment } from "@/api/appointments";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
+import { janelaAberta } from "@/api/video";
 
 
 function AppointmentsScreen() {
@@ -23,7 +24,7 @@ function AppointmentsScreen() {
 
   const sorted = (data ?? [])
     .slice()
-    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+    .sort((a: Appointment, b: Appointment) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
   return (
     <Screen testID="appointments-screen">
@@ -78,7 +79,14 @@ function AppointmentsScreen() {
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <Ionicons name="medical-outline" size={22} color={t.colors.health} />
+                      {/* O ícone conta o formato. Era sempre o mesmo, e o
+                          paciente só descobria que a consulta era por vídeo
+                          abrindo a tela dela. */}
+                      <Ionicons
+                        name={item.mode === "VIDEO" ? "videocam-outline" : "medical-outline"}
+                        size={22}
+                        color={t.colors.health}
+                      />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.treatmentType}</Text>
@@ -105,6 +113,56 @@ function AppointmentsScreen() {
                       </Text>
                     </View>
                   ) : null}
+
+                  {/* A consulta à distância se anuncia **aqui**, na lista (089).
+                      O Bruno: *"se agendamento for uma consulta à distância, eu
+                      quero que já apareça para o paciente essa opção"*. Estava
+                      só na tela da consulta, e o paciente vê a lista primeiro —
+                      saber que é por vídeo muda o que a pessoa faz antes da hora:
+                      onde ela vai estar, e se precisa sair de casa.
+
+                      Fora da janela a linha continua dizendo o formato, em vez
+                      de sumir. Some o botão, não a informação. */}
+                  {/* Cancelada nao oferece entrada. O servidor ja recusa com
+    `not_scheduled`, mas um botao verde ao lado da tarja vermelha
+    "Cancelada" e a tela contradizendo a si mesma. */}
+                  {item.mode === "VIDEO" && item.status !== "CANCELLED" && item.status !== "NO_SHOW" && (
+                    <View style={{ marginTop: 10, marginLeft: 56 }}>
+                      {janelaAberta(item.dateTime, item.duration) ? (
+                        <Pressable
+                          testID={`entrar-video-${item.id}`}
+                          onPress={(e) => {
+                            // Sem isto o toque sobe para o cartão e abre o detalhe:
+                            // quem toca em "entrar" quer entrar, não ler.
+                            e.stopPropagation?.();
+                            router.push(`/(app)/(clinica)/consulta-video?id=${item.id}` as never);
+                          }}
+                          style={({ pressed }) => ({
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            paddingVertical: 10,
+                            borderRadius: 10,
+                            backgroundColor: t.colors.health,
+                            opacity: pressed ? 0.8 : 1,
+                          })}
+                        >
+                          <Ionicons name="videocam" size={16} color={t.colors.accentFg} />
+                          <Text variant="caption" color={t.colors.accentFg} style={{ fontWeight: "700" }}>
+                            {tr(lang, { en: "Join now", pt: "Entrar agora" })}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Ionicons name="videocam-outline" size={14} color={t.colors.textMuted} />
+                          <Text variant="caption" muted>
+                            {tr(lang, { en: "Video consultation", pt: "Consulta por vídeo" })}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </Card>
               </Pressable>
             );

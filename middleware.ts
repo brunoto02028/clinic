@@ -370,7 +370,7 @@ export async function middleware(request: NextRequest) {
      * consulta — passa a exigir uma exceção explícita aqui, que é o custo
      * certo para uma decisão dessas.
      */
-    if (ehEscritaEmprestada(request.method, authHeader)) {
+    if (ehEscritaEmprestada(request.method, authHeader, pathname)) {
       return new NextResponse(
         JSON.stringify({
           error: 'Switch back to your own account to make changes.',
