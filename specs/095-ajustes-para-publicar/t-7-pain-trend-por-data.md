@@ -1,6 +1,6 @@
 # T-7: Pain Trend — o paciente relata por data
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -39,3 +39,30 @@ mas porque não abriu o aplicativo.
 - [ ] Não dá para registrar dia futuro
 - [ ] Regravar o mesmo dia substitui, e avisa
 - [ ] O gráfico distingue o registro do dia do registro retroativo
+
+---
+
+## Metade já existia, e é bom dizer qual
+
+Quando fui implementar, encontrei o registro por data **já pronto**, vindo da
+087: a rota aceita `checkinDate`, recusa o futuro, para em catorze dias — *"além
+disso não é lembrança, é reconstrução"* — e a tela do app tem o seletor de dia,
+com um comentário citando o próprio Bruno pedindo isso.
+
+O limite ficou em **14 dias**, e não nos 30 que eu havia suposto no plano: o
+número que está lá foi escolhido com uma razão escrita, e trocá-lo por um palpite
+meu seria piorar a decisão de alguém que pensou nela.
+
+## O que faltava
+
+O gráfico não dizia **quando o ponto foi escrito**. Um ponto lançado uma semana
+depois é memória, não medição — a dor lembrada é reconstruída —, e quem lê uma
+tendência para decidir tratamento precisa saber qual é qual.
+
+- A rota devolve `retroativo`, comparando `createdAt` com `checkinDate`. **Sem
+  coluna nova:** o dado já estava lá.
+- No gráfico, o ponto retroativo é **oco**. Forma, e não cor: a cor da linha da
+  dor já significa outra coisa, e forma se distingue sem depender de enxergar
+  bem.
+- A legenda aparece **só quando existe um ponto assim**. Explicar uma marca que
+  não está na tela é ruído; não explicar a que está é pior.

@@ -28,6 +28,8 @@ import { useLocale } from "@/hooks/use-locale";
 const DOR_ALTA = 7;
 
 interface Point {
+  /** Lançado depois do dia que descreve (095 T-7). */
+  retroativo?: boolean;
   date: string;
   pain: number;
   mood: number | null;
@@ -118,9 +120,40 @@ export default function PatientWellbeingChart({ patientId }: { patientId: string
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
+                {/**
+                 * O ponto retroativo é **oco** (095 T-7).
+                 *
+                 * O paciente pode registrar a dor de até catorze dias atrás —
+                 * quem não abriu o app no dia não perde o ponto, e a curva
+                 * deixa de ter buraco por causa do aplicativo em vez de por
+                 * causa da dor.
+                 *
+                 * Mas um ponto lançado uma semana depois é **memória**, não
+                 * medição: a dor lembrada é reconstruída, e quem lê uma
+                 * tendência precisa saber qual é qual. A forma, e não a cor,
+                 * porque a cor da linha da dor já significa outra coisa — e
+                 * porque forma se distingue sem depender de enxergar bem.
+                 */}
                 <Line
                   type="monotone" dataKey="pain" name={isPt ? "Dor (0–10)" : "Pain (0–10)"}
-                  stroke="#dc2626" strokeWidth={2.5} dot={{ r: 2 }} connectNulls
+                  stroke="#dc2626" strokeWidth={2.5} connectNulls
+                  dot={(props: any) => {
+                    const { cx, cy, payload, index } = props;
+                    if (cx == null || cy == null) return <g key={`d-${index}`} />;
+                    return payload?.retroativo ? (
+                      <circle
+                        key={`d-${index}`}
+                        cx={cx}
+                        cy={cy}
+                        r={3}
+                        fill="#ffffff"
+                        stroke="#dc2626"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <circle key={`d-${index}`} cx={cx} cy={cy} r={2} fill="#dc2626" />
+                    );
+                  }}
                 />
                 <Line
                   type="monotone" dataKey="sleep" name={isPt ? "Sono (1–10)" : "Sleep (1–10)"}
@@ -138,6 +171,19 @@ export default function PatientWellbeingChart({ patientId }: { patientId: string
             </ResponsiveContainer>
           </div>
         ) : null}
+
+        {/* A legenda do ponto oco, só quando existe um. Explicar uma marca
+            que não está na tela é ruído; não explicar a que está é pior. */}
+        {points.some((p) => p.retroativo) && (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <svg width="10" height="10" aria-hidden>
+              <circle cx="5" cy="5" r="3.2" fill="#ffffff" stroke="#dc2626" strokeWidth="1.5" />
+            </svg>
+            {isPt
+              ? "Ponto vazado: registrado depois do dia — é memória, não medição do dia."
+              : "Hollow point: entered after the day it describes — memory, not that day's reading."}
+          </p>
+        )}
 
         {/* O que o paciente escreveu num dia de dor alta. É o que explica o
             pico, e é o que o terapeuta quer ler ao ver um. */}

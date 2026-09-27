@@ -50,6 +50,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       stressLevel: true,
       exercisesDone: true,
       notes: true,
+      /**
+       * Quando a linha foi **escrita**, que não é o dia que ela descreve.
+       *
+       * O paciente pode registrar a dor de até catorze dias atrás — quem não
+       * abriu o app no dia não perde o ponto. Mas um ponto lançado uma semana
+       * depois não tem o mesmo peso clínico que o do próprio dia: a memória da
+       * dor é reconstruída, e o terapeuta precisa saber qual é qual antes de
+       * ler uma tendência (095 T-7).
+       *
+       * Nada de coluna nova: `createdAt` já diz isso, comparado com
+       * `checkinDate`.
+       */
+      createdAt: true,
     },
   });
 
@@ -65,6 +78,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // pico — e é o que o terapeuta quer ler quando vê um.
     notes: l.notes,
     source: "self" as const,
+    /**
+     * Lançado depois do dia que descreve.
+     *
+     * A comparação é por **dia**, em UTC, contra o `checkinDate`, que já é uma
+     * string `YYYY-MM-DD`. Um registro feito às 23h do próprio dia não é
+     * retroativo; um feito às 00h05 do dia seguinte é, e é assim que deve ser
+     * lido — a pessoa já estava lembrando.
+     */
+    retroativo: l.createdAt.toISOString().slice(0, 10) > l.checkinDate,
   }));
 
   return NextResponse.json({ days: dias, points });
