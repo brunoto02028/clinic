@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getConfigValue } from "@/lib/system-config";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const audioFile = formData.get("audio") as File;
     const language = (formData.get("language") as string) || "en";
 

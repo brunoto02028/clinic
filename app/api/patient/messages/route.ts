@@ -6,6 +6,7 @@ import { saveChatAttachment } from "@/lib/chat-attachment";
 import { signFileToken } from "@/lib/file-access-token";
 import { sendEmail } from "@/lib/email";
 import { patientGate } from "@/lib/patient-gate";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   const contentType = req.headers.get("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     content = ((formData.get("content") as string) || "").trim();
     const file = formData.get("file") as File | null;
     if (file && file.size > 0) {

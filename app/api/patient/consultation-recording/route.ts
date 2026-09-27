@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 import { patientGate } from "@/lib/patient-gate";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 // GET — List patient's own recordings
 export async function GET(req: NextRequest) {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
   const patientUser = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
   const clinicId = patientUser?.clinicId;
 
-  const formData = await req.formData();
+  const formData = await camposDoFormulario(req);
   const audioFile = formData.get("audio") as File | null;
   const appointmentId = formData.get("appointmentId") as string | null;
   const language = (formData.get("language") as string) || "en";

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { convertGeneral, convertDocument } from "@/lib/docling";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File;
     const format = (formData.get("format") as string) || "markdown";
 

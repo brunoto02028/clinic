@@ -9,6 +9,7 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { publishReel } from '@/lib/instagram';
 import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
+import { camposDoFormulario } from "@/lib/form-fields";
 
 // POST /api/admin/social/publish-reel
 // multipart/form-data: video (webm, e.g. from the Ken Burns exporter), caption
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const video = formData.get('video') as File | null;
     const caption = String(formData.get('caption') || '');
     if (!video) return NextResponse.json({ error: 'video is required' }, { status: 400 });

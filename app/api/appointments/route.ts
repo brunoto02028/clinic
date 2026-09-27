@@ -342,7 +342,25 @@ export async function POST(request: NextRequest) {
               ? "ONLINE"
               : "IN_PERSON"
           : resolvedPaymentMethod,
-        kind: opcao ? opcao.kind : "CLINIC_BOOKED",
+        /**
+         * `opcao?.kind ?? "CLINIC_BOOKED"`, e não `opcao ? opcao.kind : …`.
+         *
+         * `BookingOption.kind` é `BookingKind | null`, e `null` quer dizer
+         * **bloqueada** — sem clínica, triagem pendente, ou preço não
+         * configurado. A guarda da linha 205 já devolveu erro nesses casos,
+         * então aqui `opcao.kind` nunca é nulo; o TypeScript só não consegue
+         * estreitar a essa distância, com `await`s pelo meio.
+         *
+         * O `??` diz isso de forma que o compilador verifique: se houver opção,
+         * o `kind` dela vale; se não houver — quem marcou foi a clínica —, é
+         * `CLINIC_BOOKED`. Comportamento idêntico ao de antes.
+         *
+         * E não é cosmético: este era o **único** erro real do arquivo, e ele
+         * fazia o TypeScript perder a inferência do `include` do `create`
+         * logo abaixo. Os outros 19 erros aqui eram cascata dele — todos
+         * dizendo que `appointment.patient` não existe, quando existe.
+         */
+        kind: opcao?.kind ?? "CLINIC_BOOKED",
         // O vínculo é o que permite devolver a sessão no cancelamento. Um
         // contador solto não sabe qual consulta gastou qual sessão.
         patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,

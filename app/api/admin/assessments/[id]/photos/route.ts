@@ -6,6 +6,7 @@ import { getActor, assertRecordAccess, accessErrorResponse, AccessError } from "
 import { assertTrainingAccess } from "@/lib/workout-access";
 import { randomUUID } from "crypto";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 const POSES = ["FRONT", "SIDE", "BACK"];
 const MAX_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     let form: any;
     try {
-      form = await request.formData();
+      form = await camposDoFormulario(request);
     } catch {
       return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
     }

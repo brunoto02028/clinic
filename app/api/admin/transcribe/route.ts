@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File;
     const lang = (formData.get("lang") as string) || "pt";
 

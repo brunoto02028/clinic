@@ -137,8 +137,14 @@ export async function POST(req: NextRequest) {
 
 async function getClinicLogoUrl(clinicId: string): Promise<string | null> {
   try {
-    const settings = await prisma.clinicSettings.findFirst({ where: { clinicId } })
-    return (settings as any)?.logoUrl || null
+    // `prisma.clinicSettings` nao existe — nao ha esse model (so `SiteSettings`).
+    // O `catch` abaixo engolia o TypeError, entao a marca d'agua **nunca**
+    // achava a logo da clinica e saia sem ela, em silencio.
+    const clinic = await prisma.clinic.findUnique({
+      where: { id: clinicId },
+      select: { logoUrl: true },
+    })
+    return clinic?.logoUrl || null
   } catch {
     return null
   }

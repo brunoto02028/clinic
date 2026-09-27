@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { generatePresignedUploadUrl, getFileUrl } from "@/lib/s3";
+import { IMAGENS_DE_SITE_SETTINGS } from "@/lib/site-settings-images";
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,16 +65,14 @@ export async function GET(request: NextRequest) {
     // Build virtual entries from SiteSettings image fields
     const settingsImages: any[] = [];
     if (siteSettings) {
-      const fields: { url: string | null | undefined; label: string; cat: string }[] = [
-        { url: siteSettings.logoUrl,        label: "Logo",                    cat: "logo" },
-        { url: siteSettings.darkLogoUrl,    label: "Logo (Dark)",             cat: "logo" },
-        { url: siteSettings.faviconUrl,     label: "Favicon",                 cat: "logo" },
-        { url: siteSettings.heroImageUrl,   label: "Hero Image",              cat: "hero" },
-        { url: siteSettings.aboutImageUrl,  label: "About Image",             cat: "about" },
-        { url: siteSettings.insolesImageUrl,label: "Insoles Image",           cat: "services" },
-        { url: siteSettings.bioImageUrl,    label: "Biomechanics Image",      cat: "services" },
-        { url: siteSettings.ogImageUrl,     label: "OG / Social Share Image", cat: "general" },
-      ];
+      // A lista mora em `lib/site-settings-images.ts`, junto da rota que apaga.
+      // Eram duas listas, e elas divergiram: o favicon existia aqui e faltava
+      // la, e la havia uma chave duplicada que apagava o campo errado.
+      const fields = IMAGENS_DE_SITE_SETTINGS.map((f) => ({
+        url: (siteSettings as unknown as Record<string, unknown>)[f.campo] as string | null | undefined,
+        label: f.rotulo,
+        cat: f.categoria,
+      }));
 
       for (const f of fields) {
         if (!f.url) continue;

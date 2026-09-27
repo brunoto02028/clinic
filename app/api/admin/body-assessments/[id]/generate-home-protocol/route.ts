@@ -92,18 +92,35 @@ export async function POST(
     // Generate home program from exercise bank
     const matchedPatterns: { patternId: string; severity: string }[] = (assessment as any)._matchedPatterns || [];
     const patternIds = matchedPatterns.map((p: any) => p.patternId);
-    const exerciseBankProgram = patternIds.length > 0
-      ? generateHomeProgram(patternIds)
-      : null;
+    /**
+     * O banco de exercicios nao entra neste protocolo, e e de proposito
+     * (27/09/2026).
+     *
+     * A chamada era `generateHomeProgram(patternIds)`, e estava errada em tres
+     * niveis: a funcao pede `(assessmentId, patientId)` e recebia **um** array;
+     * e `async`, e nao havia `await`, entao `.exercises` era lido de uma Promise
+     * e vinha `undefined`; e o `.map` em cima disso levantava TypeError. Dez
+     * erros de tipo saiam daqui.
+     *
+     * Mas o problema de fundo e outro: `lib/biomechanics/exercise-bank.ts` e um
+     * **stub com TODO** que devolve exercicios fixos e inventados ("Gentle
+     * Stretching"). Consertar a chamada faria conteudo fabricado entrar num
+     * protocolo clinico, apresentado ao prompt como "available from our exercise
+     * bank" — que e justamente a frase que o tornaria crivel.
+     *
+     * Entao fica `null`, e o contexto abaixo diz a verdade: nao ha dado de banco
+     * de exercicios. Quando `generateHomeProgram` for implementado de verdade,
+     * volta como `await generateHomeProgram(assessment.id, assessment.patientId)`.
+     */
     const protocolTitle = `Home-Based Corrective Protocol — ${assessment.patient.firstName} ${assessment.patient.lastName}`;
     const protocolSummary = assessment.aiSummary
       ? `Based on biomechanical assessment findings: ${assessment.aiSummary.substring(0, 300)}`
       : "Home-based corrective exercise protocol generated from body assessment analysis.";
 
     // Build exercise bank context
-    const exerciseBankContext = exerciseBankProgram
-      ? exerciseBankProgram.exercises.map(e => `[${e.difficulty.toUpperCase()}] ${e.namePt} (${e.name}) - ${e.descriptionPt.slice(0, 100)}...`).join('\n')
-      : 'No exercise bank data available.';
+    // Ver o bloco acima: nao ha banco de exercicios para oferecer, e dizer
+    // isso ao prompt e melhor que oferecer conteudo inventado como nosso.
+    const exerciseBankContext = 'No exercise bank data available.';
 
     const userPrompt = `The following exercises are available from our exercise bank (prioritize these):
 
@@ -240,14 +257,7 @@ Please generate a structured home exercise protocol using the exercises above. F
 
     return NextResponse.json({
       ...fullProtocol,
-      exerciseBankProgram: exerciseBankProgram ? {
-        totalExercises: exerciseBankProgram.exercises.length,
-        selfAdministeredCount: exerciseBankProgram.selfAdministeredCount,
-        supervisedCount: exerciseBankProgram.supervisedCount,
-        equipmentNeeded: exerciseBankProgram.equipmentNeeded,
-        estimatedDuration: exerciseBankProgram.estimatedDuration,
-        exercises: exerciseBankProgram.exercises.map(e => ({ id: e.id, name: e.name, namePt: e.namePt, difficulty: e.difficulty, selfAdministered: e.selfAdministered })),
-      } : null,
+      exerciseBankProgram: null,
       patientInfo: fullProtocol?.patient ?? assessment.patient,
     });
   } catch (error) {

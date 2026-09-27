@@ -717,9 +717,11 @@ export async function publishToInstagram(params: {
       isActive: true,
     },
     select: {
-      igAccountId: true, // This maps to platformAccountId in our schema if it's IG
+      // O campo do model e `accountId`. `igAccountId` e `platformAccountId` nao
+      // existem — o Prisma lanca em `select` com campo inexistente, entao
+      // publicar foto no Instagram falhava aqui, antes de chegar na API deles.
+      accountId: true,
       accessToken: true,
-      platformAccountId: true,
     },
   });
 
@@ -728,7 +730,7 @@ export async function publishToInstagram(params: {
   }
 
   return publishPhoto({
-    igAccountId: socialAccount.platformAccountId,
+    igAccountId: socialAccount.accountId,
     accessToken: socialAccount.accessToken,
     imageUrl,
     caption,

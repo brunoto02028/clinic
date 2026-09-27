@@ -58,8 +58,11 @@ export default function CameraCapture({
   const [processing, setProcessing] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
 
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const qualityCheckRef = useRef<NodeJS.Timeout | null>(null);
+  // `ReturnType<typeof setInterval>` e nao `NodeJS.Timeout`: em componente de
+  // navegador o `setInterval` global devolve `number`, e o tipo do Node nao
+  // casava com ele. Assim o tipo acompanha o ambiente em vez de apostar nele.
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qualityCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Start Camera ───
   const startCamera = useCallback(async () => {

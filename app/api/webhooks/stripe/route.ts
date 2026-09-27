@@ -333,9 +333,13 @@ export async function POST(req: NextRequest) {
         let packageId = (invoice as any).subscription_details?.metadata?.packageId;
         if (!packageId && (invoice as any).subscription) {
           try {
-            const _stripeKey = process.env.STRIPE_SECRET_KEY;
-    const stripe = _stripeKey ? new Stripe(_stripeKey, { apiVersion: "2024-06-20" }) : null;
-            const sub = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
+            // `getStripe()`, e nao um cliente novo aqui: esta linha construia um
+            // segundo cliente que podia ser `null`, e o `.subscriptions` nele
+            // era TypeError. O acessor do topo do arquivo lanca uma mensagem
+            // que diz o que falta, e o `catch` abaixo registra.
+            const sub = await getStripe().subscriptions.retrieve(
+              (invoice as any).subscription as string
+            );
             packageId = sub.metadata?.packageId;
           } catch (e) { console.error("[stripe-webhook] Failed to fetch subscription metadata:", e); }
         }

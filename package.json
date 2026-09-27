@@ -25,7 +25,9 @@
     "cap:android": "npx cap open android",
     "cap:run:ios": "npx cap run ios",
     "cap:run:android": "npx cap run android",
-    "test:tenants": "node tests/tenant-isolation/run.cjs"
+    "test:tenants": "node tests/tenant-isolation/run.cjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:mobile": "tsc --noEmit -p mobile/tsconfig.json"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/seed.ts"

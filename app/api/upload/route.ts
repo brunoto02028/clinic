@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only staff can upload images" }, { status: 403 });
     }
 
-    const formData = await request.formData();
+    const formData = await camposDoFormulario(request);
     const file = formData.get("file") as File;
     const category = (formData.get("category") as string) || "general";
 

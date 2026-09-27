@@ -130,7 +130,26 @@ export async function POST(req: NextRequest) {
         const ret = RETURN_PATHS[returnTo] || RETURN_PATHS.shop;
         const Stripe = (await import("stripe")).default;
         const _stripeKey = process.env.STRIPE_SECRET_KEY;
-    const stripe = _stripeKey ? new Stripe(_stripeKey, { apiVersion: "2024-06-20" }) : null;
+        // A versao da API fica pinada onde estava: trocar isso muda o formato
+        // das respostas da Stripe, e e decisao do Bruno quando ele ligar a
+        // conta, nao efeito colateral de um conserto de tipo. O `as any` existe
+        // porque os tipos instalados pedem outra versao; `getStripe()` no
+        // webhook ja usava o mesmo recurso.
+        const stripe = _stripeKey
+          ? new Stripe(_stripeKey, { apiVersion: "2024-06-20" as any })
+          : null;
+        /**
+         * Sem chave, erro com nome — e nao `null.checkout` (27/09/2026).
+         *
+         * Hoje nao existe nenhuma `STRIPE_*` no Coolify, e no `.env` local as
+         * tres estao comentadas. Entao esta linha era alcancada com `stripe`
+         * nulo e o acesso seguinte era TypeError.
+         *
+         * `throw`, e nao `return`: o `catch` logo abaixo registra e segue com
+         * `stripeUrl: null`, que e o desenho desta rota — o pedido nasce, sem
+         * link de pagamento. Um `return` aqui abortaria o pedido tambem.
+         */
+        if (!stripe) throw new Error("STRIPE_SECRET_KEY not configured");
         const lineItems = orderItems.filter((i: any) => !i.isAffiliate).map((item: any) => ({
           price_data: {
             currency: "gbp",

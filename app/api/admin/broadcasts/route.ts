@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
-import { sendPushToUsers, countPushDevices } from "@/lib/push-send";
+import { sendPushToUsers, countPushDevices, type PushResult } from "@/lib/push-send";
 import { pickForPatient, groupByLang } from "@/lib/patient-language";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getActor, requireStaff, tenantWhere, accessErrorResponse, AccessError } from "@/lib/tenant-access";
@@ -216,7 +216,9 @@ export async function POST(req: NextRequest) {
       const grupos = groupByLang(patients);
       const enviar = (ids: string[], t: { title: string | null; content: string }) =>
         ids.length === 0
-          ? Promise.resolve({ sent: 0, failed: 0, deactivated: 0 })
+          // Tipado: sem isto o ramo vazio nao tinha `error`, e a uniao dos dois
+          // ramos escondia o campo que a tela le para dizer por que nada saiu.
+          ? Promise.resolve<PushResult>({ sent: 0, failed: 0, deactivated: 0 })
           : sendPushToUsers(ids, {
               title: t.title || title.trim(),
               // O corpo é o texto do aviso, cortado. A notificação aparece na

@@ -75,10 +75,20 @@ async function migrateToMultiTenant() {
     // Step 4: Associate all appointments with the clinic
     console.log('\n4️⃣  Associating appointments with clinic...');
     
-    const appointmentsUpdated = await prisma.appointment.updateMany({
-      where: { clinicId: null },
-      data: { clinicId: defaultClinic.id },
-    });
+    /**
+     * Este passo nao tem mais o que fazer, e o tipo e a prova.
+     *
+     * `Appointment.clinicId` e `String` **nao-nulo** no schema de hoje, entao
+     * `where: { clinicId: null }` nao e sequer um filtro valido — o Prisma
+     * recusaria. Ou seja, a migracao que este script existe para fazer **ja
+     * aconteceu**, e a coluna passou a ser obrigatoria depois dela.
+     *
+     * Mantido como registro historico, e nao removido, porque o script todo
+     * conta a ordem em que o multi-tenant foi introduzido. Emitir a consulta
+     * invalida e que nao serve.
+     */
+    const appointmentsUpdated = { count: 0 };
+    console.log('   (nada a fazer: `clinicId` ja e obrigatorio em Appointment)');
     
     console.log(`   ✅ ${appointmentsUpdated.count} appointments associated`);
 

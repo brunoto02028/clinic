@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import fs from "fs/promises";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File | null;
     const gender = (formData.get("gender") as string) || "male";
 

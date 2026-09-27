@@ -30,9 +30,13 @@ export async function GET(req: NextRequest) {
   const patientIds = [...new Set(recordings.map((r: any) => r.patientId))];
   const patients = await prisma.user.findMany({
     where: { id: { in: patientIds } },
-    select: { id: true, name: true },
+    // `User` nao tem `name` — tem `firstName` e `lastName`. O Prisma lanca em
+    // `select` com campo inexistente, entao esta listagem quebrava inteira.
+    select: { id: true, firstName: true, lastName: true },
   });
-  const patientMap = Object.fromEntries(patients.map((p) => [p.id, p.name]));
+  const patientMap = Object.fromEntries(
+    patients.map((p) => [p.id, [p.firstName, p.lastName].filter(Boolean).join(" ")])
+  );
 
   const enriched = recordings.map((r: any) => ({
     ...r,

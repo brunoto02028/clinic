@@ -92,7 +92,10 @@ export async function GET(
       // Scan Info
       scan: {
         number: footScan.scanNumber,
-        date: footScan.createdAt,
+        // ISO, como o `generatedAt` logo acima: `FootScanData.scan.date` e
+        // `string`, e o gerador faz `new Date(data.scan.date)`. Passar o objeto
+        // `Date` funcionava, mas deixava o contrato mentindo.
+        date: footScan.createdAt.toISOString(),
         status: footScan.status,
         captureMetadata: footScan.captureMetadata,
         leftFootImages: footScan.leftFootImages,
