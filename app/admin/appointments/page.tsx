@@ -307,7 +307,15 @@ export default function AdminAppointmentsPage() {
             : (isPt ? "Nenhum email foi enviado. Use \"Confirmar por email\" na consulta para ver a prévia e enviar." : "No email was sent. Use \"Email confirmation\" on the appointment to preview and send it.")) + checkoutMsg,
         });
         setShowCreateDialog(false);
-        setCreateForm({ patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person", sendConfirmation: false });
+        // Os tres ultimos faltavam, e o `setState` os apagava do estado: depois de
+        // criar uma consulta, `createForm.courtesySession` virava `undefined` e os
+        // campos de cortesia/isencao ficavam sem valor na proxima.
+        setCreateForm({
+          patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "",
+          duration: 60, treatmentType: "", price: 0, notes: "",
+          paymentMode: "in_person", sendConfirmation: false,
+          courtesySession: false, waiveCharge: false, overrideReason: "",
+        });
         fetchAppointments();
       } else {
         const data = await res.json();

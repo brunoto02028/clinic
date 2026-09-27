@@ -142,6 +142,10 @@ export default function MembershipsPage() {
           features: data.features || [],
           patientId: "",
           patientScope: (data.patientScope as PatientScope) || "all",
+          // Faltava, e o `setState` apagava o campo do estado: o desconto por
+          // sessao ficava `undefined` depois de a IA preencher o formulario.
+          // A IA nao propoe desconto, entao o valor volta ao inicial.
+          sessionDiscount: 0,
         });
         setAiPrompt("");
         toast({ title: "AI Generated", description: `"${data.name}" — review and save.` });

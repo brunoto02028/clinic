@@ -159,15 +159,45 @@ export async function POST(
       },
     };
     
-    // Update foot scan with insole generation status
+    /**
+     * Onde as palmilhas ficam gravadas, e por que este `update` falhava inteiro.
+     *
+     * Ele escrevia `insoleSpecs`, `leftInsoleSTL` e `rightInsoleSTL` — **tres
+     * campos que nao existem** em `FootScan`. O Prisma lanca em `update` com
+     * campo desconhecido, entao nada era gravado: os arquivos STL eram gerados e
+     * salvos no storage, a resposta devolvia as URLs, e o caso **nunca** ia para
+     * `APPROVED_FOR_PRODUCTION`. Parecia funcionar porque o retorno estava certo.
+     *
+     * O lugar certo e `manufacturingReport`, que o schema descreve como "JSON
+     * with all finalized manufacturing variables". Mas ele **ja tem dono**: a
+     * rota `manufacturing-spec` escreve a especificacao que alguem aprovou.
+     * Sobrescrever daqui apagaria esse trabalho — por isso e mescla, e nao
+     * substituicao.
+     */
+    const relatorioAnterior = (() => {
+      if (!footScan.manufacturingReport) return {};
+      try {
+        const lido = JSON.parse(footScan.manufacturingReport);
+        return lido && typeof lido === 'object' ? lido : {};
+      } catch {
+        // JSON invalido no banco nao pode custar a gravacao desta geracao.
+        return {};
+      }
+    })();
+
     const updatedScan = await prisma.footScan.update({
       where: { id },
       data: {
         workflowStatus: 'APPROVED_FOR_PRODUCTION',
         manufacturingStatus: 'READY',
-        insoleSpecs: insoleSpecs as any,
-        leftInsoleSTL: leftInsoleUrl,
-        rightInsoleSTL: rightInsoleUrl,
+        manufacturingReadyAt: new Date(),
+        manufacturingReport: JSON.stringify({
+          ...relatorioAnterior,
+          insoleSpecs,
+          leftInsoleSTL: leftInsoleUrl,
+          rightInsoleSTL: rightInsoleUrl,
+          insolesGeneratedAt: new Date().toISOString(),
+        }),
       }
     });
     

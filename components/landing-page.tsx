@@ -80,8 +80,8 @@ interface SiteSettings {
   logoUrl?: string | null;
   darkLogoUrl?: string | null;
   screenLogos?: Record<string, ScreenLogoEntry> | null;
-  siteName?: string;
-  tagline?: string;
+  siteName?: string | null;
+  tagline?: string | null;
   heroTitle?: string | null;
   heroSubtitle?: string | null;
   heroImageUrl?: string | null;

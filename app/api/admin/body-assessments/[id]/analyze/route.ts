@@ -842,18 +842,30 @@ export async function POST(
           metadata: { assessmentId: updated.id, assessmentNumber: updated.assessmentNumber },
         });
 
-        if (updated.patient.email) {
-          await sendEmail({
-            to: updated.patient.email,
-            subject: 'Your Posture Analysis is Ready - BPR Clinic',
-            template: 'analysis-ready',
-            data: {
-              firstName: updated.patient.firstName,
-              scanNumber: updated.assessmentNumber,
-              scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-            },
-          });
-        }
+        /**
+         * O e-mail automatico ao paciente saiu daqui (27/09/2026).
+         *
+         * A chamada passava `template`/`data`, e `sendEmail` pede `html` — o
+         * corpo chegava `undefined`. Estava dentro deste `try/catch`, que so
+         * registra, entao falhava em silencio desde sempre.
+         *
+         * Nao foi consertado para **enviar**, e de proposito: nada sai para
+         * paciente automaticamente, nada sai sem a logo BPR, e nada sai sem o
+         * Bruno ver a previa. Ligar isso agora comecaria a escrever para
+         * paciente de verdade com um texto que ninguem leu.
+         *
+         * `createPatientNotification` registra a intencao num log visivel, do
+         * mesmo jeito que `lib/notifications/patient-notifications.ts` — que
+         * tambem explica o que falta para ligar de verdade.
+         */
+        await createPatientNotification({
+          patientId: updated.patientId,
+          type: 'ANALYSIS_READY',
+          title: 'Your posture analysis is ready',
+          message: 'Your posture analysis is complete.',
+          actionUrl: '/dashboard',
+          metadata: { assessmentNumber: updated.assessmentNumber },
+        });
       }
     } catch (notifErr) {
       console.error('[body-assessment] Notification error (non-blocking):', notifErr);
