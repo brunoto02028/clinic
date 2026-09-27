@@ -72,39 +72,28 @@ describe("apagar leva os três: mensagem, documento e arquivo", () => {
     expect(docIdDoAnexo("/api/outra-coisa/abc")).toBeNull();
   });
 
-  it("**o arquivo do storage é apagado**, não só a linha", () => {
-    // Sem isto, "apagar" deixaria o áudio recuperável pela URL — e o `DELETE`
-    // de documento do admin faz exatamente isso, que é a lacuna que este
-    // caminho não repete.
-    expect(regra).toMatch(/await deleteR2Url\(doc\.fileUrl\)/);
-    expect(regra).toMatch(/patientDocument\.delete\(\{ where: \{ id: doc\.id \} \}\)/);
-  });
-
-  it("e o documento tem de ser do mesmo paciente", () => {
+  it("**o áudio mora na própria linha, então apagar a linha é apagar o áudio**", () => {
+    /**
+     * Aqui havia quatro asserções sobre `deleteR2Url` e sobre "o arquivo antes
+     * da linha". O code review de 27/09/2026 mostrou que **aquela chamada nunca
+     * fez nada**: anexo de conversa guarda os bytes em `fileData`, e `fileUrl`
+     * é `/api/files/<id>` — um caminho relativo, e `new URL()` nisso lança.
+     *
+     * Ou seja, os testes "provavam" um mecanismo inexistente, e o argumento de
+     * ordem que eu escrevi descrevia um risco que não existia. A chamada saiu, e
+     * a ordem que **importa** de verdade — mensagem antes do documento, por
+     * causa da corrida — é medida por comportamento em
+     * `apagar-recado-comportamento.test.ts`.
+     */
+    expect(regra).not.toMatch(/deleteR2Url|@\/lib\/r2/);
+    expect(regra).toMatch(/patientDocument\.deleteMany\(\{/);
     expect(regra).toMatch(/where: \{ id: docId, patientId \}/);
   });
 
-  it("**o arquivo antes da linha**", () => {
-    // Com a linha apagada primeiro, uma falha no storage deixaria o objeto lá
-    // sem ninguém sabendo que ele existe.
-    expect(regra.indexOf("deleteR2Url")).toBeLessThan(regra.indexOf("patientDocument.delete"));
-  });
-
-  it("e o documento antes da mensagem", () => {
-    // Na ordem inversa, sobraria um áudio órfão na lista de documentos do
-    // paciente, sem nada apontando para ele.
-    expect(regra.indexOf("patientDocument.delete")).toBeLessThan(
-      regra.indexOf("clinicMessage.deleteMany")
-    );
-  });
-
-  it("uma falha no storage não impede o resto", () => {
-    // O paciente pediu para apagar; um storage momentaneamente fora não pode
-    // deixar a mensagem de pé.
-    // `indexOf("deleteR2Url")` pegaria o **import**, na primeira linha. Terceira
-    // vez que isto me morde hoje: o padrao tem de ser a chamada.
-    const i = regra.indexOf("await deleteR2Url");
-    expect(regra.slice(i, i + 240)).toMatch(/\.catch\(/);
+  it("e tudo numa transação", () => {
+    // Sem ela, o documento apagado com a mensagem de pé seria um recado de voz
+    // cujo arquivo dá 404 — visível para o terapeuta, inaudível.
+    expect(regra).toMatch(/prisma\.\$transaction/);
   });
 });
 
@@ -119,7 +108,11 @@ describe("**a janela fecha sozinha, e o apagar confere de novo**", () => {
   });
 
   it("e zero apagadas é 'já viu', não sucesso", () => {
-    expect(regra).toMatch(/if \(apagadas\.count === 0\) return \{ ok: false, code: "already_read" \}/);
+    // Sai por exceção para a transação desfazer o que já tiver feito. O efeito —
+    // o documento **não** ser tocado — é medido em
+    // `apagar-recado-comportamento.test.ts`.
+    expect(regra).toMatch(/if \(apagadas\.count === 0\)/);
+    expect(regra).toMatch(/throw new PerdeuACorrida\(\)/);
   });
 });
 

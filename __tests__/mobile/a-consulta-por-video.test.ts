@@ -65,9 +65,12 @@ describe("a janela do horário", () => {
   it("e quem autoriza continua sendo o servidor", () => {
     // A cópia no app decide o que **mostrar**. Um botão escondido continua
     // sendo uma requisição que alguém pode fazer à mão.
-    expect(regra).toMatch(/if \(agora < inicio\)/);
-    expect(regra).toMatch(/code: "too_early"|"too_early"/);
-    expect(regra).toMatch(/if \(agora > fim\)/);
+    //
+    // A recusa em si é medida por comportamento em
+    // `video-comportamento.test.ts` — inclusive que ela acontece **sem falar com
+    // a Daily**. Aqui fica só a existência da guarda separada, que é o que
+    // permite ela rodar antes de a sala ser criada.
+    expect(regra).toMatch(/export function exigirJanelaAberta/);
   });
 });
 
@@ -101,10 +104,18 @@ describe("**a sala é privada, e nada grava**", () => {
     expect(regra).toMatch(/eject_at_room_exp: true/);
   });
 
-  it("**gravação desligada, e dito em voz alta**", () => {
-    expect(regra).toMatch(/enable_recording: false/);
-    expect(regra).not.toMatch(/enable_recording: true/);
-    expect(regra).not.toMatch(/start_cloud_recording|recording_bucket/);
+  it("**nenhuma propriedade de gravação, em lugar nenhum**", () => {
+    /**
+     * Era `expect(regra).toMatch(/enable_recording: false/)`, e o QA de
+     * 27/09/2026 mostrou que aquele campo não fazia nada: no meeting-token a
+     * Daily espera uma string (`"cloud"`, `"local"`), e o `false` virava `er: ""`
+     * no JWT — engolido em silêncio. O teste "provava" uma garantia inexistente.
+     *
+     * A garantia real é a **sala** não ter propriedade de gravação nenhuma, e
+     * isso é medido em `video-comportamento.test.ts`, no corpo que sai para a
+     * rede. Aqui fica a ausência, que é o que um `grep` futuro vai procurar.
+     */
+    expect(regra).not.toMatch(/start_cloud_recording|recording_bucket|enable_recording: true/);
   });
 
   it("o token vale só desta pessoa e desta janela", () => {
@@ -264,11 +275,19 @@ describe("**a consulta à distância se anuncia antes de a pessoa abrir a tela**
   it("**fora da hora some o botão, não a informação**", () => {
     // Saber que é por vídeo muda o que a pessoa faz **antes**: onde vai estar,
     // e se precisa sair de casa.
-    const i = lista.indexOf('item.mode === "VIDEO" && (');
-    const bloco = lista.slice(i, i + 2200);
+    const i = lista.indexOf('item.mode === "VIDEO" &&');
+    const bloco = lista.slice(i, i + 2400);
     expect(bloco).toMatch(/janelaAberta\(item\.dateTime, item\.duration\)/);
     expect(bloco).toMatch(/Video consultation/);
     expect(bloco).toMatch(/Consulta por vídeo/);
+  });
+
+  it("**e consulta cancelada não oferece entrada**", () => {
+    // Um botão verde ao lado da tarja vermelha "Cancelada" é a tela
+    // contradizendo a si mesma. O servidor já recusava; faltava a tela.
+    for (const tela of [lista, detalhe]) {
+      expect(tela).toMatch(/status !== "CANCELLED" && \w+\.status !== "NO_SHOW"/);
+    }
   });
 
   it("e o toque em entrar não abre o detalhe por baixo", () => {
@@ -277,7 +296,7 @@ describe("**a consulta à distância se anuncia antes de a pessoa abrir a tela**
   });
 
   it("a tela da consulta também mostra, para quem chegou por ela", () => {
-    expect(detalhe).toMatch(/data\.mode === "VIDEO" && \(/);
+    expect(detalhe).toMatch(/data\.mode === "VIDEO" &&/);
     expect(detalhe).toMatch(/testID="entrar-na-consulta"/);
   });
 

@@ -143,7 +143,12 @@ export default function ConsultaVideo() {
         await c.join({ url: entrada.url, token: entrada.token });
       } catch (e) {
         if (!vivo) return;
-        setErro(e instanceof NaoDeuParaEntrar ? e.texto : "Não foi possível entrar na consulta.");
+        // `e.texto(lang)`: a escolha do idioma e da tela, que e quem sabe qual e.
+        setErro(
+          e instanceof NaoDeuParaEntrar
+            ? e.texto(lang)
+            : tr(lang, { en: "Could not join the consultation.", pt: "Não foi possível entrar na consulta." })
+        );
         setEstado("erro");
       }
     })();

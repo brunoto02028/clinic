@@ -168,7 +168,10 @@ function AppointmentDetailScreen() {
                   a linha continua dizendo que a consulta é por vídeo, em vez de
                   sumir: saber o formato importa antes da hora, e mais que na
                   hora. */}
-              {data.mode === "VIDEO" && (
+              {/* Cancelada nao oferece entrada. O servidor ja recusa com
+    `not_scheduled`, mas um botao verde ao lado da tarja vermelha
+    "Cancelada" e a tela contradizendo a si mesma. */}
+                  {data.mode === "VIDEO" && data.status !== "CANCELLED" && data.status !== "NO_SHOW" && (
                 <>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <View style={{

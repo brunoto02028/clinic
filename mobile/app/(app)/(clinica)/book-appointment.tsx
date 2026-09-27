@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { View, Pressable, Alert, TextInput, Linking } from "react-native";
 import { Stack, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchDependentes, type Dependente } from "@/api/dependents";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes } from "@/api/booking";
+import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes, type DetailedSlot, type ClinicTreatmentType } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
@@ -58,11 +60,25 @@ function BookAppointmentScreen() {
 
   const slots = availability.data?.slots ?? [];
   const detalhados = availability.data?.detailedSlots ?? [];
-  const vagasDe = (hora: string) => detalhados.find((s) => s.time === hora)?.spacesLeft ?? null;
+  const vagasDe = (hora: string) => detalhados.find((s: DetailedSlot) => s.time === hora)?.spacesLeft ?? null;
 
   // O cupom aplicado nesta tela (084). `null` é o caso normal: quem não
   // digita nada paga o preço da 082.
   const [cupom, setCupom] = useState<CouponPreviewOk | null>(null);
+
+  /**
+   * Para quem é esta consulta (089/091).
+   *
+   * `null` é "para mim", e é o padrão — quem marca para si mesmo não deve ter de
+   * escolher nada. A lista só aparece para quem de fato cuida de alguém.
+   *
+   * Até agora dava para **comprar exame** para uma filha e não dava para marcar
+   * consulta: nem esta tela nem a rota conheciam dependente. A mãe cadastrava a
+   * filha e ficava presa na metade do caminho.
+   */
+  const [paraQuem, setParaQuem] = useState<string | null>(null);
+  const geridas = useQuery({ queryKey: ["dependentes"], queryFn: fetchDependentes });
+  const cuidaDeAlguem = (geridas.data?.length ?? 0) > 0;
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -74,6 +90,8 @@ function BookAppointmentScreen() {
         dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
         treatmentType: type,
         notes: notes || undefined,
+        // Ausente = para mim. Quem valida o vínculo é o servidor.
+        dependentId: paraQuem ?? undefined,
       });
     },
     onSuccess: async (res: any) => {
@@ -163,6 +181,77 @@ ${tr(lang, {
       />
       <View style={{ gap: 20 }}>
         <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
+
+        {/* Para quem é a consulta (089/091).
+            Antes da porta, de propósito: o preço e a opção dependem de quem vai
+            ser atendido, então escolher depois seria escolher duas vezes.
+            Só aparece para quem de fato cuida de alguém — quem marca para si
+            mesmo não deve ter de responder uma pergunta que só tem uma resposta. */}
+        {cuidaDeAlguem && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>
+              {tr(lang, { en: "Who is this for?", pt: "Para quem é?" })}
+            </Text>
+            <View style={{ gap: 8 }}>
+              <Pressable
+                testID="para-mim"
+                onPress={() => setParaQuem(null)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: paraQuem === null ? t.colors.health : t.colors.borderSubtle,
+                  backgroundColor: paraQuem === null ? t.colors.healthSoft : "transparent",
+                }}
+              >
+                <Ionicons
+                  name={paraQuem === null ? "radio-button-on" : "radio-button-off"}
+                  size={20}
+                  color={paraQuem === null ? t.colors.health : t.colors.textMuted}
+                />
+                <Text variant="body">{tr(lang, { en: "For me", pt: "Para mim" })}</Text>
+              </Pressable>
+
+              {(geridas.data ?? []).map((p: Dependente) => (
+                <Pressable
+                  key={p.id}
+                  testID={`para-${p.id}`}
+                  onPress={() => setParaQuem(p.id)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: 12,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: paraQuem === p.id ? t.colors.health : t.colors.borderSubtle,
+                    backgroundColor: paraQuem === p.id ? t.colors.healthSoft : "transparent",
+                  }}
+                >
+                  <Ionicons
+                    name={paraQuem === p.id ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={paraQuem === p.id ? t.colors.health : t.colors.textMuted}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body">{p.firstName} {p.lastName}</Text>
+                    {p.menorDeIdade && (
+                      <Text variant="caption" color={t.colors.textMuted}>
+                        {tr(lang, {
+                          en: "A minor is always accompanied by you.",
+                          pt: "Um menor está sempre acompanhado por você.",
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </Card>
+        )}
 
         {/* A porta, antes de tudo. Sem isto o paciente descobria o preço
             depois de escolher o horário — ou descobria, pior ainda, que nem
@@ -270,7 +359,7 @@ ${tr(lang, {
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {(tipos.data ?? []).map((tt) => {
+              {(tipos.data ?? []).map((tt: ClinicTreatmentType) => {
                 const rotulo = lang === "pt" ? tt.namePt || tt.name : tt.name;
                 return (
                   <Pressable key={tt.id} onPress={() => setType(tt.name)} testID={`appointment-type-${tt.id}`}
@@ -319,7 +408,7 @@ ${tr(lang, {
             <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "No times available on this date.", pt: "Sem horários disponíveis nesta data." })}</Text>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {slots.map(time => {
+              {slots.map((time: string) => {
                 // Quantas vagas restam naquele horário — e **nunca** quem
                 // ocupa as outras. Quem está na sala é assunto da clínica.
                 const vagas = vagasDe(time);

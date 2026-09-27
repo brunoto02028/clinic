@@ -13,6 +13,17 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "Messages", pt: "Mensagens" }, icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages" },
   { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
   { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents" },
+  /**
+   * Quem eu cuido (089/091).
+   *
+   * A tela existia e só era alcançável **de dentro do laboratório** — pelo perfil
+   * do lab e pelo checkout do exame. Uma mãe que quer marcar **consulta** para a
+   * filha não tinha por onde cadastrá-la: o recurso existia e não tinha porta.
+   *
+   * O caminho continua o mesmo arquivo, de propósito: duas telas para a mesma
+   * lista seriam duas listas em duas semanas.
+   */
+  { title: { en: "People I look after", pt: "Quem eu cuido" }, icon: "people-outline", href: "/(app)/(lab)/dependents" },
   { title: { en: "Treatment plan", pt: "Plano de tratamento" }, icon: "heart-outline", href: "/(app)/(clinica)/treatment-protocol" },
   // Os planos que a clínica oferece a este paciente (082, T-3). A API já
   // filtrava por paciente; faltava a porta.

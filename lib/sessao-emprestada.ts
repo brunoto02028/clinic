@@ -41,8 +41,39 @@ export function porContaDeNoBearer(authHeader: string | null | undefined): strin
   }
 }
 
+/**
+ * As escritas que uma sessão emprestada **pode** fazer.
+ *
+ * A lista nasceu vazia de propósito, e continua curta pelo mesmo motivo: cada
+ * item aqui é uma decisão de deixar quem cuida agir no lugar de quem é cuidado.
+ *
+ * **Entrar na consulta por vídeo** (089): sem isto, uma mãe não consegue entrar
+ * na consulta da filha — e a filha não tem credencial própria, porque o login
+ * recusa quem tem `managedById`. Ou seja, **consulta à distância de menor não
+ * acontecia**, que é exatamente a população que a 091 T-7 existe para servir.
+ * Achado do code review de 27/09/2026.
+ *
+ * É POST por forma, não por natureza: emite um token efêmero e grava a URL da
+ * sala. Não gasta dinheiro, não troca credencial, não escreve no prontuário.
+ *
+ * E quem entra assim **aparece com o nome de quem está de fato na sala** — ver
+ * `app/api/appointments/[id]/video/route.ts`. Deixar o terapeuta conversando com
+ * a mãe achando que é a filha seria pior que não deixar entrar.
+ */
+const ESCRITAS_PERMITIDAS: RegExp[] = [/^\/api\/appointments\/[^/]+\/video$/];
+
+/** O caminho está na lista curta de escritas que a sessão emprestada pode fazer? */
+export function escritaEmprestadaPermitida(pathname: string): boolean {
+  return ESCRITAS_PERMITIDAS.some((r) => r.test(pathname));
+}
+
 /** Esta requisição é uma escrita vinda de uma sessão emprestada? */
-export function ehEscritaEmprestada(method: string, authHeader: string | null | undefined): boolean {
+export function ehEscritaEmprestada(
+  method: string,
+  authHeader: string | null | undefined,
+  pathname?: string
+): boolean {
   if (METODOS_DE_LEITURA.has(method.toUpperCase())) return false;
+  if (pathname && escritaEmprestadaPermitida(pathname)) return false;
   return porContaDeNoBearer(authHeader) !== null;
 }

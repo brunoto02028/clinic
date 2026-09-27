@@ -82,12 +82,12 @@ enquanto fala é o gesto que toda gente já conhece, e soltar termina.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | Provedor de vídeo: conta, chave e a sala | — | pendente — **Daily.co decidido**, falta a chave no Coolify |
-| T-2 | A sala nasce com a consulta em modo vídeo | T-1 | pendente |
-| T-3 | O paciente entra pela consulta, na hora certa | T-2 | pendente |
-| T-4 | Áudio passa a ser anexo aceito | — | pendente |
-| T-5 | Gravar e enviar voz no app | T-4 | pendente |
-| T-6 | Ouvir a voz — no app e no painel da clínica | T-5 | pendente |
+| T-1 | Provedor de vídeo: conta, chave e a sala | — | **feita** — `lib/video-call.ts`; falta a chave no Coolify |
+| T-2 | A sala nasce com a consulta em modo vídeo | T-1 | **feita** — e nasce no **servidor**, na 1ª entrada |
+| T-3 | O paciente entra pela consulta, na hora certa | T-2 | **feita** — lista, detalhe e a chamada no app |
+| T-4 | Áudio passa a ser anexo aceito | — | **concluída** (27/09) |
+| T-5 | Gravar e enviar voz no app | T-4 | **concluída** (27/09) — e dá para **desfazer** |
+| T-6 | Ouvir a voz — no app e no painel da clínica | T-5 | **concluída** — as duas pontas |
 
 ## A decisão que bloqueia a T-1
 
@@ -117,3 +117,32 @@ isso é decisão sua, não minha.
    por `source: CHAT_UPLOAD` e é ajuste de tela, não de arquitetura.
 5. **O terapeuta responde por texto.** Voz do lado da clínica é simétrico e fácil de acrescentar
    depois; começar pelo paciente é começar por quem tem dificuldade de digitar.
+
+
+## Estado em 27/09/2026, fim do dia
+
+Escrito depois de construir, e isso é uma dívida: a spec de QA deveria ter nascido com o plano.
+Ela existe agora em `qa/qa-spec.md`.
+
+**O que foi construido hoje:** a sala (privada, com `exp`), o token preso à janela do horário, a
+rota que decide quem entra, a página `/video-room/[id]` — **que não existia**, e era para onde o
+botão do painel apontava —, a chamada dentro do app, e o formato da consulta aparecendo para o
+paciente **na lista**, não só no detalhe.
+
+**O que o trabalho destapou, e que era o mais grave:** o painel gravava um `videoRoomUrl` com id
+sorteado por `Math.random()` **no navegador**, apontando para uma página inexistente, e nenhuma sala
+era criada em lugar nenhum. Dava para marcar consulta por vídeo; entrar abria 404. E o formulário
+normal de marcar consulta **nunca ofereceu** a opção de "à distância", embora a rota aceitasse
+`mode` desde sempre — então o cenário que o Bruno descreveu não acontecia no fluxo de quem marca.
+
+**T-6 está completa, e eu quase a deixei amarela por engano.** Escrevi aqui que não tinha
+confirmado o tocador no painel da clínica, porque tinha procurado no lugar errado — achei o upload
+de áudio da consulta, que é outra coisa, e parei. Fui conferir: `components/admin/patient-messages-tab.tsx`
+linha 180 tem um `<audio controls>` para anexo `audio/*`. As duas pontas ouvem.
+
+Registro o erro porque ele é do tipo que se repete: procurar numa tela e concluir sobre o recurso.
+A conversa da clínica com o paciente não mora em `app/admin/patients/[id]/page.tsx`, mora num
+componente ao lado.
+
+**Para funcionar em produção faltam:** `DAILY_API_KEY` e `VIDEO_CALLS_ENABLED` no Coolify, e um
+build do app — são quatro módulos nativos, não chega por `eas update`.

@@ -91,7 +91,10 @@ describe("o middleware usa esta decisão, e antes de tudo", () => {
   });
 
   it("responde 403 com as duas línguas e um código", () => {
-    expect(mw).toMatch(/if \(ehEscritaEmprestada\(request\.method, authHeader\)\)/);
+    // O terceiro argumento entrou em 27/09/2026: é o caminho, e ele existe para
+    // a lista curta de escritas que a sessão emprestada **pode** fazer — entrar
+    // na consulta por vídeo da criança é a primeira e, por ora, a única.
+    expect(mw).toMatch(/if \(ehEscritaEmprestada\(request\.method, authHeader, pathname\)\)/);
     expect(mw).toMatch(/code: 'on_behalf_read_only'/);
     expect(mw).toMatch(/errorPt: 'Volte para a sua conta para fazer alterações\.'/);
   });

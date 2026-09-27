@@ -3,9 +3,11 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRequestSession } from "@/lib/dual-auth";
+import { porContaDeNoBearer } from "@/lib/sessao-emprestada";
 import {
   VideoCallError,
   criarSalaDaConsulta,
+  exigirJanelaAberta,
   tokenParaEntrar,
   videoCallsEnabled,
 } from "@/lib/video-call";
@@ -104,9 +106,41 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const pessoa = ehTerapeuta ? consulta.therapist : consulta.patient;
-  const nome = [pessoa?.firstName, pessoa?.lastName].filter(Boolean).join(" ") || "Participant";
+  const nomeDaPessoa = [pessoa?.firstName, pessoa?.lastName].filter(Boolean).join(" ") || "Participant";
+
+  /**
+   * Quem está de fato na sala, e não só de quem é a consulta.
+   *
+   * Numa sessão emprestada (091 T-7) o `sub` do token é a **criança** e o
+   * `onBehalfOf` é quem responde por ela. Sem isto, o terapeuta veria "Ana" no
+   * bloco de vídeo e conversaria com a mãe sem saber — numa consulta clínica,
+   * não saber com quem se está falando é pior que não ter a chamada.
+   *
+   * O nome da consulta continua primeiro porque é dela que se trata; o de quem
+   * está presente vem junto, entre parênteses.
+   */
+  const porContaDe = porContaDeNoBearer(req.headers.get("authorization"));
+  let nome = nomeDaPessoa;
+  if (porContaDe && ehPaciente) {
+    const responsavel = await prisma.user.findUnique({
+      where: { id: porContaDe },
+      select: { firstName: true, lastName: true },
+    });
+    const nomeDoResponsavel = [responsavel?.firstName, responsavel?.lastName].filter(Boolean).join(" ");
+    if (nomeDoResponsavel) nome = `${nomeDaPessoa} (com ${nomeDoResponsavel})`;
+  }
 
   try {
+    /**
+     * A janela **antes** da sala (review de 27/09/2026).
+     *
+     * Estava depois: abrir uma consulta da semana passada tentava criar uma sala
+     * com `exp` no passado, a Daily recusava, e a pessoa lia "o servico de video
+     * recusou o pedido" em vez de "esta consulta ja terminou". E todo toque no
+     * endpoint criava sala, contrariando o "so existe se alguem vai usar".
+     */
+    exigirJanelaAberta(consulta.dateTime, consulta.duration);
+
     const sala = await criarSalaDaConsulta({
       appointmentId: consulta.id,
       dateTime: consulta.dateTime,

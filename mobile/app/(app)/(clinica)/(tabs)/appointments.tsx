@@ -123,7 +123,10 @@ function AppointmentsScreen() {
 
                       Fora da janela a linha continua dizendo o formato, em vez
                       de sumir. Some o botão, não a informação. */}
-                  {item.mode === "VIDEO" && (
+                  {/* Cancelada nao oferece entrada. O servidor ja recusa com
+    `not_scheduled`, mas um botao verde ao lado da tarja vermelha
+    "Cancelada" e a tela contradizendo a si mesma. */}
+                  {item.mode === "VIDEO" && item.status !== "CANCELLED" && item.status !== "NO_SHOW" && (
                     <View style={{ marginTop: 10, marginLeft: 56 }}>
                       {janelaAberta(item.dateTime, item.duration) ? (
                         <Pressable

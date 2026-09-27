@@ -15,6 +15,7 @@ import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
 import { markAsClinicPatient } from "@/lib/lab-review-mode";
+import { pessoaGeridaMinha } from "@/lib/managed-patients";
 import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
@@ -174,6 +175,32 @@ export async function POST(request: NextRequest) {
         return accessErrorResponse(err);
       }
       patientId = body.patientId;
+    } else if (body?.dependentId) {
+      /**
+       * Marcar consulta **para quem eu cuido** (089/091).
+       *
+       * O Bruno: *"os pais que têm filhos menores e precisam fazer um exame ou
+       * querem fazer uma consulta... o cadastro dos filhos na conta deles"*.
+       *
+       * Metade disso já existia e a outra metade não: dava para **comprar exame**
+       * para a filha (`dependentId` em `/api/mobile/labs/orders`) e **não dava
+       * para marcar consulta** — nem a tela nem esta rota conheciam dependente.
+       * Uma mãe cadastrava a filha e ficava presa na metade do caminho.
+       *
+       * O desenho é o mesmo do exame, de propósito: o corpo manda `dependentId`,
+       * e quem valida é o servidor, exigindo que a pessoa seja **gerida por quem
+       * está pedindo**. Não é "o paciente escolhe o paciente" — é "quem responde
+       * por alguém marca para essa pessoa", e a diferença é a linha
+       * `managedById: actor.userId`.
+       *
+       * Quem não for gerido por ele recebe 404: dizer "existe, mas não é seu"
+       * contaria a um estranho que aquela pessoa existe.
+       */
+      const gerida = await pessoaGeridaMinha(String(body.dependentId), actor.userId);
+      if (!gerida) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      patientId = gerida.id;
     }
 
     // The therapist is always a member of that same tenant: a patient may only
