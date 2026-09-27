@@ -1044,8 +1044,12 @@ export default function AdminAppointmentsPage() {
                   }`}>
                   <MapPin className="h-4 w-4" />
                   <div className="text-left">
-                    <p className="font-medium">{isPt ? "Na Clínica" : "In person"}</p>
-                    <p className="text-[10px] opacity-70">{isPt ? "O paciente comparece" : "The patient attends"}</p>
+                    {/* "Presencial", e não "Na Clínica": o Modo de Pagamento
+                        logo abaixo já tem um botão chamado "Na Clínica", e os
+                        dois ficavam um sobre o outro no mesmo diálogo, com o
+                        mesmo rótulo e significados diferentes (achado 4 do QA). */}
+                    <p className="font-medium">{isPt ? "Presencial" : "In person"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "O paciente comparece à clínica" : "The patient attends"}</p>
                   </div>
                 </button>
                 <button type="button"
