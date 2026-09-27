@@ -244,3 +244,57 @@ describe("a tela do app", () => {
     expect(tela).toMatch(/return \(\) => \{\s*vivo = false;\s*void sair\(\);/);
   });
 });
+
+describe("**a consulta à distância se anuncia antes de a pessoa abrir a tela**", () => {
+  const lista = ler("mobile", "app", "(app)", "(clinica)", "(tabs)", "appointments.tsx");
+  const detalhe = ler("mobile", "app", "(app)", "(clinica)", "appointment", "[id].tsx");
+  const formAdmin = ler("app", "admin", "appointments", "page.tsx");
+
+  it("o ícone da lista conta o formato", () => {
+    // O Bruno: "se agendamento for uma consulta à distância, eu quero que já
+    // apareça para o paciente essa opção". A lista é o que ele vê primeiro.
+    expect(lista).toMatch(/name=\{item\.mode === "VIDEO" \? "videocam-outline" : "medical-outline"\}/);
+  });
+
+  it("e o botão de entrar está na própria lista", () => {
+    expect(lista).toMatch(/testID=\{`entrar-video-\$\{item\.id\}`\}/);
+    expect(lista).toMatch(/consulta-video\?id=\$\{item\.id\}/);
+  });
+
+  it("**fora da hora some o botão, não a informação**", () => {
+    // Saber que é por vídeo muda o que a pessoa faz **antes**: onde vai estar,
+    // e se precisa sair de casa.
+    const i = lista.indexOf('item.mode === "VIDEO" && (');
+    const bloco = lista.slice(i, i + 2200);
+    expect(bloco).toMatch(/janelaAberta\(item\.dateTime, item\.duration\)/);
+    expect(bloco).toMatch(/Video consultation/);
+    expect(bloco).toMatch(/Consulta por vídeo/);
+  });
+
+  it("e o toque em entrar não abre o detalhe por baixo", () => {
+    // Quem toca em "entrar" quer entrar, não ler.
+    expect(lista).toMatch(/e\.stopPropagation\?\.\(\)/);
+  });
+
+  it("a tela da consulta também mostra, para quem chegou por ela", () => {
+    expect(detalhe).toMatch(/data\.mode === "VIDEO" && \(/);
+    expect(detalhe).toMatch(/testID="entrar-na-consulta"/);
+  });
+
+  it("**e a clínica consegue marcar uma consulta à distância no fluxo normal**", () => {
+    // A rota já aceitava `mode`; o formulário nunca ofereceu. Só dava para
+    // marcar por vídeo numa página separada — então, na prática, o cenário
+    // "marquei uma consulta à distância" não acontecia.
+    expect(formAdmin).toMatch(/mode: "IN_PERSON" as "IN_PERSON" \| "VIDEO"/);
+    expect(formAdmin).toMatch(/setCreateForm\(f => \(\{ \.\.\.f, mode: "VIDEO" \}\)\)/);
+  });
+
+  it("e o formato escolhido chega ao servidor", () => {
+    // Um seletor que desenha e não envia é pior que não ter seletor.
+    expect(formAdmin).toMatch(/mode: createForm\.mode,/);
+  });
+
+  it("e o reset do formulário não perde o campo", () => {
+    expect(formAdmin).toMatch(/sendConfirmation: false, mode: "IN_PERSON"/);
+  });
+});

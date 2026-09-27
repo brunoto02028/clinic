@@ -54,6 +54,8 @@ import {
   X,
   Receipt,
   Mail,
+  MapPin,
+  Video,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -106,6 +108,15 @@ export default function AdminAppointmentsPage() {
     price: 0,
     notes: "",
     paymentMode: "in_person" as "online" | "in_person",
+    /**
+     * Presencial ou à distância (089).
+     *
+     * A rota `POST /api/admin/appointments` já aceitava `mode` — e o formulário
+     * nunca ofereceu. Só dava para marcar consulta por vídeo numa página
+     * separada, `/admin/video-consultations`, então na prática o cenário "marquei
+     * uma consulta à distância" não acontecia no fluxo de quem marca consulta.
+     */
+    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO",
     // Off by default: nothing reaches the patient without a previewed e-mail (activity 68)
     sendConfirmation: false,
     // O caso fora da curva, que numa clínica pequena é semanal. Os dois ficam
@@ -289,6 +300,8 @@ export default function AdminAppointmentsPage() {
           treatmentType: createForm.treatmentType,
           price: Number(createForm.price),
           notes: createForm.notes || null,
+          // Sem isto o seletor de formato desenhava e nao chegava ao servidor.
+          mode: createForm.mode,
           paymentMode: createForm.paymentMode,
           courtesySession: createForm.courtesySession || undefined,
           waiveCharge: createForm.waiveCharge || undefined,
@@ -313,7 +326,7 @@ export default function AdminAppointmentsPage() {
         setCreateForm({
           patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "",
           duration: 60, treatmentType: "", price: 0, notes: "",
-          paymentMode: "in_person", sendConfirmation: false,
+          paymentMode: "in_person", sendConfirmation: false, mode: "IN_PERSON",
           courtesySession: false, waiveCharge: false, overrideReason: "",
         });
         fetchAppointments();
@@ -1015,6 +1028,39 @@ export default function AdminAppointmentsPage() {
               <div className="space-y-2">
                 <Label>{isPt ? "Preço (£)" : "Price (£)"}</Label>
                 <Input type="number" step="0.01" value={createForm.price} onChange={e => setCreateForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            {/* Formato da consulta. Vem **antes** do pagamento de proposito: o
+                formato muda o que a pessoa faz no dia, e o pagamento nao. */}
+            <div className="space-y-2">
+              <Label>{isPt ? "Formato" : "Format"}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button"
+                  onClick={() => setCreateForm(f => ({ ...f, mode: "IN_PERSON" }))}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    createForm.mode === "IN_PERSON"
+                      ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#5dc9c0]"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}>
+                  <MapPin className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="font-medium">{isPt ? "Na Clínica" : "In person"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "O paciente comparece" : "The patient attends"}</p>
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => setCreateForm(f => ({ ...f, mode: "VIDEO" }))}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    createForm.mode === "VIDEO"
+                      ? "border-violet-500/40 bg-violet-500/15 text-violet-400"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}>
+                  <Video className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="font-medium">{isPt ? "À distância" : "Remote"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "Por videochamada, no app" : "By video call, in the app"}</p>
+                  </div>
+                </button>
               </div>
             </div>
             {/* Payment Mode */}
