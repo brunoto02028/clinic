@@ -80,6 +80,31 @@ describe("o painel mostra onde ainda cabe", () => {
 
   it("e dia bloqueado não vira 'livre'", () => {
     expect(agenda).toMatch(/dia\.fechado \? null : dia\.livres/);
-    expect(agenda).toMatch(/livres === null\) return <p[^>]*>\{isPt \? "fechado" : "closed"\}/);
+    /**
+     * "Sem vaga", e não "fechado" (QA da 095): a rota devolve fechado tanto
+     * para o dia em que a clínica não abre quanto para hoje depois de os
+     * horários passarem. Afirmar "fechado" no segundo caso é dizer do negócio
+     * algo que pode não ser verdade.
+     */
+    expect(agenda).toMatch(/"sem vaga" : "no slots"/);
+  });
+
+  it("dia que já passou não oferece vaga", () => {
+    // A semana anterior aparecia com "5 livres" em dias que já foram — número
+    // verdadeiro sobre um tempo que não existe mais (QA da 095, 8.6).
+    expect(agenda).toMatch(/if \(day < inicioDeHoje\) return null;/);
+  });
+
+  it("e o painel pergunta como o app pergunta", () => {
+    /**
+     * Eu mandava `therapistId` e o app não manda nenhum: mesma rota,
+     * parâmetros diferentes — e as duas telas discordavam sobre o mesmo dia,
+     * que é exatamente o que eu tinha escrito que não aconteceria.
+     *
+     * Pior: um segundo terapeuta sem janela própria via a **semana inteira
+     * fechada** enquanto o paciente via vagas (QA da 095, falha 8.6).
+     */
+    const efeito = agenda.slice(agenda.indexOf("const [vagasPorDia"), agenda.indexOf("const DAY_NAMES_PT"));
+    expect(efeito).not.toMatch(/therapistId=/);
   });
 });

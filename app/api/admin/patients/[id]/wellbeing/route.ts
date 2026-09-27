@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getZonedDateString } from "@/lib/clinic-timezone";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 
@@ -81,12 +82,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     /**
      * Lançado depois do dia que descreve.
      *
-     * A comparação é por **dia**, em UTC, contra o `checkinDate`, que já é uma
-     * string `YYYY-MM-DD`. Um registro feito às 23h do próprio dia não é
-     * retroativo; um feito às 00h05 do dia seguinte é, e é assim que deve ser
-     * lido — a pessoa já estava lembrando.
+     * A comparação é por **dia da clínica**, não em UTC (QA da 095, falha 7.6).
+     * Eu usava `toISOString()`, que devolve UTC, contra um `checkinDate` que é o
+     * dia de Londres — e no horário de verão isso abre **uma hora por dia** em
+     * que o retroativo se disfarça de medição: um registro escrito à 00h30 de
+     * Londres sobre o dia anterior é `23h30Z` do próprio dia, e a conta dava
+     * "não é retroativo".
+     *
+     * `getZonedDateString` existe exatamente para isto, e a rota do check-in já
+     * a usava. Esta ficou para trás.
      */
-    retroativo: l.createdAt.toISOString().slice(0, 10) > l.checkinDate,
+    retroativo: getZonedDateString(l.createdAt) > l.checkinDate,
   }));
 
   return NextResponse.json({ days: dias, points });

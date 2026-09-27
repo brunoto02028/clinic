@@ -533,7 +533,10 @@ export default function NotificationsPage() {
             </div>
           )}
           <p className="text-[10px] text-muted-foreground">
-            {relabel("Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.")}
+            {/* "no portal" sobrevivia aqui depois de a T-9 tirá-lo do e-mail — a
+                tela de quem envia dizendo o lugar que o paciente perde depois
+                do lançamento (ressalva do QA da 095). */}
+            {relabel("Each patient is notified by email/WhatsApp (as per preference) and reads the announcement in Messages, in the app.")}
           </p>
         </CardContent>
       </Card>

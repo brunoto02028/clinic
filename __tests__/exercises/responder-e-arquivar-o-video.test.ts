@@ -22,6 +22,8 @@ const rotaArquivo = lerCodigo("app", "api", "admin", "exercise-submissions", "[i
 const rotaLista = lerCodigo("app", "api", "admin", "exercise-submissions", "route.ts");
 const rotaReview = lerCodigo("app", "api", "admin", "exercise-submissions", "[id]", "review", "route.ts");
 const schema = lerCodigo("prisma", "schema.prisma");
+const arquivos = lerCodigo("lib", "patient-documents-shared.ts");
+const contador = lerCodigo("lib", "clinic-waiting.ts");
 
 describe("arquivar é tirar da vista, não apagar", () => {
   it("a rota marca uma data — não chama delete", () => {
@@ -80,5 +82,45 @@ describe("responder por áudio ou vídeo", () => {
     expect(schema).toMatch(/replyKind String\?/);
     expect(rotaReview).toMatch(/body\?\.replyKind === "audio" \|\| body\?\.replyKind === "video"/);
     expect(painel).toMatch(/Respondido por áudio|Replied with audio/);
+  });
+});
+
+describe("o que o QA da 095 achou, e foi consertado", () => {
+  it("**o vídeo era recusado pelo servidor** (6.3)", () => {
+    /**
+     * A tela oferecia `accept="audio/*,video/*"`, o painel já calculava
+     * `replyKind: "video"` — e `validatePatientFile` recusava todo `video/*`
+     * com "Allowed: images, PDF, Word, TXT, CSV, voice message". Responder por
+     * vídeo era impossível, e o terapeuta lia a frase de erro de
+     * **carregamento**, que não diz que o arquivo foi recusado.
+     */
+    expect(arquivos).toMatch(/const video = rotulo\.startsWith\("video\/"\)/);
+    expect(arquivos).toMatch(/!audio && !video &&/);
+    expect(arquivos).toMatch(/VIDEO_MAX_BYTES/);
+  });
+
+  it("e a recusa do servidor chega à tela como ela é (6.3)", () => {
+    expect(painel).toMatch(/erroDoServidor\?\.error/);
+    expect(painel).not.toMatch(/throw new Error\(String\(up\.status\)\)/);
+  });
+
+  it("a prévia mostra o anexo que vai junto (6.7)", () => {
+    // Ela dizia "sem texto — ele verá apenas que você assistiu" com uma
+    // gravação de voz a caminho: mentia por omissão, e furava a regra de nada
+    // chegar ao paciente sem quem envia ver o que sai.
+    expect(painel).toMatch(/E este anexo:|And this attachment:/);
+  });
+
+  it("o texto também vai para a conversa (6.1)", () => {
+    // Áudio e vídeo iam para a conversa e o texto ficava só no `reviewNote`:
+    // duas formas de responder à mesma coisa chegando em dois lugares.
+    expect(painel).toMatch(/if \(arquivo \|\| texto\)/);
+  });
+
+  it("e o contador solta o que foi arquivado", () => {
+    // O badge dizia "Videos 4" sobre uma fila de 3 — e era um número que não
+    // dava para zerar, porque o arquivado não aparece na fila para ser
+    // revisado. O mesmo contador alimenta o e-mail diário da clínica.
+    expect(contador).toMatch(/archivedAt: null/);
   });
 });

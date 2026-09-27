@@ -85,7 +85,15 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     labResultsAwaitingRelease,
   ] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
-      where: { clinicId, reviewedAt: null },
+      where: {
+        clinicId,
+        reviewedAt: null,
+        // Arquivado sai da fila **e da contagem** (QA da 095 T-6). Sem isto o
+        // badge dizia "Videos 4" sobre uma fila de 3 — e era um número que não
+        // dava para zerar, porque o arquivado não aparece na fila para ser
+        // revisado. O mesmo contador alimenta o e-mail diário da clínica.
+        archivedAt: null,
+      },
     }),
     (prisma as any).clinicMessage.count({
       where: { clinicId, senderRole: "patient", readAt: null },

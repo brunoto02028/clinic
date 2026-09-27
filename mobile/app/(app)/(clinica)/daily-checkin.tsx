@@ -216,6 +216,19 @@ function DailyCheckInScreen() {
     onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
+  /**
+   * O botão fala do **dia escolhido**, não de hoje (QA da 095, achado 7.4).
+   *
+   * O rótulo lia `data?.today`: escolher um dia passado que já tem registro
+   * mostrava "Salvar" quando ia substituir, e escolher um dia passado vazio
+   * mostrava "Atualizar" quando ia criar. O botão descrevia hoje enquanto a
+   * pessoa mexia em ontem.
+   */
+  const jaTemRegistro = (() => {
+    const todos = dia === data?.todayDate ? (data?.todayAll ?? []) : (data?.history ?? []);
+    return todos.some((h: any) => h.checkinDate === dia && (h.period === periodo || h.period === "day"));
+  })();
+
   const handleSave = () => {
     mutation.mutate({
       checkinDate: dia,
@@ -307,7 +320,7 @@ function DailyCheckInScreen() {
             <Text style={{ color: t.colors.primaryFg, fontWeight: "700", fontSize: 16 }}>
               {mutation.isPending
                 ? tr(lang, { en: "Saving...", pt: "Salvando..." })
-                : data?.today
+                : jaTemRegistro
                   ? tr(lang, { en: "Update", pt: "Atualizar" })
                   : tr(lang, { en: "Save", pt: "Salvar" })}
             </Text>

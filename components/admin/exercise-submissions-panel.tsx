@@ -107,19 +107,33 @@ export default function ExerciseSubmissionsPanel({ patientId }: { patientId: str
             : null
         : null;
 
+      const texto = (rascunho[id] || "").trim();
+
       /**
-       * A mídia primeiro, a revisão depois.
+       * A resposta vai para a conversa — **inclusive quando é só texto**
+       * (QA da 095, achado 6.1).
        *
-       * Se o anexo falhar, o envio **continua na fila** — e uma fila com um
-       * item a mais é melhor que um paciente que recebeu "revisado" sem a
-       * resposta que o terapeuta gravou para ele.
+       * Antes, áudio e vídeo iam para a conversa e o texto ficava só no
+       * `reviewNote`: duas formas de responder à mesma coisa, chegando em dois
+       * lugares diferentes. O paciente via o texto encostado no vídeo dele e
+       * não na conversa, onde ele lê o que a clínica escreve.
+       *
+       * O `reviewNote` continua: ele é a **anotação clínica**, ligada àquele
+       * envio. A conversa é onde a pessoa lê. São dois papéis, e agora os dois
+       * acontecem.
+       *
+       * ## A mídia primeiro, a revisão depois
+       *
+       * Se isto falhar, o envio **continua na fila** — e uma fila com um item a
+       * mais é melhor que um paciente marcado como respondido sem ter recebido
+       * o que o terapeuta gravou para ele.
        */
-      if (arquivo) {
+      if (arquivo || texto) {
         const fd = new FormData();
-        fd.append("file", arquivo);
+        if (arquivo) fd.append("file", arquivo);
         fd.append(
           "content",
-          (rascunho[id] || "").trim() ||
+          texto ||
             (isPt
               ? "Resposta do seu terapeuta sobre o vídeo que você enviou."
               : "Your therapist's reply about the video you sent.")
@@ -128,13 +142,27 @@ export default function ExerciseSubmissionsPanel({ patientId }: { patientId: str
           method: "POST",
           body: fd,
         });
-        if (!up.ok) throw new Error(String(up.status));
+        if (!up.ok) {
+          /**
+           * A recusa do servidor, dita como ela é (QA 6.3).
+           *
+           * Antes isto virava `Error("400")`, caía no `catch` genérico e a tela
+           * mostrava *"não consegui carregar"* — a frase de **carregamento**,
+           * que não diz que o arquivo foi recusado nem por quê. O terapeuta
+           * tentava de novo com o mesmo arquivo.
+           */
+          const erroDoServidor = await up.json().catch(() => null);
+          throw new Error(
+            erroDoServidor?.error ||
+              (isPt ? "O anexo não foi aceito." : "The attachment was not accepted.")
+          );
+        }
       }
 
       const res = await fetch(`/api/admin/exercise-submissions/${id}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: (rascunho[id] || "").trim(), replyKind: tipo }),
+        body: JSON.stringify({ note: texto, replyKind: tipo }),
       });
       if (!res.ok) throw new Error(String(res.status));
       setAnexo((a) => ({ ...a, [id]: null }));
@@ -296,14 +324,36 @@ export default function ExerciseSubmissionsPanel({ patientId }: { patientId: str
                   {isPt ? "O paciente vai ler isto:" : "The patient will read this:"}
                 </p>
                 <p className="text-sm whitespace-pre-wrap">
-                  {(rascunho[s.id] || "").trim() || (
-                    <span className="italic text-muted-foreground">
-                      {isPt
-                        ? "Sem texto — ele verá apenas que você assistiu e não há correção."
-                        : "No text — they will only see that you watched and there is nothing to correct."}
-                    </span>
-                  )}
+                  {(rascunho[s.id] || "").trim() ||
+                    (anexo[s.id] ? (
+                      <span className="italic text-muted-foreground">
+                        {isPt
+                          ? "Sem texto — ele vai receber o anexo abaixo."
+                          : "No text — they will receive the attachment below."}
+                      </span>
+                    ) : (
+                      <span className="italic text-muted-foreground">
+                        {isPt
+                          ? "Sem texto — ele verá apenas que você assistiu e não há correção."
+                          : "No text — they will only see that you watched and there is nothing to correct."}
+                      </span>
+                    ))}
                 </p>
+                {/**
+                 * O anexo na prévia (QA da 095, achado 6.7).
+                 *
+                 * A prévia dizia *"sem texto — ele verá apenas que você
+                 * assistiu"* com uma gravação de voz a caminho. Mentia por
+                 * omissão, e furava a regra da casa: **nada chega ao paciente
+                 * sem quem envia ver o que vai sair**.
+                 */}
+                {anexo[s.id] && (
+                  <p className="flex items-center gap-1.5 text-xs text-foreground">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                    {isPt ? "E este anexo:" : "And this attachment:"}{" "}
+                    <span className="text-muted-foreground truncate">{anexo[s.id]!.name}</span>
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => void revisar(s.id)} disabled={salvando === s.id}>
                     {salvando === s.id && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}

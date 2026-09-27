@@ -726,11 +726,29 @@ export default function AdminAppointmentsPage() {
 
   useEffect(() => {
     const dias = calendarDays;
-    if (dias.length === 0 || !meuId) return;
+    if (dias.length === 0) return;
     const texto = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     let vivo = true;
-    fetch(`/api/availability?from=${texto(dias[0])}&to=${texto(dias[dias.length - 1])}&therapistId=${meuId}`)
+    /**
+     * **Sem `therapistId`, de propósito** (QA da 095, falha 8.6).
+     *
+     * Eu passava o id de quem estava logado, e o app do paciente não passa
+     * nenhum. Mesma rota, parâmetros diferentes — e aí as duas telas discordavam
+     * sobre o mesmo dia, que é exatamente o que eu tinha escrito que não
+     * aconteceria.
+     *
+     * Pior: um segundo terapeuta da clínica, sem janela própria configurada,
+     * via a **semana inteira como fechada** enquanto o paciente via vagas. Quem
+     * atende o telefone é quem está logado, e o painel dizia que não cabia
+     * ninguém.
+     *
+     * Sem o id, a rota responde a disponibilidade da clínica — a mesma que o
+     * paciente vê. Numa clínica com vários terapeutas este número é o da
+     * clínica, não o de cada um; modelar agenda por pessoa é outra atividade, e
+     * inventá-la aqui seria um número que só parece pessoal.
+     */
+    fetch(`/api/availability?from=${texto(dias[0])}&to=${texto(dias[dias.length - 1])}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!vivo || !d?.dias) return;
@@ -742,7 +760,7 @@ export default function AdminAppointmentsPage() {
     return () => {
       vivo = false;
     };
-  }, [calendarDays, meuId]);
+  }, [calendarDays]);
 
   const DAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -817,12 +835,35 @@ export default function AdminAppointmentsPage() {
                       {/* Onde ainda cabe alguém. Zero aparece: "cheio" é uma
                           resposta, e a ausência do número não é. */}
                       {!blocked && (() => {
+                        /**
+                         * Dia que já passou não mostra vaga (QA 8.6).
+                         *
+                         * A semana anterior aparecia oferecendo "5 livres" em
+                         * dias que já foram — um número verdadeiro sobre um
+                         * tempo que não existe mais.
+                         */
+                        const inicioDeHoje = new Date();
+                        inicioDeHoje.setHours(0, 0, 0, 0);
+                        if (day < inicioDeHoje) return null;
+
                         const chave = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
                         const livres = vagasPorDia[chave];
                         if (livres === undefined) return null;
-                        if (livres === null) return <p className="text-[9px] text-muted-foreground/70">{isPt ? "fechado" : "closed"}</p>;
+                        /**
+                         * "Sem vaga", e não "fechado".
+                         *
+                         * A rota devolve fechado tanto para o dia em que a
+                         * clínica não abre quanto para hoje depois de os
+                         * horários passarem. Dizer "fechado" no segundo caso
+                         * afirma algo que pode não ser verdade; "sem vaga" é o
+                         * que os dois casos têm em comum.
+                         */
+                        if (livres === null) return <p className="text-[9px] text-muted-foreground/70">{isPt ? "sem vaga" : "no slots"}</p>;
                         return (
-                          <p className={`text-[9px] ${livres === 0 ? "text-muted-foreground/70" : "text-emerald-500/90"}`}>
+                          <p
+                            className={`text-[9px] ${livres === 0 ? "text-muted-foreground/70" : "text-emerald-500/90"}`}
+                            title={isPt ? "Consultas e sessões somadas" : "Consultations and sessions combined"}
+                          >
                             {livres === 0 ? (isPt ? "cheio" : "full") : isPt ? `${livres} livres` : `${livres} free`}
                           </p>
                         );

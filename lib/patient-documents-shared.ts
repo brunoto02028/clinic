@@ -39,6 +39,20 @@ export const AUDIO_ALLOWED_TYPES = [
  */
 export const AUDIO_MAX_BYTES = 10 * 1024 * 1024;
 
+/**
+ * O vídeo do terapeuta respondendo ao exercício (095 T-6, QA 6.3).
+ *
+ * A tela oferecia `accept="audio/*,video/*"`, o painel já calculava
+ * `replyKind: "video"` — e o servidor recusava todo `video/*` com *"Allowed:
+ * images, PDF, Word, TXT, CSV, voice message"*. Responder por vídeo era
+ * impossível, e o terapeuta via a frase de erro de **carregamento**, que não
+ * diz que o arquivo foi recusado.
+ *
+ * 50 MB, entre os 10 da voz e um vídeo de verdade: é uma demonstração curta de
+ * movimento, gravada no telefone, não um arquivo de edição.
+ */
+export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+
 export function ehAudio(type: string): boolean {
   return AUDIO_ALLOWED_TYPES.includes(type);
 }
@@ -101,13 +115,17 @@ export function ehAudioPeloNome(name: string | undefined): boolean {
 export function validatePatientFile(file: { type: string; size: number; name?: string }): string | null {
   const rotulo = (file.type || "").toLowerCase();
   const audio = ehRotuloDeAudio(rotulo) || (ROTULOS_VAGOS.includes(rotulo) && ehAudioPeloNome(file.name));
-  if (!audio && !rotulo.startsWith("image/") && !DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
-    return "Invalid file type. Allowed: images, PDF, Word, TXT, CSV, voice message";
+  const video = rotulo.startsWith("video/");
+  if (!audio && !video && !rotulo.startsWith("image/") && !DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
+    return "Invalid file type. Allowed: images, video, PDF, Word, TXT, CSV, voice message";
   }
-  // O áudio tem teto próprio, menor: é voz, não arquivo.
-  const teto = audio ? AUDIO_MAX_BYTES : DOCUMENT_MAX_BYTES;
+  // Cada um com o seu teto: voz é voz, vídeo é demonstração curta, o resto é
+  // arquivo.
+  const teto = audio ? AUDIO_MAX_BYTES : video ? VIDEO_MAX_BYTES : DOCUMENT_MAX_BYTES;
   if (file.size > teto) {
-    return audio ? "Voice message too large (max 10MB)" : "File too large (max 25MB)";
+    if (audio) return "Voice message too large (max 10MB)";
+    if (video) return "Video too large (max 50MB)";
+    return "File too large (max 25MB)";
   }
   return null;
 }

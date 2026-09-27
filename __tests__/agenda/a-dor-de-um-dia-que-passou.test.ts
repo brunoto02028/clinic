@@ -40,6 +40,22 @@ describe("registrar um dia que passou", () => {
     expect(telaCheckin).toMatch(/const \[dia, setDia\]/);
   });
 
+  it("e a resposta **diz** que substituiu (QA 7.4)", () => {
+    // O `upsert` devolvia uma resposta idêntica à de um registro novo: nada
+    // dizia que algo foi trocado. Quem corrige a dor de ontem merece saber que
+    // corrigiu, e não ficar na dúvida se criou um segundo.
+    expect(rotaCheckin).toMatch(/const jaHavia = await/);
+    expect(rotaCheckin).toMatch(/substituiu: !!jaHavia/);
+  });
+
+  it("e o botão do app fala do dia escolhido, não de hoje (QA 7.4)", () => {
+    // O rótulo lia `data?.today`: um dia passado com registro mostrava
+    // "Salvar" quando ia substituir, e um dia passado vazio mostrava
+    // "Atualizar" quando ia criar.
+    expect(telaCheckin).toContain("const jaTemRegistro");
+    expect(telaCheckin).toMatch(/: jaTemRegistro/);
+  });
+
   it("e regravar o mesmo dia substitui, em vez de duplicar", () => {
     // A chave única é paciente + dia + período: manhã e noite são dois fatos,
     // e a segunda manhã do mesmo dia é correção da primeira.
@@ -49,7 +65,21 @@ describe("registrar um dia que passou", () => {
 
 describe("o gráfico distingue o retroativo", () => {
   it("a rota diz quando o ponto foi escrito", () => {
-    expect(rota).toMatch(/retroativo: l\.createdAt\.toISOString\(\)\.slice\(0, 10\) > l\.checkinDate/);
+    expect(rota).toMatch(/retroativo: getZonedDateString\(l\.createdAt\) > l\.checkinDate/);
+  });
+
+  it("e compara o **dia da clínica**, não o UTC", () => {
+    /**
+     * `toISOString()` devolve UTC, e o `checkinDate` é o dia de Londres. No
+     * horário de verão isso abria **uma hora por dia** em que o retroativo se
+     * disfarçava de medição: um registro escrito à 00h30 sobre o dia anterior
+     * é 23h30Z do próprio dia, e a conta dava "não é retroativo".
+     *
+     * Achado pelo QA da 095 (7.6). A rota do check-in já usava o helper certo;
+     * esta ficou para trás.
+     */
+    expect(rota).not.toMatch(/createdAt\.toISOString/);
+    expect(rota).toMatch(/getZonedDateString/);
   });
 
   it("sem coluna nova — `createdAt` já sabia", () => {
