@@ -20,7 +20,7 @@ o produto ficando bom o bastante para outra pessoa usar.
 | T-5 | Enviar exercício avulso, não a pasta inteira | — | **feita** (27/09) |
 | T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | **feita** (27/09) |
 | T-7 | Pain Trend: o paciente relata por data | — | **feita** (27/09) — metade já existia |
-| T-8 | O calendário mostra disponibilidade de verdade | T-2 | pendente |
+| T-8 | O calendário mostra disponibilidade de verdade | T-2 | **feita** (27/09) — os dois lados |
 | T-9 | Onde o paciente lê o aviso (link, separação, lido) | T-1 | pendente |
 
 A T-9 entrou depois, em 27/09: *"quando eu enviar a um paciente ou todos os

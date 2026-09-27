@@ -35,6 +35,15 @@ export interface CalendarioProps {
   kind?: string;
   /** Dias da semana em que a clínica não abre — 0 é domingo. */
   diasFechados?: number[];
+  /**
+   * O que **esta pessoa** já tem marcado (095 T-8).
+   *
+   * O calendário sabia dizer onde havia vaga e não dizia o que ela já tinha.
+   * Quem vai marcar pergunta as duas coisas ao mesmo tempo — *"dá nesse dia?"*
+   * e *"eu já não tenho alguma coisa aí?"* — e sem a segunda a pessoa marca
+   * duas na mesma tarde e descobre depois.
+   */
+  meusDias?: { data: string; porVideo: boolean }[];
 }
 
 /** Data local em `YYYY-MM-DD`. Nunca `toISOString()`: ele devolve UTC. */
@@ -71,7 +80,7 @@ function nomeDoMes(d: Date, lang: Lang): string {
   });
 }
 
-export function CalendarioDeAgenda({ selecionada, onEscolher, kind }: CalendarioProps) {
+export function CalendarioDeAgenda({ selecionada, onEscolher, kind, meusDias }: CalendarioProps) {
   const t = useTheme();
   const lang = useLang();
 
@@ -148,6 +157,9 @@ export function CalendarioDeAgenda({ selecionada, onEscolher, kind }: Calendario
    * Passado e fechado são estados diferentes e a pessoa precisa distinguir: um
    * diz "escolha outro dia", o outro diz "tente outra semana".
    */
+  /** A consulta desta pessoa naquele dia, se houver. */
+  const meu = (data: string) => (meusDias ?? []).find((m) => m.data === data);
+
   function estadoDoDia(d: Date) {
     const data = comoTexto(d);
     const info = porData.get(data);
@@ -309,6 +321,23 @@ export function CalendarioDeAgenda({ selecionada, onEscolher, kind }: Calendario
                           : t.colors.agendaLivre,
                   }}
                 />
+                {/* A sua consulta naquele dia (095 T-8).
+
+                    Uma barrinha, e não outra bolinha: a bolinha já significa
+                    vaga, e duas bolinhas na mesma célula seriam duas formas
+                    iguais dizendo coisas diferentes. A cor separa presencial de
+                    vídeo, que é a outra pergunta de quem olha. */}
+                {meu(data) && (
+                  <View
+                    style={{
+                      marginTop: 2,
+                      width: 12,
+                      height: 2.5,
+                      borderRadius: 2,
+                      backgroundColor: meu(data)!.porVideo ? t.colors.work : t.colors.health,
+                    }}
+                  />
+                )}
               </Pressable>
             );
           })}

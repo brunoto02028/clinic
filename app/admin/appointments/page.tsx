@@ -712,6 +712,38 @@ export default function AdminAppointmentsPage() {
     });
   };
 
+  /**
+   * Quantos horários livres cada dia da semana tem (095 T-8).
+   *
+   * A agenda mostrava **só o que já foi marcado** — e a pergunta que se faz ao
+   * telefone com um paciente esperando é a outra: *"onde ainda cabe?"*. O dado
+   * existe desde a 087 (`/api/availability?from=&to=`, que devolve contagem por
+   * dia), e ele é o mesmo que o app do paciente lê: se as duas telas
+   * discordarem sobre um dia, é porque estão lendo fontes diferentes, e agora
+   * não estão.
+   */
+  const [vagasPorDia, setVagasPorDia] = useState<Record<string, number | null>>({});
+
+  useEffect(() => {
+    const dias = calendarDays;
+    if (dias.length === 0 || !meuId) return;
+    const texto = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    let vivo = true;
+    fetch(`/api/availability?from=${texto(dias[0])}&to=${texto(dias[dias.length - 1])}&therapistId=${meuId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d?.dias) return;
+        const mapa: Record<string, number | null> = {};
+        for (const dia of d.dias) mapa[dia.data] = dia.fechado ? null : dia.livres;
+        setVagasPorDia(mapa);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [calendarDays, meuId]);
+
   const DAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -782,6 +814,19 @@ export default function AdminAppointmentsPage() {
                       <p className="text-[10px] text-muted-foreground">{(isPt ? DAY_NAMES_PT : DAY_NAMES_EN)[i]}</p>
                       <p className={`text-sm font-semibold ${isToday ? "text-emerald-400" : ""} ${blocked ? "text-red-400" : ""}`}>{day.getDate()}</p>
                       {blocked && <p className="text-[8px] text-red-400/80 leading-tight truncate">{blk?.reason || "Unavailable"}</p>}
+                      {/* Onde ainda cabe alguém. Zero aparece: "cheio" é uma
+                          resposta, e a ausência do número não é. */}
+                      {!blocked && (() => {
+                        const chave = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+                        const livres = vagasPorDia[chave];
+                        if (livres === undefined) return null;
+                        if (livres === null) return <p className="text-[9px] text-muted-foreground/70">{isPt ? "fechado" : "closed"}</p>;
+                        return (
+                          <p className={`text-[9px] ${livres === 0 ? "text-muted-foreground/70" : "text-emerald-500/90"}`}>
+                            {livres === 0 ? (isPt ? "cheio" : "full") : isPt ? `${livres} livres` : `${livres} free`}
+                          </p>
+                        );
+                      })()}
                     </div>
                   );
                 })}

@@ -15,6 +15,7 @@ import { openCheckout } from "@/lib/checkout";
 import { ApiError } from "@/api/client";
 import { CouponField, PrecoComCupom } from "@/components/CouponField";
 import { CalendarioDeAgenda } from "@/components/CalendarioDeAgenda";
+import { fetchAppointments } from "@/api/appointments";
 import type { CouponPreviewOk } from "@/api/coupons";
 
 function BookAppointmentScreen() {
@@ -51,6 +52,26 @@ function BookAppointmentScreen() {
   // O dia fechado deixou de ser filtrado aqui: quem diz que um dia não abre
   // agora é o servidor, dia a dia, junto com o motivo — e ele sabe de feriado e
   // de folga, que uma lista de dias da semana no cliente nunca soube.
+
+  /**
+   * O que eu já tenho marcado, para o calendário mostrar junto das vagas
+   * (095 T-8).
+   *
+   * Cancelada não conta: o dia volta a estar livre, e marcar uma barrinha nele
+   * faria a pessoa achar que já tem compromisso onde não tem.
+   */
+  const minhas = useQuery({ queryKey: ["appointments"], queryFn: fetchAppointments });
+  const meusDias = (minhas.data ?? [])
+    .filter((a) => a.status !== "CANCELLED" && a.status !== "NO_SHOW")
+    .map((a) => {
+      const d = new Date(a.dateTime);
+      return {
+        // Data local, nunca `toISOString()`: ele devolve UTC, e uma consulta
+        // das 00h30 cairia no dia anterior na grade.
+        data: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        porVideo: a.mode === "VIDEO",
+      };
+    });
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate, janela],
@@ -393,6 +414,7 @@ ${tr(lang, {
               selecionada={selectedDate}
               onEscolher={(d) => { setSelectedDate(d); setSelectedTime(null); }}
               kind={janela}
+              meusDias={meusDias}
             />
           )}
         </Card>
