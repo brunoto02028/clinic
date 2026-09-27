@@ -68,6 +68,28 @@ describe("a tela deixou de só escutar", () => {
   it("e sem sessão de equipe, nada", () => {
     expect(rota).toMatch(/if \(!actor\) return NextResponse\.json\(\{ error: "Unauthorized" \}/);
   });
+
+  it("**janela fechada não busca** — nem cancelada, nem vencida", () => {
+    // Sem isto o botão ia à Withings numa sessão cancelada, trazia a leitura,
+    // jogava na caixa de entrada e respondia "encontrei" apontando para uma
+    // janela que não existe mais. Achado do review de 27/09/2026.
+    expect(rota).toMatch(/expireStaleSessions\(session\.connectionId\)/);
+    expect(rota).toMatch(/session\.status === "OPEN" && session\.expiresAt\.getTime\(\) > Date\.now\(\)/);
+    expect(rota).toMatch(/code: "session_closed"/);
+  });
+
+  it("e a recusa vem **antes** da ida à Withings", () => {
+    // Ordem é a correção: verificar depois de buscar já teria gravado.
+    expect(rota.indexOf('code: "session_closed"')).toBeLessThan(rota.indexOf("ingestWithings("));
+  });
+
+  it("**a Withings fora do ar não é 500 nosso**", () => {
+    // Mesma palavra "erro" para o provedor caído e para defeito nosso deixava
+    // o terapeuta apertando de novo sem saber qual dos dois era.
+    expect(rota).toMatch(/counts = await ingestWithings\(/);
+    expect(rota).toMatch(/code: "provider_unavailable"/);
+    expect(rota).toMatch(/status: 502 \}/);
+  });
 });
 
 describe("o estado de entrega aparece sempre, não só quando ruim", () => {

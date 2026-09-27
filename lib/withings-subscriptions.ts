@@ -148,14 +148,31 @@ export function ensureCheckedSoon(connection: TokenBearingConnection & { notifyC
  */
 export type DeliveryState = "receiving" | "partial" | "silent" | "unchecked";
 
-export function deliveryState(connection: {
-  notifyConfirmedAppli?: number[] | null;
-  notifyCheckedAt?: Date | null;
-}): DeliveryState {
+/**
+ * `soPressao` existe porque um manguito não produz passos nem sono.
+ *
+ * `WITHINGS_APPLI_WE_WANT` inclui `ACTIVITY` e `SLEEP`, que fazem sentido para
+ * a balança e o relógio de um paciente. Para o BPM Connect da recepção, esses
+ * dois **nunca** vão ser confirmados — então `partial` era o estado normal e
+ * permanente dele, e o painel da clínica dizia para sempre "a Withings não
+ * confirmou que vai enviar leituras" **com a pressão confirmada**.
+ *
+ * Alarme permanente é pior que nenhum alarme: ensina a clínica a ignorá-lo, e
+ * o dia em que a pressão realmente não estiver confirmada passa batido. Achado
+ * do QA da 092.
+ */
+export function deliveryState(
+  connection: {
+    notifyConfirmedAppli?: number[] | null;
+    notifyCheckedAt?: Date | null;
+  },
+  opts: { soPressao?: boolean } = {}
+): DeliveryState {
   if (!connection.notifyCheckedAt) return "unchecked";
   const confirmed = connection.notifyConfirmedAppli ?? [];
   if (confirmed.length === 0) return "silent";
-  const hasAll = WITHINGS_APPLI_WE_WANT.every((a) => confirmed.includes(a));
+  const querem = opts.soPressao ? [WITHINGS_APPLI.BLOOD_PRESSURE] : WITHINGS_APPLI_WE_WANT;
+  const hasAll = querem.every((a) => confirmed.includes(a));
   return hasAll ? "receiving" : "partial";
 }
 

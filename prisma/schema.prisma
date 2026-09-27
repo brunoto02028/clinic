@@ -7164,6 +7164,22 @@ model WearableConnection {
   measurementSessions    ClinicMeasurementSession[]
   unassignedMeasurements UnassignedMeasurement[]
 
+  /// Uma conexão por pessoa e provedor. **E é só isto que existe de trava.**
+  ///
+  /// Tentei acrescentar `@@unique([provider, providerUserId, userId])` na 092
+  /// T-4, apresentando como "a trava voltou". Não voltou: qualquer chave que
+  /// **contenha** `userId` e `provider` é implicada por esta aqui, então era um
+  /// índice que não restringia nada. O review de 27/09/2026 pegou.
+  ///
+  /// O que uma trava precisaria impedir é **duas conexões pessoais na mesma
+  /// conta do provedor** — e a chave para isso seria
+  /// `(provider, providerUserId, isClinicDevice)`. Ela não está aqui de
+  /// propósito: `db push` engole falha, e se produção já tiver duplicata o
+  /// índice não nasce e ninguém fica sabendo. Antes de acrescentá-la, contar.
+  ///
+  /// Enquanto isso, o roteamento não depende de unicidade nenhuma: em
+  /// `withings-ingest.ts`, **toda** conexão pessoal de uma conta que também é
+  /// da clínica ignora pressão, quantas forem.
   @@unique([userId, provider])
   // Uma conta de provedor pertence a uma conexão só — a regra está certa, mas o
   // índice único ficou FORA deste deploy de propósito. Em produção o schema é

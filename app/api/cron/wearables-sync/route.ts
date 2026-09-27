@@ -49,6 +49,11 @@ export async function POST(req: NextRequest) {
       tokenExpiresAt: true,
       isClinicDevice: true,
       clinicId: true,
+      // É por ele que se sabe que esta conexão pessoal divide a conta com a da
+      // clínica — e, sendo assim, não processa pressão (092 T-1). Sem isto a
+      // varredura diária voltaria a salvar no prontuário do dono as medições
+      // feitas nos pacientes, alertas inclusive.
+      providerUserId: true,
       lastReadingAt: true,
       lastSyncedAt: true,
       notifyCheckedAt: true,

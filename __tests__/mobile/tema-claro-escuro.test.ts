@@ -351,4 +351,90 @@ describe("o acento do laboratório passa nos DOIS tons (F-7)", () => {
     expect(agora[2]).toBeGreaterThan(agora[0]);
     expect(agora[1]).toBeLessThan(antes[1]);
   });
+
+  /**
+   * As bolinhas do calendário, e o erro que este bloco existe para não repetir.
+   *
+   * Em 26/09 eu troquei `ok`/`warn` por tokens próprios dizendo que as antigas
+   * eram "escuras e dessaturadas, por isso invisíveis no escuro". O QA da 092
+   * mediu: no escuro as antigas já davam 6,43 e 7,13 — o diagnóstico estava
+   * errado — e no **claro** as minhas novas davam 3,67 e 3,16 contra 4,93 e
+   * 4,89 das que saíram. Eu tinha piorado a legibilidade anunciando que a
+   * estava consertando.
+   *
+   * O limiar aqui é 4,5 e não o piso de 3:1 de elemento não-textual, de
+   * propósito: 3:1 era o que deixava passar a versão pior.
+   */
+  it.each([
+    ["agendaLivre", "agendaLivre"],
+    ["agendaQuaseCheio", "agendaQuaseCheio"],
+  ])("as bolinhas do calendário no CLARO: %s", (_nome, tinta) => {
+    expect(razao(token("light", tinta), "#F5F4F1")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["agendaLivre", "agendaLivre"],
+    ["agendaQuaseCheio", "agendaQuaseCheio"],
+  ])("e no ESCURO: %s", (_nome, tinta) => {
+    expect(razao(token("dark", tinta), "#191C23")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("**e nenhuma das duas ficou pior que a cor que substituiu**", () => {
+    // A asserção que faltava em 26/09. Um token novo que pareceu melhor na tela
+    // e mediu pior é exatamente o que passa sem isto.
+    //
+    // Os hex vindo literais e não por `token()`: `ok`/`warn` são
+    // `palette.ok`/`palette.warn` no arquivo, e resolver a indireção aqui
+    // tornaria o teste refém do formato dela. São os valores que saíram das
+    // bolinhas, e são história — não mudam mais.
+    const bone = "#F5F4F1";
+    expect(razao(token("light", "agendaLivre"), bone)).toBeGreaterThanOrEqual(razao("#55705F", bone));
+    expect(razao(token("light", "agendaQuaseCheio"), bone)).toBeGreaterThanOrEqual(
+      razao("#826637", bone) - 0.2
+    );
+  });
+
+  /**
+   * Matiz, e não brilho — e por que a distinção importa aqui.
+   *
+   * Escrevi primeiro este teste com `razao()` entre as duas bolinhas, esperando
+   * > 1,2. Deu **1,04**, e o teste estava certo em reprovar a *pergunta*: duas
+   * cores escolhidas para ter o mesmo contraste contra o mesmo fundo têm, por
+   * construção, quase a mesma luminância. Contraste de brilho é a medida
+   * errada para "são cores diferentes"; quem responde isso é o matiz.
+   *
+   * **E a luminância quase igual é um problema real, que este teste não
+   * conserta.** O ponto colorido é a única coisa na célula que diz se há vaga
+   * (`CalendarioDeAgenda.tsx`: *"ela e a unica coisa na celula que diz se ha
+   * vaga"*), e para quem não distingue verde de vermelho/âmbar dois pontos de
+   * mesmo brilho são o mesmo ponto. Isso já valia para `ok`/`warn` (4,93 e
+   * 4,89) — não é regressão — e a saída é um segundo canal: forma, anel ou o
+   * número de vagas. Decisão de produto, anotada para o Bruno.
+   */
+  const matiz = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    if (d === 0) return 0;
+    const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return ((h * 60) + 360) % 360;
+  };
+
+  it.each([["light"], ["dark"]] as const)("livre e quase cheio são matizes distantes (%s)", (paleta) => {
+    const a = matiz(token(paleta, "agendaLivre"));
+    const b = matiz(token(paleta, "agendaQuaseCheio"));
+    const dist = Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
+    expect(dist).toBeGreaterThan(60);
+  });
+
+  it("o verde é verde e o âmbar é âmbar, nos dois tons", () => {
+    // Guarda contra o conserto de contraste levar uma delas para outro lugar
+    // do círculo: verde de vaga, âmbar de "corre".
+    for (const paleta of ["light", "dark"] as const) {
+      expect(matiz(token(paleta, "agendaLivre"))).toBeGreaterThan(90);
+      expect(matiz(token(paleta, "agendaLivre"))).toBeLessThan(190);
+      expect(matiz(token(paleta, "agendaQuaseCheio"))).toBeGreaterThan(20);
+      expect(matiz(token(paleta, "agendaQuaseCheio"))).toBeLessThan(60);
+    }
+  });
 });

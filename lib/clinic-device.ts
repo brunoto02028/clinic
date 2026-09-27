@@ -49,6 +49,16 @@ export interface ClinicConnection {
 }
 
 /**
+ * Este arquivo **não** conhece a conta na Withings, de propósito.
+ *
+ * Chegou a receber o `providerUserId` para, sem sessão aberta, achar o dono
+ * pessoal do mesmo aparelho e gravar a leitura nele. O review de 27/09/2026
+ * derrubou: "sem sessão" não quer dizer "foi o dono", e o campo saiu junto.
+ * Quem decide o que a conta compartilhada faz é `lib/withings-routing.ts`,
+ * antes de a leitura chegar aqui.
+ */
+
+/**
  * Sessions whose window contains this measurement.
  *
  * The comparison is against the measurement's own timestamp, never against
@@ -83,6 +93,7 @@ async function matchingSessions(connectionId: string, measuredAt: Date) {
  * Returns what happened, so the caller can log it — this runs from a webhook
  * where nobody is watching, and "nothing happened" must never be silent.
  */
+
 export async function attributeClinicReading(
   connection: ClinicConnection,
   reading: WithingsBpReading,
@@ -140,6 +151,28 @@ export async function attributeClinicReading(
 
   const sessions = await matchingSessions(connection.id, new Date(reading.measuredAt));
 
+  /**
+   * Sem janela aberta, a leitura vai para a caixa — **e não para o dono**.
+   *
+   * Eu tinha escrito o contrário: sem sessão, atribuir ao dono do aparelho. O
+   * review de 27/09/2026 derrubou isso, e o Bruno concordou.
+   *
+   * O argumento que me convenceu: *"sem sessão"* não quer dizer *"foi o
+   * dono"* — quer dizer **"ninguém disse quem foi"**. Vale para ele medindo em
+   * si mesmo e vale igual para o terapeuta que esqueceu de abrir a janela, e o
+   * sistema não distingue os dois. Com o atalho, a pressão de um paciente
+   * entrava no prontuário do dono em silêncio, marcada como se ele tivesse
+   * medido em casa, e sem registro de auditoria.
+   *
+   * Um clique na caixa de entrada é barato. Pressão de paciente no prontuário
+   * errado não é — e é a regra que este arquivo inteiro segue: **ambiguidade
+   * nunca vira palpite**.
+   *
+   * E o dono medindo em si mesmo? Ele abre uma janela no próprio cadastro —
+   * um toque, ele também é paciente — ou atribui daqui. Num aparelho
+   * compartilhado, **toda leitura precisa dizer de quem é**, e isso vale para
+   * o dono como vale para qualquer um.
+   */
   if (sessions.length !== 1 || !reading.measureId) {
     const row = await (prisma as any).unassignedMeasurement.create({
       data: {
