@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { HeaderBack } from "@/components/HeaderBack";
 import { FaixaVendoComo } from "@/components/FaixaVendoComo";
+import { BotaoDeTom } from "@/components/BotaoDeTom";
 import { Screen, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { useSessionPing } from "@/lib/session-ping";
@@ -75,6 +76,16 @@ export default function AppLayout() {
           headerShown: false,
           headerBackButtonDisplayMode: "minimal",
           headerLeft: () => <HeaderBack />,
+          /**
+           * O tom, no canto livre de toda tela com cabeçalho (092 T-6).
+           *
+           * Aqui, e não em cada tela, porque são cinquenta e cinco delas e a
+           * versão editada à mão esqueceria alguma. E como é **padrão** do
+           * layout, qualquer tela que já use o canto direito para uma ação
+           * própria continua com a dela: o que a tela define sobrepõe isto.
+           * Trocar de tom é raro; a ação da tela é o motivo de ela existir.
+           */
+          headerRight: () => <BotaoDeTom />,
         }}
       />
     </View>
