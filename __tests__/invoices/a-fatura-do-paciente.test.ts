@@ -19,6 +19,7 @@ const cobranca = lerCodigo("app", "api", "patient", "invoices", "[id]", "payment
 const webhook = lerCodigo("app", "api", "webhooks", "stripe", "route.ts");
 const regras = lerCodigo("lib", "patient-invoices.ts");
 const tela = lerCodigo("mobile", "app", "(app)", "(clinica)", "invoices.tsx");
+const middleware = lerCodigo("middleware.ts");
 
 describe("o que o paciente pode ver", () => {
   it("rascunho nunca — ninguém aprovou ainda", () => {
@@ -147,8 +148,20 @@ describe("marcar como paga", () => {
 
   it("e o reenvio da Stripe não conta duas vezes", () => {
     expect(regras).toMatch(/FOR UPDATE/);
-    expect(regras).toMatch(/if \(f\.financialEntryId\) return "ja_tratado"/);
     expect(regras).toMatch(/e\?\.code === "P2002"/);
+  });
+
+  it("**o que se repete é o pagamento, não a fatura**", () => {
+    /**
+     * A guarda era `if (f.financialEntryId) return "ja_tratado"`, e ela jogava
+     * fora dinheiro de verdade: depois de um parcial, o app oferece "pagar o
+     * resto", a Stripe cobra o cartão, e a função respondia "já tratei" sem
+     * registrar nada — a fatura ficava em £20 de £50 para sempre. Achado pelo
+     * QA da 093, cenário 5.4b, que é um estado que o app produz sozinho.
+     */
+    expect(regras).not.toMatch(/if \(f\.financialEntryId\) return/);
+    expect(regras).toMatch(/stripePaymentIntentId: args\.stripePaymentIntentId/);
+    expect(regras).toMatch(/if \(mesmoPagamento\) return "ja_tratado"/);
   });
 
   it("um parcial soma ao que já havia, e lança só o que entrou", () => {
@@ -178,6 +191,55 @@ describe("a tela", () => {
   it("e o PDF abre dentro do app", () => {
     const cru = ler("mobile", "app", "(app)", "(clinica)", "invoices.tsx");
     expect(cru).toMatch(/openFileInApp\(f\.openUrl\)/);
+  });
+
+  it("e o link assinado atravessa o middleware", () => {
+    /**
+     * A rota sabia conferir o `?t=` e nunca era alcançada: o middleware só
+     * abria exceção para `/api/files/`, e quem tocava em "Abrir PDF" via o
+     * JSON `session_expired`. Mesmo defeito que o QA de 25/09 achou nos
+     * documentos, repetido num caminho novo (QA da 093, falha 3.1).
+     */
+    expect(middleware).toMatch(/LINK_ASSINADO = \['\/api\/files\/', '\/api\/patient\/invoices\/'\]/);
+    expect(middleware).toMatch(/LINK_ASSINADO\.some\(\(p\) => pathname\.startsWith\(p\)\)/);
+  });
+
+  it("e a volta do 3DS2 tem para onde ir", () => {
+    // O banco britânico manda quase toda cobrança para a autenticação do
+    // cartão. Sem `returnURL` a página não sabe devolver a pessoa ao app.
+    //
+    // Leitura crua: `semComentarios` apaga tudo depois de `//`, e o `//` do
+    // esquema `bprclinic://` cai nessa regra — a asserção procuraria uma linha
+    // que o próprio helper acabou de cortar ao meio.
+    const cruDaTela = ler("mobile", "app", "(app)", "(clinica)", "invoices.tsx");
+    expect(cruDaTela).toMatch(/returnURL: "bprclinic:\/\/invoices"/);
+  });
+});
+
+describe("o plugin nativo", () => {
+  it("tem props, senão o Expo não avalia a config", () => {
+    // Como string simples, o plugin desestrutura `undefined` e derruba
+    // `expo config` — e com ele o build **e** o update (QA da 093).
+    const app = JSON.parse(ler("mobile", "app.json"));
+    const stripe = app.expo.plugins.find(
+      (p: any) => Array.isArray(p) && p[0] === "@stripe/stripe-react-native"
+    );
+    expect(stripe).toBeDefined();
+    expect(stripe[1]).toHaveProperty("merchantIdentifier");
+    expect(stripe[1]).toHaveProperty("enableGooglePay");
+  });
+
+  it("Google Pay ligado, Apple Pay esperando o merchant id", () => {
+    const app = JSON.parse(ler("mobile", "app.json"));
+    const stripe = app.expo.plugins.find(
+      (p: any) => Array.isArray(p) && p[0] === "@stripe/stripe-react-native"
+    );
+    // `enableGooglePay: false` faria o plugin **remover** o metadado do
+    // AndroidManifest: o botão não existiria nem depois do build.
+    expect(stripe[1].enableGooglePay).toBe(true);
+    // Vazio de propósito: com identificador o plugin escreve o entitlement da
+    // Apple, e o build passa a exigir um Merchant ID que ainda não existe.
+    expect(stripe[1].merchantIdentifier).toBe("");
   });
 
   it("tem porta no menu do perfil", () => {

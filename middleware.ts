@@ -344,8 +344,15 @@ export async function middleware(request: NextRequest) {
    *
    * Deixar passar aqui não abre nada: quem decide continua sendo a rota, que
    * confere a assinatura, o dono e o prazo. Sem `?t=` válido, ela responde 404.
+   *
+   * **A fatura entrou depois, e pelo mesmo motivo** (QA da 093, falha 3.1). A
+   * lista sabia assinar o link, a rota sabia conferir, e o paciente que tocava
+   * em "Abrir PDF" via o JSON `session_expired` — porque a exceção listava um
+   * caminho só. Foi o mesmo defeito do documento, repetido num caminho novo:
+   * quem acrescentar o próximo link assinado acrescenta o prefixo aqui.
    */
-  if (pathname.startsWith('/api/files/') && request.nextUrl.searchParams.get('t')) {
+  const LINK_ASSINADO = ['/api/files/', '/api/patient/invoices/'];
+  if (LINK_ASSINADO.some((p) => pathname.startsWith(p)) && request.nextUrl.searchParams.get('t')) {
     return NextResponse.next();
   }
 

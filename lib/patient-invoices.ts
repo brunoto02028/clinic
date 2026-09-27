@@ -163,7 +163,27 @@ export async function pagarFaturaComStripe(args: {
       // PAID e VOID são finais; DRAFT nunca chegou ao paciente. Qualquer um
       // deles aqui é reenvio, ou uma fatura que mudou embaixo do pagamento.
       if (!["SENT", "OVERDUE", "PARTIALLY_PAID"].includes(f.status)) return "ja_tratado" as const;
-      if (f.financialEntryId) return "ja_tratado" as const;
+
+      /**
+       * **O que se repete é o pagamento, não a fatura** (QA da 093, falha 5.4b).
+       *
+       * Aqui estava `if (f.financialEntryId) return "ja_tratado"`, e ele jogava
+       * fora dinheiro de verdade: depois de um pagamento parcial, o app continua
+       * oferecendo "Pagar o resto", a Stripe cobra o cartão, e esta função
+       * respondia "já tratei" sem registrar nada. A fatura ficava eternamente em
+       * £20 de £50 e os £30 não entravam no financeiro.
+       *
+       * A guarda certa é o **intent**: `FinancialEntry.stripePaymentIntentId` é
+       * `@unique`, então o banco recusa o segundo lançamento do mesmo pagamento
+       * — e é o reenvio da Stripe que isso precisa barrar. Esta leitura evita
+       * queimar a transação no caminho comum; o `catch` de P2002 lá embaixo
+       * segura a corrida.
+       */
+      const mesmoPagamento = await tx.financialEntry.findFirst({
+        where: { stripePaymentIntentId: args.stripePaymentIntentId },
+        select: { id: true },
+      });
+      if (mesmoPagamento) return "ja_tratado" as const;
 
       // Um pagamento parcial anterior continua contando: quem já tinha pago
       // metade e paga o resto termina com o total, não com a metade de agora.

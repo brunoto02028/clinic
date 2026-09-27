@@ -64,7 +64,7 @@ fatura de quem fechou o app no meio. Mesma regra da consulta.
 | T-3 | `GET /api/patient/invoices/[id]/pdf` — o PDF pela capability URL | T-2 | **feita** (27/09) |
 | T-4 | `POST /api/patient/invoices/[id]/payment-intent` — a cobrança nativa | T-1 | **feita** (27/09) |
 | T-5 | Webhook `payment_intent.succeeded` marca paga + lança no financeiro | T-4 | **feita** (27/09) |
-| T-6 | A tela no app: lista, PDF, PaymentSheet, porta no perfil | T-2..T-4 | **feita** (27/09) — **não chega ao telefone sem build** |
+| T-6 | A tela no app: lista, PDF, PaymentSheet, porta no perfil | T-2..T-4 | **feita** (27/09), QA reprovou e os 3 defeitos foram corrigidos — **não chega ao telefone sem build** |
 | T-7 | Apple Pay: merchant id no portal + no plugin | T-6 | **pendente** — precisa do Bruno |
 
 ## Suposições
@@ -84,3 +84,24 @@ fatura de quem fechou o app no meio. Mesma regra da consulta.
 2. **`STRIPE_WEBHOOK_SECRET`** e o endpoint cadastrado — a conta tem zero hoje.
    Sem ele o dinheiro entra e a fatura fica em aberto para sempre.
 3. **Build novo** do app, autorizado pelo Bruno.
+
+## O que o QA achou, e o que mudou (27/09)
+
+Reprovou, com razão. Três defeitos, dois graves:
+
+1. **O link do PDF não abria** — o `middleware.ts` só deixava passar `?t=` em
+   `/api/files/`, então a rota da fatura nunca rodava e o paciente via um JSON de
+   erro ao tocar em "Abrir PDF".
+2. **O segundo pagamento da mesma fatura era cobrado e não registrado** — a
+   guarda de idempotência estava presa à fatura em vez do intent. O app produz
+   esse estado sozinho: pagar metade, e depois o resto.
+3. **`mobile/app.json` derrubava `expo config`** — o plugin do Stripe entrou como
+   string simples e exige props. Sem isso não há build **nem** update, para o app
+   inteiro.
+
+Os três estão corrigidos, com teste. Detalhe e evidência em
+[qa/report-093.md](qa/report-093.md).
+
+**Uma lição que vale além desta atividade:** o defeito 1 é o mesmo que o QA de
+25/09 achou nos documentos, num caminho novo. A exceção do middleware virou uma
+lista justamente para que o próximo link assinado não repita.

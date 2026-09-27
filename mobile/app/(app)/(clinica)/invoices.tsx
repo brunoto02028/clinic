@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { openFileInApp } from "@/components/FileViewer";
-import { fetchInvoices, iniciarPagamento, type Invoice } from "@/api/invoices";
+import { fetchInvoices, iniciarPagamento, type Invoice, type InvoiceItem } from "@/api/invoices";
 import { ApiError } from "@/api/client";
 import { formatDate } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
@@ -86,8 +86,9 @@ function Faturas() {
       const init = await initPaymentSheet({
         merchantDisplayName: "Bruno Physical Rehabilitation",
         paymentIntentClientSecret: cobranca.clientSecret,
-        // O que o aparelho tiver. Sem `merchantIdentifier` configurado, o
-        // Apple Pay simplesmente não aparece e o cartão continua funcionando.
+        // O Google Pay está ligado no plugin e funciona no Android. O Apple
+        // Pay fica declarado aqui e **não aparece** enquanto o entitlement não
+        // existir — a folha cai no cartão, que é o comportamento certo.
         applePay: { merchantCountryCode: "GB" },
         googlePay: { merchantCountryCode: "GB", testEnv: cobranca.publishableKey.startsWith("pk_test_") },
         appearance: {
@@ -99,9 +100,25 @@ function Faturas() {
             secondaryText: t.colors.textSecondary,
           },
         },
-        // Sem isto a folha volta com "cancelado" quando a pessoa toca fora, e
-        // ela perde o que digitou por um toque em falso.
+        /**
+         * Nada de método que confirma depois (SEPA, Sofort e afins).
+         *
+         * O comentário que estava aqui dizia que isto era sobre tocar fora da
+         * folha — não é, e o QA da 093 pegou a explicação errada. O que o campo
+         * faz é aceitar, ou não, métodos cujo pagamento **só se confirma dias
+         * depois**. Para uma fatura de clínica isso seria dizer "pago" a quem
+         * ainda não pagou; o valor está certo, a razão é esta.
+         */
         allowsDelayedPaymentMethods: false,
+        /**
+         * Para onde o 3DS2 volta.
+         *
+         * O banco britânico manda quase toda cobrança para a autenticação do
+         * cartão, e ela abre uma página. Sem `returnURL` essa página não sabe
+         * como devolver a pessoa ao app, e o pagamento fica preso numa tela que
+         * não fecha. O esquema é o mesmo que o Checkout já usa.
+         */
+        returnURL: "bprclinic://invoices",
       });
       if (init.error) throw new Error(init.error.message);
 
@@ -206,7 +223,7 @@ function Faturas() {
           </Card>
         )}
 
-        {faturas.map((f) => {
+        {faturas.map((f: Invoice) => {
           const cor = corDoStatus(f.status, t);
           return (
             <Card key={f.id} testID={`invoice-${f.invoiceNumber}`}>
@@ -259,7 +276,7 @@ function Faturas() {
 
               {f.items.length > 0 && (
                 <View style={{ marginTop: 10, gap: 2 }}>
-                  {f.items.map((it, i) => (
+                  {f.items.map((it: InvoiceItem, i: number) => (
                     <Text key={i} variant="caption" color={t.colors.textSecondary}>
                       {it.quantity > 1 ? `${it.quantity}× ` : ""}
                       {it.description} — {dinheiro(it.total, f.currency, lang)}
@@ -311,8 +328,17 @@ export default function InvoicesScreen() {
   const chave = data?.stripePublishableKey;
 
   if (!chave) return <Faturas />;
+  /**
+   * Sem `merchantIdentifier` enquanto o Apple Pay não estiver ligado.
+   *
+   * Passá-lo aqui não cria nada: o que liga o Apple Pay é o entitlement, que o
+   * plugin só escreve com o identificador configurado em `app.json` — e ele
+   * está vazio de propósito, porque o Merchant ID ainda não existe no portal da
+   * Apple (094 B-5). Declarar um identificador que o app não tem era o código
+   * dizendo uma coisa e o build outra, e o QA notou a contradição.
+   */
   return (
-    <StripeProvider publishableKey={chave} merchantIdentifier="merchant.com.bpr.clinic">
+    <StripeProvider publishableKey={chave}>
       <Faturas />
     </StripeProvider>
   );

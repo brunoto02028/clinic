@@ -87,7 +87,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [090](090-pronto-para-a-apple/) | Prontidão para a App Store (auditoria) | 🟡 **sem `plan.md`** — é auditoria: `prontidao.md`, `categoria-e-classificacao.md`, `exame-para-um-filho.md`. Dos 5 bloqueios, o 1º (apagar conta) caiu |
 | [091](091-exame-para-quem-voce-cuida/) | Exame para quem você cuida, e onde ele é feito (paciente gerido, consentimento em duas vozes) | 🟡 **em produção** desde 27/09, mas o QA reprovou 4 cenários e **1 segue aberto** — ver abaixo |
 | [092](092-a-pressao-a-chamada-e-os-ajustes/) | A pressão, a chamada, e os ajustes do app | 🟡 T-1 e T-4 concluídas; T-2/T-3/T-6 esperam re-medição; T-5 não existe; T-7 bloqueada (sem Stripe em prod) |
-| [093](093-a-fatura-do-paciente/) | A fatura do paciente (ver, PDF e pagar no app) | 🟡 T-1..T-6 feitas (27/09), em QA. **Não chega ao telefone sem build** — módulo nativo do Stripe. T-7 (Apple Pay) espera o merchant id |
+| [093](093-a-fatura-do-paciente/) | A fatura do paciente (ver, PDF e pagar no app) | 🟢 T-1..T-6 feitas (27/09); QA reprovou 3 defeitos e os 3 foram corrigidos. **Não chega ao telefone sem build** — módulo nativo do Stripe. T-7 (Apple Pay) espera o merchant id |
 | [094](094-o-que-depende-do-bruno/) | O que depende do Bruno (registro de bloqueios) | 🟠 9 itens abertos: chave live do Stripe, webhook, logo no painel, build, Apple Pay, DPA da Daily, a 2ª cópia dos termos, sandbox LML, Connect |
 | [095](095-ajustes-para-publicar/) | Os ajustes para publicar (8 pedidos do Bruno, 27/09) | 🔵 planejada, **aguardando aprovação** |
 

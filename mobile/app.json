@@ -85,7 +85,13 @@
         }
       ],
       "@config-plugins/react-native-webrtc",
-      "@stripe/stripe-react-native"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "extra": {
       "router": {},
