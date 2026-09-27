@@ -42,6 +42,10 @@ const UI = {
     busy: (name: string) => `${name} is being measured on this device right now.`,
     failed: "We could not open the measurement.",
     cancelled: "Measurement cancelled.",
+    fetchNow: "I have measured",
+    fetching: "Fetching…",
+    fetchedNone: "Nothing from the device yet. Give it a moment and try again.",
+    fetchedElsewhere: "A reading arrived but matched no window — it is in the inbox.",
   },
   "pt-BR": {
     measure: "Medir pressão",
@@ -60,6 +64,10 @@ const UI = {
     busy: (name: string) => `${name} está sendo medido neste aparelho agora.`,
     failed: "Não foi possível abrir a medição.",
     cancelled: "Medição cancelada.",
+    fetchNow: "Já medi",
+    fetching: "Buscando…",
+    fetchedNone: "Nada veio do aparelho ainda. Espere um instante e tente de novo.",
+    fetchedElsewhere: "Chegou uma leitura, mas fora desta janela — está na caixa de entrada.",
   },
 } as const;
 
@@ -82,6 +90,9 @@ export default function ClinicMeasurementButton({
   const [phase, setPhase] = useState<Phase>("idle");
   const [session, setSession] = useState<any | null>(null);
   const [reading, setReading] = useState<any | null>(null);
+  // "Já medi": puxa da Withings em vez de esperar o empurrão (092 T-2).
+  const [buscando, setBuscando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -150,6 +161,40 @@ export default function ClinicMeasurementButton({
     [onReading, stopPolling, ui.cancelled]
   );
 
+  /**
+   * "Já medi" — puxa da Withings agora, em vez de esperar o webhook (092 T-2).
+   *
+   * Três desfechos, e cada um precisa de uma frase diferente:
+   *
+   * - a leitura casou esta janela → é o caminho feliz, mesma tela de sempre;
+   * - **veio leitura, mas fora da janela** → foi para a caixa de entrada, e a
+   *   pessoa precisa saber onde procurar em vez de achar que sumiu;
+   * - não veio nada → o aparelho ainda não subiu; tentar de novo em instantes.
+   */
+  const buscarAgora = async () => {
+    if (!session?.id) return;
+    setBuscando(true);
+    setAviso(null);
+    try {
+      const res = await fetch(`/api/admin/measurement-sessions/${session.id}/fetch`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAviso((isPt ? data?.errorPt : data?.error) || ui.failed);
+      } else if (data?.found && data?.reading) {
+        stopPolling();
+        setReading(data.reading);
+        setPhase("done");
+        onReading?.();
+      } else {
+        setAviso(data?.lidas > 0 ? ui.fetchedElsewhere : ui.fetchedNone);
+      }
+    } catch {
+      setAviso(ui.failed);
+    } finally {
+      setBuscando(false);
+    }
+  };
+
   const open = async (context: "PRE_SESSION" | "POST_SESSION" | "OTHER") => {
     setMessage(null);
     setReading(null);
@@ -201,9 +246,19 @@ export default function ClinicMeasurementButton({
         {device.label && (
           <span className="text-xs text-muted-foreground">{ui.onDevice} {device.label}</span>
         )}
+        {/* "Já medi — busca agora" (092 T-2).
+            Até aqui esta tela **só escutava**: ficava consultando até a
+            Withings resolver nos avisar. Se a notificação não vem — assinatura
+            vencida, aparelho que só sobe horas depois, rede do consultório — a
+            espera nunca termina e ninguém descobre que não veio.
+            Quem sabe que a medição aconteceu é quem acabou de medir. */}
+        <Button size="sm" variant="outline" className="h-7" disabled={buscando} onClick={buscarAgora}>
+          {buscando ? ui.fetching : ui.fetchNow}
+        </Button>
         <Button size="sm" variant="ghost" className="h-7" onClick={cancel}>
           <X className="h-3.5 w-3.5 mr-1" />{ui.cancel}
         </Button>
+        {aviso && <span className="text-xs text-muted-foreground">{aviso}</span>}
       </div>
     );
   }

@@ -64,9 +64,32 @@ export async function capability(): Promise<BiometricCapability> {
   }
 }
 
+/**
+ * O prompt do sistema está aberto agora?
+ *
+ * O Bruno, 27/09: *"parece que ele entra em duas telas... vai uma vez, aí vai
+ * duas vezes"* — o app gaguejando ao abrir.
+ *
+ * A causa é uma interação entre duas coisas que, sozinhas, estão certas. A
+ * folha de Face ID do iOS **põe o app em `inactive`**, e a cortina de
+ * privacidade (`PrivacyCover`) existe justamente para cobrir a tela em
+ * `inactive` — ela é o que impede o print do multitarefa de mostrar
+ * prontuário. Então, durante o nosso próprio prompt, a cortina subia por cima
+ * da tela de tranca e descia logo depois: a "segunda tela".
+ *
+ * `inactive` causado por **nós** não é troca de app. Esta bandeira é como a
+ * cortina distingue as duas coisas.
+ */
+let promptAberto = false;
+
+export function biometriaEmAndamento(): boolean {
+  return promptAberto;
+}
+
 /** Pede o rosto/digital. `true` só quando o sistema confirmou. */
 export async function prompt(message: { en: string; pt: string }, lang: string): Promise<boolean> {
   if (isWeb) return false;
+  promptAberto = true;
   try {
     const res = await LocalAuthentication.authenticateAsync({
       promptMessage: lang === "pt" ? message.pt : message.en,
@@ -78,6 +101,18 @@ export async function prompt(message: { en: string; pt: string }, lang: string):
     return res.success;
   } catch {
     return false;
+  } finally {
+    /**
+     * Um quadro de folga antes de baixar a bandeira.
+     *
+     * O `active` do iOS chega **depois** de a promessa resolver, e baixá-la
+     * aqui na hora faria a cortina ver o `inactive` residual e cobrir a tela
+     * por um quadro — o mesmo defeito, menor. O atraso é o tempo de o sistema
+     * terminar a transição.
+     */
+    setTimeout(() => {
+      promptAberto = false;
+    }, 600);
   }
 }
 

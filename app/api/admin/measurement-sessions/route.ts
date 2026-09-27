@@ -56,6 +56,18 @@ export async function GET(req: NextRequest) {
       delivery: deliveryState(device),
       daysSilent: daysSilent(device),
       silent: isSilent(device, limite),
+      /**
+       * Os três dados que respondem "por que nada chega?" (092 T-3).
+       *
+       * A tela mostrava o aviso âmbar só quando o estado era `silent` ou
+       * `partial`. Com `receiving` **e** com `unchecked` ela não dizia nada —
+       * ou seja, "está tudo certo" e "não fazemos ideia" eram visualmente
+       * idênticos. O Bruno passou semanas sem uma leitura sequer com a página
+       * dizendo apenas "aparelho conectado".
+       */
+      lastReadingAt: device.lastReadingAt ?? null,
+      checkedAt: device.notifyCheckedAt ?? null,
+      confirmedAppli: device.notifyConfirmedAppli ?? [],
     },
     open,
   });

@@ -295,16 +295,18 @@ export function CalendarioDeAgenda({ selecionada, onEscolher, kind }: Calendario
                     dia existia, nunca que havia vaga nele. */}
                 <View
                   style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: 3,
+                    // 7px, nao 5: a marca de 5 somia no escuro, e ela e a
+                    // unica coisa na celula que diz se ha vaga.
+                    width: 7,
+                    height: 7,
+                    borderRadius: 4,
                     backgroundColor: passado
                       ? "transparent"
                       : fechado
                         ? t.colors.borderSubtle
                         : livres <= 2
-                          ? t.colors.warn
-                          : t.colors.ok,
+                          ? t.colors.agendaQuaseCheio
+                          : t.colors.agendaLivre,
                   }}
                 />
               </Pressable>
@@ -317,12 +319,12 @@ export function CalendarioDeAgenda({ selecionada, onEscolher, kind }: Calendario
       {!agenda.isLoading && !agenda.isError && (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" }}>
           {[
-            { cor: t.colors.ok, texto: { en: "Free", pt: "Livre" } },
-            { cor: t.colors.warn, texto: { en: "Almost full", pt: "Quase cheio" } },
+            { cor: t.colors.agendaLivre, texto: { en: "Free", pt: "Livre" } },
+            { cor: t.colors.agendaQuaseCheio, texto: { en: "Almost full", pt: "Quase cheio" } },
             { cor: t.colors.borderSubtle, texto: { en: "Closed", pt: "Fechado" } },
           ].map((l) => (
             <View key={l.cor} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: l.cor }} />
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: l.cor }} />
               <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10.5 }}>
                 {tr(lang, l.texto)}
               </Text>

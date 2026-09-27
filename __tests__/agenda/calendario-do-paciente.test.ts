@@ -88,8 +88,17 @@ describe("os três modos, e qual deles abre", () => {
 describe("o dia diz se tem vaga, que é o que a tira não dizia", () => {
   it("cada dia tem marca de livre, quase cheio ou fechado", () => {
     expect(cal).toMatch(/livres <= 2/);
-    expect(cal).toMatch(/t\.colors\.warn/);
-    expect(cal).toMatch(/t\.colors\.ok/);
+    // Tokens próprios desde 27/09/2026: `ok` e `warn` são cores de **texto**,
+    // ajustadas para 4,5:1 sobre fundo suave, e por isso sumiam como ponto de
+    // poucos pixels — o Bruno viu no escuro. A marca não carrega texto; o que
+    // ela precisa é ser vista.
+    expect(cal).toMatch(/t\.colors\.agendaQuaseCheio/);
+    expect(cal).toMatch(/t\.colors\.agendaLivre/);
+  });
+
+  it("e a marca é grande o bastante para ser vista", () => {
+    // 5px sumia no escuro, e ela é a única coisa na célula que diz se há vaga.
+    expect(cal).toMatch(/width: 7,\s*\n\s*height: 7,/);
   });
 
   it("e a legenda nomeia as três cores", () => {
