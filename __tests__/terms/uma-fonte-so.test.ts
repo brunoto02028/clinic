@@ -39,13 +39,19 @@ describe("o conteúdo está completo e nas duas línguas", () => {
     ]);
   });
 
-  it("são vinte e sete itens, numerados sem buraco", () => {
+  it("são vinte e oito itens, numerados sem buraco", () => {
     // O app mostrava nove destes. Foram vinte e seis até a 091 T-6, quando a
     // idade saiu de dentro do item sobre coleta e virou item próprio — que é
     // onde uma regra sobre quem pode fazer exame precisa estar para ser lida.
+    //
+    // Vinte e oito desde 27/09/2026: a cláusula de quem você cuida. Ela entrou
+    // como item 7, no meio da primeira seção, e a numeração corre contínua pelas
+    // quatro — então empurrou os vinte seguintes. É o que a linha de baixo
+    // verifica: se alguém acrescentar um item no meio e esquecer de renumerar,
+    // aparece número repetido e este teste cai.
     const ns = SECOES_DOS_TERMOS.flatMap((s) => s.itens.map((i) => i.n)).sort((a, b) => a - b);
     expect(ns).toEqual(Array.from({ length: ns.length }, (_, i) => i + 1));
-    expect(totalDeItens()).toBe(27);
+    expect(totalDeItens()).toBe(28);
   });
 
   it("todo item tem título e corpo nas duas línguas, e nada vazio", () => {

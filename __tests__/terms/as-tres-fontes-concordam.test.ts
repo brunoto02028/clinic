@@ -122,8 +122,15 @@ describe("e a versão subiu nos dois textos que a pessoa aceita", () => {
   });
 
   it("os termos", () => {
+    // O número está escrito aqui de propósito, e este é o único teste da casa
+    // que fixa um literal: a versão é o que fica gravado no ConsentLog de cada
+    // aceite, então mudá-la reescreve o que dizemos que a pessoa leu. Quem mexe
+    // na constante cai neste teste e tem de vir aqui confirmar que quis.
+    //
+    // 1.3 em 27/09/2026: a cláusula de quem você cuida, e a frase dizendo que
+    // a consulta por vídeo não é gravada.
     expect(fs.readFileSync(path.join(raiz, "lib", "terms-version.ts"), "utf8")).toMatch(
-      /TERMS_VERSION = "1\.2"/
+      /TERMS_VERSION = "1\.3"/
     );
   });
 

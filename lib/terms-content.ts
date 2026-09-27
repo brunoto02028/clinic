@@ -46,7 +46,26 @@ export interface SecaoDosTermos {
  * O que a versão responde é *o que* cada pessoa leu. Pedir novo aceite a quem
  * já aceitou continua sendo decisão de produto, do Bruno, e não minha.
  */
-export const TERMS_CONTENT_VERSION = "1.2";
+/**
+ * 1.3 em 27/09/2026: a cláusula de quem você cuida (consulta e tratamento, não
+ * só exame) e a frase dizendo que a **consulta por vídeo não é gravada**.
+ *
+ * A segunda é correção de uma confusão que nós mesmos criávamos: o item de
+ * gravação fala do áudio do atendimento presencial, e desde hoje existem
+ * consultas por vídeo — quem lesse aquilo teria motivo para achar que a
+ * videochamada dele é gravada. Não é, e agora está escrito.
+ *
+ * **Subir a versão não pede aceite de novo.** Vale dizer porque é fácil supor o
+ * contrário: o portão do paciente olha `consentAcceptedAt`, que é um sim/não —
+ * ninguém compara a versão aceita com a atual. O que a versão responde é *o que*
+ * cada um leu, e é o que vai para o `ConsentLog`.
+ *
+ * Isso deixa uma decisão de produto aberta, e ela não é minha: quem aceitou a
+ * 1.2 nunca vai ver a cláusula nova sem alguém pedir. Aqui pesa mais que nas
+ * versões anteriores, porque a cláusula trata de consentir **pelo filho de
+ * alguém**.
+ */
+export const TERMS_CONTENT_VERSION = "1.3";
 
 export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
   {
@@ -97,12 +116,45 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         n: 6,
         titulo: { en: "Consultation Recording", pt: "Gravação de Consultas" },
         corpo: {
-          en: "With your specific consent, your therapist may audio-record all or part of a consultation. Recordings are used solely to support an accurate, detailed clinical record after your appointment — for example, to capture information discussed during the session for your patient file. Recordings are transcribed by an AI transcription service (AssemblyAI); the transcript is added to your clinical record and the original audio is deleted once transcription is complete (see our Privacy Policy for retention details). You may decline to be recorded for any individual session without affecting your care, and you may ask your therapist to stop recording at any point during a session.",
-          pt: "Com o seu consentimento específico, o terapeuta pode gravar em áudio toda ou parte de uma consulta. As gravações são usadas exclusivamente para apoiar um registro clínico detalhado e preciso após o seu atendimento — por exemplo, para capturar informações discutidas durante a sessão que serão adicionadas à sua ficha. As gravações são transcritas por um serviço de transcrição com IA (AssemblyAI); a transcrição é adicionada ao seu prontuário clínico e o áudio original é excluído assim que a transcrição é concluída (veja detalhes de retenção na nossa Política de Privacidade). Você pode recusar ser gravado em qualquer sessão específica sem que isso afete o seu atendimento, e pode pedir ao terapeuta para parar de gravar a qualquer momento durante a sessão.",
+          en: "With your specific consent, your therapist may audio-record all or part of a consultation. Recordings are used solely to support an accurate, detailed clinical record after your appointment — for example, to capture information discussed during the session for your patient file. Recordings are transcribed by an AI transcription service (AssemblyAI); the transcript is added to your clinical record and the original audio is deleted once transcription is complete (see our Privacy Policy for retention details). You may decline to be recorded for any individual session without affecting your care, and you may ask your therapist to stop recording at any point during a session. **Video consultations are not recorded.** The clause above is about audio recorded during an appointment for your clinical notes; a video consultation carries no recording of any kind, neither picture nor sound, and our video platform is configured so that recording cannot be started.",
+          pt: "Com o seu consentimento específico, o terapeuta pode gravar em áudio toda ou parte de uma consulta. As gravações são usadas exclusivamente para apoiar um registro clínico detalhado e preciso após o seu atendimento — por exemplo, para capturar informações discutidas durante a sessão que serão adicionadas à sua ficha. As gravações são transcritas por um serviço de transcrição com IA (AssemblyAI); a transcrição é adicionada ao seu prontuário clínico e o áudio original é excluído assim que a transcrição é concluída (veja detalhes de retenção na nossa Política de Privacidade). Você pode recusar ser gravado em qualquer sessão específica sem que isso afete o seu atendimento, e pode pedir ao terapeuta para parar de gravar a qualquer momento durante a sessão. **A consulta por vídeo não é gravada.** O parágrafo acima trata do áudio gravado durante um atendimento para compor o seu prontuário; a consulta por vídeo não tem gravação de nenhum tipo, nem imagem nem som, e a nossa plataforma de vídeo está configurada de modo que a gravação não possa ser iniciada.",
         },
       },
       {
         n: 7,
+        titulo: {
+          en: "Someone you look after, on your account",
+          pt: "Quem você cuida, na sua conta",
+        },
+        corpo: {
+          en:
+            "You may add a person you are responsible for — most often a child — to your account, and book " +
+            "their appointments and order their tests from it. That person has no account of their own: they " +
+            "do not sign in, and nothing reaches a phone of theirs. What that means in practice: (a) you give " +
+            "consent for their treatment, and you confirm you hold parental responsibility or legal authority " +
+            "to do so; (b) anyone under 18 attends with you, in person or on the video call, and the therapist " +
+            "may end a session where that is not the case; (c) the appointment, the clinical record and any " +
+            "test result are in their name, and you can see them — which means their clinical information is " +
+            "visible to you for as long as you are responsible for them; (d) when they turn 16 they may hold " +
+            "their own account, and you should ask us to separate the records; (e) you may remove them from " +
+            "your account at any time, and their clinical record is kept under the retention period above, " +
+            "because it is theirs and not yours to delete.",
+          pt:
+            "Você pode acrescentar à sua conta uma pessoa por quem você responde — em geral um filho — e a " +
+            "partir dela marcar as consultas e pedir os exames dessa pessoa. Ela não tem conta própria: não " +
+            "faz login, e nada chega a um telefone dela. Na prática: (a) quem consente pelo tratamento é " +
+            "você, e você confirma ter responsabilidade parental ou autoridade legal para isso; (b) quem tem " +
+            "menos de 18 anos comparece acompanhado por você, presencialmente ou na videochamada, e o " +
+            "terapeuta pode encerrar uma sessão em que isso não aconteça; (c) a consulta, o prontuário e " +
+            "qualquer resultado de exame saem no nome dela, e você os vê — ou seja, a informação clínica " +
+            "dela fica visível para você enquanto você responder por ela; (d) ao completar 16 anos ela pode " +
+            "ter conta própria, e cabe a você nos pedir a separação dos registros; (e) você pode removê-la " +
+            "da sua conta quando quiser, e o prontuário dela é mantido pelo prazo de retenção acima, porque " +
+            "ele é dela e não seu para apagar.",
+        },
+      },
+      {
+        n: 8,
         titulo: { en: "Accuracy of Information", pt: "Precisão das Informações" },
         corpo: {
           en: "You agree to provide accurate, complete, and up-to-date medical and personal information. Inaccurate information may affect the safety and effectiveness of your treatment. You must inform us of any changes to your medical history, medications, or health conditions.",
@@ -116,7 +168,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
     titulo: { en: "Data Protection & Privacy (UK GDPR)", pt: "Proteção de Dados e Privacidade (UK GDPR)" },
     itens: [
       {
-        n: 8,
+        n: 9,
         titulo: { en: "Data Controller", pt: "Controlador de Dados" },
         corpo: {
           en: "Bruno Physical Rehabilitation Ltd is the data controller for your personal data, registered in England. We process your data in accordance with the UK General Data Protection Regulation (UK GDPR) and the Data Protection Act 2018.",
@@ -124,7 +176,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 9,
+        n: 10,
         titulo: { en: "Lawful Basis for Processing", pt: "Base Legal para Processamento" },
         corpo: {
           en: "We process your personal and health data under the following lawful bases: (a) Consent — you explicitly consent to the processing of your health data; (b) Legitimate Interest — to provide and improve our clinical services; (c) Legal Obligation — to comply with healthcare regulations and record-keeping requirements; (d) Vital Interests — in emergencies where your health may be at risk.",
@@ -132,7 +184,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 10,
+        n: 11,
         titulo: { en: "Data We Collect", pt: "Dados que Coletamos" },
         corpo: {
           en: "We collect and process: personal identification data (name, email, phone); medical screening data (health history, medications, allergies, red flags); clinical assessment data (body images, foot scans, posture scores); treatment records (diagnoses, protocols, exercise prescriptions); uploaded medical documents; blood pressure readings; appointment records; consultation audio recordings (with consent) and their transcripts; and payment information.",
@@ -140,7 +192,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 11,
+        n: 12,
         titulo: { en: "Use of AI & Automated Processing", pt: "Uso de IA e Processamento Automatizado" },
         corpo: {
           en: "The Platform uses artificial intelligence (including Google Gemini and MediaPipe) for: analysing body posture images, generating clinical assessments, creating treatment recommendations, and processing medical documents. You have the right not to be subject to a decision based solely on automated processing. All AI outputs are reviewed by a qualified therapist before any clinical decision is made.",
@@ -148,7 +200,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 12,
+        n: 13,
         titulo: { en: "Body Images & Privacy", pt: "Imagens Corporais e Privacidade" },
         corpo: {
           en: "Body assessment photos are stored securely with restricted access. Faces are automatically blurred in captured images to protect your identity. Images are used solely for clinical posture analysis and are accessible only to your treating therapist. You may request deletion of your images at any time.",
@@ -156,7 +208,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 13,
+        n: 14,
         titulo: { en: "Data Retention", pt: "Retenção de Dados" },
         corpo: {
           en: "Clinical records are retained for a minimum of 8 years from the date of last treatment (or until age 25 for children) in accordance with the Chartered Society of Therapy (CSP) guidelines and NHS records management code of practice. Consultation audio recordings are transcribed and then deleted; the transcript is retained together with your clinical record. You may request deletion of non-clinical data at any time.",
@@ -164,7 +216,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 14,
+        n: 15,
         titulo: { en: "Your Rights Under UK GDPR", pt: "Seus Direitos sob o UK GDPR" },
         corpo: {
           en: "You have the right to: (a) Access your personal data; (b) Rectification of inaccurate data; (c) Erasure (\"right to be forgotten\") where applicable; (d) Restrict processing; (e) Data portability; (f) Object to processing; (g) Withdraw consent at any time; (h) Complain to the Information Commissioner's Office (ICO) at ico.org.uk.",
@@ -172,7 +224,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 15,
+        n: 16,
         titulo: { en: "Data Security", pt: "Segurança dos Dados" },
         corpo: {
           en: "We implement appropriate technical and organisational measures to protect your data, including: encrypted data transmission (TLS/SSL), secure server infrastructure, role-based access controls, regular security reviews, and staff data protection training.",
@@ -180,7 +232,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 16,
+        n: 17,
         titulo: { en: "Third-Party Data Sharing", pt: "Compartilhamento de Dados com Terceiros" },
         corpo: {
           en: "We may share your data with: (a) your GP or other healthcare providers (with your explicit consent); (b) payment processors (Stripe) for transaction processing; (c) AI service providers (Google) for clinical analysis — anonymised where possible; (d) regulatory bodies if required by law. We do not sell your data to third parties.",
@@ -194,7 +246,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
     titulo: { en: "Laboratory Tests", pt: "Exames de Laboratório" },
     itens: [
       {
-        n: 17,
+        n: 18,
         titulo: { en: "Access, not analysis", pt: "Acesso, não análise" },
         corpo: {
           en: "We give you access to private laboratory tests: we take your order, take the payment and arrange for the kit to reach you. We are not a laboratory, we do not analyse samples and we do not issue diagnoses.",
@@ -202,7 +254,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 18,
+        n: 19,
         titulo: { en: "The laboratory is responsible for the analysis", pt: "A análise é responsabilidade do laboratório" },
         corpo: {
           en: "London Medical Laboratory, an accredited UK laboratory, performs the analysis. Its method, accreditation, quality control and the result itself are its responsibility, not ours. A complaint about the analysis is passed to them.",
@@ -210,7 +262,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 19,
+        n: 20,
         titulo: { en: "The result is yours", pt: "O resultado é seu" },
         corpo: {
           en: "Results go to you, in the app, as soon as the laboratory releases them. Nobody at the clinic reads a result before you do, and ordering a test does not create a clinical relationship with us or make you a patient of the clinic.",
@@ -218,7 +270,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 20,
+        n: 21,
         titulo: { en: "Sharing it is your decision", pt: "Compartilhar é sua decisão" },
         corpo: {
           en: "You choose who sees your result — your GP, a consultant, a therapist here, or nobody. We do not send it to anyone on your behalf, and we do not interpret it for you.",
@@ -226,7 +278,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 21,
+        n: 22,
         titulo: { en: "Collecting the sample is yours to do", pt: "A coleta da amostra é sua" },
         corpo: {
           en: "Follow the instructions in the kit and post the sample promptly. A sample collected incorrectly or posted late can invalidate the result, and the laboratory may require a new one.",
@@ -239,7 +291,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         // são para maiores de 16 anos", uma regra geral que nunca foi verdade:
         // `lib/lab-catalog.ts` marca `notUnder16` em dez dos vinte e dois
         // exames, e só neles.
-        n: 22,
+        n: 23,
         titulo: { en: "Age, and ordering for someone you look after", pt: "Idade, e pedir por quem você cuida" },
         corpo: {
           en: "Most tests have no age limit. Some — the hormone and sexual-health ones — are from 16, and each test page says so before you pay. Anyone under 18 is ordered for, and consented for, by whoever is responsible for them: you add that person to your account, the test is issued in their name, and the result comes to you. Holding an account here is for people aged 16 or over.",
@@ -247,7 +299,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 23,
+        n: 24,
         titulo: { en: "Refunds", pt: "Reembolso" },
         corpo: {
           en: "Until the kit reaches you, we refund in full. Once it has reached you, we cannot: the cost has already been incurred with the laboratory. If a kit never arrives, tell us and we will replace it or refund you. None of this is an emergency service — if you feel unwell, do not wait for a result.",
@@ -261,7 +313,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
     titulo: { en: "Limitation of Liability & General Terms", pt: "Limitação de Responsabilidade e Termos Gerais" },
     itens: [
       {
-        n: 24,
+        n: 25,
         titulo: { en: "Limitation of Liability", pt: "Limitação de Responsabilidade" },
         corpo: {
           en: "To the fullest extent permitted by law: the Platform is provided \"as is\"; we are not liable for any indirect, incidental, or consequential damages arising from the use of the Platform; our total liability shall not exceed the fees paid by you in the 12 months preceding the claim. Nothing in these terms excludes liability for death or personal injury caused by negligence, fraud, or any other liability that cannot be excluded by law.",
@@ -269,7 +321,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 25,
+        n: 26,
         titulo: { en: "Payments & Cancellations", pt: "Pagamentos e Cancelamentos" },
         corpo: {
           en: "Service packages and appointments are subject to our cancellation policy. Refunds are processed in accordance with the Consumer Rights Act 2015. You have 14 days to cancel a service package from the date of purchase if no services have been used (cooling-off period under the Consumer Contracts Regulations 2013).",
@@ -277,7 +329,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 26,
+        n: 27,
         titulo: { en: "Governing Law", pt: "Legislação Aplicável" },
         corpo: {
           en: "These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.",
@@ -285,7 +337,7 @@ export const SECOES_DOS_TERMOS: SecaoDosTermos[] = [
         },
       },
       {
-        n: 27,
+        n: 28,
         titulo: { en: "Contact", pt: "Contato" },
         corpo: {
           en: "For data protection queries or to exercise your rights, contact Bruno Physical Rehabilitation via WhatsApp or the enquiry form at bpr.clinic. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk.",
