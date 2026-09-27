@@ -15,8 +15,9 @@ gravava um `videoRoomUrl` com id sorteado **no navegador**, e apontava para
 
 - `DAILY_API_KEY` está no `.env` local e **funciona** (domínio `bpr`, conferido).
 - `VIDEO_CALLS_ENABLED=true` foi ligado **só localmente**, para este QA.
-- **Em produção as duas faltam**, de propósito: lá a rota responde 503 e a tela
-  diz que a chamada ainda não está disponível.
+- **Em produção as duas já estão** (Coolify, 27/09): a chamada por vídeo está
+  ligada lá. Esta linha dizia o contrário até a T-8 — antes disso a rota
+  respondia 503 de propósito, enquanto a chave não existia em prod.
 - O app não roda aqui: as telas dependem de módulos nativos novos
   (`@daily-co/react-native-daily-js`) e de um build que ainda não existe.
 
@@ -121,3 +122,52 @@ A.1 é a foto que o Bruno mandou. A.2 é a armadilha do conserto: depois de
 `setColorScheme("dark")`, o próprio `getColorScheme()` responde `"dark"` — ler
 antes de devolver o controle prenderia a pessoa no tom imposto. **Aparelho, não
 executável aqui.**
+
+---
+
+## T-8 — O terapeuta chama o paciente, e a agenda mostra o vídeo
+
+`POST /api/appointments/<id>/video/call`, o botão em `/admin/video-consultations`
+e o selo + os dois botões em `/admin/appointments`.
+
+| # | passos | esperado |
+|---|---|---|
+| 8.1 | terapeuta da consulta chama, dentro da janela | 200 `{chamado:true, aparelhos:N}` e o push chega ao paciente |
+| 8.2 | o mesmo, com o paciente **sem aparelho** | 200, `aparelhos: 0`, e a tela diz "ninguém para chamar" — não "chamado" |
+| 8.3 | chamar **onze** minutos antes | 409 `too_early`, com a frase dizendo a partir de quando |
+| 8.4 | chamar depois de a consulta fechar | 409 `too_late` |
+| 8.5 | chamar uma consulta **presencial** | 409 `not_video` |
+| 8.6 | chamar uma consulta **cancelada** | 409 `not_scheduled` |
+| 8.7 | outro terapeuta chama a consulta que não é dele | **404**, não 403 |
+| 8.8 | o **paciente** chama (token do app) | 404 — o paciente não faz o telefone da clínica tocar |
+| 8.9 | admin sem ser o terapeuta da consulta | 404 |
+| 8.10 | a consulta é de um **menor gerido** | o push chega **ao responsável**, com o nome da criança no corpo |
+| 8.11 | `/admin/appointments`, consulta em modo vídeo | selo **"Por vídeo"** na linha, e ícone na célula do mês |
+| 8.12 | a mesma linha | botões **Entrar** e **Chamar paciente**, antes dos outros |
+| 8.13 | consulta cancelada / no-show / concluída, em modo vídeo | os dois botões **não** aparecem |
+| 8.14 | consulta presencial | nenhum selo, nenhum botão de vídeo |
+| 8.15 | **Entrar** | abre `/video-room/<id da consulta>` em aba nova, e a sala carrega |
+
+**A que mais importa:** 8.2 e 8.7. Dizer "chamado" quando ninguém foi chamado
+faria o terapeuta esperar dez minutos por alguém que não sabe da consulta; e
+"existe, mas não é sua" conta a um estranho que aquela consulta existe.
+
+**8.1–8.9, 8.11–8.15 são executáveis aqui** (API por curl, tela por Playwright).
+8.10 depende de aparelho com o app — **não executável**, verificar por código.
+
+## T-9 — Os termos
+
+| # | passos | esperado |
+|---|---|---|
+| 9.1 | `GET /api/terms` | `version: "1.3"`, **28** itens, sem buraco na numeração |
+| 9.2 | `/terms` no navegador, EN e PT | a cláusula **"Someone you look after"** / "Quem você cuida" aparece inteira |
+| 9.3 | o item de gravação | diz, nas duas línguas, que a **consulta por vídeo não é gravada** |
+| 9.4 | aceitar os termos | `ConsentLog` grava `termsVersion: "1.3"` |
+| 9.5 | quem aceitou a 1.2 | **continua dentro** — subir a versão não tranca ninguém |
+| 9.6 | a tela de consentimento do app | lê do mesmo arquivo; nenhum texto de termo escrito lá dentro |
+
+**9.5 é o que não pode quebrar:** o portão é `consentAcceptedAt`, e se subir a
+versão passasse a barrar, os pacientes de produção perderiam o acesso.
+
+**Nota de produto, não de QA:** quem aceitou a 1.2 nunca verá a cláusula nova
+sem alguém pedir. Decisão do Bruno, registrada em `lib/terms-content.ts`.

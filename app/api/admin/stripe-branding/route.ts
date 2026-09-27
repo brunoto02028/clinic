@@ -5,9 +5,32 @@ import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { getSuperadminActor } from '@/lib/tenant-access';
 
-// GET: fetch current Stripe branding settings
-// Reads/writes the platform's own Stripe account profile (shown on BPR's
-// receipts and Checkout) — SUPERADMIN only (activity 52, T-2).
+/**
+ * O que o Stripe tem de marca na conta da BPR — **só leitura**.
+ *
+ * ## O POST saiu daqui, porque o Stripe o recusa
+ *
+ * Esta rota tinha um POST que mandava cor, nome e e-mail de suporte para
+ * `POST /v1/account`. O Stripe responde **403** a isso, sempre:
+ *
+ * > You cannot use this method on your own account: you may only use it on
+ * > connected accounts.
+ *
+ * Vale para cor, para nome do negócio e para o logo — a conta da própria
+ * plataforma se configura **pelo painel do Stripe**, não por API. O comentário
+ * que estava aqui dizia o contrário ("for the main account, use POST /v1/account
+ * directly"), a tela oferecia um botão de salvar, e cada clique voltava 400.
+ *
+ * Conferido em 27/09/2026 contra a conta `acct_1UKJBC…` (sandbox da BPR): os três
+ * caminhos — `/v1/account`, `/v1/accounts/<id>` e o upload de File com
+ * `settings[branding][logo]` — recusam igual. O upload do arquivo funciona; o que
+ * não existe é como prendê-lo na conta.
+ *
+ * Então a rota lê, e a tela manda a pessoa ao painel. É menos do que parecia
+ * antes, e é tudo o que existe.
+ *
+ * SUPERADMIN only (atividade 52, T-2).
+ */
 export async function GET(req: NextRequest) {
   try {
     if (!(await getSuperadminActor(req))) {
@@ -41,72 +64,20 @@ export async function GET(req: NextRequest) {
         logoUrl: siteSettings?.logoUrl || '',
         siteName: siteSettings?.siteName || '',
       },
+      /**
+       * Onde a marca se muda de verdade. O id vai junto porque quem tem mais de
+       * uma conta (sandbox e produção) precisa saber **em qual** está mexendo —
+       * e porque o nome do sandbox termina em "sandbox", o que é a única pista
+       * de que não é a conta que recebe dinheiro.
+       */
+      painel: {
+        contaId: account.id,
+        modo: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_') ? 'test' : 'live',
+        url: 'https://dashboard.stripe.com/settings/branding',
+      },
     });
   } catch (err: any) {
     console.error('[stripe-branding] GET error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-
-// POST: update Stripe account branding
-export async function POST(req: NextRequest) {
-  try {
-    if (!(await getSuperadminActor(req))) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const body = await req.json();
-    const { primaryColor, secondaryColor, businessName, supportEmail, supportPhone, websiteUrl } = body;
-
-    // Update Stripe account settings
-    const updateData: any = {
-      settings: {
-        branding: {
-          primary_color: primaryColor || '#4F7361',
-          secondary_color: secondaryColor || '#3D5A4D',
-        },
-      },
-      business_profile: {},
-    };
-
-    if (businessName) updateData.business_profile.name = businessName;
-    if (supportEmail) updateData.business_profile.support_email = supportEmail;
-    if (supportPhone) updateData.business_profile.support_phone = supportPhone;
-    if (websiteUrl) updateData.business_profile.url = websiteUrl;
-
-    // Use direct Stripe API call — stripe.accounts.update() only works for connected accounts
-    // For the main account, use POST /v1/account directly
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return NextResponse.json({ error: 'Stripe secret key not configured' }, { status: 500 });
-    }
-
-    const params = new URLSearchParams();
-    params.append('settings[branding][primary_color]', primaryColor || '#4F7361');
-    params.append('settings[branding][secondary_color]', secondaryColor || '#3D5A4D');
-    if (businessName) params.append('business_profile[name]', businessName);
-    if (supportEmail) params.append('business_profile[support_email]', supportEmail);
-    if (websiteUrl) params.append('business_profile[url]', websiteUrl);
-    // supportPhone omitted — not required and can cause validation issues
-
-    const stripeRes = await fetch('https://api.stripe.com/v1/account', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${stripeKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-
-    const stripeData = await stripeRes.json();
-    if (!stripeRes.ok) {
-      console.error('[stripe-branding] Stripe API error:', stripeData);
-      return NextResponse.json({ error: stripeData.error?.message || 'Stripe update failed' }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, message: 'Stripe branding updated successfully' });
-  } catch (err: any) {
-    console.error('[stripe-branding] POST error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
