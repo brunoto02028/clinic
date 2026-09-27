@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **094**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **096**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > **Recuperado em 27/09/2026.** O índice estava 21 atividades atrasado — faltavam 065–069,
 > 070-fatura, 071-alerta, as duas 072, 073, 075–080 e 087–092 — e ainda mandava usar o 076, quando
@@ -88,6 +88,8 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [091](091-exame-para-quem-voce-cuida/) | Exame para quem você cuida, e onde ele é feito (paciente gerido, consentimento em duas vozes) | 🟡 **em produção** desde 27/09, mas o QA reprovou 4 cenários e **1 segue aberto** — ver abaixo |
 | [092](092-a-pressao-a-chamada-e-os-ajustes/) | A pressão, a chamada, e os ajustes do app | 🟡 T-1 e T-4 concluídas; T-2/T-3/T-6 esperam re-medição; T-5 não existe; T-7 bloqueada (sem Stripe em prod) |
 | [093](093-a-fatura-do-paciente/) | A fatura do paciente (ver, PDF e pagar no app) | 🟡 T-1..T-6 feitas (27/09), em QA. **Não chega ao telefone sem build** — módulo nativo do Stripe. T-7 (Apple Pay) espera o merchant id |
+| [094](094-o-que-depende-do-bruno/) | O que depende do Bruno (registro de bloqueios) | 🟠 9 itens abertos: chave live do Stripe, webhook, logo no painel, build, Apple Pay, DPA da Daily, a 2ª cópia dos termos, sandbox LML, Connect |
+| [095](095-ajustes-para-publicar/) | Os ajustes para publicar (8 pedidos do Bruno, 27/09) | 🔵 planejada, **aguardando aprovação** |
 
 > **A 091 está no ar com um furo conhecido.** O QA (`qa/report-091.md`) reprovou 4 cenários; três
 > foram consertados no mesmo dia — o portão do paciente passou a olhar o aceite de **quem responde**
