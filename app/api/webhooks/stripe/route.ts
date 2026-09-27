@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { pagarFaturaComStripe } from "@/lib/patient-invoices";
 import Stripe from "stripe";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendOrderConfirmationEmail } from "@/lib/order-emails";
@@ -357,6 +358,37 @@ export async function POST(req: NextRequest) {
           });
           console.log(`[stripe-webhook] Subscription invoice paid for package ${packageId}`);
         }
+        break;
+      }
+
+      /**
+       * A fatura paga pelo app, no PaymentSheet.
+       *
+       * O Checkout avisa por `checkout.session.completed`; o pagamento nativo
+       * não passa por sessão nenhuma, e o evento é este. Sem este ramo o
+       * dinheiro entrava na Stripe e a fatura ficava em aberto para sempre —
+       * a mesma armadilha que a consulta já tinha resolvido.
+       *
+       * `patientInvoiceId` vem do metadata que a **nossa** rota escreveu, e o
+       * evento chegou assinado. Quem marca como paga é
+       * `pagarFaturaComStripe`, que trava a linha e relê o estado de dentro da
+       * transação: reenvio da Stripe não pode virar duas entradas no
+       * financeiro.
+       */
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const faturaId = pi.metadata?.patientInvoiceId;
+        if (!faturaId) break;
+
+        const r = await pagarFaturaComStripe({
+          invoiceId: faturaId,
+          // `amount_received` é o que entrou de verdade; `amount` é o que se
+          // pediu. Num pagamento parcial os dois diferem.
+          amount: (pi.amount_received ?? pi.amount ?? 0) / 100,
+          paidAt: new Date((pi.created ?? Math.floor(Date.now() / 1000)) * 1000),
+          stripePaymentIntentId: pi.id,
+        });
+        console.log(`[stripe-webhook] Invoice ${faturaId}: ${r}`);
         break;
       }
 

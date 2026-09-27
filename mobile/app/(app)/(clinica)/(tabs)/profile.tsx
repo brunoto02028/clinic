@@ -14,6 +14,16 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
   { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents" },
   /**
+   * Faturas.
+   *
+   * A clínica emitia, numerava, gerava o PDF com o logo da BPR e mandava por
+   * e-mail depois da aprovação — e o paciente não tinha onde vê-las. Quem
+   * apagasse o e-mail perdia a fatura, e o app é o único lugar dele depois do
+   * lançamento. Fica ao lado dos documentos porque é o que é: papel da clínica
+   * que pertence ao paciente.
+   */
+  { title: { en: "Invoices", pt: "Faturas" }, icon: "receipt-outline", href: "/(app)/(clinica)/invoices" },
+  /**
    * Quem eu cuido (089/091).
    *
    * A tela existia e só era alcançável **de dentro do laboratório** — pelo perfil
