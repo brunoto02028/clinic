@@ -77,6 +77,17 @@ export interface ThemeColors {
   community: string;
   communitySoft: string;
 
+  /**
+   * As marcas do calendario de agenda (27/09/2026).
+   *
+   * `ok` e `warn` sao cores de **texto**, ajustadas para 4,5:1 sobre fundo
+   * suave — e por isso somem como ponto de poucos pixels. O Bruno: *"as cores
+   * das bolinhas pode deixar mais forte, mais vivas, porque fica meio apagado,
+   * meio confuso de enxergar, principalmente a noite"*. Estas sao saturadas de
+   * proposito: a marca nao carrega texto, entao o que ela precisa e ser vista.
+   */
+  agendaLivre: string;
+  agendaQuaseCheio: string;
   ok: string;
   okSoft: string;
   warn: string;
@@ -145,6 +156,8 @@ const light: ThemeColors = {
   labWarm: "#8E642D",
   labWarmSoft: "#F5EFDD",
 
+  agendaLivre: "#2F8F5B",
+  agendaQuaseCheio: "#C07A16",
   ok: palette.ok,
   okSoft: palette.okSoft,
   warn: palette.warn,
@@ -218,6 +231,8 @@ const dark: ThemeColors = {
   labWarm: "#D9A860",
   labWarmSoft: "#2B2519",
 
+  agendaLivre: "#63D39B",
+  agendaQuaseCheio: "#E8B45F",
   ok: "#84A791",
   okSoft: "#1E2A23",
   warn: "#C6A26A",

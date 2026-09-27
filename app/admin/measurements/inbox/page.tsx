@@ -49,6 +49,11 @@ const UI = {
     deviceQuiet: "Nothing has arrived from this device in {d} days.",
     deviceFix: "Try again",
     deviceFixed: "Withings will send readings now.",
+    deliveryOk: "Withings has confirmed it will send blood pressure.",
+    deliveryUnchecked: "We have not yet confirmed with Withings that it will send readings.",
+    lastReading: "Last reading received:",
+    lastReadingNever: "No reading has ever arrived from this device.",
+    checkNow: "Check now",
     deviceStillSilent: "Withings still has not confirmed.",
   },
   "pt-BR": {
@@ -78,6 +83,11 @@ const UI = {
     deviceQuiet: "Nada chega deste aparelho há {d} dias.",
     deviceFix: "Tentar de novo",
     deviceFixed: "A Withings vai enviar as leituras agora.",
+    deliveryOk: "A Withings confirmou que vai enviar a pressão.",
+    deliveryUnchecked: "Ainda não confirmamos com a Withings que ela vai enviar as leituras.",
+    lastReading: "Última leitura recebida:",
+    lastReadingNever: "Nenhuma leitura chegou deste aparelho até hoje.",
+    checkNow: "Conferir agora",
     deviceStillSilent: "A Withings ainda não confirmou.",
   },
 } as const;
@@ -100,6 +110,10 @@ export default function MeasurementInboxPage() {
       delivery?: "receiving" | "partial" | "silent" | "unchecked";
       daysSilent?: number | null;
       silent?: boolean;
+      /** 092 T-3: os dados que respondem "por que nada chega?". */
+      lastReadingAt?: string | null;
+      checkedAt?: string | null;
+      confirmedAppli?: number[];
     } | null | undefined
   >(undefined);
   const [fixing, setFixing] = useState(false);
@@ -253,6 +267,50 @@ export default function MeasurementInboxPage() {
             <p className="text-xs text-amber-600 dark:text-amber-400">
               {ui.deviceQuiet.replace("{d}", String(device.daysSilent ?? "?"))}
             </p>
+          )}
+          {/* O estado aparece **sempre**, não só quando é ruim (092 T-3).
+              Antes, `receiving` e `unchecked` não desenhavam nada — e "está
+              tudo certo" ficava visualmente igual a "não fazemos ideia". O
+              Bruno mediu por semanas sem receber uma leitura, com a página
+              dizendo apenas "aparelho conectado". Silêncio que parece sucesso
+              é pior que erro. */}
+          <p className="text-xs text-muted-foreground" data-testid="device-last-reading">
+            {device.lastReadingAt
+              ? `${ui.lastReading} ${new Date(device.lastReadingAt).toLocaleString(isPt ? "pt-BR" : "en-GB")}`
+              : ui.lastReadingNever}
+          </p>
+          {device.delivery === "receiving" && (
+            <p className="text-xs text-muted-foreground" data-testid="device-delivery-ok">
+              {ui.deliveryOk}
+            </p>
+          )}
+          {device.delivery === "unchecked" && (
+            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400" data-testid="device-delivery-unchecked">
+              <span>{ui.deliveryUnchecked}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px]"
+                disabled={fixing}
+                onClick={async () => {
+                  setFixing(true);
+                  try {
+                    const res = await fetch("/api/wearables/resubscribe", { method: "POST" });
+                    const data = await res.json().catch(() => null);
+                    setDeviceMsg(
+                      res.ok && data?.delivery === "receiving" ? ui.deviceFixed : ui.deviceStillSilent
+                    );
+                  } catch {
+                    setDeviceMsg(ui.deviceStillSilent);
+                  }
+                  setFixing(false);
+                  loadDevice();
+                }}
+              >
+                {ui.checkNow}
+              </Button>
+              {deviceMsg && <span>{deviceMsg}</span>}
+            </div>
           )}
           {(device.delivery === "silent" || device.delivery === "partial") && (
             <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
