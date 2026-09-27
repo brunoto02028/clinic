@@ -121,3 +121,28 @@ export async function markMessagesRead(): Promise<void> {
 export function unreadFromStaff(messages: ClinicMessage[]): number {
   return messages.filter((m) => m.senderRole === "staff" && !m.readAt).length;
 }
+
+/**
+ * Desfaz o recado que o paciente mandou — enquanto a clínica não o viu.
+ *
+ * O servidor decide: ele confere que o recado é dele **e** que `readAt` é nulo,
+ * e leva junto o documento e o arquivo do áudio. Aqui não se repete a regra, só
+ * se pergunta.
+ *
+ * `already_read` volta como 409, e é uma resposta, não um erro: significa que
+ * alguém já ouviu, e a tela passa a oferecer mandar uma correção.
+ */
+export async function apagarMensagem(id: string): Promise<void> {
+  await apiFetch(`/api/patient/messages?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/**
+ * Se o botão de apagar deve aparecer neste recado.
+ *
+ * O `readAt` é marcado no instante em que o terapeuta **abre a conversa**, então
+ * isto quer dizer literalmente "ninguém viu ainda". O servidor confere de novo,
+ * e com razão: entre desenhar o botão e o toque, alguém pode ter aberto.
+ */
+export function podeApagar(m: ClinicMessage): boolean {
+  return m.senderRole === "patient" && !m.readAt;
+}
