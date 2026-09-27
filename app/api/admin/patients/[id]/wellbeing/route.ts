@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getZonedDateString } from "@/lib/clinic-timezone";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 
@@ -50,6 +51,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       stressLevel: true,
       exercisesDone: true,
       notes: true,
+      /**
+       * Quando a linha foi **escrita**, que não é o dia que ela descreve.
+       *
+       * O paciente pode registrar a dor de até catorze dias atrás — quem não
+       * abriu o app no dia não perde o ponto. Mas um ponto lançado uma semana
+       * depois não tem o mesmo peso clínico que o do próprio dia: a memória da
+       * dor é reconstruída, e o terapeuta precisa saber qual é qual antes de
+       * ler uma tendência (095 T-7).
+       *
+       * Nada de coluna nova: `createdAt` já diz isso, comparado com
+       * `checkinDate`.
+       */
+      createdAt: true,
     },
   });
 
@@ -65,6 +79,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // pico — e é o que o terapeuta quer ler quando vê um.
     notes: l.notes,
     source: "self" as const,
+    /**
+     * Lançado depois do dia que descreve.
+     *
+     * A comparação é por **dia da clínica**, não em UTC (QA da 095, falha 7.6).
+     * Eu usava `toISOString()`, que devolve UTC, contra um `checkinDate` que é o
+     * dia de Londres — e no horário de verão isso abre **uma hora por dia** em
+     * que o retroativo se disfarça de medição: um registro escrito à 00h30 de
+     * Londres sobre o dia anterior é `23h30Z` do próprio dia, e a conta dava
+     * "não é retroativo".
+     *
+     * `getZonedDateString` existe exatamente para isto, e a rota do check-in já
+     * a usava. Esta ficou para trás.
+     */
+    retroativo: getZonedDateString(l.createdAt) > l.checkinDate,
   }));
 
   return NextResponse.json({ days: dias, points });

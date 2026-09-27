@@ -217,16 +217,32 @@ function ExerciseDetailScreen() {
           {/* Complete button — off while blood pressure blocks today's session
               (activity 074, T-11), with the reason above it rather than a
               button that simply does nothing. */}
+          {/* A cor da clínica, medida (095 T-4).
+
+              O botão vinha na variante padrão, `greige` (#CDC7BE no claro), e o
+              Bruno descreveu como "marrom e com uma leitura muito ruim". O texto
+              dentro dele estava bem — 9,42:1 —, então o problema não era
+              legibilidade: era **o botão sumindo no fundo**, a 1,53:1 no tema
+              claro e 1,29:1 no escuro, quando a regra para um controle é 3:1
+              contra o que está atrás dele.
+
+              `health` é o moss da clínica (#4F7361 no claro, #7FA890 no escuro):
+              4,82:1 e 5,85:1 contra o fundo, com texto a 5,31:1 e 5,85:1. É a
+              cor do produto na ação principal do produto.
+
+              Medi a atual antes de trocar, porque já troquei uma cor aqui
+              anunciando melhora e entreguei 4,9 → 3,2. */}
           {clearance?.blocked ? (
             <ExerciseBlockCard clearance={clearance} />
           ) : (
             <Button
+              variant="health"
               title={completeMutation.isPending
                 ? tr(lang, { en: "Recording...", pt: "Registrando..." })
                 : tr(lang, { en: "Mark as done", pt: "Marcar como concluído" })}
               onPress={() => completeMutation.mutate()}
               loading={completeMutation.isPending}
-              icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}
+              icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.accentFg} />}
             />
           )}
 

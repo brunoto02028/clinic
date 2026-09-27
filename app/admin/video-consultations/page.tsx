@@ -85,6 +85,46 @@ export default function VideoConsultationsPage() {
   });
   const { toast } = useToast();
 
+  /**
+   * "Testar agora": o mesmo agendamento, com a hora já preenchida (095 T-2).
+   *
+   * O Bruno não achou onde testar a videochamada. A tela sabia agendar desde o
+   * começo — o que faltava era um caminho que não exigisse escolher data, hora
+   * e duração só para ver a sala abrir.
+   *
+   * **O paciente continua sendo escolhido por você.** Criar um paciente de
+   * teste por botão encheria a lista de gente que não existe, e a regra da casa
+   * é que QA usa paciente de teste **identificado** — quem identifica é quem
+   * sabe qual é.
+   *
+   * Cinco minutos à frente porque a sala abre dez minutos antes: assim ela já
+   * está aberta quando a tela recarregar.
+   */
+  const agendarTeste = () => {
+    const daqui = new Date(Date.now() + 5 * 60000);
+    const local = new Date(daqui.getTime() - daqui.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setForm((f) => ({
+      ...f,
+      dateTime: local,
+      duration: 30,
+      /**
+       * Um tipo que **existe na lista** (QA da 095, T-2).
+       *
+       * Eu punha `"TEST — video call"`, que não casa com nenhum `SelectItem` —
+       * então o campo Tipo aparecia **em branco**. O valor sobrevivia no estado
+       * e a consulta nascia com ele, mas um campo vazio convida a pessoa a
+       * tocar no seletor, e aí a marca de teste se perdia.
+       *
+       * A marca vai na observação, que é texto livre e ninguém precisa tocar.
+       */
+      treatmentType: "Video Consultation",
+      notes: "TEST — consulta de teste. Apague depois.",
+    }));
+    setShowDialog(true);
+  };
+
   useEffect(() => {
     fetchVideoAppointments();
     fetchPatients();
@@ -279,9 +319,18 @@ export default function VideoConsultationsPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">{T("admin.videoConsultDesc")}</p>
         </div>
-        <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Schedule Call
-        </Button>
+        <div className="flex gap-2">
+          {/* "Testar agora" **fora** do estado vazio (QA da 095, T-2).
+              O botão morava dentro da lista vazia: bastava existir uma consulta
+              por vídeo para ele sumir — e o roteiro de teste é justamente o que
+              alguém abre quando quer testar **de novo**. */}
+          <Button variant="outline" onClick={agendarTeste} className="gap-2">
+            <Video className="h-4 w-4" /> {relabel("Test it now")}
+          </Button>
+          <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Schedule Call
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -296,11 +345,35 @@ export default function VideoConsultationsPage() {
         <h2 className="text-lg font-semibold mb-3">Upcoming Consultations</h2>
         {upcoming.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            {/* Uma lista vazia não ensina nada, e esta tela só tem conteúdo
+                depois que alguém já soube marcar por vídeo — foi por isso que a
+                videochamada pareceu não existir (095 T-2). */}
+            <CardContent className="flex flex-col items-center justify-center py-12 px-6">
               <VideoOff className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium mb-1">No upcoming video consultations</h3>
-              <p className="text-sm text-muted-foreground mb-4">{relabel("Schedule a video call with a patient")}</p>
-              <Button onClick={() => setShowDialog(true)} className="gap-2"><Plus className="h-4 w-4" /> Schedule Call</Button>
+              <p className="text-sm text-muted-foreground mb-5 text-center max-w-md">
+                {relabel(
+                  "There are two ways in: schedule one here, or open an appointment you already have in the agenda and change its format to Remote."
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button onClick={() => setShowDialog(true)} className="gap-2">
+                  <Plus className="h-4 w-4" /> Schedule Call
+                </Button>
+                <Button variant="outline" onClick={agendarTeste} className="gap-2">
+                  <Video className="h-4 w-4" /> {relabel("Test it now")}
+                </Button>
+                <Button variant="outline" asChild className="gap-2">
+                  <a href="/admin/appointments">
+                    <Calendar className="h-4 w-4" /> {relabel("Open the agenda")}
+                  </a>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-5 text-center max-w-md">
+                {relabel(
+                  "The room opens ten minutes before the time and closes thirty after. The patient joins from the app; you join from here or from the agenda, and \"Call patient\" rings their phone."
+                )}
+              </p>
             </CardContent>
           </Card>
         ) : (

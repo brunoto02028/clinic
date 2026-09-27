@@ -978,12 +978,19 @@ model User {
   /// era **descartado em silencio**: a tabela `Dependent` tinha a coluna, o
   /// `User` nao, e a unificacao esqueceu de trazer.
   managedRelationship String?
+  // A descrição de "outro" — só preenchida quando `managedRelationship` é
+  // `OTHER`, e obrigatória nesse caso (095 T-3). Coluna separada, e não um
+  // "OTHER: texto" encaixado na de cima, porque valor codificado dentro de
+  // valor é o tipo de coisa que alguém um dia lê inteiro como se fosse o
+  // parentesco.
+  managedRelationshipOther String?
   managedById         String?
   guardian            User?      @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
   /// SetNull e nao Cascade de proposito: apagar um responsavel nunca pode
   /// destruir o prontuario de quem ele cuidava. O registro fica, sem dono, e a
   /// clinica reatribui.
   managedPatients     User[]     @relation("ManagedPatients")
+  exerciseSubmissionArchives ExerciseSubmission[] @relation("ExerciseSubmissionArchives")
   labOrdersAsSubject  LabOrder[] @relation("LabOrderSubject")
 
   // BA One — Entitlements
@@ -4282,9 +4289,23 @@ model ExerciseSubmission {
   reviewedAt   DateTime?
   reviewNote   String?   @db.Text
 
+  /// Arquivado: sai da fila e da lista do prontuário, e **não some** (095 T-6).
+  /// O Bruno pediu para limpar o painel, não para apagar registro clínico — o
+  /// vídeo continua no prontuário do paciente e volta pelo filtro.
+  archivedAt   DateTime?
+  archivedById String?
+  archivedBy   User?     @relation("ExerciseSubmissionArchives", fields: [archivedById], references: [id], onDelete: SetNull)
+
+  /// Como o terapeuta respondeu, quando não foi só texto: `audio` ou `video`.
+  /// A mídia em si viaja como mensagem para o paciente — aqui fica o rastro,
+  /// para quem abrir o envio depois saber que houve resposta e de que tipo.
+  replyKind String?
+
   createdAt DateTime @default(now())
 
   @@index([patientId, submittedAt])
+  /// A fila esconde o que foi arquivado.
+  @@index([clinicId, archivedAt])
   /// A fila da clínica é "ainda não revisados".
   @@index([clinicId, reviewedAt])
   @@index([exercisePrescriptionId])

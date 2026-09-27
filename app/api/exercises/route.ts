@@ -42,8 +42,19 @@ export async function GET(req: NextRequest) {
             namePt: true,
             descriptionPt: true,
             instructionsPt: true,
+            /**
+             * A pasta da biblioteca **não** vai para o paciente (095 T-5).
+             *
+             * A biblioteca é organizada para a clínica — por região do corpo,
+             * por lote de importação — e o programa de uma pessoa raramente
+             * cai nesse recorte. "Advanced Core 001…010" é nome nosso, e era o
+             * que a tela dele mostrava.
+             *
+             * O que vai é `displayGroup`, que é o rótulo escolhido para
+             * **aquele paciente**; vazio significa sem agrupamento, e a lista
+             * sai simples.
+             */
             folderId: true,
-            folder: { select: { id: true, name: true } },
             bodyRegion: true,
             difficulty: true,
             videoUrl: true,
@@ -66,7 +77,13 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ prescriptions });
+    return NextResponse.json({
+      prescriptions: prescriptions.map((p: any) => ({
+        ...p,
+        // O grupo que o paciente vê é o da prescrição dele, não o da estante.
+        grupo: p.displayGroup ?? null,
+      })),
+    });
   } catch (err: any) {
     if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("Patient exercises GET error:", err);

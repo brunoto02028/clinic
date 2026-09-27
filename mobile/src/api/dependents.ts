@@ -16,6 +16,8 @@ export interface Dependente {
   dateOfBirth: string;
   sex: string | null;
   relationship: string | null;
+  /** A descrição, quando `relationship` é `OTHER`. */
+  relationshipOther: string | null;
   /** Calculada no servidor: idade guardada envelhece em silêncio. */
   idade: number;
   menorDeIdade: boolean;
@@ -28,6 +30,8 @@ export interface DependenteEntrada {
   dateOfBirth: string;
   sex?: string | null;
   relationship?: string | null;
+  /** Obrigatória quando `relationship` é `OTHER`. */
+  relationshipOther?: string | null;
 }
 
 export async function fetchDependentes(): Promise<Dependente[]> {

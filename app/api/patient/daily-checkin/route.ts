@@ -167,6 +167,20 @@ export async function POST(req: NextRequest) {
       hrv:          Number.isFinite(Number(hrv)) ? Number(hrv)                      : null,
     };
 
+    /**
+     * Já existia um registro para este dia e período? (QA da 095, achado 7.4)
+     *
+     * O `upsert` substitui e devolve uma resposta **idêntica** à de um registro
+     * novo — nada dizia que algo foi trocado. Quem corrige a dor de ontem
+     * merece saber que corrigiu, e não ficar na dúvida se criou um segundo.
+     *
+     * Lido antes do `upsert`, porque depois dele a diferença não existe mais.
+     */
+    const jaHavia = await (prisma as any).dailyCheckIn.findUnique({
+      where: { patientId_checkinDate_period: { patientId: userId, checkinDate, period } },
+      select: { id: true },
+    });
+
     const checkIn = await (prisma as any).dailyCheckIn.upsert({
       where: { patientId_checkinDate_period: { patientId: userId, checkinDate, period } },
       create: {
@@ -252,7 +266,7 @@ export async function POST(req: NextRequest) {
     // `xpAwarded` era 15 sempre, inclusive num registro retroativo ou num
     // segundo período do mesmo dia, que não ganham nada. A tela mostrava
     // "+15 XP" que não existia.
-    return NextResponse.json({ checkIn, xpAwarded: xpDado, streak });
+    return NextResponse.json({ checkIn, xpAwarded: xpDado, streak, substituiu: !!jaHavia });
   } catch (err: any) {
     console.error("[daily-checkin POST]", err);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });

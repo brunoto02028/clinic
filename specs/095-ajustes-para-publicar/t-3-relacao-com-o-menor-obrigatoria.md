@@ -1,6 +1,6 @@
 # T-3: Cadastrar menor exige dizer a relação com ele
 
-**Status:** pendente
+**Status:** feita (27/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -58,3 +58,38 @@ nenhum deles responde a pergunta depois.
 - [ ] A relação aparece no consentimento e no pedido de exame
 - [ ] O card da consulta de um menor diz que o responsável comparece junto
 - [ ] Quem já estava cadastrado é perguntado, não apagado
+
+---
+
+## Como ficou, e onde eu desviei do plano
+
+**A lista é fechada e validada no servidor — mas não virou enum do banco.** A
+coluna `managedRelationship` já existe como texto e **já tem valores livres
+gravados**. Trocar para enum passaria por um `db push`, que o deploy aplica e
+cuja falha ele **engole** — o resultado seria produção verde com a coluna
+quebrada, exatamente o risco que está registrado em
+[[deploy-schema-db-push-silencioso]]. A garantia é a mesma, porque
+`lib/managed-patients.ts` é o único lugar que escreve, e há teste prendendo a
+lista do app à do servidor.
+
+A única mudança de schema é **aditiva e anulável**: `managedRelationshipOther`,
+a descrição de "outro". Coluna separada, e não um `OTHER: texto` encaixado na de
+cima, porque valor codificado dentro de valor é o tipo de coisa que alguém um
+dia lê inteiro como se fosse o parentesco.
+
+**Onde a relação aparece:**
+
+| lugar | como |
+|---|---|
+| cadastro no app | chips, obrigatório para menor de 18, com descrição quando é "outro" |
+| lista de quem você cuida | o rótulo por extenso, na língua da pessoa |
+| consentimento do exame | *"Você está pedindo como **Mãe** de Ana, e declara ter autoridade para consentir pelo atendimento dela."* |
+| registro do aceite | `relationship` e `relationshipOther` no `metadata` do `ConsentLog` |
+| card da consulta, no painel | selo âmbar **"Menor — com Ana"**, com o nome de quem acompanha |
+
+**Maior de idade gerido continua sem a exigência.** Quem cuida de um pai idoso
+também usa isto, e ali a relação ajuda mas não é o que responde pela pessoa. A
+exigência acompanha a razão dela.
+
+**Quem já estava cadastrado não foi tocado.** Fica sem relação até alguém
+preencher, e o consentimento **não inventa a frase** para quem não declarou.

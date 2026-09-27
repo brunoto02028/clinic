@@ -19,7 +19,7 @@ interface Row {
   id: string; orderNumber: string; status: string;
   patient: { id: string; firstName: string; lastName: string } | null;
   /** De quem e o exame, quando nao e de quem pagou (091 T-5). */
-  subject: { id: string; firstName: string; lastName: string; idade: number | null } | null;
+  subject: { id: string; firstName: string; lastName: string; idade: number | null; relacao?: string | null } | null;
   products: string[]; total: number; cost: number; margin: number;
   paidAt: string | null; releasedToPatientAt: string | null; awaitingRelease: boolean; createdAt: string;
 }
@@ -147,6 +147,10 @@ export default function LabOrdersPage() {
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {ui.orderedBy} {r.patient ? `${r.patient.firstName} ${r.patient.lastName}` : "—"}
+                          {/* Em que qualidade essa pessoa respondeu pela
+                              criança. É a pergunta que fica quando alguém volta
+                              a este pedido depois (095 T-3). */}
+                          {r.subject.relacao ? ` · ${r.subject.relacao}` : ""}
                         </div>
                       </div>
                     ) : r.patient ? (

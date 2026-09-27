@@ -57,6 +57,7 @@ export interface PessoaBruta {
   dateOfBirth?: unknown;
   sex?: unknown;
   relationship?: unknown;
+  relationshipOther?: unknown;
 }
 
 export interface PessoaLimpa {
@@ -65,10 +66,81 @@ export interface PessoaLimpa {
   dateOfBirth: Date;
   sex: string | null;
   relationship: string | null;
+  /** A descrição, quando `relationship` é `OTHER`. */
+  relationshipOther: string | null;
 }
 
 const MAX_NOME = 80;
 const MAX_RELACAO = 40;
+
+/**
+ * O que você é da pessoa que você cuida (095 T-3).
+ *
+ * ## Por que é obrigatório, e por que é lista
+ *
+ * Palavras do Bruno: *"precisa ser obrigado a colocar a relação com a criança…
+ * pois a responsabilidade é do maior responsável pela criança"*. Quem consente
+ * pelo tratamento de um menor é o adulto — os termos 1.3 já dizem isso —, mas
+ * até aqui **não se registrava em que qualidade** ele consentiu. Numa dúvida
+ * futura sobre quem autorizou o atendimento de uma criança, é essa linha que
+ * faz falta.
+ *
+ * Lista fechada porque campo aberto vira "resp", "mae", "Mãe " — e nenhum
+ * deles responde a pergunta depois. O campo era livre e opcional até hoje.
+ *
+ * ## Por que não virou enum do banco
+ *
+ * A coluna já existe como texto e **já tem valores livres gravados**. Trocar
+ * para enum passaria por um `db push` que o deploy aplica e cuja falha ele
+ * engole — o resultado seria produção verde com a coluna quebrada. A garantia
+ * aqui é a mesma, porque este arquivo é o único lugar que escreve.
+ */
+export const RELACOES = [
+  "MOTHER",
+  "FATHER",
+  "STEPMOTHER",
+  "STEPFATHER",
+  "GRANDMOTHER",
+  "GRANDFATHER",
+  "SISTER",
+  "BROTHER",
+  "AUNT",
+  "UNCLE",
+  "LEGAL_GUARDIAN",
+  "OTHER",
+] as const;
+
+export type Relacao = (typeof RELACOES)[number];
+
+/** Como cada uma se lê, nas duas línguas. */
+export const RELACAO_ROTULO: Record<Relacao, { en: string; pt: string }> = {
+  MOTHER: { en: "Mother", pt: "Mãe" },
+  FATHER: { en: "Father", pt: "Pai" },
+  STEPMOTHER: { en: "Stepmother", pt: "Madrasta" },
+  STEPFATHER: { en: "Stepfather", pt: "Padrasto" },
+  GRANDMOTHER: { en: "Grandmother", pt: "Avó" },
+  GRANDFATHER: { en: "Grandfather", pt: "Avô" },
+  SISTER: { en: "Sister", pt: "Irmã" },
+  BROTHER: { en: "Brother", pt: "Irmão" },
+  AUNT: { en: "Aunt", pt: "Tia" },
+  UNCLE: { en: "Uncle", pt: "Tio" },
+  LEGAL_GUARDIAN: { en: "Legal guardian", pt: "Guardiã ou guardião legal" },
+  OTHER: { en: "Other", pt: "Outro" },
+};
+
+/** O parentesco como uma pessoa lê — com a descrição, quando é "outro". */
+export function relacaoPorExtenso(
+  relacao: string | null | undefined,
+  outro: string | null | undefined,
+  lang: "en" | "pt" = "en"
+): string | null {
+  if (!relacao) return null;
+  if (relacao === "OTHER") return outro || RELACAO_ROTULO.OTHER[lang];
+  const r = RELACAO_ROTULO[relacao as Relacao];
+  // Valor antigo, gravado quando o campo era livre: mostra como está, em vez
+  // de esconder o que a pessoa escreveu.
+  return r ? r[lang] : relacao;
+}
 
 /**
  * Idade em anos completos.
@@ -130,13 +202,47 @@ export function validarPessoa(
     return { erro: "Please check the date of birth.", erroPt: "Confira a data de nascimento." };
   }
 
+  /**
+   * O parentesco, obrigatório para menor de 18.
+   *
+   * Maior de idade gerido existe — alguém que cuida de um pai idoso, por
+   * exemplo — e ali a relação ajuda mas não é o que responde pela pessoa. A
+   * exigência acompanha a razão dela: **é sobre quem responde pela criança**.
+   */
+  const relationship = texto(bruto.relationship, MAX_RELACAO);
+  const relationshipOther = texto(bruto.relationshipOther, MAX_RELACAO);
+  const menor = ehMenorDeIdade(dateOfBirth, agora);
+
+  if (menor && !relationship) {
+    return {
+      erro: "Say what you are to this child — it is who answers for them.",
+      erroPt: "Diga o que você é desta criança — é quem responde por ela.",
+    };
+  }
+
+  if (relationship && !RELACOES.includes(relationship as Relacao)) {
+    return {
+      erro: "That is not one of the relationships we accept.",
+      erroPt: "Esse não é um parentesco que aceitamos.",
+    };
+  }
+
+  // "Outro" sem dizer o quê não é uma resposta: é o campo obrigatório contornado.
+  if (relationship === "OTHER" && !relationshipOther) {
+    return {
+      erro: "Describe the relationship.",
+      erroPt: "Descreva o parentesco.",
+    };
+  }
+
   return {
     pessoa: {
       firstName,
       lastName,
       dateOfBirth,
       sex: texto(bruto.sex, 20),
-      relationship: texto(bruto.relationship, MAX_RELACAO),
+      relationship,
+      relationshipOther: relationship === "OTHER" ? relationshipOther : null,
     },
   };
 }
@@ -149,6 +255,7 @@ export function pessoaPublica(u: {
   dateOfBirth: Date | null;
   sex?: string | null;
   managedRelationship?: string | null;
+  managedRelationshipOther?: string | null;
 }) {
   return {
     id: u.id,
@@ -157,6 +264,7 @@ export function pessoaPublica(u: {
     dateOfBirth: u.dateOfBirth,
     sex: u.sex ?? null,
     relationship: u.managedRelationship ?? null,
+    relationshipOther: u.managedRelationshipOther ?? null,
     // Calculada, nunca guardada: idade guardada envelhece em silêncio e um dia
     // manda a faixa de referência errada para o laboratório.
     idade: u.dateOfBirth ? idadeEmAnos(u.dateOfBirth) : null,
@@ -168,7 +276,7 @@ export function pessoaPublica(u: {
 export async function pessoasGeridasPor(guardianId: string) {
   return prisma.user.findMany({
     where: { managedById: guardianId, deletedAt: null },
-    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true },
+    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true, managedRelationshipOther: true },
     orderBy: { createdAt: "asc" },
   });
 }
@@ -201,6 +309,7 @@ export async function criarPessoaGerida(opts: {
       // 27/09/2026 este valor era descartado em silêncio, porque a coluna não
       // tinha vindo junto na unificação com `User`.
       managedRelationship: pessoa.relationship,
+      managedRelationshipOther: pessoa.relationshipOther,
       // Nada chega ao telefone de uma criança: ela não tem aparelho aqui.
       pushEnabled: false,
       // `emailVerified` é uma data, não um sim/não. Marcá-la como verificada
@@ -210,7 +319,7 @@ export async function criarPessoaGerida(opts: {
       // por um motivo melhor.
       emailVerified: new Date(),
     },
-    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true },
+    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true, managedRelationshipOther: true },
   });
 }
 
@@ -218,6 +327,6 @@ export async function criarPessoaGerida(opts: {
 export async function pessoaGeridaMinha(id: string, guardianId: string) {
   return prisma.user.findFirst({
     where: { id, managedById: guardianId, deletedAt: null },
-    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true, clinicId: true },
+    select: { id: true, firstName: true, lastName: true, dateOfBirth: true, sex: true, managedRelationship: true, managedRelationshipOther: true, clinicId: true },
   });
 }

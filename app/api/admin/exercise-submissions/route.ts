@@ -18,12 +18,21 @@ export async function GET(req: NextRequest) {
 
   const pendentes = req.nextUrl.searchParams.get("pending") === "1";
   const patientId = req.nextUrl.searchParams.get("patientId");
+  /**
+   * Arquivados só aparecem quando alguém os pede (095 T-6).
+   *
+   * O padrão é escondê-los — é para isso que arquivar existe. `archived=1`
+   * mostra **só** os arquivados, que é como se confere o que foi guardado e se
+   * traz um de volta.
+   */
+  const arquivados = req.nextUrl.searchParams.get("archived") === "1";
 
   const submissions = await (prisma as any).exerciseSubmission.findMany({
     where: {
       clinicId: actor.clinicId,
       ...(pendentes ? { reviewedAt: null } : {}),
       ...(patientId ? { patientId } : {}),
+      archivedAt: arquivados ? { not: null } : null,
     },
     orderBy: { submittedAt: "desc" },
     take: 100,
@@ -35,6 +44,8 @@ export async function GET(req: NextRequest) {
       submittedAt: true,
       reviewedAt: true,
       reviewNote: true,
+      archivedAt: true,
+      replyKind: true,
       patient: { select: { id: true, firstName: true, lastName: true } },
       exercisePrescription: { select: { id: true, exercise: { select: { name: true } } } },
       protocolItem: { select: { id: true, title: true } },

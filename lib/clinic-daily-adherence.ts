@@ -22,7 +22,21 @@ export async function getClinicDailyAdherence(clinicId: string, date: Date): Pro
     where: {
       clinicId,
       role: "PATIENT",
-      protocolsAsPatient: { some: { status: "SENT_TO_PATIENT" } },
+      /**
+       * Quem tem plano **ou** exercício avulso (QA da 095 T-5).
+       *
+       * O filtro pedia plano enviado, e só. Desde que dá para prescrever um
+       * exercício sozinho, existe um paciente que faz exercício todo dia e
+       * **nunca aparecia** no card de aderência da clínica — é exatamente a
+       * forma de paciente que a T-5 passou a produzir.
+       *
+       * `isActive` na prescrição porque uma retirada não deve ressuscitar
+       * alguém na lista.
+       */
+      OR: [
+        { protocolsAsPatient: { some: { status: "SENT_TO_PATIENT" } } },
+        { receivedExercises: { some: { isActive: true } } },
+      ],
     },
     select: { id: true, firstName: true, lastName: true, preferredLocale: true },
   });

@@ -14,14 +14,14 @@ o produto ficando bom o bastante para outra pessoa usar.
 | T-N | nome | depende de | status |
 |---|---|---|---|
 | T-1 | O aviso não chega ao telefone do Bruno | — | **feita** (27/09) — em QA |
-| T-2 | Onde ver, e como testar, uma consulta por vídeo | — | pendente |
-| T-3 | Cadastrar menor exige dizer a relação com ele | — | pendente |
-| T-4 | A cor do "Mark as done" | — | pendente |
-| T-5 | Enviar exercício avulso, não a pasta inteira | — | pendente |
-| T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | pendente |
-| T-7 | Pain Trend: o paciente relata por data | — | pendente |
-| T-8 | O calendário mostra disponibilidade de verdade | T-2 | pendente |
-| T-9 | Onde o paciente lê o aviso (link, separação, lido) | T-1 | pendente |
+| T-2 | Onde ver, e como testar, uma consulta por vídeo | — | **concluída** — QA com ressalvas, corrigidas |
+| T-3 | Cadastrar menor exige dizer a relação com ele | — | **concluída** — QA reprovou 3.5 e 3.7, corrigidos. **Falta a tela no painel** |
+| T-4 | A cor do "Mark as done" | — | **concluída** — medida antes e depois |
+| T-5 | Enviar exercício avulso, não a pasta inteira | — | **concluída** — QA reprovou 5.4, corrigido |
+| T-6 | Responder ao vídeo do paciente, e arquivá-lo | — | **concluída** — QA reprovou 6.3, corrigido |
+| T-7 | Pain Trend: o paciente relata por data | — | **concluída** — QA reprovou 7.6 (fuso), corrigido |
+| T-8 | O calendário mostra disponibilidade de verdade | T-2 | **concluída** — QA reprovou 8.6, corrigido |
+| T-9 | Onde o paciente lê o aviso (link, separação, lido) | T-1 | **concluída** — 9.3 parcial por falta de universal link |
 
 A T-9 entrou depois, em 27/09: *"quando eu enviar a um paciente ou todos os
 usuários, eles recebem e leem onde?"*. A resposta é **Mensagens, no app** — e
@@ -79,3 +79,28 @@ O que está em [[094-o-que-depende-do-bruno]]: chave live do Stripe, webhook,
 logo no painel do Stripe, build autorizado, Apple Pay, DPA da Daily, a segunda
 cópia dos termos. T-1 pode esbarrar no build (se a credencial de push estiver
 errada, só um build novo conserta).
+
+---
+
+## Depois do QA (28/09)
+
+Dois QAs em paralelo mediram as nove tarefas: **27 passaram, 6 reprovaram**, 8
+não foram executados (telas do app, sem build) e 8 passaram com ressalva. As
+seis reprovações e as treze ressalvas estão corrigidas — o detalhe, com
+evidência, está em [qa/report-095.md](qa/report-095.md).
+
+**O que fica pendente, dito em voz alta:**
+
+1. **A tela de cadastro de pessoa gerida no painel** (T-3, passo 3). O plano
+   dizia "no app **e no painel**", e o painel não tem essa tela. Criar uma é
+   funcionalidade nova, não conserto de QA.
+2. **O link do aviso abrir o app** (T-9, 9.3). Falta *App Site Association* para
+   um universal link. A mensagem diz onde ir; o clique ainda leva à web.
+3. **Nada do lado do app chega ao telefone sem build** — cor do botão,
+   calendário, cadastro de dependente, aviso como mural. O fingerprint já tinha
+   mudado com o SDK do Stripe (093).
+
+**A lição que o QA deu sobre os meus testes:** os 78 testes verdes das três
+tarefas do 095A não teriam pego 5.4, 3.7 nem 3.5. Todos leem o **texto do
+fonte**, e o que faltava nos três era uma linha que ninguém escreveu. Teste que
+lê código pega regressão; não substitui alguém usando o produto.

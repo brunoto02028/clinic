@@ -27,7 +27,24 @@ export async function GET() {
       where: withClinicFilter({}, clinicId),
       include: {
         patient: {
-          select: { id: true, firstName: true, lastName: true, email: true },
+          /**
+           * Nascimento e quem responde, para o card dizer que o menor é
+           * atendido acompanhado (095 T-3).
+           *
+           * A idade é **calculada na hora** e nunca guardada: idade gravada
+           * envelhece em silêncio, e aqui ela decide uma frase sobre a
+           * presença de um adulto numa sala com uma criança.
+           */
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            dateOfBirth: true,
+            guardian: { select: { firstName: true, lastName: true } },
+            managedRelationship: true,
+            managedRelationshipOther: true,
+          },
         },
         therapist: {
           select: { id: true, firstName: true, lastName: true },

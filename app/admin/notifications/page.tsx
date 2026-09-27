@@ -484,8 +484,11 @@ export default function NotificationsPage() {
               {/* A prévia dizia só "no app", e o servidor manda e-mail/WhatsApp
                   para todos por padrão — a linha que contava isso ficava
                   abaixo do botão, em cinza de 10px (QA de 25/09, R5). */}
+              {/* Onde, e não só para quantos: quem escreve precisa saber
+                  em que tela aquilo vai aparecer para escrever certo (T-9). */}
               <p className="text-xs text-muted-foreground">
-                In the app for <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
+                It lands in <strong>Messages</strong>, in the app — where they read what the clinic
+                writes. For <strong>{preview.patients}</strong> patient{preview.patients === 1 ? "" : "s"}
                 , and by e-mail or WhatsApp as each one prefers
                 {pushNotify ? (
                   preview.devices > 0 ? (
@@ -530,7 +533,10 @@ export default function NotificationsPage() {
             </div>
           )}
           <p className="text-[10px] text-muted-foreground">
-            {relabel("Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.")}
+            {/* "no portal" sobrevivia aqui depois de a T-9 tirá-lo do e-mail — a
+                tela de quem envia dizendo o lugar que o paciente perde depois
+                do lançamento (ressalva do QA da 095). */}
+            {relabel("Each patient is notified by email/WhatsApp (as per preference) and reads the announcement in Messages, in the app.")}
           </p>
         </CardContent>
       </Card>

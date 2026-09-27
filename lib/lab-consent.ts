@@ -233,7 +233,15 @@ export function labConsentFor(
    * consentimento ausente, porque parece válido. Achado do review de
    * 27/09/2026.
    */
-  porOutroExplicito?: boolean
+  porOutroExplicito?: boolean,
+  /**
+   * O parentesco de quem está consentindo, por extenso (095 T-3).
+   *
+   * O ponto do pedido do Bruno é ter prova de **quem respondeu pela criança**.
+   * Guardar a relação no cadastro e não imprimi-la no consentimento faria do
+   * campo uma decoração: o documento que a pessoa aceita é o que vale depois.
+   */
+  relacao?: string | null
 ): LabConsentText {
   const t = TEXTOS[locale === "pt-BR" ? "pt-BR" : "en-GB"];
   const porOutro = porOutroExplicito ?? !!nome?.trim();
@@ -242,10 +250,22 @@ export function labConsentFor(
   // dois.
   const comoChamar = nome?.trim() || (locale === "pt-BR" ? "essa pessoa" : "this person");
   const voz = (p: Ponto) => (porOutro ? p.onBehalf.replace(/\{nome\}/g, comoChamar) : p.self);
+  const pontos = t.points.map(voz);
+
+  // Só quando é por outro **e** a relação é conhecida: um cadastro antigo, de
+  // quando o campo era livre e opcional, não ganha uma frase inventada.
+  if (porOutro && relacao) {
+    pontos.push(
+      locale === "pt-BR"
+        ? `Você está pedindo como **${relacao}** de ${comoChamar}, e declara ter autoridade para consentir pelo atendimento dela.`
+        : `You are ordering as ${comoChamar}'s **${relacao}**, and you confirm you have authority to consent to their care.`
+    );
+  }
+
   return {
     title: voz(t.title),
     accept: voz(t.accept),
-    points: t.points.map(voz),
+    points: pontos,
   };
 }
 

@@ -58,6 +58,7 @@ import {
   MapPin,
   Video,
   BellRing,
+  Users,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -86,7 +87,16 @@ interface Appointment {
    * uma consulta por vídeo sem depois mostrar que ela era por vídeo.
    */
   mode?: "IN_PERSON" | "VIDEO" | null;
-  patient: { id: string; firstName: string; lastName: string; email: string };
+  patient: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dateOfBirth?: string | null;
+    guardian?: { firstName: string; lastName: string } | null;
+    managedRelationship?: string | null;
+    managedRelationshipOther?: string | null;
+  };
   therapist: { id: string; firstName: string; lastName: string };
 }
 
@@ -103,6 +113,14 @@ export default function AdminAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  /**
+   * Ver só as consultas por vídeo (095 T-2).
+   *
+   * Numa agenda de presenciais, uma consulta por vídeo se perde — e foi
+   * perdendo-se que ela pareceu não existir. O filtro também responde a
+   * pergunta oposta, que é a mais comum: "tenho alguma hoje?".
+   */
+  const [soVideo, setSoVideo] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -136,6 +154,9 @@ export default function AdminAppointmentsPage() {
   });
   const [aiNotesLoading, setAiNotesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
+    // Presencial ou por vídeo, **também na edição** (095 T-2): antes só dava
+    // para escolher ao criar, e transformar uma consulta exigia apagá-la.
+    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO",
     dateTime: "",
     duration: 0,
     treatmentType: "",
@@ -440,6 +461,8 @@ export default function AdminAppointmentsPage() {
       treatmentType: appointment.treatmentType,
       price: appointment.price,
       notes: appointment.notes || "",
+      // Consulta antiga não tem `mode` gravado; ela é presencial.
+      mode: appointment.mode === "VIDEO" ? "VIDEO" : "IN_PERSON",
     });
     setShowEditDialog(true);
   };
@@ -458,6 +481,7 @@ export default function AdminAppointmentsPage() {
           treatmentType: editForm.treatmentType,
           price: Number(editForm.price),
           notes: editForm.notes,
+          mode: editForm.mode,
         }),
       });
 
@@ -523,7 +547,8 @@ export default function AdminAppointmentsPage() {
       a.patient.lastName.toLowerCase().includes(search.toLowerCase()) ||
       a.treatmentType.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesModo = !soVideo || a.mode === "VIDEO";
+    return matchesSearch && matchesStatus && matchesModo;
   });
 
   /**
@@ -609,6 +634,24 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  /**
+   * Menos de 18 — a conta feita aqui, com o nascimento que a rota mandou.
+   *
+   * Por comparação de data e não por divisão de milissegundos: a divisão erra
+   * o aniversário de quem nasceu em 29 de fevereiro, e "faz 18 hoje" é
+   * exatamente o caso em que a resposta precisa estar certa.
+   */
+  const ehMenor = (nascimento?: string | null): boolean => {
+    if (!nascimento) return false;
+    const d = new Date(nascimento);
+    if (isNaN(d.getTime())) return false;
+    const hoje = new Date();
+    let anos = hoje.getUTCFullYear() - d.getUTCFullYear();
+    const m = hoje.getUTCMonth() - d.getUTCMonth();
+    if (m < 0 || (m === 0 && hoje.getUTCDate() < d.getUTCDate())) anos--;
+    return anos < 18;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "COMPLETED":
@@ -668,6 +711,56 @@ export default function AdminAppointmentsPage() {
       return d;
     });
   };
+
+  /**
+   * Quantos horários livres cada dia da semana tem (095 T-8).
+   *
+   * A agenda mostrava **só o que já foi marcado** — e a pergunta que se faz ao
+   * telefone com um paciente esperando é a outra: *"onde ainda cabe?"*. O dado
+   * existe desde a 087 (`/api/availability?from=&to=`, que devolve contagem por
+   * dia), e ele é o mesmo que o app do paciente lê: se as duas telas
+   * discordarem sobre um dia, é porque estão lendo fontes diferentes, e agora
+   * não estão.
+   */
+  const [vagasPorDia, setVagasPorDia] = useState<Record<string, number | null>>({});
+
+  useEffect(() => {
+    const dias = calendarDays;
+    if (dias.length === 0) return;
+    const texto = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    let vivo = true;
+    /**
+     * **Sem `therapistId`, de propósito** (QA da 095, falha 8.6).
+     *
+     * Eu passava o id de quem estava logado, e o app do paciente não passa
+     * nenhum. Mesma rota, parâmetros diferentes — e aí as duas telas discordavam
+     * sobre o mesmo dia, que é exatamente o que eu tinha escrito que não
+     * aconteceria.
+     *
+     * Pior: um segundo terapeuta da clínica, sem janela própria configurada,
+     * via a **semana inteira como fechada** enquanto o paciente via vagas. Quem
+     * atende o telefone é quem está logado, e o painel dizia que não cabia
+     * ninguém.
+     *
+     * Sem o id, a rota responde a disponibilidade da clínica — a mesma que o
+     * paciente vê. Numa clínica com vários terapeutas este número é o da
+     * clínica, não o de cada um; modelar agenda por pessoa é outra atividade, e
+     * inventá-la aqui seria um número que só parece pessoal.
+     */
+    fetch(`/api/availability?from=${texto(dias[0])}&to=${texto(dias[dias.length - 1])}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d?.dias) return;
+        const mapa: Record<string, number | null> = {};
+        for (const dia of d.dias) mapa[dia.data] = dia.fechado ? null : dia.livres;
+        setVagasPorDia(mapa);
+      })
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, [calendarDays]);
 
   const DAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
   const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -739,6 +832,42 @@ export default function AdminAppointmentsPage() {
                       <p className="text-[10px] text-muted-foreground">{(isPt ? DAY_NAMES_PT : DAY_NAMES_EN)[i]}</p>
                       <p className={`text-sm font-semibold ${isToday ? "text-emerald-400" : ""} ${blocked ? "text-red-400" : ""}`}>{day.getDate()}</p>
                       {blocked && <p className="text-[8px] text-red-400/80 leading-tight truncate">{blk?.reason || "Unavailable"}</p>}
+                      {/* Onde ainda cabe alguém. Zero aparece: "cheio" é uma
+                          resposta, e a ausência do número não é. */}
+                      {!blocked && (() => {
+                        /**
+                         * Dia que já passou não mostra vaga (QA 8.6).
+                         *
+                         * A semana anterior aparecia oferecendo "5 livres" em
+                         * dias que já foram — um número verdadeiro sobre um
+                         * tempo que não existe mais.
+                         */
+                        const inicioDeHoje = new Date();
+                        inicioDeHoje.setHours(0, 0, 0, 0);
+                        if (day < inicioDeHoje) return null;
+
+                        const chave = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+                        const livres = vagasPorDia[chave];
+                        if (livres === undefined) return null;
+                        /**
+                         * "Sem vaga", e não "fechado".
+                         *
+                         * A rota devolve fechado tanto para o dia em que a
+                         * clínica não abre quanto para hoje depois de os
+                         * horários passarem. Dizer "fechado" no segundo caso
+                         * afirma algo que pode não ser verdade; "sem vaga" é o
+                         * que os dois casos têm em comum.
+                         */
+                        if (livres === null) return <p className="text-[9px] text-muted-foreground/70">{isPt ? "sem vaga" : "no slots"}</p>;
+                        return (
+                          <p
+                            className={`text-[9px] ${livres === 0 ? "text-muted-foreground/70" : "text-emerald-500/90"}`}
+                            title={isPt ? "Consultas e sessões somadas" : "Consultations and sessions combined"}
+                          >
+                            {livres === 0 ? (isPt ? "cheio" : "full") : isPt ? `${livres} livres` : `${livres} free`}
+                          </p>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -766,7 +895,7 @@ export default function AdminAppointmentsPage() {
                         {dayAppts.map((a) => (
                           <button
                             key={a.id}
-                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "" }); }}
+                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : "IN_PERSON" }); }}
                             className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
                           >
                             <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
@@ -803,6 +932,18 @@ export default function AdminAppointmentsPage() {
           />
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={soVideo ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setSoVideo((v) => !v)}
+          >
+            <Video className="h-3.5 w-3.5" />
+            {isPt ? "Só por vídeo" : "Video only"}
+            <span className="ml-1 text-xs opacity-70">
+              ({appointments.filter((a) => a.mode === "VIDEO").length})
+            </span>
+          </Button>
           {Object.entries(statusCounts).map(([status, count]) => (
             <Button
               key={status}
@@ -856,6 +997,22 @@ export default function AdminAppointmentsPage() {
                           <StatusIcon className="h-3 w-3" />
                           {appointment.status}
                         </span>
+                        {/* A regra sai do texto dos termos e aparece onde se
+                            lê na hora: ninguém da clínica fica sozinho com uma
+                            criança, e é o responsável que a acompanha —
+                            presencialmente ou na videochamada (095 T-3). */}
+                        {ehMenor(appointment.patient.dateOfBirth) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600">
+                            <Users className="h-3 w-3" />
+                            {appointment.patient.guardian
+                              ? isPt
+                                ? `Menor — com ${appointment.patient.guardian.firstName}`
+                                : `Minor — with ${appointment.patient.guardian.firstName}`
+                              : isPt
+                                ? "Menor — acompanhado"
+                                : "Minor — accompanied"}
+                          </span>
+                        )}
                         {appointment.mode === "VIDEO" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-violet-600">
                             <Video className="h-3 w-3" />
@@ -1389,6 +1546,46 @@ export default function AdminAppointmentsPage() {
                   setEditForm({ ...editForm, price: Number(e.target.value) })
                 }
               />
+            </div>
+            {/* Presencial ou por vídeo, na edição (095 T-2).
+                O modo só existia na criação, e por isso a videochamada parecia
+                não existir: a agenda estava cheia de presenciais e não havia
+                por onde transformar uma sem apagá-la e perder o horário. */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{isPt ? "Formato" : "Format"}</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, mode: "IN_PERSON" })}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    editForm.mode === "IN_PERSON"
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <MapPin className="h-4 w-4" />
+                  {isPt ? "Presencial" : "In person"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, mode: "VIDEO" })}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    editForm.mode === "VIDEO"
+                      ? "border-violet-500/40 bg-violet-500/15 text-violet-400"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <Video className="h-4 w-4" />
+                  {isPt ? "À distância" : "Remote"}
+                </button>
+              </div>
+              {editForm.mode === "VIDEO" && (
+                <p className="text-[11px] text-muted-foreground">
+                  {isPt
+                    ? "O paciente vê que é por vídeo e entra pelo app. A sala abre dez minutos antes."
+                    : "The patient sees it is by video and joins from the app. The room opens ten minutes before."}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
