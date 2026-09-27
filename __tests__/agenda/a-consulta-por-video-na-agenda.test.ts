@@ -62,6 +62,22 @@ describe("a agenda diz que a consulta é por vídeo", () => {
     expect(acao).toMatch(/data\.aparelhos > 0/);
     expect(acao).toMatch(/Ninguém para chamar|Nobody to ring/);
   });
+
+  it("e envio que falhou não vira afirmação sobre o paciente", () => {
+    // `aparelhos: 0` com `falhas: N` é a Expo recusando o token ou a rede
+    // caindo. Dizer "este paciente não tem aparelho" seria contar sobre ele
+    // uma coisa que não aconteceu com ele (achado 4 do QA da T-8).
+    const acao = bloco(agenda, "const chamarPaciente =");
+    expect(acao).toMatch(/data\.falhas > 0/);
+    expect(acao).toMatch(/O aviso não saiu|The call did not go out/);
+  });
+
+  it("os botões só aparecem na consulta de quem está olhando", () => {
+    // A agenda mostra a clínica inteira. Oferecer entrar e chamar na consulta
+    // de outro terapeuta — ou para um admin, que não atende — é um botão que
+    // só sabe falhar, e o 404 do servidor chega como "não está disponível".
+    expect(agenda).toMatch(/appointment\.therapist\?\.id === meuId/);
+  });
 });
 
 describe("e a rota que chama o paciente", () => {
@@ -80,7 +96,16 @@ describe("e a rota que chama o paciente", () => {
     expect(iJanela).toBeGreaterThan(0);
     expect(iPush).toBeGreaterThan(iJanela);
     expect(rota).toMatch(/consulta\.mode !== "VIDEO"/);
-    expect(rota).toMatch(/"CANCELLED" \|\| consulta\.status === "NO_SHOW"/);
+    // Concluída entrou na lista depois do QA da T-8: a rota respondia 200 e o
+    // telefone tocava para uma consulta que já tinha acontecido. A agenda
+    // escondia o botão, e esconder botão não é fechar porta.
+    for (const st of ["CANCELLED", "NO_SHOW", "COMPLETED"]) {
+      expect(rota).toContain(`consulta.status === "${st}"`);
+    }
+  });
+
+  it("e a consulta concluída recebe uma frase própria, não 'não está mais marcada'", () => {
+    expect(rota).toMatch(/Esta consulta já foi concluída\./);
   });
 
   it("responde quantos aparelhos tocaram, não 'enviado'", () => {

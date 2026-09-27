@@ -99,11 +99,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  if (consulta.status === "CANCELLED" || consulta.status === "NO_SHOW") {
+  /**
+   * Cancelada, faltou — e **concluída** (achado 3 do QA da T-8).
+   *
+   * `COMPLETED` passava: a rota respondia 200 e o telefone de alguém tocava
+   * para uma consulta que já tinha acontecido. A agenda esconde o botão nesse
+   * caso, e esconder botão não é fechar porta: quem chama é o servidor.
+   */
+  if (
+    consulta.status === "CANCELLED" ||
+    consulta.status === "NO_SHOW" ||
+    consulta.status === "COMPLETED"
+  ) {
     return NextResponse.json(
       {
-        error: "This consultation is no longer scheduled.",
-        errorPt: "Esta consulta não está mais marcada.",
+        error: "This consultation is not open for a call.",
+        errorPt:
+          consulta.status === "COMPLETED"
+            ? "Esta consulta já foi concluída."
+            : "Esta consulta não está mais marcada.",
         code: "not_scheduled",
       },
       { status: 409 }

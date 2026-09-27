@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -538,6 +539,18 @@ export default function AdminAppointmentsPage() {
    */
   const [chamando, setChamando] = useState<string | null>(null);
 
+  /**
+   * Quem está olhando a agenda (achado 5 do QA da T-8).
+   *
+   * A agenda mostra as consultas da clínica inteira, e os dois botões apareciam
+   * em todas — inclusive nas de outro terapeuta, e para um admin, que nunca
+   * atende. O servidor recusa certo, com 404, mas a frase que chega é "esta
+   * consulta não está disponível", e quem está vendo a consulta ali na frente
+   * não entende. Botão que só falha não devia existir.
+   */
+  const { data: sessao } = useSession();
+  const meuId = (sessao?.user as any)?.id as string | undefined;
+
   const entrarNaSala = (id: string) => {
     window.open(`/video-room/${id}`, "_blank", "noopener,noreferrer");
   };
@@ -565,6 +578,18 @@ export default function AdminAppointmentsPage() {
                 ? `O telefone dele está tocando em ${data.aparelhos} aparelho${data.aparelhos > 1 ? "s" : ""}.`
                 : `Their phone is ringing on ${data.aparelhos} device${data.aparelhos > 1 ? "s" : ""}.`,
             }
+              : data.falhas > 0
+                ? {
+                    // `falhas > 0` com `aparelhos: 0` é envio que não saiu — a
+                    // Expo recusou o token, a rede caiu. Dizer "este paciente
+                    // não tem aparelho" seria afirmar algo sobre ele quando o
+                    // que houve foi problema nosso (achado 4 do QA da T-8).
+                    title: isPt ? "O aviso não saiu" : "The call did not go out",
+                    description: isPt
+                      ? "O paciente tem aparelho, mas o envio falhou. Tente de novo, e avise por outro caminho se insistir."
+                      : "The patient has a device, but the send failed. Try again, and reach them another way if it persists.",
+                    variant: "destructive" as const,
+                  }
           : {
               title: isPt ? "Ninguém para chamar" : "Nobody to ring",
               description: isPt
@@ -874,6 +899,7 @@ export default function AdminAppointmentsPage() {
                           terapeuta vai apertar. Some quando a consulta não vai
                           mais acontecer ou já aconteceu. */}
                       {appointment.mode === "VIDEO" &&
+                        appointment.therapist?.id === meuId &&
                         !["CANCELLED", "NO_SHOW", "COMPLETED"].includes(appointment.status) && (
                           <>
                             <Button

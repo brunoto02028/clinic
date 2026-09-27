@@ -205,6 +205,16 @@ export default function VideoConsultationsPage() {
                 `Their phone is ringing on ${data.aparelhos} device${data.aparelhos > 1 ? "s" : ""}.`
               ),
             }
+          : data.falhas > 0
+            ? {
+                // `falhas > 0` com `aparelhos: 0` é envio que não saiu — não é
+                // um fato sobre o paciente (achado 4 do QA da T-8).
+                title: relabel("The call did not go out"),
+                description: relabel(
+                  "The patient has a device, but the send failed. Try again, and reach them another way if it persists."
+                ),
+                variant: "destructive" as const,
+              }
           : {
               // Sem aparelho não é falha da chamada: é um fato sobre o paciente, e
               // o terapeuta tem de saber para avisar por outro caminho.
