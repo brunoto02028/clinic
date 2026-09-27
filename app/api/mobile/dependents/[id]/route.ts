@@ -51,6 +51,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       dateOfBirth: r.pessoa.dateOfBirth,
       sex: r.pessoa.sex,
       managedRelationship: r.pessoa.relationship,
+      /**
+       * A descrição de "outro" (QA da 095, falha 3.7).
+       *
+       * A validação **exigia** o texto — recusava `OTHER` sem ele com 400 — e o
+       * update não o escrevia. O pior desenho possível: o registro saía
+       * parecendo respondido, e o consentimento dizia *"You are ordering as X's
+       * **Other**"*, que é menos informação que o campo em branco.
+       *
+       * O `POST` sempre gravou certo. Era só o `PATCH`, que é justamente o
+       * caminho por onde um cadastro antigo ganha a relação que a migração não
+       * tinha.
+       */
+      managedRelationshipOther: r.pessoa.relationshipOther,
     },
     select: {
       id: true,
@@ -59,6 +72,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       dateOfBirth: true,
       sex: true,
       managedRelationship: true,
+      managedRelationshipOther: true,
     },
   });
   return corsJson({ dependent: pessoaPublica(atualizada) });

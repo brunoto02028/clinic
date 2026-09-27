@@ -68,7 +68,28 @@ export function labOrderInclude() {
     patient: { select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } },
     // De quem e o exame (091 T-5). A lista ja mostrava; o detalhe — que e onde
     // se le os valores e se escreve a nota — nem recebia o dado.
-    subject: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true } },
+    /**
+     * E **em que qualidade** quem pediu respondeu pela pessoa (095 T-3,
+     * falha 3.5 do QA).
+     *
+     * O plano prometia a relação no consentimento **e no pedido**, e só o
+     * consentimento tinha ficado pronto. Quem lê um pedido de exame de uma
+     * criança na tela de liberação precisa saber quem autorizou aquilo — e o
+     * nome de quem paga, sozinho, não responde isso.
+     *
+     * Sem coluna nova no `LabOrder`: a relação mora na pessoa, e é lá que ela
+     * continua verdadeira mesmo que mude depois.
+     */
+    subject: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        managedRelationship: true,
+        managedRelationshipOther: true,
+      },
+    },
     items: { include: { product: { select: { id: true, name: true, lmlProductId: true, biomarkers: true } } } },
     registrations: { include: { values: { orderBy: { biomarker: "asc" as const } } }, orderBy: { createdAt: "asc" as const } },
     events: { orderBy: { createdAt: "desc" as const } },

@@ -58,3 +58,45 @@ describe("o paciente não vê nome de pasta da clínica", () => {
     expect(rotaPaciente).toMatch(/grupo: p\.displayGroup \?\? null/);
   });
 });
+
+describe("o que o QA da 095 achou, e foi consertado", () => {
+  const aderencia = lerCodigo("lib", "clinic-daily-adherence.ts");
+
+  it("**o avulso nasce com dose** (5.4)", () => {
+    /**
+     * Ele nascia sem série, sem repetição, sem frequência e sem observação — e
+     * o diálogo dizia o contrário, *"with its own default sets and reps"*.
+     *
+     * Duas perdas na mesma linha: o padrão do exercício só era aplicado no ramo
+     * da pasta, e `frequency`/`notes` chegavam no **topo** do corpo enquanto
+     * aqui só se lia por item.
+     *
+     * Pior que o campo vazio: painel e paciente discordavam do mesmo
+     * exercício. O painel dizia "No sets/reps set" e a tela do paciente, que
+     * cai no padrão, mostrava 3×12 — dose que ninguém escolheu.
+     */
+    expect(rotaAdmin).toMatch(/sets: ex\.sets \?\? padrao\.get\(ex\.exerciseId\)\?\.defaultSets/);
+    expect(rotaAdmin).toMatch(/frequency: ex\.frequency \|\| frequency \|\| null/);
+    expect(rotaAdmin).toMatch(/notes: ex\.notes \|\| notes \|\| null/);
+  });
+
+  it("e a dose padrão não pode derrubar a prescrição", () => {
+    // `?? []`: sem a lista, cada exercício entra com o que veio no pedido e o
+    // resto fica nulo — o comportamento de antes, em vez de um 500.
+    expect(rotaAdmin).toMatch(/\)\) \?\? \[\]/);
+  });
+
+  it("o diálogo do avulso existe no caso comum, não só no vazio", () => {
+    // Uma edição minha deixou duas cópias no ramo do estado vazio e **nenhuma**
+    // no principal: o botão aparecia para todo paciente que já tem exercício e
+    // não abria nada.
+    expect((aba.match(/\{umPicker\}/g) || []).length).toBe(2);
+  });
+
+  it("e o paciente só-avulso aparece no card de aderência", () => {
+    // O filtro pedia plano enviado, e só. Desde que dá para prescrever um
+    // exercício sozinho, existe paciente que faz exercício todo dia e nunca
+    // aparecia — é a forma de paciente que esta tarefa passou a produzir.
+    expect(aderencia).toMatch(/receivedExercises: \{ some: \{ isActive: true \} \}/);
+  });
+});

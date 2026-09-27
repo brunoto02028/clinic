@@ -82,7 +82,21 @@ describe("a tela vazia ensina", () => {
   it("tem um atalho de teste, com a hora já preenchida", () => {
     expect(painel).toContain("const agendarTeste = ()");
     expect(painel).toMatch(/Date\.now\(\) \+ 5 \* 60000/);
-    expect(painel).toMatch(/TEST — video call/);
+    // A marca de teste vai na **observação**, não no tipo: o campo Tipo é um
+    // `Select` de lista fixa, e um valor fora dela renderizava em branco — o
+    // que convida a pessoa a tocar, e aí a marca se perde (QA da 095, T-2).
+    expect(painel).toMatch(/TEST — consulta de teste/);
+    expect(painel).toMatch(/treatmentType: "Video Consultation"/);
+  });
+
+  it("e o atalho não mora dentro do estado vazio", () => {
+    /**
+     * Ele ficava lá dentro: bastava existir **uma** consulta por vídeo para o
+     * botão sumir — e o roteiro de teste é justamente o que alguém abre quando
+     * quer testar de novo. Agora é botão fixo do cabeçalho.
+     */
+    const cabecalho = painel.slice(painel.indexOf("admin.videoConsultTitle"), painel.indexOf("{/* Stats */}"));
+    expect(cabecalho).toMatch(/agendarTeste/);
   });
 
   it("mas **não** inventa um paciente", () => {

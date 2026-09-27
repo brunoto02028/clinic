@@ -470,11 +470,11 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           <Dumbbell className="h-10 w-10 text-muted-foreground/20 mb-3" />
           <p className="text-sm text-muted-foreground">No exercises prescribed yet.</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Use &ldquo;Add folder&rdquo; above to prescribe a whole set at once.
+            Use &ldquo;Add one&rdquo; above for a single exercise, or &ldquo;Add folder&rdquo; for a whole
+            set at once.
           </p>
         </div>
         {picker}
-      {umPicker}
         {umPicker}
       </div>
     );
@@ -484,6 +484,12 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     <div className="space-y-2">
       {header}
       {picker}
+      {/* O diálogo do avulso **também aqui**, e este é o caso comum.
+          Uma edição minha deixou duas cópias no ramo do estado vazio e nenhuma
+          neste: o botão "Add one" aparecia para todo paciente que já tem
+          exercício e não abria nada. O QA achou a duplicata; tirá-la mostrou a
+          ausência. */}
+      {umPicker}
       {prescriptions.map((p) => (
         <div key={p.id} className="border rounded-lg p-3 flex items-start gap-3">
           <div className="w-14 h-14 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { labStaff } from "@/lib/lab-admin";
-import { idadeEmAnos } from "@/lib/managed-patients";
+import { idadeEmAnos, relacaoPorExtenso } from "@/lib/managed-patients";
 
 /**
  * Os pedidos da clínica com a margem **congelada** de cada venda (081, T-2).
@@ -49,7 +49,17 @@ export async function GET(request: NextRequest) {
       patient: o.patient,
       // Nulo quando o exame é do próprio titular, que é o caso comum.
       subject: o.subject
-        ? { ...o.subject, idade: o.subject.dateOfBirth ? idadeEmAnos(o.subject.dateOfBirth) : null }
+        ? {
+            ...o.subject,
+            idade: o.subject.dateOfBirth ? idadeEmAnos(o.subject.dateOfBirth) : null,
+            // Por extenso, na língua da tela: a chave crua (`LEGAL_GUARDIAN`)
+            // não é o que alguém lê num pedido.
+            relacao: relacaoPorExtenso(
+              (o.subject as any).managedRelationship,
+              (o.subject as any).managedRelationshipOther,
+              "en"
+            ),
+          }
         : null,
       products: o.items.map((i) => i.productName),
       total: o.total,

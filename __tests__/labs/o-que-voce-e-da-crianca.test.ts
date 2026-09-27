@@ -116,3 +116,37 @@ describe("a tela do app pede a relação como lista", () => {
     expect(pegar(noApp)).toEqual(pegar(noServidor));
   });
 });
+
+describe("o que o QA da 095 achou, e foi consertado", () => {
+  const rotaPatch = lerCodigo("app", "api", "mobile", "dependents", "[id]", "route.ts");
+  const labAdmin = lerCodigo("lib", "lab-admin.ts");
+  const rotaPedidos = lerCodigo("app", "api", "admin", "labs", "orders", "route.ts");
+  const telaPedidos = lerCodigo("app", "admin", "labs", "orders", "page.tsx");
+  const telaDeps = lerCodigo("mobile", "app", "(app)", "(lab)", "dependents.tsx");
+
+  it("**o PATCH guarda a descrição de 'outro'** (3.7)", () => {
+    /**
+     * A validação exigia o texto — recusava `OTHER` sem ele com 400 — e o
+     * update não o escrevia. O registro saía parecendo respondido, e o
+     * consentimento dizia "You are ordering as X's **Other**", que é menos
+     * informação que o campo em branco. O `POST` sempre gravou certo.
+     */
+    expect(rotaPatch).toMatch(/managedRelationshipOther: r\.pessoa\.relationshipOther/);
+    expect(rotaPatch).toMatch(/managedRelationshipOther: true/);
+  });
+
+  it("a relação chega ao pedido do laboratório (3.5)", () => {
+    // O plano prometia o consentimento **e o pedido**, e só o consentimento
+    // tinha ficado pronto. Sem coluna nova: a relação mora na pessoa.
+    expect(labAdmin).toMatch(/managedRelationship: true/);
+    expect(rotaPedidos).toMatch(/relacao: relacaoPorExtenso/);
+    expect(telaPedidos).toMatch(/r\.subject\.relacao/);
+  });
+
+  it("e a tela do app pergunta a quem ficou sem relação (3.7, 2ª metade)", () => {
+    // A relação só aparecia como sufixo **quando existia**: quem não abrisse
+    // "Editar" por conta própria nunca era perguntado.
+    expect(telaDeps).toMatch(/!d\.relationship && d\.menorDeIdade/);
+    expect(telaDeps).toMatch(/Say what you are to them|Diga o que você é dela/);
+  });
+});

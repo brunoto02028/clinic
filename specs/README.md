@@ -89,7 +89,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [092](092-a-pressao-a-chamada-e-os-ajustes/) | A pressão, a chamada, e os ajustes do app | 🟡 T-1 e T-4 concluídas; T-2/T-3/T-6 esperam re-medição; T-5 não existe; T-7 bloqueada (sem Stripe em prod) |
 | [093](093-a-fatura-do-paciente/) | A fatura do paciente (ver, PDF e pagar no app) | 🟢 T-1..T-6 feitas (27/09); QA reprovou 3 defeitos e os 3 foram corrigidos. **Não chega ao telefone sem build** — módulo nativo do Stripe. T-7 (Apple Pay) espera o merchant id |
 | [094](094-o-que-depende-do-bruno/) | O que depende do Bruno (registro de bloqueios) | 🟠 9 itens abertos: chave live do Stripe, webhook, logo no painel, build, Apple Pay, DPA da Daily, a 2ª cópia dos termos, sandbox LML, Connect |
-| [095](095-ajustes-para-publicar/) | Os ajustes para publicar (8 pedidos do Bruno, 27/09) | 🔵 planejada, **aguardando aprovação** |
+| [095](095-ajustes-para-publicar/) | Os ajustes para publicar (9 pedidos do Bruno, 27/09) | 🟢 **T-1..T-9 concluídas** (28/09). QA reprovou 6 cenários; todos corrigidos. Pendente: tela de gerido no painel, e universal link do aviso |
 
 > **A 091 está no ar com um furo conhecido.** O QA (`qa/report-091.md`) reprovou 4 cenários; três
 > foram consertados no mesmo dia — o portão do paciente passou a olhar o aceite de **quem responde**

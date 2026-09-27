@@ -216,6 +216,28 @@ export default function Dependentes() {
                       })}
                       {d.relationship ? ` · ${relacaoPorExtenso(d.relationship, d.relationshipOther, lang)}` : ""}
                     </Text>
+                    {/* Quem foi cadastrado antes da regra fica sem relação, e
+                        até aqui ninguém era perguntado: a relação só aparecia
+                        como sufixo **quando existia**, então quem não abrisse
+                        "Editar" por conta própria nunca sabia que faltava algo
+                        (QA da 095, segunda metade do 3.7).
+
+                        Menor de idade, porque é sobre quem responde por uma
+                        criança — não é cobrança a quem cuida de um adulto. */}
+                    {!d.relationship && d.menorDeIdade && (
+                      <Pressable onPress={() => abrirEdicao(d)}>
+                        <Text
+                          variant="caption"
+                          color={t.colors.warn}
+                          style={{ marginTop: 2, textDecorationLine: "underline" }}
+                        >
+                          {tr(lang, {
+                            en: "Say what you are to them →",
+                            pt: "Diga o que você é dela →",
+                          })}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                   {/* Ver a clínica como esta pessoa (091 T-7).
                       O Bruno: *"é a criança que está fazendo o tratamento de

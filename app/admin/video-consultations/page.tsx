@@ -109,8 +109,18 @@ export default function VideoConsultationsPage() {
       ...f,
       dateTime: local,
       duration: 30,
-      treatmentType: "TEST — video call",
-      notes: "Consulta de teste. Apague depois.",
+      /**
+       * Um tipo que **existe na lista** (QA da 095, T-2).
+       *
+       * Eu punha `"TEST — video call"`, que não casa com nenhum `SelectItem` —
+       * então o campo Tipo aparecia **em branco**. O valor sobrevivia no estado
+       * e a consulta nascia com ele, mas um campo vazio convida a pessoa a
+       * tocar no seletor, e aí a marca de teste se perdia.
+       *
+       * A marca vai na observação, que é texto livre e ninguém precisa tocar.
+       */
+      treatmentType: "Video Consultation",
+      notes: "TEST — consulta de teste. Apague depois.",
     }));
     setShowDialog(true);
   };
@@ -309,9 +319,18 @@ export default function VideoConsultationsPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">{T("admin.videoConsultDesc")}</p>
         </div>
-        <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Schedule Call
-        </Button>
+        <div className="flex gap-2">
+          {/* "Testar agora" **fora** do estado vazio (QA da 095, T-2).
+              O botão morava dentro da lista vazia: bastava existir uma consulta
+              por vídeo para ele sumir — e o roteiro de teste é justamente o que
+              alguém abre quando quer testar **de novo**. */}
+          <Button variant="outline" onClick={agendarTeste} className="gap-2">
+            <Video className="h-4 w-4" /> {relabel("Test it now")}
+          </Button>
+          <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Schedule Call
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
