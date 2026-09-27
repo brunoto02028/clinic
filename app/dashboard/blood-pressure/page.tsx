@@ -1239,7 +1239,10 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
       )}
 
       {/* Manual Torch Control */}
-      {(phase === "countdown" || phase === "measuring" || phase === "instructions") && (
+      {/* `phase === "instructions"` saiu daqui: a tela de instruções tem `return`
+          próprio bem acima, então este ramo nunca rodava — e era o último erro de
+          tipo do projeto. Removido sem tocar no resto do botão. */}
+      {(phase === "countdown" || phase === "measuring") && (
         <div className="flex justify-center mt-4">
           <Button
             variant="outline"
