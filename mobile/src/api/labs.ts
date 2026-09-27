@@ -59,6 +59,13 @@ export interface LabOrder {
   registration: { status: string; registered: boolean; canRegister: boolean } | null;
   released: boolean;
   releasedAt: string | null;
+  /**
+   * De quem é este exame (091 T-3). Nulo é o próprio titular.
+   *
+   * Numa conta que pede exame para mais de uma pessoa, resultado que aparece
+   * sem dizer de quem é está pronto para ser lido errado.
+   */
+  subject: { id: string; firstName: string; lastName: string; dateOfBirth: string; idade: number } | null;
   /** Quem lê primeiro. `DIRECT`: ninguém — o resultado é de quem comprou. */
   reviewMode: "THERAPIST" | "DIRECT";
   events: LabOrderEvent[];
@@ -91,11 +98,23 @@ export interface LabCatalog {
   products: LabProduct[];
   orderingEnabled: boolean;
   reviewDays: number;
+  /**
+   * Todo exame à venda é kit em casa (091 T-1). Enquanto for verdade, a página
+   * "como funciona" diz isso; quando entrar o primeiro exame com coleta em
+   * farmácia, a frase some sozinha.
+   */
+  todosEmCasa: boolean;
 }
 
 export async function fetchLabCatalog(): Promise<LabCatalog> {
   const res = await apiFetch<LabCatalog>("/api/mobile/labs/catalog");
-  return { products: res.products ?? [], orderingEnabled: !!res.orderingEnabled, reviewDays: res.reviewDays ?? 2 };
+  return {
+    products: res.products ?? [],
+    orderingEnabled: !!res.orderingEnabled,
+    reviewDays: res.reviewDays ?? 2,
+    // Ausente (servidor antigo) não é "sim": na dúvida a frase não aparece.
+    todosEmCasa: res.todosEmCasa === true,
+  };
 }
 
 export async function fetchLabProduct(id: string): Promise<{ product: LabProduct; orderingEnabled: boolean }> {
@@ -108,12 +127,26 @@ export async function fetchLabOrders(): Promise<{ orders: LabOrder[]; reviewDays
   return { orders: res.orders ?? [], reviewDays: res.reviewDays ?? 2, orderingEnabled: !!res.orderingEnabled };
 }
 
-export async function fetchLabOrder(id: string): Promise<{ order: LabOrder; result: LabResult | null; reviewDays: number }> {
-  return apiFetch<{ order: LabOrder; result: LabResult | null; reviewDays: number }>(`/api/mobile/labs/orders/${id}`);
+export interface LabOrderDetalhe {
+  order: LabOrder;
+  result: LabResult | null;
+  reviewDays: number;
+  /**
+   * Este pedido precisa de coleta num ponto (091 T-1). Hoje é `false` para
+   * tudo — os 22 exames do catálogo são picada no dedo em casa — e o campo
+   * existe para a tela oferecer o ponto sozinha quando entrar um venoso.
+   */
+  precisaDePontoDeColeta?: boolean;
+}
+
+export async function fetchLabOrder(id: string): Promise<LabOrderDetalhe> {
+  return apiFetch<LabOrderDetalhe>(`/api/mobile/labs/orders/${id}`);
 }
 
 export interface CreateLabOrderInput {
   items: { productId: string; quantity: number }[];
+  /** Para quem é o exame. Ausente ou nulo = para mim (091 T-3). */
+  dependentId?: string | null;
   shippingName?: string;
   shippingAddress: string;
   shippingPostcode: string;
@@ -137,14 +170,30 @@ export interface LabConsent {
   acceptedAt: string | null;
   version: string;
   text: { title: string; points: string[]; accept: string };
+  /** O primeiro nome de quem o aviso trata, quando não é o próprio titular. */
+  forName?: string | null;
 }
 
-export async function fetchLabConsent(locale: "en-GB" | "pt-BR"): Promise<LabConsent> {
-  return apiFetch<LabConsent>(`/api/patient/lab-consent?locale=${locale}`);
+/**
+ * O aviso, e se já foi aceito (091 T-4).
+ *
+ * `paraQuem` é o id da pessoa gerida. Com ele, o texto vem na voz de quem
+ * responde por ela — cinco cláusulas mudam de dono, não só a da idade — e o
+ * aceite consultado é **o dela**, porque é o exame dela que vai acontecer.
+ */
+export async function fetchLabConsent(
+  locale: "en-GB" | "pt-BR",
+  paraQuem?: string | null
+): Promise<LabConsent> {
+  const de = paraQuem ? `&for=${encodeURIComponent(paraQuem)}` : "";
+  return apiFetch<LabConsent>(`/api/patient/lab-consent?locale=${locale}${de}`);
 }
 
-export async function acceptLabConsent(): Promise<{ accepted: boolean; acceptedAt: string; version: string }> {
-  return apiFetch("/api/patient/lab-consent", { method: "POST" });
+export async function acceptLabConsent(
+  paraQuem?: string | null
+): Promise<{ accepted: boolean; acceptedAt: string; version: string }> {
+  const de = paraQuem ? `?for=${encodeURIComponent(paraQuem)}` : "";
+  return apiFetch(`/api/patient/lab-consent${de}`, { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +231,11 @@ export interface PontosDeColeta {
   pontos: PontoDeColeta[];
 }
 
-export async function fetchPontosDeColeta(): Promise<PontosDeColeta> {
-  return apiFetch<PontosDeColeta>("/api/mobile/labs/collection-points");
+/**
+ * Os pontos perto de um código postal — o do cadastro, ou o que a pessoa
+ * procurou (091 T-1). Sem argumento, responde pelo cadastro, como sempre.
+ */
+export async function fetchPontosDeColeta(postcode?: string | null): Promise<PontosDeColeta> {
+  const busca = postcode?.trim() ? `?postcode=${encodeURIComponent(postcode.trim())}` : "";
+  return apiFetch<PontosDeColeta>(`/api/mobile/labs/collection-points${busca}`);
 }

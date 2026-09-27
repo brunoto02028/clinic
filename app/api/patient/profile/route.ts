@@ -31,8 +31,22 @@ export async function GET() {
         preferredLocale: true, communicationPreference: true, pushEnabled: true,
         emergencyContactName: true, emergencyContactPhone: true, emergencyContactRelation: true,
         profileImageUrl: true,
+        managedById: true,
       } as any,
     });
+
+    /**
+     * O endereço sintético de uma conta gerida não sai daqui (091 T-7).
+     *
+     * Ele existe só para satisfazer a coluna única de e-mail. Devolvê-lo faria
+     * a tela sugerir que a criança tem caixa de entrada — e entregaria o
+     * endereço exato para quem quisesse mirá-lo em "esqueci minha senha".
+     * Achado do review de segurança de 27/09/2026.
+     */
+    if (user && (user as any).managedById) {
+      (user as any).email = null;
+    }
+    if (user) delete (user as any).managedById;
 
     return NextResponse.json({ user });
   } catch (err) {

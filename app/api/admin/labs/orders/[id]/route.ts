@@ -23,7 +23,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const biomarkers = Array.from(new Set(order.registrations.flatMap((r) => r.values.map((v) => v.biomarker))));
   const [previous, clinic] = await Promise.all([
-    previousValuesFor(clinicId, order.patientId, order.id, biomarkers),
+    // De quem e o exame, nao de quem pagou (091 T-5).
+    previousValuesFor(clinicId, order.subjectId ?? order.patientId, order.id, biomarkers),
     prisma.clinic.findUnique({ where: { id: clinicId }, select: { labReviewDays: true } }),
   ]);
 

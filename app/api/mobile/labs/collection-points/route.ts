@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getMobileUser } from "@/lib/mobile-auth-guard";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
-import { coordenadaDoPostcode, postcodeDoCadastro } from "@/lib/postcode";
+import { coordenadaDoPostcode, postcodeDoCadastro, normalizarPostcode } from "@/lib/postcode";
 import { nearestTestLocations } from "@/lib/lml";
 
 export function OPTIONS() {
@@ -37,13 +37,33 @@ export async function GET(request: NextRequest) {
   const payload = getMobileUser(request);
   if (!payload) return corsJson({ error: "Unauthorised" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
-    select: { postcode: true, address: true, city: true },
-  });
-  if (!user) return corsJson({ error: "Unauthorised" }, { status: 401 });
+  // Um código postal **procurado** vence o do cadastro (091 T-1).
+  //
+  // O Bruno: *"o paciente pode buscar a partir do postcode dele"*. O caso real
+  // não é só esse: quem quer conferir se há ponto perto do trabalho, ou da
+  // casa de quem vai levar a criança, não tem por que editar o perfil para
+  // fazer uma pergunta.
+  //
+  // Sem o parâmetro nada muda — a rota continua respondendo pelo cadastro,
+  // que é o que as telas já existentes esperam.
+  const procurado = normalizarPostcode(request.nextUrl.searchParams.get("postcode"));
+  const bruto = request.nextUrl.searchParams.get("postcode");
+  if (bruto && !procurado) {
+    // Digitou algo que não tem forma de código postal britânico. É erro de
+    // digitação, e dizer isso é diferente de devolver lista vazia.
+    return corsJson({ estado: "postcode_desconhecido", postcode: bruto.trim(), local: null, pontos: [] });
+  }
 
-  const postcode = postcodeDoCadastro(user);
+  let postcode = procurado;
+  if (!postcode) {
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { postcode: true, address: true, city: true },
+    });
+    if (!user) return corsJson({ error: "Unauthorised" }, { status: 401 });
+    postcode = postcodeDoCadastro(user);
+  }
+
   if (!postcode) {
     return corsJson({ estado: "sem_postcode", postcode: null, local: null, pontos: [] });
   }

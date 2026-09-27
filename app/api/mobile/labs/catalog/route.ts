@@ -31,5 +31,20 @@ export async function GET(request: NextRequest) {
     products: products.map(patientProduct),
     orderingEnabled: labOrderingEnabled(),
     reviewDays: clinic?.labReviewDays ?? 2,
+    /**
+     * Todo exame à venda é picada no dedo em casa? (091 T-1)
+     *
+     * A página "como funciona" descreve três caminhos para dar a amostra, e
+     * enquanto o catálogo só tiver `capillary` **os dois últimos não valem
+     * para nada que vendemos** — a pessoa sai de lá sem saber qual é o dela.
+     *
+     * A resposta sai do catálogo, e não de uma frase escrita à mão, porque o
+     * Bruno está preparando exames que precisam de coleta em farmácia. No dia
+     * em que o primeiro entrar, a frase some sozinha em vez de virar mentira
+     * esperando alguém lembrar dela.
+     */
+    todosEmCasa:
+      products.length > 0 &&
+      products.every((p) => !(p.sampleType ?? "").toLowerCase().includes("venous")),
   });
 }

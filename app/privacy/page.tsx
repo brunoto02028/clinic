@@ -202,19 +202,32 @@ export default function PrivacyPolicyPage() {
               <li><strong>{isPt ? "Quem analisa" : "Who analyses it"}</strong>{isPt
                 ? " — a London Medical Laboratory, um laboratório acreditado no Reino Unido. Ela é um processador independente e tem a própria política de privacidade."
                 : " — London Medical Laboratory, an accredited laboratory in the UK. It is an independent processor with its own privacy policy."}</li>
+              {/* Quando o exame é de quem você cuida, quem o laboratório
+                  precisa identificar é essa pessoa, não quem pagou (091 T-3) —
+                  é a data de nascimento dela que decide a faixa de referência
+                  do laudo. */}
               <li><strong>{isPt ? "O que vai para o laboratório" : "What the laboratory receives"}</strong>{isPt
-                ? " — seu nome, data de nascimento, endereço de entrega, telefone e a amostra que você posta. Nada além do necessário para despachar o kit e identificar a amostra."
-                : " — your name, date of birth, delivery address, phone number and the sample you post. Nothing beyond what is needed to dispatch the kit and identify the sample."}</li>
+                ? " — o nome e a data de nascimento de quem vai fazer o exame, o endereço de entrega, o telefone e a amostra que você posta. Quando o exame é para alguém de quem você cuida, são os dados dessa pessoa que identificam a amostra, e o seu endereço que recebe o kit. Nada além do necessário."
+                : " — the name and date of birth of whoever is being tested, the delivery address, phone number and the sample you post. When the test is for someone you look after, it is their details that identify the sample, and your address that receives the kit. Nothing beyond what is needed."}</li>
               <li><strong>{isPt ? "O que volta" : "What comes back"}</strong>{isPt
                 ? " — o resultado, com os valores e as faixas de referência, e um laudo em PDF. Guardamos os dois no seu prontuário, com o mesmo tratamento dos outros dados de saúde."
                 : " — the result, with values and reference ranges, and a PDF report. We keep both in your record, treated like the rest of your health data."}</li>
+              {/* Isto dizia que o terapeuta revisava antes — e deixou de ser
+                  verdade na 083, quando o exame virou independente. Os termos
+                  e o consentimento já diziam o contrário desde 26/09; esta
+                  página ficou para trás e só apareceu no review de 27/09. */}
               <li><strong>{isPt ? "Quem vê primeiro" : "Who sees it first"}</strong>{isPt
-                ? " — o seu terapeuta. Ele revisa o resultado e escreve uma nota antes de ele aparecer para você. Até lá, o aplicativo diz que está em revisão."
-                : " — your therapist. They review the result and write a note before it appears to you. Until then, the app says it is being reviewed."}</li>
+                ? " — você. O resultado chega ao aplicativo assim que o laboratório o libera, e ninguém da clínica o lê antes. O que fazer com ele é escolha sua."
+                : " — you do. The result reaches the app as soon as the laboratory releases it, and nobody at the clinic reads it first. What you do with it is your choice."}</li>
               <li><strong>{isPt ? "O que o resultado é" : "What the result is"}</strong>{isPt
                 ? " — informação, não diagnóstico. Não substitui uma consulta."
                 : " — information, not a diagnosis. It does not replace a consultation."}</li>
-              <li><strong>{isPt ? "Idade" : "Age"}</strong>{isPt ? " — exames de laboratório são para maiores de 16 anos." : " — laboratory tests are for people aged 16 or over."}</li>
+              {/* A quarta fonte da regra de idade, e a que ficou para trás na
+                  091 T-6 — o teste que eu escrevi se chamava "as três fontes
+                  concordam" e esta era a quarta, a mais formal das quatro. */}
+              <li><strong>{isPt ? "Idade" : "Age"}</strong>{isPt
+                ? " — a maior parte dos exames não tem limite de idade. Alguns — os de hormônios e saúde sexual — são a partir dos 16 anos, e a página de cada exame diz isso antes de você pagar. Quem tem menos de 18 anos é sempre pedido, e consentido, por quem responde por ele. Ter conta aqui é para maiores de 16 anos."
+                : " — most tests have no age limit. Some — the hormone and sexual-health ones — are from 16, and each test page says so before you pay. Anyone under 18 is ordered for, and consented for, by whoever is responsible for them. Holding an account here is for people aged 16 or over."}</li>
               <li><strong>{isPt ? "Apagar" : "Deletion"}</strong>{isPt
                 ? " — você pode pedir que apaguemos um resultado do seu prontuário a qualquer momento. O laboratório mantém o registro dele pelo prazo que a lei exige."
                 : " — you can ask us to delete a result from your record at any time. The laboratory keeps its own record for the period the law requires."}</li>

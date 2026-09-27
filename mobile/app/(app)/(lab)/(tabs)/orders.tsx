@@ -86,6 +86,18 @@ export default function LabOrders() {
                         </Text>
                         <Pill label={copy.title} variant={STAGE_PILL[item.stage]} />
                       </View>
+                      {/* De quem é (091 T-5). Numa conta que pede para mais de
+                          uma pessoa, uma lista que só mostra o nome do exame
+                          obriga a abrir cada pedido para saber de quem é — e,
+                          pior, convida a supor. */}
+                      {item.subject && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }} testID={`lab-order-sujeito-${item.orderNumber}`}>
+                          <Ionicons name="person-outline" size={12} color={t.colors.textSecondary} />
+                          <Text variant="caption" color={t.colors.textSecondary}>
+                            {item.subject.firstName} {item.subject.lastName}
+                          </Text>
+                        </View>
+                      )}
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                         <Text variant="caption" color={t.colors.textMuted}>#{item.orderNumber} · {formatDate(item.createdAt)}</Text>
                         <Text variant="caption" color={t.colors.text} style={{ fontWeight: "700" }}>£{item.total.toFixed(2)}</Text>

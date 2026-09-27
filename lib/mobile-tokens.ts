@@ -25,6 +25,24 @@ export interface AccessTokenPayload {
   clinicSlug: string | null;
   clinicType: string | null;
   permissions: ValidatedUser["permissions"];
+  /**
+   * Quem pediu esta sessão, quando ela é de uma pessoa gerida (091 T-7).
+   *
+   * O Bruno: *"se o paciente é uma criança, a mãe tem que fazer o cadastro e
+   * colocar a criança como uma dependente. E é a criança que está fazendo o
+   * tratamento de reabilitação."*
+   *
+   * A mãe precisa **ver e agir como a filha** — consulta, protocolo, exercício
+   * prescrito. Há 45 relações clínicas penduradas em `User`, e cada rota do
+   * app lê `payload.sub`. Fazer o token dizer "esta requisição é sobre a
+   * filha" faz todas elas funcionarem sem mudar uma linha.
+   *
+   * **Presente, este campo é uma restrição, não um poder.** Ele existe para as
+   * rotas que não podem ser executadas por terceiro — gastar dinheiro, trocar
+   * senha, apagar a conta, gerir dependentes — recusarem. É o mesmo papel que
+   * `isImpersonating` faz na web.
+   */
+  onBehalfOf?: string;
 }
 
 /** Signs a short-lived access JWT mirroring the web session payload. */
@@ -45,6 +63,63 @@ export function signAccessToken(user: ValidatedUser): string {
     algorithm: "HS256",
     expiresIn: ACCESS_TOKEN_TTL,
   });
+}
+
+/**
+ * Uma sessão curta **sobre** uma pessoa gerida, pedida por quem responde por
+ * ela (091 T-7).
+ *
+ * `sub` é a criança: é isso que faz as rotas clínicas devolverem a agenda, o
+ * protocolo e os exercícios dela sem nenhuma delas saber que existe um
+ * responsável no meio.
+ *
+ * **Não há refresh token.** É deliberado: a criança nunca ganha uma sessão
+ * própria e durável — quem tem sessão é o responsável, e este token é
+ * emprestado dela. Quando expira, o app pede outro com o token do responsável,
+ * e a checagem de `managedById` acontece de novo. Um refresh aqui seria uma
+ * credencial da criança vivendo por conta própria, que é exatamente o que a
+ * T-7 existe para impedir.
+ *
+ * Sem permissões: uma pessoa gerida é sempre paciente, nunca equipe.
+ */
+export function signManagedPatientToken(opts: {
+  child: { id: string; firstName: string; lastName: string; clinicId: string | null };
+  guardian: AccessTokenPayload;
+}): string {
+  const { child, guardian } = opts;
+  const payload: AccessTokenPayload = {
+    sub: child.id,
+    // O e-mail sintético não vai no token: nada deve tentar escrever para ele,
+    // e mostrá-lo faria uma tela sugerir que a criança tem caixa de entrada.
+    email: "",
+    role: "PATIENT",
+    firstName: child.firstName,
+    lastName: child.lastName,
+    clinicId: child.clinicId,
+    clinicName: guardian.clinicName,
+    clinicSlug: guardian.clinicSlug,
+    clinicType: guardian.clinicType,
+    permissions: {
+      canManageUsers: false,
+      canManageAppointments: false,
+      canManageArticles: false,
+      canManageSettings: false,
+      canViewAllPatients: false,
+      canCreateClinicalNotes: false,
+    } as ValidatedUser["permissions"],
+    onBehalfOf: guardian.sub,
+  };
+  return jwt.sign(payload, getSecret(), { algorithm: "HS256", expiresIn: ACCESS_TOKEN_TTL });
+}
+
+/**
+ * Esta requisição é de alguém agindo por outra pessoa?
+ *
+ * Toda rota que gasta dinheiro, troca credencial, apaga conta ou gere
+ * dependentes tem de recusar quando isto for verdade.
+ */
+export function ehSessaoDeTerceiro(payload: AccessTokenPayload): boolean {
+  return !!payload.onBehalfOf;
 }
 
 /** Verifies an access JWT. Throws if invalid/expired. Algorithm is pinned. */

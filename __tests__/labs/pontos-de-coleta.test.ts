@@ -14,8 +14,7 @@
  * uma tela vazia sem dizer por quê — e é isso que os quatro estados impedem.
  */
 
-import fs from "fs";
-import path from "path";
+import { ler, semComentarios } from "../helpers/codigo";
 import {
   normalizarPostcode,
   ehPostcodeValido,
@@ -23,11 +22,6 @@ import {
   coordenadaDoPostcode,
   limparCacheDePostcode,
 } from "@/lib/postcode";
-
-const raiz = path.join(__dirname, "..", "..");
-const ler = (...p: string[]) => fs.readFileSync(path.join(raiz, ...p), "utf8");
-const semComentarios = (src: string) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*/g, "");
 
 describe("o código postal é guardado numa forma só", () => {
   it.each([
@@ -256,14 +250,39 @@ describe("a tela de como funciona promete o que o contrato diz", () => {
     expect(menu).toMatch(/how-it-works/);
   });
 
-  it("e de quem não tem código postal, ela pede — com o caminho até o campo", () => {
-    expect(tela).toMatch(/Add my postcode/);
-    expect(tela).toMatch(/router\.push\("\/\(app\)\/profile-edit"\)/);
+  it("explica o ponto, mas **não** oferece busca antes de pagar", () => {
+    // O Bruno, 27/09: procurar ponto é tarefa do pedido, não da vitrine. Esta
+    // página explica e diz quando a escolha aparece; quem procura é o pedido.
+    expect(tela).toMatch(/Collection points across the UK/);
+    expect(tela).toMatch(/after paying/);
+    expect(semComentarios(tela)).not.toMatch(/collection-points/);
+  });
+
+  it("e diz que todo exame do catálogo é kit em casa — **enquanto for verdade**", () => {
+    // Descrever três caminhos quando o catálogo inteiro é o primeiro é a fonte
+    // da dúvida: a pessoa sai da página sem saber qual é o dela.
+    //
+    // Mas o Bruno está preparando exames com coleta em farmácia. Escrita à
+    // mão, esta frase viraria mentira esperando alguém lembrar dela — por isso
+    // quem responde é o catálogo.
+    expect(tela).toMatch(/every test in our catalogue is the first one: a kit at home/);
+    expect(tela).toMatch(/catalogo\.data\?\.todosEmCasa && \(/);
+  });
+
+  it("e um servidor que não responde isso não faz a frase aparecer", () => {
+    // Campo ausente não é "sim". Na dúvida a frase não aparece, que é o lado
+    // seguro: calar é melhor do que prometer kit para um exame venoso.
+    const cliente = ler("mobile", "src", "api", "labs.ts");
+    expect(cliente).toMatch(/todosEmCasa: res\.todosEmCasa === true/);
   });
 });
 
 describe("o ponto de coleta abre o mapa", () => {
-  const tela = ler("mobile", "app", "(app)", "(lab)", "how-it-works.tsx");
+  // Mudou de endereço na 091 T-1: a lista saiu do rodapé de "como funciona"
+  // para uma tela própria, e o helper do mapa virou um lugar só — duas telas
+  // mostram ponto, e helper copiado é helper que diverge.
+  const tela = ler("mobile", "app", "(app)", "(lab)", "collection-points.tsx");
+  const mapa = ler("mobile", "src", "lib", "mapa.ts");
 
   it("tocar no cartão leva ao mapa do aparelho", () => {
     // O Bruno: "tem como a pessoa clicar e ir direto para o mapa?" O mapa é a
@@ -272,14 +291,14 @@ describe("o ponto de coleta abre o mapa", () => {
   });
 
   it("app nativo primeiro, navegador como queda", () => {
-    expect(tela).toMatch(/Platform\.OS === "ios" \? `maps:0,0\?q=/);
-    expect(tela).toMatch(/geo:0,0\?q=/);
-    expect(tela).toMatch(/google\.com\/maps\/search/);
+    expect(mapa).toMatch(/Platform\.OS === "ios" \? `maps:0,0\?q=/);
+    expect(mapa).toMatch(/geo:0,0\?q=/);
+    expect(mapa).toMatch(/google\.com\/maps\/search/);
   });
 
   it("e um mapa que não abre não derruba a tela", () => {
-    expect(tela).toMatch(/\} catch \{/);
-    expect(tela).toMatch(/\.catch\(\(\) => \{\}\)/);
+    expect(mapa).toMatch(/\} catch \{/);
+    expect(mapa).toMatch(/\.catch\(\(\) => \{\}\)/);
   });
 
   it("o cartão diz que abre o mapa", () => {
@@ -289,5 +308,67 @@ describe("o ponto de coleta abre o mapa", () => {
 
   it("e tem rótulo de acessibilidade com o nome do lugar", () => {
     expect(tela).toMatch(/en: `Open \$\{ponto\.nome\} in maps`/);
+  });
+
+  it("o helper mora num lugar só — a tela antiga não guardou uma cópia", () => {
+    const antiga = ler("mobile", "app", "(app)", "(lab)", "how-it-works.tsx");
+    expect(antiga).not.toMatch(/function abrirNoMapa/);
+  });
+});
+
+describe("a tela de procurar ponto diz onde o exame acontece", () => {
+  const tela = ler("mobile", "app", "(app)", "(lab)", "collection-points.tsx");
+
+  it("**o exame não é feito no laboratório** — e o texto diz isso", () => {
+    // O Bruno: "o exame não é feito no laboratório, o exame é feito em pontos
+    // de coletas em todo o Reino Unido". Quem entende errado isto acha que
+    // precisa viajar até Londres para fazer um exame de sangue.
+    expect(tela).toMatch(/not given at the laboratory/);
+    expect(tela).toMatch(/não é coletada no laboratório/);
+    expect(tela).toMatch(/across the UK/);
+    expect(tela).toMatch(/por todo o Reino Unido/);
+  });
+
+  it("e não promete ponto para exame que é kit em casa", () => {
+    // Metade do catálogo é picada no dedo em casa. Uma tela que só falasse de
+    // ponto faria a pessoa procurar um lugar para onde não precisa ir.
+    expect(tela).toMatch(/Some tests do not need a point at all/);
+  });
+
+  it("dá para procurar qualquer código postal, não só o do cadastro", () => {
+    expect(tela).toMatch(/testID="busca-postcode"/);
+    expect(tela).toMatch(/Search any postcode/);
+    expect(tela).toMatch(/Use my profile postcode/);
+  });
+
+  it("e a busca entra na chave do cache", () => {
+    // Sem isto, procurar um segundo código postal devolveria o primeiro.
+    expect(tela).toMatch(/queryKey: \["lab-collection-points", busca\]/);
+  });
+
+  it("**só se chega nela depois de pagar** — nunca da vitrine", () => {
+    // O Bruno, 27/09: *"só pode encontrar o ponto de coleta depois de pagar.
+    // Porque a pessoa compra o exame, depois ela vai para as telas
+    // seguintes."* Antes de comprar, o que a vitrine deve é explicar.
+    const catalogo = semComentarios(ler("mobile", "app", "(app)", "(lab)", "(tabs)", "index.tsx"));
+    expect(catalogo).not.toMatch(/collection-points/);
+
+    const pedido = ler("mobile", "app", "(app)", "(lab)", "order", "[id].tsx");
+    expect(pedido).toMatch(/testID="pedido-ponto-de-coleta"/);
+    expect(pedido).toMatch(/collection-points/);
+  });
+
+  it("e o cartão do pedido some quando o exame é kit em casa", () => {
+    // Que é o caso dos 22 exames do catálogo hoje. Oferecer "procure um ponto"
+    // a quem vai receber um envelope é mandar a pessoa a lugar nenhum.
+    const pedido = ler("mobile", "app", "(app)", "(lab)", "order", "[id].tsx");
+    expect(pedido).toMatch(/data\.precisaDePontoDeColeta && o\.stage !== "basket"/);
+  });
+
+  it("tudo nas duas línguas", () => {
+    const en = (tela.match(/\ben: "/g) ?? []).length;
+    const pt = (tela.match(/\bpt: "/g) ?? []).length;
+    expect(en).toBeGreaterThan(8);
+    expect(pt).toBe(en);
   });
 });

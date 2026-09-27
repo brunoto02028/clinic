@@ -8,13 +8,16 @@ import { resolveActorTenant } from "@/lib/actor-tenant";
 /** Resolves a mobile bearer token from the current request headers, or null. */
 function getBearerIdentity(
   headerList: ReturnType<typeof headers>
-): { userId: string; role: string } | null {
+): { userId: string; role: string; onBehalfOf?: string } | null {
   const auth = headerList.get("authorization") || "";
   const [scheme, token] = auth.split(" ");
   if (scheme?.toLowerCase() !== "bearer" || !token) return null;
   try {
     const payload = verifyAccessToken(token);
-    return { userId: payload.sub, role: payload.role };
+    // `onBehalfOf` vinha sendo descartado aqui (091 T-7). Sem ele, a sessão que
+    // a mãe pede para ver a filha chegava às rotas `/api/patient/*` como se
+    // fosse a própria filha — e as recusas de escrita não disparavam.
+    return { userId: payload.sub, role: payload.role, onBehalfOf: payload.onBehalfOf };
   } catch {
     return null;
   }
@@ -55,11 +58,28 @@ export async function getEffectiveUser(): Promise<{
   // Web (cookie session) takes precedence; fall back to mobile bearer token.
   let realUserId = (session?.user as any)?.id as string | undefined;
   let realRole = (session?.user as any)?.role as string | undefined;
+  /**
+   * Quem responde pela pessoa desta sessão, quando ela é gerida (091 T-7).
+   *
+   * **Isto entra como impersonação, e é uma decisão consciente.** A mãe vendo
+   * a filha e um terapeuta vendo um paciente não são a mesma coisa em
+   * intenção — mas são a mesma coisa em risco: nos dois casos quem age não é
+   * a pessoa de quem é o registro.
+   *
+   * Reusar `isImpersonating` faz doze recusas de escrita já endurecidas
+   * valerem de imediato: consentimento, apagar conta, editar perfil, confirmar
+   * consulta, gravação, medidas de desfecho. **A área do responsável nasce de
+   * leitura**, que é o que o Bruno pediu — ver o tratamento da filha — e cada
+   * escrita que a gente quiser liberar depois é uma decisão por rota, tomada
+   * de propósito, em vez de um poder que apareceu de graça.
+   */
+  let porContaDe: string | undefined;
   if (!realUserId) {
     const bearer = getBearerIdentity(headerList);
     if (!bearer) return null;
     realUserId = bearer.userId;
     realRole = bearer.role;
+    porContaDe = bearer.onBehalfOf;
   }
 
   // Guard: if neither auth yielded a valid identity, treat as unauthenticated.
@@ -89,6 +109,18 @@ export async function getEffectiveUser(): Promise<{
       role: safeRole,
       isImpersonating: true,
       realAdminId: impersonatedBy,
+    };
+  }
+
+  // A sessão que um responsável pediu para ver quem ele cuida (091 T-7). Ver o
+  // comentário em `porContaDe`: entra como impersonação de propósito, para as
+  // recusas de escrita já existentes valerem sem exceção.
+  if (porContaDe) {
+    return {
+      userId: realUserId,
+      role: realRole,
+      isImpersonating: true,
+      realAdminId: porContaDe,
     };
   }
 

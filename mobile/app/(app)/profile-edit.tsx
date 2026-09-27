@@ -8,6 +8,7 @@ import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 import { useTheme } from "@/theme/useTheme";
 import { fetchProfile, updateProfile } from "@/api/profile";
 import { useLang, t as tr } from "@/lib/i18n";
+import { paraIsoDate } from "@/lib/datas";
 
 // The system's Locale type is "en-GB" | "pt-BR" (lib/i18n.ts), and the web's
 // switch writes exactly those. This wrote "en" / "pt", which nothing reads —
@@ -75,15 +76,9 @@ export default function ProfileEdit() {
     ),
   });
 
-  /** The field asks for DD/MM/YYYY; the API parses with `new Date`, which reads
-   *  that as an Invalid Date. Convert here rather than ask the patient to type
-   *  ISO. */
-  const toIsoDate = (v: string): string | undefined => {
-    const trimmed = v.trim();
-    if (!trimmed) return undefined;
-    const br = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return br ? `${br[3]}-${br[2]}-${br[1]}` : trimmed;
-  };
+  // A conversão DD/MM/YYYY → ISO mora em `@/lib/datas` desde a 091 T-2, quando
+  // a tela de dependentes passou a precisar da mesma coisa.
+  const toIsoDate = paraIsoDate;
 
   const nameMissing = !firstName.trim() || !lastName.trim();
 

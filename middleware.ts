@@ -1,4 +1,5 @@
 import { getToken } from 'next-auth/jwt';
+import { ehEscritaEmprestada } from '@/lib/sessao-emprestada';
 import { gemeoNoAdmin } from '@/lib/dashboard-admin-twins';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -350,6 +351,39 @@ export async function middleware(request: NextRequest) {
 
   const authHeader = request.headers.get('authorization');
   if (authHeader?.toLowerCase().startsWith('bearer ') && isMobileApiPath(pathname)) {
+    /**
+     * Sessão emprestada só lê (091 T-7).
+     *
+     * Quem responde por alguém pode **ver** o tratamento dessa pessoa. Escrever
+     * é outra coisa, e eu tinha afirmado que já estava fechado porque reusei
+     * `isImpersonating` — falso: o review de 27/09/2026 mediu doze rotas que
+     * conferem e cerca de trinta que não, incluindo dinheiro, mensagem ao
+     * terapeuta e check-in. O poder apareceu de graça.
+     *
+     * **Aqui é o único lugar que torna a regra verdadeira por construção.**
+     * Trinta guardas copiadas à mão erram uma; esta é uma. E ela cobre o que
+     * importa, porque `MOBILE_API_PREFIXES` já inclui `/api/patient`,
+     * `/api/appointments`, `/api/exercises` e `/api/push-token` — a lista
+     * inteira do achado.
+     *
+     * Liberar uma escrita específica — marcar exercício feito, confirmar
+     * consulta — passa a exigir uma exceção explícita aqui, que é o custo
+     * certo para uma decisão dessas.
+     */
+    if (ehEscritaEmprestada(request.method, authHeader)) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Switch back to your own account to make changes.',
+          errorPt: 'Volte para a sua conta para fazer alterações.',
+          code: 'on_behalf_read_only',
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN, ...SECURITY_HEADERS },
+        }
+      );
+    }
+
     // The personal-studio block must hold for the app too (activity 52, T-7).
     // The token's payload is read here without verifying it: that's enough to
     // *restrict* — a forged token still fails the route's own verification.

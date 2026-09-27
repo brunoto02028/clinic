@@ -960,6 +960,32 @@ model User {
   // BA One — Labs Module
   labOrders LabOrder[] @relation("PatientLabOrders")
 
+  /// Quem responde por este paciente, quando ele nao entra sozinho (091 T-7).
+  ///
+  /// O Bruno: "se o paciente e uma crianca, a mae tem que fazer o cadastro e
+  /// colocar a crianca como uma dependente. E e a crianca que esta fazendo o
+  /// tratamento de reabilitacao."
+  ///
+  /// A crianca precisa de prontuario de verdade: consulta, protocolo,
+  /// exercicio, nota clinica. Sao 45 relacoes clinicas penduradas aqui, e
+  /// aponta-las para uma tabela separada seria duplicar o sistema inteiro.
+  /// Entao a crianca e um User — **sem e-mail e sem senha**, e o login recusa
+  /// quem tem managedById. Nao ha credencial para usar, e ha uma recusa
+  /// explicita: duas camadas, porque esta nao pode falhar.
+  /// O parentesco com quem responde pela pessoa — "filha", "filho" (091 T-7).
+  ///
+  /// A tela coleta, a validacao aceita, e ate o review de 27/09/2026 o valor
+  /// era **descartado em silencio**: a tabela `Dependent` tinha a coluna, o
+  /// `User` nao, e a unificacao esqueceu de trazer.
+  managedRelationship String?
+  managedById         String?
+  guardian            User?      @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
+  /// SetNull e nao Cascade de proposito: apagar um responsavel nunca pode
+  /// destruir o prontuario de quem ele cuidava. O registro fica, sem dono, e a
+  /// clinica reatribui.
+  managedPatients     User[]     @relation("ManagedPatients")
+  labOrdersAsSubject  LabOrder[] @relation("LabOrderSubject")
+
   // BA One — Entitlements
   entitlements Entitlement[] @relation("UserEntitlements")
 
@@ -4672,7 +4698,7 @@ model DailyCheckIn {
   /// à noite"* — e a dor de manhã e a da noite são dois fatos, não um que
   /// sobrescreve o outro. Quem já registrava antes disto tem `"day"`, que é o
   /// honesto: aquele registro descreve o dia, sem dizer a hora.
-  period        String @default("day")
+  period        String  @default("day")
   painLevel     Int // 0-10 (0=no pain, 10=severe)
   moodLevel     Int // 1-5 (1=terrible, 5=excellent)
   exercisesDone Boolean @default(false)
@@ -4835,11 +4861,11 @@ model Coupon {
   patientId String?
   patient   User?   @relation("CouponTarget", fields: [patientId], references: [id], onDelete: Cascade)
 
-  startsAt DateTime?
-  endsAt   DateTime?
+  startsAt       DateTime?
+  endsAt         DateTime?
   /// `null` = sem limite total.
   maxRedemptions Int?
-  maxPerPatient  Int  @default(1)
+  maxPerPatient  Int       @default(1)
 
   isActive Boolean @default(true)
 
@@ -4869,14 +4895,12 @@ model CouponRedemption {
   /**
    * **Qual compra** este resgate desconta: o id da consulta, do pacote, do
    * plano ou da assinatura.
-   *
    * Sem isto, o reaproveitamento da reserva não distinguia *dois toques na
    * mesma compra* de *duas compras diferentes do mesmo tipo*: com um cupom de
    * um uso por paciente, a pessoa abria duas consultas, ganhava duas sessões
    * descontadas e o banco registrava **um** resgate (R-1 do reteste,
    * 26/09/2026). Agora a chave do reaproveitamento é
    * (cupom, paciente, escopo, compra).
-   *
    * Opcional porque resgates gravados antes desta coluna não têm o dado — e
    * porque um caminho futuro pode descontar algo sem id próprio.
    */
@@ -4901,18 +4925,14 @@ model CouponRedemption {
 
 /**
  * Uma sessão de uso do app (085, T-1).
- *
  * "Quanto tempo essa pessoa usa o app" era uma pergunta sem resposta: o
  * cadastro dizia quem ela é, e nada dizia se ela abriu. Contar **toques**
  * responderia, e geraria uma tabela enorme para uma pergunta simples — então o
  * que se guarda é a sessão: começo, último sinal, fim.
- *
  * O app manda um sinal na abertura e a cada poucos minutos **em primeiro
  * plano**. Em segundo plano, nada: bateria é do paciente.
- *
  * Quem fecha a sessão é o **silêncio**, não um cron — fechar o app não manda
  * nada confiável, e os crons deste projeto estão desligados de propósito.
- *
  * `city` e `country` vêm do IP no login (T-2). **O IP cru não é guardado aqui**:
  * ele já vive no `ConsentLog` quando tem função, e uma cidade responde "onde
  * estão meus usuários" sem guardar de onde cada um fala.
@@ -7867,6 +7887,17 @@ model LabOrder {
   orderNumber String @unique
   patientId   String
   patient     User   @relation("PatientLabOrders", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// De quem é este exame (091 T-3).
+  ///
+  /// Nulo significa "do próprio titular", que é o que todo pedido feito até
+  /// aqui quis dizer — por isso nulo, e não um campo obrigatório que mudaria
+  /// o sentido do que já está gravado.
+  ///
+  /// SetNull, e não Cascade: remover um dependente não pode levar junto o
+  /// pedido nem o resultado de um exame que a LML já analisou.
+  subjectId String?
+  subject   User?   @relation("LabOrderSubject", fields: [subjectId], references: [id], onDelete: SetNull)
 
   /// Qual clínica vendeu. Opcional no schema só para as linhas que já existem;
   /// obrigatório em código (081). Sem isto o pedido não sabe de quem é a margem

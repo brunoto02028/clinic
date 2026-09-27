@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getMobileUser } from "@/lib/mobile-auth-guard";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
-import { loadPatientOrder, patientOrder, patientResult } from "@/lib/lab-patient";
+import { loadPatientOrder, patientOrder, patientResult, precisaDePontoDeColeta } from "@/lib/lab-patient";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -31,6 +31,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     order: patientOrder(order),
     result: await patientResult(order),
     reviewDays: clinic?.labReviewDays ?? 2,
+    // Só o pedido sabe se há ponto para escolher — a vitrine não.
+    precisaDePontoDeColeta: await precisaDePontoDeColeta(order),
   });
 }
 

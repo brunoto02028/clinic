@@ -26,7 +26,7 @@ export {
 
 // Reexportar **não** traz o nome para o escopo deste arquivo, e a linha que o
 // usa mais abaixo compilava por acidente de configuração. Importar de verdade.
-import { DOCUMENT_ALLOWED_TYPES, ehAudio } from "@/lib/patient-documents-shared";
+import { DOCUMENT_ALLOWED_TYPES, ehAudio, ehAudioPeloNome } from "@/lib/patient-documents-shared";
 
 export interface StorePatientDocumentInput {
   file: File;
@@ -64,8 +64,14 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
       // O recado de voz: `audio/mp4` é o que um `.m4a` de iPhone é por dentro.
       ehAudio(tipoReal) ||
       DOCUMENT_ALLOWED_TYPES.includes(tipoReal));
+  // O nome entra aqui porque o portão agora deixa passar um `.m4a` de rótulo
+  // vago. Sem esta linha, um executável renomeado para `.m4a` chegaria com
+  // conteúdo irreconhecível e **passaria**, já que o rótulo vago não exige
+  // assinatura de ninguém.
   const rotuloExigeAssinatura =
-    file.type.startsWith("image/") || file.type === "application/pdf";
+    file.type.startsWith("image/") ||
+    file.type === "application/pdf" ||
+    ehAudioPeloNome(file.name);
 
   if ((conteudoReconhecido && !conteudoAceitavel) || (!conteudoReconhecido && rotuloExigeAssinatura)) {
     throw Object.assign(new Error("That file is not what it says it is."), {

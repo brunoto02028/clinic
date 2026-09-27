@@ -14,9 +14,19 @@
  * mentir exatamente no momento em que a pessoa decidiu confiar menos.
  */
 
-import { ler, semComentarios } from "../helpers/codigo";
+import { ler, lerCodigo, semComentarios } from "../helpers/codigo";
 
-const rota = ler("app", "api", "patient", "account", "route.ts");
+/**
+ * Sem comentário — **sétima vez** que isto morde neste repositório.
+ *
+ * A 091 T-7 acrescentou aqui uma linha que desliga quem o titular cuidava, e o
+ * comentário dela explica a escolha citando `user.delete` pelo nome: *"a mesma
+ * razão que impede `user.delete` aqui em cima vale para ela"*. O teste abaixo
+ * acusou a explicação como se fosse o defeito.
+ *
+ * É exatamente a lista que `__tests__/helpers/codigo.ts` documenta.
+ */
+const rota = lerCodigo("app", "api", "patient", "account", "route.ts");
 const tela = ler("mobile", "app", "(app)", "delete-account.tsx");
 const conta = ler("mobile", "app", "(app)", "account.tsx");
 const schema = ler("prisma", "schema.prisma");
@@ -50,6 +60,14 @@ describe("a conta some, o prontuário fica", () => {
   it("tudo numa transação", () => {
     // Metade apagada é o pior dos dois estados: sem acesso e ainda recebendo.
     expect(rota).toMatch(/prisma\.\$transaction/);
+  });
+
+  it("**e quem ele cuidava sai junto** — senão fica ativo e inalcançável", () => {
+    // Apagar a conta da mãe deixava a filha apontando para uma conta morta,
+    // sem sessão possível, e ainda contando como paciente ativa da clínica.
+    // Achado do QA de 27/09/2026.
+    expect(rota).toMatch(/user\.updateMany\(/);
+    expect(rota).toMatch(/managedById: userId, deletedAt: null/);
   });
 
   it("e fica registrado quem pediu", () => {

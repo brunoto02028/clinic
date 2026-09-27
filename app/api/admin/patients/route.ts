@@ -377,6 +377,37 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    /**
+     * Não se apaga quem tem exame de laboratório, nem o dele nem o de outra
+     * pessoa (091 T-7, achado do review de 27/09/2026).
+     *
+     * `LabOrder.patientId` cascateia. Apagar **quem pagou** destruiria o
+     * pedido e o resultado do filho dele — registro de um terceiro. E apagar
+     * **o sujeito** zeraria `subjectId`, e aí `identidadeParaOLaboratorio`
+     * passaria a devolver o nome e a data de nascimento do responsável para
+     * uma amostra que é da criança: faixa de referência errada com cara de
+     * certa, que é o defeito que aquela função existe para impedir.
+     *
+     * Registro clínico e financeiro não é para apagar a pedido. Quem precisa
+     * sair do sistema é desativado — o caminho que a exclusão de conta do
+     * próprio paciente já usa.
+     */
+    const exames = await prisma.labOrder.count({
+      where: { OR: [{ patientId }, { subjectId: patientId }] },
+    });
+    if (exames > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This person has laboratory orders and cannot be deleted. Deactivate the account instead.",
+          errorPt:
+            "Esta pessoa tem pedidos de exame e não pode ser apagada. Desative a conta em vez disso.",
+          code: "has_lab_orders",
+        },
+        { status: 409 }
+      );
+    }
+
     await prisma.user.delete({ where: { id: patientId } });
 
     return NextResponse.json({ success: true });

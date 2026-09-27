@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const user = await getEffectiveUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (user.isImpersonating) {
-    return NextResponse.json({ error: "Read-only during impersonation" }, { status: 403 });
+    return NextResponse.json({ error: "Read-only while viewing as someone else", errorPt: "Somente leitura durante a visualização" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));

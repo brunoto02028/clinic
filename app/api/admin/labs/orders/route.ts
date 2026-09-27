@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { labStaff } from "@/lib/lab-admin";
+import { idadeEmAnos } from "@/lib/managed-patients";
 
 /**
  * Os pedidos da clínica com a margem **congelada** de cada venda (081, T-2).
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
     where,
     include: {
       patient: { select: { id: true, firstName: true, lastName: true } },
+      // De quem é o exame (091 T-5). Sem isto a clínica veria o nome da mãe
+      // num exame da filha — e a faixa de referência do laudo é por idade.
+      subject: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true } },
       items: { select: { productName: true, quantity: true, unitPrice: true, unitCost: true, total: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -43,6 +47,10 @@ export async function GET(request: NextRequest) {
       orderNumber: o.orderNumber,
       status: o.status,
       patient: o.patient,
+      // Nulo quando o exame é do próprio titular, que é o caso comum.
+      subject: o.subject
+        ? { ...o.subject, idade: o.subject.dateOfBirth ? idadeEmAnos(o.subject.dateOfBirth) : null }
+        : null,
       products: o.items.map((i) => i.productName),
       total: o.total,
       cost: Math.round(cost * 100) / 100,

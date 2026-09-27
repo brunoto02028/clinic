@@ -69,6 +69,12 @@ export default function LabsHub() {
           </Text>
           {/* No menu ela também está, mas ninguém abre um menu para descobrir
               se pode comprar sem encaminhamento. A pergunta nasce aqui. */}
+          {/* Só "como funciona" antes de pagar.
+              O Bruno, 27/09: *"só pode encontrar o ponto de coleta depois de
+              pagar. Porque a pessoa compra o exame, depois ela vai para as
+              telas seguintes."* Antes de comprar, o que ela precisa é entender
+              o passo a passo — procurar ponto é tarefa do pedido, não da
+              vitrine. */}
           <Pressable
             onPress={() => router.push("/(app)/(lab)/how-it-works")}
             accessibilityRole="button"

@@ -18,6 +18,8 @@ import { gbp } from "@/lib/lab-catalog";
 interface Row {
   id: string; orderNumber: string; status: string;
   patient: { id: string; firstName: string; lastName: string } | null;
+  /** De quem e o exame, quando nao e de quem pagou (091 T-5). */
+  subject: { id: string; firstName: string; lastName: string; idade: number | null } | null;
   products: string[]; total: number; cost: number; margin: number;
   paidAt: string | null; releasedToPatientAt: string | null; awaitingRelease: boolean; createdAt: string;
 }
@@ -39,7 +41,7 @@ const UI = {
     all: "All", released: "With results",
     sold: "Sold", cost: "Cost", margin: "Margin", orders: "orders",
     results: "Results in", resultsHint: "the patient already has them",
-    order: "Order", patient: "Patient", tests: "Tests", status: "Status", paid: "Paid",
+    order: "Order", patient: "Patient", tests: "Tests", status: "Status", paid: "Paid", orderedBy: "ordered by",
     empty: "No orders yet.", failed: "Could not load the orders.", retry: "Try again",
     releasedBadge: "Results with the patient", open: "Open",
   },
@@ -48,7 +50,7 @@ const UI = {
     all: "Todos", released: "Com resultado",
     sold: "Vendido", cost: "Custo", margin: "Margem", orders: "pedidos",
     results: "Resultados", resultsHint: "o paciente já os tem",
-    order: "Pedido", patient: "Paciente", tests: "Exames", status: "Estado", paid: "Pago",
+    order: "Pedido", patient: "Paciente", tests: "Exames", status: "Estado", paid: "Pago", orderedBy: "pedido por",
     empty: "Nenhum pedido ainda.", failed: "Não foi possível carregar os pedidos.", retry: "Tentar de novo",
     releasedBadge: "Resultado com o paciente", open: "Abrir",
   },
@@ -132,7 +134,27 @@ export default function LabOrdersPage() {
               {shown.map((r) => (
                 <TableRow key={r.id} data-testid={`lab-order-${r.orderNumber}`}>
                   <TableCell className="font-mono text-xs">{r.orderNumber}</TableCell>
-                  <TableCell>{r.patient ? `${r.patient.firstName} ${r.patient.lastName}` : "—"}</TableCell>
+                  {/* Quem paga e quem faz o exame podem ser pessoas diferentes
+                      (091 T-5). Mostrar só o titular faria a clínica ler o
+                      laudo da filha como se fosse o da mãe — e a faixa de
+                      referência de um laudo é por idade. */}
+                  <TableCell>
+                    {r.subject ? (
+                      <div className="leading-tight">
+                        <div className="font-medium">
+                          {r.subject.firstName} {r.subject.lastName}
+                          {r.subject.idade != null ? ` (${r.subject.idade})` : ""}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {ui.orderedBy} {r.patient ? `${r.patient.firstName} ${r.patient.lastName}` : "—"}
+                        </div>
+                      </div>
+                    ) : r.patient ? (
+                      `${r.patient.firstName} ${r.patient.lastName}`
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="text-sm">{r.products.join(", ")}</TableCell>
                   <TableCell>
                     <span className="text-sm">{pt ? STATUS[r.status]?.pt : STATUS[r.status]?.en ?? r.status}</span>

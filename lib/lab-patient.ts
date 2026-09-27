@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { HOME_KITS } from "@/lib/lab-catalog";
 import { labStage } from "@/lib/lab-stage";
 import { nonDiagnosticCopy } from "@/lib/lab-review-mode";
+import { idadeEmAnos } from "@/lib/managed-patients";
 
 /**
  * O que o paciente pode ver (081, T-3) — e, tão importante, o que não pode.
@@ -41,6 +42,8 @@ export function patientOrderInclude() {
     items: { select: { id: true, productId: true, productName: true, quantity: true, unitPrice: true, total: true } },
     registrations: { select: { id: true, status: true, resultsReady: true, resultsPdfPath: true, assignedPatientAt: true, createdAt: true }, orderBy: { createdAt: "asc" as const } },
     events: { select: { id: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
+    // De quem é o exame (091 T-3). Nulo significa o próprio titular.
+    subject: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true } },
   };
 }
 
@@ -48,6 +51,66 @@ type OrderRow = NonNullable<Awaited<ReturnType<typeof loadPatientOrder>>>;
 
 export async function loadPatientOrder(id: string, patientId: string) {
   return prisma.labOrder.findFirst({ where: { id, patientId }, include: patientOrderInclude() });
+}
+
+/**
+ * Este pedido precisa que um profissional colha o sangue num ponto? (091 T-1)
+ *
+ * O Bruno, 27/09: *"só pode encontrar o ponto de coleta depois de pagar.
+ * Porque a pessoa compra o exame, depois ela vai para as telas seguintes."*
+ * Procurar ponto deixou de ser coisa da vitrine e passou a ser coisa do
+ * pedido — e o pedido tem de saber se precisa de um.
+ *
+ * **Hoje isto é `false` para tudo, e é a verdade**: os 22 exames do catálogo
+ * são `capillary`, picada no dedo em casa. A pergunta é feita ao dado e não
+ * fixada em código para que, no dia em que entrar um exame venoso, a tela
+ * passe a oferecer o ponto sozinha.
+ */
+export async function precisaDePontoDeColeta(o: OrderRow): Promise<boolean> {
+  const ids = [...new Set(o.items.map((i) => i.productId))];
+  if (ids.length === 0) return false;
+  const produtos = await prisma.labProduct.findMany({
+    where: { id: { in: ids } },
+    select: { sampleType: true },
+  });
+  return produtos.some((p) => (p.sampleType ?? "").toLowerCase().includes("venous"));
+}
+
+/**
+ * Quem a LML precisa saber que é (091 T-3).
+ *
+ * **Esta é a função que separa "de quem é a conta" de "de quem é o sangue".**
+ * O laboratório analisa uma amostra e emite um laudo com faixa de referência
+ * por idade: mandar o nome e a data de nascimento do pai para a amostra da
+ * filha produz um laudo errado com a aparência de certo — o pior defeito
+ * possível neste módulo.
+ *
+ * Hoje **ninguém chama `placeOrder`**: a integração espera o token (081, T-5 a
+ * T-9). Esta função existe agora para que, no dia em que alguém a ligar, o
+ * caminho certo já esteja escrito e o errado exija trabalho. Quem for wiring
+ * isso: é daqui que sai a identidade, nunca de `order.patient`.
+ */
+export async function identidadeParaOLaboratorio(
+  orderId: string
+): Promise<{ firstName: string; lastName: string; dateOfBirth: Date | null; ehGerido: boolean } | null> {
+  const o = await prisma.labOrder.findUnique({
+    where: { id: orderId },
+    select: {
+      subject: { select: { firstName: true, lastName: true, dateOfBirth: true } },
+      patient: { select: { firstName: true, lastName: true, dateOfBirth: true } },
+    },
+  });
+  if (!o) return null;
+
+  if (o.subject) {
+    return { ...o.subject, ehGerido: true };
+  }
+  return {
+    firstName: o.patient.firstName,
+    lastName: o.patient.lastName,
+    dateOfBirth: o.patient.dateOfBirth,
+    ehGerido: false,
+  };
 }
 
 export function patientOrder(o: OrderRow) {
@@ -67,6 +130,26 @@ export function patientOrder(o: OrderRow) {
     shipping: { name: o.shippingName, address: o.shippingAddress, postcode: o.shippingPostcode },
     registration: o.registrations[0]
       ? { status: o.registrations[0].status, registered: !!o.registrations[0].assignedPatientAt, canRegister: false }
+      : null,
+    /**
+     * De quem é este exame (091 T-3).
+     *
+     * `null` é o próprio titular — o sentido de todo pedido feito antes disto.
+     * Quando há dependente, o nome dele é o que a tela precisa mostrar: um
+     * resultado que aparece sem dizer de quem é, numa conta que pede exame
+     * para mais de uma pessoa, é um resultado pronto para ser lido errado.
+     */
+    subject: o.subject
+      ? {
+          id: o.subject.id,
+          firstName: o.subject.firstName,
+          lastName: o.subject.lastName,
+          dateOfBirth: o.subject.dateOfBirth,
+          // `dateOfBirth` é opcional em `User`. Uma pessoa gerida sempre tem a
+          // sua — a validação exige —, mas o tipo não promete isso, e inventar
+          // uma idade a partir de nulo seria pior do que não mostrar nenhuma.
+          idade: o.subject.dateOfBirth ? idadeEmAnos(o.subject.dateOfBirth) : null,
+        }
       : null,
     released: !!o.releasedToPatientAt,
     releasedAt: o.releasedToPatientAt,

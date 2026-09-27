@@ -1,5 +1,7 @@
+import { View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { HeaderBack } from "@/components/HeaderBack";
+import { FaixaVendoComo } from "@/components/FaixaVendoComo";
 import { Screen, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { useSessionPing } from "@/lib/session-ping";
@@ -57,13 +59,24 @@ export default function AppLayout() {
    * desenham o próprio header; o que muda é que, quando uma tela daqui pede
    * header, ela recebe o nosso botão em vez do nativo.
    */
+  /**
+   * A faixa de "vendo como" fica **por fora do Stack** (091 T-7).
+   *
+   * Dentro dele ela sumiria a cada navegação, e um aviso que aparece só em
+   * algumas telas é pior que nenhum: enquanto o responsável vê a clínica como
+   * quem ele cuida, toda tela mostra dados de outra pessoa, e ler a dor da
+   * filha como se fosse a própria não é um engano pequeno num app clínico.
+   */
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        headerBackButtonDisplayMode: "minimal",
-        headerLeft: () => <HeaderBack />,
-      }}
-    />
+    <View style={{ flex: 1 }}>
+      <FaixaVendoComo />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerBackButtonDisplayMode: "minimal",
+          headerLeft: () => <HeaderBack />,
+        }}
+      />
+    </View>
   );
 }

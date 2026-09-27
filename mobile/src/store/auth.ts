@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { tokenStorage } from "@/lib/secure-storage";
+import { definirTokenEmprestado } from "@/lib/emprestimo";
 import { setOnAuthFailure, refreshSession, pendingRefresh } from "@/api/client";
 import { loginRequest, logoutRequest, registerRequest } from "@/api/auth";
 import { registrarParaPush, desregistrarPush } from "@/lib/push";
@@ -131,6 +132,13 @@ export const useAuth = create<AuthState>((set) => ({
     const refresh = await tokenStorage.getRefresh();
     if (refresh) await logoutRequest(refresh);
     await tokenStorage.clear();
+    // E o token emprestado, que mora em memória e não no armazenamento (091
+    // T-7). Sem esta linha ele sobrevivia ao logout: a mãe saía sem tocar em
+    // "Voltar para mim", outra pessoa logava no mesmo aparelho, e **toda**
+    // chamada seguinte saía com o Bearer da filha — lendo e escrevendo no
+    // prontuário dela, porque o emprestado ganha do próprio. Achado do review
+    // de segurança de 27/09/2026.
+    definirTokenEmprestado(null);
     // The step that was missing: tokens went, cached health data stayed.
     await clearSessionCache();
     set({ status: "unauthenticated", user: null });
@@ -141,7 +149,9 @@ export const useAuth = create<AuthState>((set) => ({
 // reflect that in the store so the UI redirects to login.
 setOnAuthFailure(() => {
   // A lost session is an identity change too — the next person to sign in
-  // must not inherit this one's cache.
+  // must not inherit this one's cache. Nem o token emprestado (091 T-7): ele
+  // é de memória, então sobrevive a tudo que não o apague à mão.
+  definirTokenEmprestado(null);
   void clearSessionCache();
   useAuth.setState({ status: "unauthenticated", user: null });
 });

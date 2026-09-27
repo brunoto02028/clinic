@@ -1,11 +1,11 @@
-import { View, Pressable, Platform, Linking } from "react-native";
-import { Stack, router } from "expo-router";
+import { View } from "react-native";
+import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
+import { Screen, Text, Card } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { fetchPontosDeColeta } from "@/api/labs";
+import { fetchLabCatalog } from "@/api/labs";
 
 /**
  * Como funciona um exame pelo app (081).
@@ -21,43 +21,16 @@ import { fetchPontosDeColeta } from "@/api/labs";
  * consentimento já dizem; divergir aqui seria prometer outra coisa na tela
  * onde a pessoa decide.
  *
- * A parte dos pontos de coleta **já mostra alguma coisa hoje**, mesmo com a
- * conexão do laboratório fechada: o código postal do cadastro, conferido contra
- * o serviço de códigos postais. Uma tela que reconhece o que a pessoa cadastrou
- * é diferente de uma tela vazia.
+ * **A lista de pontos saiu daqui na 091 T-1.** O Bruno: *"só pode encontrar o
+ * ponto de coleta depois de pagar."* Procurar ponto virou tarefa do pedido;
+ * esta página explica o caminho e diz quando a escolha aparece.
  */
-/**
- * Abre o ponto de coleta no mapa do aparelho.
- *
- * O Bruno: *"tem como a pessoa clicar e ir direto para o mapa e ter mais
- * informações do local?"* O mapa é a parte que **não depende do laboratório**:
- * basta o endereço, e ele vem no ponto.
- *
- * Telefone e "que tipo de lugar é" continuam esperando a conexão com eles —
- * a documentação que li não traz esses campos.
- *
- * `maps:` no iOS e `geo:` no Android abrem o app nativo; a busca do Google
- * Maps é a queda para quando nenhum dos dois responde, que é o caso do
- * navegador.
- */
-async function abrirNoMapa(nome: string, endereco: string): Promise<void> {
-  const busca = encodeURIComponent(`${nome}, ${endereco}`);
-  const nativo = Platform.OS === "ios" ? `maps:0,0?q=${busca}` : `geo:0,0?q=${busca}`;
-  try {
-    if (await Linking.canOpenURL(nativo)) {
-      await Linking.openURL(nativo);
-      return;
-    }
-  } catch {
-    /* um mapa que não abre não pode derrubar a tela */
-  }
-  await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${busca}`).catch(() => {});
-}
 
 export default function ComoFunciona() {
   const t = useTheme();
   const lang = useLang();
-  const pontos = useQuery({ queryKey: ["lab-collection-points"], queryFn: fetchPontosDeColeta });
+  // A mesma consulta da vitrine: o react-query serve do cache, sem ida extra.
+  const catalogo = useQuery({ queryKey: ["lab-catalog"], queryFn: fetchLabCatalog });
 
   const passos = [
     {
@@ -121,8 +94,6 @@ export default function ComoFunciona() {
     },
   ];
 
-  const estado = pontos.data?.estado;
-
   return (
     <Screen scroll testID="lab-how-it-works">
       <Stack.Screen
@@ -181,6 +152,22 @@ export default function ComoFunciona() {
               pt: "Qual deles vale depende do exame — a página de cada exame diz isso antes de você pagar.",
             })}
           </Text>
+          {/* Descrever três caminhos quando o catálogo inteiro é o primeiro é
+              a própria fonte da dúvida: a pessoa sai daqui sem saber qual é o
+              dela.
+
+              Quem responde é o catálogo, não esta linha: o Bruno está
+              preparando exames com coleta em farmácia, e no dia em que o
+              primeiro entrar a frase precisa sumir sozinha em vez de virar
+              mentira esperando alguém lembrar dela. */}
+          {catalogo.data?.todosEmCasa && (
+            <Text variant="caption" color={t.colors.lab} style={{ marginTop: 6, fontWeight: "600" }} testID="todos-em-casa">
+              {tr(lang, {
+                en: "Right now every test in our catalogue is the first one: a kit at home. No appointment, and nowhere to travel to.",
+                pt: "Neste momento todos os exames do nosso catálogo são o primeiro: kit em casa. Sem agendamento, e sem ter de ir a lugar nenhum.",
+              })}
+            </Text>
+          )}
         </View>
 
         {caminhos.map((c) => (
@@ -195,104 +182,31 @@ export default function ComoFunciona() {
           </Card>
         ))}
 
-        {/* ── Os pontos perto da pessoa ── */}
-        <View style={{ marginTop: 6 }}>
-          <Text variant="subtitle">
-            {tr(lang, { en: "Collection points near you", pt: "Pontos de coleta perto de você" })}
-          </Text>
-        </View>
-
-        {pontos.isLoading ? (
-          <Spinner center />
-        ) : estado === "sem_postcode" ? (
-          <Card testID="pontos-sem-postcode">
-            <Text variant="caption" color={t.colors.textSecondary}>
-              {tr(lang, {
-                en: "Add your postcode to your profile and we will show the collection points closest to you.",
-                pt: "Adicione seu código postal ao seu perfil e mostramos os pontos de coleta mais perto de você.",
-              })}
+        {/* ── Onde se faz a coleta ──
+            A lista morava aqui, no rodapé, depois de quatro passos e de três
+            formas de coleta — e o Bruno, testando o build 17, concluiu que ela
+            não existia. Agora ela tem tela própria, com busca por código
+            postal; aqui fica o que esta página deve: a explicação e o caminho. */}
+        <Card testID="pontos-chamada">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="location" size={18} color={t.colors.lab} />
+            <Text variant="label" style={{ fontWeight: "700", flex: 1 }}>
+              {tr(lang, { en: "Collection points across the UK", pt: "Pontos de coleta por todo o Reino Unido" })}
             </Text>
-            <Button
-              title={tr(lang, { en: "Add my postcode", pt: "Adicionar meu código postal" })}
-              variant="primary"
-              style={{ backgroundColor: t.colors.lab, marginTop: 10 }}
-              onPress={() => router.push("/(app)/profile-edit")}
-              testID="pontos-ir-ao-perfil"
-            />
-          </Card>
-        ) : estado === "postcode_desconhecido" ? (
-          <Card testID="pontos-postcode-desconhecido">
-            <Text variant="caption" color={t.colors.textSecondary}>
-              {tr(lang, {
-                en: `We could not find the postcode on your profile (${pontos.data?.postcode}). Check it and we will find your nearest points.`,
-                pt: `Não encontramos o código postal do seu perfil (${pontos.data?.postcode}). Confira e achamos os pontos mais próximos.`,
-              })}
-            </Text>
-            <Button
-              title={tr(lang, { en: "Check my postcode", pt: "Conferir meu código postal" })}
-              variant="primary"
-              style={{ backgroundColor: t.colors.lab, marginTop: 10 }}
-              onPress={() => router.push("/(app)/profile-edit")}
-            />
-          </Card>
-        ) : estado === "laboratorio_desconectado" ? (
-          <Card testID="pontos-lab-desconectado">
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="location" size={18} color={t.colors.lab} />
-              <Text variant="label" style={{ fontWeight: "700" }}>
-                {pontos.data?.postcode}
-                {pontos.data?.local ? ` · ${pontos.data.local}` : ""}
-              </Text>
-            </View>
-            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 6 }}>
-              {tr(lang, {
-                en: "We have your postcode. The list of collection points near it appears here as soon as the laboratory connection opens.",
-                pt: "Temos seu código postal. A lista de pontos de coleta perto dele aparece aqui assim que a conexão com o laboratório abrir.",
-              })}
-            </Text>
-          </Card>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {(pontos.data?.pontos ?? []).map((ponto) => (
-              <Pressable
-                key={ponto.id}
-                onPress={() => void abrirNoMapa(ponto.nome, ponto.endereco)}
-                accessibilityRole="button"
-                accessibilityLabel={tr(lang, {
-                  en: `Open ${ponto.nome} in maps`,
-                  pt: `Abrir ${ponto.nome} no mapa`,
-                })}
-                testID={`ponto-${ponto.id}`}
-              >
-              <Card>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
-                  <Text variant="label" style={{ fontWeight: "700", flex: 1 }}>{ponto.nome}</Text>
-                  {ponto.distanciaKm != null && (
-                    <Text variant="caption" color={t.colors.lab}>{ponto.distanciaKm.toFixed(1)} km</Text>
-                  )}
-                </View>
-                <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 3 }}>
-                  {ponto.endereco}
-                </Text>
-                {/* Como se chega lá a pé é metade da decisão de ir. */}
-                {(ponto.trem || ponto.onibus) && (
-                  <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 3 }}>
-                    {[ponto.trem, ponto.onibus].filter(Boolean).join(" · ")}
-                  </Text>
-                )}
-                {/* Um cartão que abre o mapa sem dizer que abre é um cartão
-                    que ninguém toca. */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}>
-                  <Ionicons name="navigate-outline" size={14} color={t.colors.lab} />
-                  <Text variant="caption" color={t.colors.lab} style={{ fontWeight: "600" }}>
-                    {tr(lang, { en: "Open in maps", pt: "Abrir no mapa" })}
-                  </Text>
-                </View>
-              </Card>
-              </Pressable>
-            ))}
           </View>
-        )}
+          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 6, lineHeight: 19 }}>
+            {tr(lang, {
+              en: "When a test needs a professional to take the sample, you do not go to the laboratory — you go to a collection point near you. There are points in towns and cities across the UK, and many are inside pharmacies.",
+              pt: "Quando um exame precisa que um profissional faça a coleta, você não vai ao laboratório — você vai a um ponto de coleta perto de você. Há pontos em cidades por todo o Reino Unido, e muitos ficam dentro de farmácias.",
+            })}
+          </Text>
+          <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 8, lineHeight: 19 }}>
+            {tr(lang, {
+              en: "When a test of yours needs one, you choose the point in the order itself, after paying — that is when there is a booking to make.",
+              pt: "Quando um exame seu precisar de um, você escolhe o ponto dentro do próprio pedido, depois de pagar — é aí que existe horário para marcar.",
+            })}
+          </Text>
+        </Card>
 
         {/* ── De quem é a responsabilidade ── */}
         <Card style={{ backgroundColor: t.colors.surfaceMuted, borderWidth: 0 }}>

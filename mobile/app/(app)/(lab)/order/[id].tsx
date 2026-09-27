@@ -52,9 +52,52 @@ export default function LabOrderTracking() {
       <View style={{ gap: 14 }}>
         <Card style={{ backgroundColor: precisaDeVoce ? t.colors.labWarmSoft : o.stage === "released" ? t.colors.okSoft : t.colors.labSoft, borderWidth: 0 }} testID={`lab-stage-${o.stage}`}>
           <Text variant="caption" color={t.colors.textSecondary}>{testName}</Text>
+          {/* De quem é o exame (091 T-3). Numa conta que pede para mais de uma
+              pessoa, resultado que aparece sem dizer de quem é está pronto
+              para ser lido errado. */}
+          {o.subject && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 }} testID="pedido-sujeito">
+              <Ionicons name="person-outline" size={13} color={t.colors.textSecondary} />
+              <Text variant="caption" color={t.colors.textSecondary}>
+                {tr(lang, {
+                  en: `For ${o.subject.firstName} ${o.subject.lastName}`,
+                  pt: `Para ${o.subject.firstName} ${o.subject.lastName}`,
+                })}
+              </Text>
+            </View>
+          )}
           <Text variant="subtitle" style={{ fontFamily: "Sora_700Bold", marginTop: 4, color: precisaDeVoce ? t.colors.labWarm : t.colors.text }}>{copy.title}</Text>
           <Text variant="body" style={{ fontSize: 12, marginTop: 6, lineHeight: 18 }}>{copy.body}</Text>
         </Card>
+
+        {/* Onde dar a amostra, quando o exame precisar de um profissional.
+            O Bruno, 27/09: *"só pode encontrar o ponto de coleta depois de
+            pagar."* Por isso este cartão vive aqui, no pedido, e não na
+            vitrine — e some quando o exame é kit em casa, que é o caso de
+            todos os 22 do catálogo hoje. */}
+        {data.precisaDePontoDeColeta && o.stage !== "basket" && o.stage !== "cancelled" && (
+          <Card testID="pedido-ponto-de-coleta">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Ionicons name="location" size={18} color={t.colors.lab} />
+              <Text variant="label" style={{ fontWeight: "700", flex: 1 }}>
+                {tr(lang, { en: "Choose where to give your sample", pt: "Escolha onde dar sua amostra" })}
+              </Text>
+            </View>
+            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 6, lineHeight: 19 }}>
+              {tr(lang, {
+                en: "This test needs a professional to take the blood. You do not go to the laboratory — you go to a collection point near you, and there are points across the UK.",
+                pt: "Este exame precisa que um profissional colha o sangue. Você não vai ao laboratório — você vai a um ponto de coleta perto de você, e há pontos por todo o Reino Unido.",
+              })}
+            </Text>
+            <Button
+              title={tr(lang, { en: "Find a collection point", pt: "Procurar um ponto de coleta" })}
+              variant="primary"
+              style={{ backgroundColor: t.colors.lab, marginTop: 12 }}
+              onPress={() => router.push("/(app)/(lab)/collection-points")}
+              testID="ir-aos-pontos"
+            />
+          </Card>
+        )}
 
         {o.stage === "register_kit" && (
           <Card>
