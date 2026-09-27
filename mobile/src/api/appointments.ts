@@ -3,6 +3,14 @@ import { apiFetch } from "./client";
 export interface Appointment {
   id: string;
   dateTime: string;
+  /**
+   * Presencial ou por vídeo (089).
+   *
+   * Já vinha do servidor — a rota usa `include`, então todos os campos escalares
+   * chegam — e o app simplesmente não o declarava. Sem isto a tela da consulta
+   * não tinha como saber que havia uma chamada para entrar.
+   */
+  mode?: "IN_PERSON" | "VIDEO";
   treatmentType: string;
   status: string;
   duration: number;

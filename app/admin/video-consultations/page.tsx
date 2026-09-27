@@ -122,10 +122,6 @@ export default function VideoConsultationsPage() {
     } catch {}
   };
 
-  const generateRoomId = () => {
-    return `room-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-  };
-
   const handleCreate = async () => {
     if (!form.patientId || !form.dateTime) {
       toast({ title: "Error", description: "Patient and date/time are required", variant: "destructive" });
@@ -133,8 +129,6 @@ export default function VideoConsultationsPage() {
     }
     setSubmitting(true);
     try {
-      const roomId = generateRoomId();
-      const videoRoomUrl = `/video-room/${roomId}`;
       
       const res = await fetch("/api/admin/appointments", {
         method: "POST",
@@ -142,8 +136,9 @@ export default function VideoConsultationsPage() {
         body: JSON.stringify({
           ...form,
           mode: "VIDEO",
-          videoRoomId: roomId,
-          videoRoomUrl,
+          // Sem `videoRoomId`/`videoRoomUrl`: a sala nasce no servidor, na
+          // primeira vez que alguem pede para entrar. Inventar um id aqui
+          // criava um endereco que nao correspondia a sala nenhuma.
           price: 0,
         }),
       });
@@ -162,12 +157,19 @@ export default function VideoConsultationsPage() {
     }
   };
 
+  /**
+   * Entrar pela pagina da sala, e nao pela URL gravada.
+   *
+   * Isto fazia `window.open(appointment.videoRoomUrl)`, e o valor gravado era
+   * `/video-room/<id aleatorio>` — uma pagina que **nao existia**. O clique
+   * abria 404, e nenhuma sala tinha sido criada em lugar nenhum.
+   *
+   * A sala e privada: a URL dela sozinha nao abre nada. Quem entra precisa de um
+   * token nosso, preso a esta pessoa e a janela do horario, e quem o emite e o
+   * servidor — por isso o caminho e a pagina, que pede o token, e nao o link.
+   */
   const startCall = (appointment: VideoAppointment) => {
-    if (appointment.videoRoomUrl) {
-      window.open(appointment.videoRoomUrl, "_blank");
-    } else {
-      toast({ title: "No Room", description: "Video room not configured for this appointment", variant: "destructive" });
-    }
+    window.open(`/video-room/${appointment.id}`, "_blank");
   };
 
   if (loading) {
