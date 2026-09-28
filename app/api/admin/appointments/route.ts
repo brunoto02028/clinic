@@ -5,7 +5,6 @@ import { syncSessionsUsed } from "@/lib/package-sessions";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { notifyPatient } from "@/lib/notify-patient";
-import { stripe } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { isPersonalTenant } from "@/lib/tenant-type";
@@ -86,12 +85,18 @@ export async function POST(request: NextRequest) {
       // T-4).
       courtesySession, waiveCharge, overrideReason,
     } = body;
-    // Patient-facing e-mails (confirmation, screening reminder) go out at creation
-    // unless the caller says `sendConfirmation: false` (activity 68: the admin form
-    // creates silently and the therapist sends a previewed confirmation from the
-    // "Email to patient" composer). Online payment always sends, because the
-    // confirmation e-mail is what carries the payment link.
-    const emailPatientNow = paymentMode === "online" || sendConfirmation !== false;
+    /**
+     * O e-mail sai quando alguem pede — **inclusive no pagamento online**.
+     *
+     * Ele era forcado aqui porque a confirmacao era o unico veiculo do link da
+     * Stripe. Sem link, o e-mail volta a ser o que os outros sao: opcional, e
+     * com previa, que e a regra da casa (a marcacao silenciosa mais o compositor
+     * "Confirmar por email" da atividade 68).
+     *
+     * A consulta nao depende dele para chegar: ela aparece no aplicativo do
+     * paciente assim que existe.
+     */
+    const emailPatientNow = sendConfirmation !== false;
 
     if (!patientId || !dateTime) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });
@@ -132,11 +137,39 @@ export async function POST(request: NextRequest) {
 
     const precoFinal = waiveCharge ? 0 : (price || 0);
 
+    /**
+     * **O pagamento é a confirmação** (101 T-3).
+     *
+     * O Bruno: *"o paciente vai ter que pagar e fazer a confirmação do
+     * agendamento. No pagamento já é a confirmação"*.
+     *
+     * Uma consulta marcada pela clínica nasce `PENDING` e é o webhook da
+     * Stripe que a move para `CONFIRMED`, quando o dinheiro entra — o mesmo
+     * caminho que a primeira consulta marcada pelo paciente já usa.
+     *
+     * **Sem preço não há pagamento, e sem pagamento não há o que confirmar.**
+     * Cortesia e isenção ficavam `PENDING` para sempre: o app oferecia pagar,
+     * o servidor respondia "nada a pagar", e a consulta não saía do lugar.
+     * Quando não há o que cobrar, quem confirma é quem marcou.
+     */
+    const nascePaga = precoFinal <= 0;
+
     const appointment = await prisma.appointment.create({
       data: {
         clinicId,
         patientId,
         therapistId: userId!,
+        status: nascePaga ? "CONFIRMED" : "PENDING",
+        /**
+         * Como esta consulta se paga — **gravado**, e não só usado aqui.
+         *
+         * `paymentMode` decidia se um link da Stripe era gerado e o que o
+         * e-mail dizia, e morria na requisição: a linha ficava com o padrão
+         * `ONLINE` mesmo quando a clínica escolheu "na clínica". O aplicativo
+         * lê deste campo para decidir se oferece o cartão ou diz "pague na
+         * clínica", então sem ele as duas escolhas viravam a mesma.
+         */
+        paymentMethod: paymentMode === "in_person" ? "IN_PERSON" : "ONLINE",
         // Marcada pela clínica: quem marcou decide o preço, e nada é cobrado
         // sozinho. Uma cortesia fica registrada como sessão de pacote, que é o
         // que ela é para o paciente.
@@ -197,65 +230,24 @@ export async function POST(request: NextRequest) {
     // email was previously captured via an article lead-magnet.
     logBookedEventForEmail(appointment.patient.email).catch(() => {});
 
-    // Create Stripe checkout if online payment requested
-    let checkoutUrl: string | null = null;
-    if (paymentMode === "online" && price > 0) {
-      try {
-        const appUrl = process.env.NEXTAUTH_URL || '';
-        const apptDate = new Date(dateTime);
-        const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-        // Create payment record
-        const payment = await prisma.payment.create({
-          data: {
-            appointmentId: appointment.id,
-            userId: patientId,
-            amount: price,
-            currency: "GBP",
-            status: "PENDING",
-          },
-        });
-
-        // Create Stripe checkout session
-        const checkoutSession = await stripe.checkout.sessions.create({
-          payment_method_types: ["card"],
-          mode: "payment",
-          customer_email: appointment.patient.email ?? undefined,
-          line_items: [
-            {
-              price_data: {
-                currency: "gbp",
-                product_data: {
-                  name: treatmentType || "Consultation",
-                  description: `Appointment on ${dateStr} at ${timeStr}`,
-                },
-                unit_amount: Math.round(price * 100),
-              },
-              quantity: 1,
-            },
-          ],
-          metadata: {
-            appointmentId: appointment.id,
-            paymentId: payment.id,
-            userId: patientId,
-            type: "appointment",
-          },
-          success_url: `${appUrl}/dashboard/appointments?payment=success`,
-          cancel_url: `${appUrl}/dashboard/appointments?payment=cancelled`,
-        });
-
-        checkoutUrl = checkoutSession.url;
-
-        await prisma.payment.update({
-          where: { id: payment.id },
-          data: { stripeSessionId: checkoutSession.id },
-        });
-      } catch (stripeErr) {
-        console.error('Failed to create Stripe checkout:', stripeErr);
-      }
-    }
-
+    /**
+     * **A sessao da Stripe nao nasce aqui** (101 T-3).
+     *
+     * Aqui se criava uma sessao de Checkout e uma linha de `Payment` no
+     * instante da marcacao, e o link ia por e-mail. Com o paciente pagando
+     * pelo aplicativo isso vira uma **segunda porta viva para a mesma
+     * consulta**: duas sessoes da Stripe com o mesmo `appointmentId`, as duas
+     * cobraveis. O webhook confirma uma vez — `updateMany` com
+     * `status: "PENDING"` no `where` — e o dinheiro entra duas.
+     *
+     * Agora a sessao nasce **sob demanda**, quando a pessoa toca em pagar
+     * (`/api/patient/appointments/[id]/checkout`). Uma porta de cada vez, e o
+     * valor recalculado no momento do pagamento em vez de congelado na
+     * marcacao.
+     *
+     * O e-mail de confirmacao continua existindo, opcional e com previa; o que
+     * ele leva e a noticia da consulta, e o pagamento mora no app.
+     */
     // Send APPOINTMENT_CONFIRMATION email to patient
     if (emailPatientNow) try {
       const appUrl = process.env.NEXTAUTH_URL || '';
@@ -263,15 +255,17 @@ export async function POST(request: NextRequest) {
       const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-      const paymentNote = paymentMode === "online" && checkoutUrl
-        ? `\n\nPayment required online: ${checkoutUrl}`
-        : paymentMode === "in_person"
-          ? `\n\nPayment: £${(price || 0).toFixed(2)} — payable at the clinic.`
+      // O e-mail leva a **notícia**, e o pagamento mora no app: um link de
+      // Checkout aqui seria uma segunda porta viva para a mesma consulta.
+      const paymentNote = paymentMode === "online" && precoFinal > 0
+        ? `\n\nPayment: £${precoFinal.toFixed(2)} — open your app to pay. The appointment is confirmed as soon as you do.`
+        : paymentMode === "in_person" && precoFinal > 0
+          ? `\n\nPayment: £${precoFinal.toFixed(2)} — payable at the clinic.`
           : '';
-      const paymentNotePt = paymentMode === "online" && checkoutUrl
-        ? `\n\nPagamento online obrigatório: ${checkoutUrl}`
-        : paymentMode === "in_person"
-          ? `\n\nPagamento: £${(price || 0).toFixed(2)} — pagar na clínica.`
+      const paymentNotePt = paymentMode === "online" && precoFinal > 0
+        ? `\n\nPagamento: £${precoFinal.toFixed(2)} — abra o aplicativo para pagar. A consulta fica confirmada assim que você pagar.`
+        : paymentMode === "in_person" && precoFinal > 0
+          ? `\n\nPagamento: £${precoFinal.toFixed(2)} — pagar na clínica.`
           : '';
 
       await notifyPatient({
@@ -285,7 +279,9 @@ export async function POST(request: NextRequest) {
           treatmentType: treatmentType || 'General Consultation',
           duration: String(duration || 60),
           price: `£${(price || 0).toFixed(2)}`,
-          paymentLink: checkoutUrl || '',
+          // Sem link: o pagamento mora no app, e o modelo de e-mail que
+          // esperava esta variavel recebe vazio.
+          paymentLink: '',
           portalUrl: `${appUrl}/dashboard/appointments`,
         },
         plainMessage: `Your appointment is confirmed: ${treatmentType || 'Consultation'} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.${paymentNote}`,
@@ -365,7 +361,7 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send admin notification:', adminEmailErr);
     }
 
-    return NextResponse.json({ ...appointment, checkoutUrl });
+    return NextResponse.json({ ...appointment, checkoutUrl: null });
   } catch (error: any) {
     console.error("Error creating appointment:", error);
     return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });

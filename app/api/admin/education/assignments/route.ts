@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { accessErrorResponse, assertPatientAccess, getActor } from '@/lib/tenant-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,34 @@ export async function POST(req: NextRequest) {
     if (!contentId || !patientId) {
       return NextResponse.json({ error: 'Content and patient are required' }, { status: 400 });
     }
+
+    /**
+     * **Os dois ids vêm do corpo, e nenhum era conferido** (28/09/2026).
+     *
+     * `clinicId` saía da sessão e ia para a linha nova, mas `contentId` e
+     * `patientId` entravam como vieram. Quem administra a clínica A podia
+     * mandar o id de um material da clínica B — e ler o texto dela pela
+     * resposta —, ou o id de um **paciente** da clínica B, e a atribuição
+     * aparecia no aplicativo dele.
+     *
+     * É a mesma forma do vazamento do envio em massa de 11/09/2026: o id vem
+     * de fora, o tenant vem da sessão, e ninguém verifica que os dois
+     * combinam. 404 nos dois casos — dizer "existe, mas não é sua" já conta
+     * que existe.
+     */
+    const actorParaChecar = await getActor(req);
+    if (!actorParaChecar) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    try {
+      await assertPatientAccess(actorParaChecar, patientId);
+    } catch (e) {
+      return accessErrorResponse(e);
+    }
+
+    const material = await prisma.educationContent.findFirst({
+      where: { id: contentId, clinicId },
+      select: { id: true },
+    });
+    if (!material) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const assignment = await prisma.educationAssignment.create({
       data: {

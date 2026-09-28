@@ -1,6 +1,7 @@
-import { View, Pressable } from "react-native";
+import { useState } from "react";
+import { View, Pressable, Alert } from "react-native";
 import { Stack, useLocalSearchParams, router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
@@ -9,6 +10,9 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
+import { startAppointmentCheckout } from "@/api/booking";
+import { openCheckout } from "@/lib/checkout";
+import { estadoDoPagamento, TEXTO_DO_PAGAMENTO } from "@/lib/pagamento-da-consulta";
 
 /** The date in the patient's language. The weekday and month names were two
  *  hardcoded Portuguese arrays, so an en-GB patient read "Qua, 24 Set 2026" on
@@ -36,11 +40,55 @@ function AppointmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
 
-  const { data, isLoading, isError } = useQuery({
+  const qc = useQueryClient();
+  const [pagando, setPagando] = useState(false);
+
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["appointment", id],
     queryFn: () => fetchAppointment(id),
     enabled: !!id,
   });
+
+  /**
+   * Pagar — e, com isso, confirmar (101 T-3).
+   *
+   * A maquina ja existia inteira: a rota de checkout, a folha dentro do app e
+   * o webhook que move a consulta para `CONFIRMED` quando o dinheiro entra.
+   * **Faltava a porta**: `startAppointmentCheckout` so era chamado no instante
+   * em que o paciente marcava, entao uma consulta marcada pela clinica ficava
+   * pendente para sempre — sem botao nenhum no telefone.
+   *
+   * Depois da folha ninguem afirma que pagou: quem sabe e o servidor, pelo
+   * webhook. A tela recarrega e mostra o estado real.
+   */
+  const pagar = async () => {
+    if (!data) return;
+    setPagando(true);
+    try {
+      const url = await startAppointmentCheckout(data.id);
+      if (!url) {
+        // Sem URL o servidor ja resolveu sozinho (cortesia de 100%, por
+        // exemplo) — recarregar mostra a consulta confirmada.
+        await refetch();
+        return;
+      }
+      await openCheckout(url);
+      // Sempre recarrega, em qualquer desfecho da folha: "fechou" nao quer
+      // dizer "desistiu", e dizer que cancelou seria inventar.
+      await Promise.all([
+        refetch(),
+        qc.invalidateQueries({ queryKey: ["appointments"] }),
+      ]);
+    } catch (e: any) {
+      Alert.alert(
+        tr(lang, { en: "Could not open the payment", pt: "Nao foi possivel abrir o pagamento" }),
+        e?.messagePt && lang === "pt" ? e.messagePt : e?.message ||
+          tr(lang, { en: "Try again in a moment.", pt: "Tente de novo daqui a pouco." })
+      );
+    } finally {
+      setPagando(false);
+    }
+  };
 
   return (
     <Screen scroll testID="appointment-detail">
@@ -227,6 +275,79 @@ function AppointmentDetailScreen() {
                   <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
                 </>
               )}
+
+              {/* O pagamento, e a confirmacao que vem com ele (101 T-3).
+
+                  O Bruno: *"o paciente vai ter que pagar e fazer a confirmacao
+                  do agendamento. No pagamento ja e a confirmacao"*. A consulta
+                  marcada pela clinica chegava aqui sem dizer que esperava
+                  alguma coisa, e sem botao nenhum.
+
+                  As quatro situacoes moram em `lib/pagamento-da-consulta`, num
+                  lugar so — a lista faz a mesma pergunta. */}
+              {(() => {
+                const estado = estadoDoPagamento(data);
+                if (estado === "resolvido") return null;
+                const texto = TEXTO_DO_PAGAMENTO[estado][lang === "pt" ? "pt" : "en"];
+                const esperaCartao = estado === "espera_cartao";
+                return (
+                  <>
+                    <View
+                      style={{
+                        gap: 10,
+                        padding: 14,
+                        borderRadius: 14,
+                        backgroundColor: esperaCartao ? t.colors.warnSoft : t.colors.surfaceMuted,
+                        borderWidth: 1,
+                        borderColor: esperaCartao ? t.colors.warn : t.colors.borderSubtle,
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Ionicons
+                          name={esperaCartao ? "card-outline" : "checkmark-circle-outline"}
+                          size={20}
+                          color={esperaCartao ? t.colors.warn : t.colors.textMuted}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text variant="label" style={{ fontWeight: "700" }}>{texto.titulo}</Text>
+                          <Text variant="caption" color={t.colors.textMuted}>{texto.corpo}</Text>
+                        </View>
+                      </View>
+
+                      {esperaCartao && (
+                        <Pressable
+                          testID="pagar-consulta"
+                          accessibilityRole="button"
+                          disabled={pagando}
+                          onPress={pagar}
+                          style={({ pressed }) => ({
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            paddingVertical: 14,
+                            borderRadius: 12,
+                            backgroundColor: t.colors.health,
+                            opacity: pressed || pagando ? 0.7 : 1,
+                          })}
+                        >
+                          <Ionicons name="lock-closed" size={16} color={t.colors.accentFg} />
+                          <Text variant="label" color={t.colors.accentFg} style={{ fontWeight: "700" }}>
+                            {pagando
+                              ? tr(lang, { en: "Opening…", pt: "Abrindo…" })
+                              : tr(lang, {
+                                  en: `Pay £${data.price} and confirm`,
+                                  pt: `Pagar £${data.price} e confirmar`,
+                                })}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
+                  </>
+                );
+              })()}
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{

@@ -926,6 +926,32 @@ export function visibleAdminSections(isPersonal: boolean, role?: string): AdminS
     .filter((s) => s.tabs.length > 0);
 }
 
+/**
+ * A aba da seção que casa com o caminho — a **mais específica**, não a primeira.
+ *
+ * `routeMatches` casa por prefixo, então `/admin/appointments/availability` casa
+ * tanto com "Disponibilidade" (a própria) quanto com "Semana"
+ * (`/admin/appointments`). A varredura antiga parava na primeira, e "Semana"
+ * vem antes na lista: o painel acendia a aba errada para uma tela que tem a sua.
+ *
+ * A rota mais longa é a mais específica, e é essa que ganha. Query string não
+ * entra na conta: o caminho é o que vem antes do `?`.
+ */
+function abaMaisEspecifica(section: AdminSection, clean: string): AdminTab | null {
+  let melhor: AdminTab | null = null;
+  let tamanho = -1;
+  for (const tab of section.tabs) {
+    for (const rota of [tab.href, ...(tab.matchRoutes || [])]) {
+      const caminho = rota.split("?")[0];
+      if (routeMatches(clean, caminho) && caminho.length > tamanho) {
+        melhor = tab;
+        tamanho = caminho.length;
+      }
+    }
+  }
+  return melhor;
+}
+
 export function getActiveAdminNav(pathname: string): {
   section: AdminSection;
   tab: AdminTab | null;
@@ -957,19 +983,36 @@ export function getActiveAdminNav(pathname: string): {
       );
     if (!sectionMatch) continue;
 
-    let matchedTab: AdminTab | null = null;
-    for (const tab of section.tabs) {
-      const tabRoutes = [tab.href, ...(tab.matchRoutes || [])];
-      const tabMatch = tabRoutes.some((r) => routeMatches(clean, r));
-      if (tabMatch) {
-        matchedTab = tab;
-        break;
-      }
-    }
-
-    return { section, tab: matchedTab || section.tabs[0] };
+    return { section, tab: abaMaisEspecifica(section, clean) || section.tabs[0] };
   }
 
+  /**
+   * Segunda passagem: a agenda, agora pelas **próprias abas** (28/09/2026).
+   *
+   * A primeira passagem pula a agenda em tudo o que não é `/admin`, porque ela
+   * é a seção de queda e não pode roubar rota de ninguém. Só que pular a seção
+   * inteira também impedia que ela reconhecesse as próprias abas: qualquer uma
+   * das sete caía no `return` de baixo, que devolve `tabs[0]`.
+   *
+   * O efeito era a agenda inteira acender **"Hoje"** — em `/admin/appointments`
+   * (que é "Semana"), em `/admin/calls`, e em `/admin/video-consultations`, que
+   * é justamente a tela que o Bruno procurou duas vezes. O menu dizendo que
+   * você está num lugar onde você não está é a mesma família de defeito que a
+   * varredura da 100 T-4 nasceu para pegar.
+   *
+   * Aqui embaixo ela não rouba nada: quem tinha dono já saiu pelo `return`.
+   */
+  /**
+   * Pela chave, e não pela posição.
+   *
+   * O laço acima pula `section.key === "agenda"` e a queda usava
+   * `ADMIN_SECTIONS[0]`: duas formas de dizer a mesma coisa, que deixam de
+   * concordar no dia em que a agenda não for a primeira da lista.
+   */
+  const agenda = ADMIN_SECTIONS.find((s) => s.key === "agenda") ?? ADMIN_SECTIONS[0];
+  const daAgenda = abaMaisEspecifica(agenda, clean);
+  if (daAgenda) return { section: agenda, tab: daAgenda };
+
   // Fallback: agenda (dashboard)
-  return { section: ADMIN_SECTIONS[0], tab: ADMIN_SECTIONS[0].tabs[0] };
+  return { section: agenda, tab: agenda.tabs[0] };
 }

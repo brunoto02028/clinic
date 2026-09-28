@@ -165,9 +165,19 @@ describe("quem entra", () => {
   });
 
   it("**e consulta desmarcada também não**", () => {
-    // A janela do horário continuaria válida: sem isto daria para entrar numa
-    // consulta cancelada.
-    expect(rota).toMatch(/status === "CANCELLED" \|\| consulta\.status === "NO_SHOW"/);
+    /**
+     * A janela do horário continuaria válida: sem isto daria para entrar numa
+     * consulta cancelada.
+     *
+     * A asserção era a linha inteira — `status === "CANCELLED" ||
+     * consulta.status === "NO_SHOW"` — e quebrou quando `COMPLETED` entrou e a
+     * condição virou três linhas. Congelar a **grafia** de uma condição faz o
+     * teste reprovar quem a melhora; o que importa é que os três estados
+     * recusem.
+     */
+    for (const estado of ["CANCELLED", "NO_SHOW", "COMPLETED"]) {
+      expect(rota).toMatch(new RegExp(`consulta\\.status === "${estado}"`));
+    }
     expect(rota).toMatch(/code: "not_scheduled"/);
   });
 

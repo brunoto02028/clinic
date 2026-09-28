@@ -51,7 +51,6 @@ const UI = {
     flip: "Flip camera",
     tryAgain: "Try again",
     back: "Go back",
-    tooEarly: "This consultation has not opened yet. You can join from ten minutes before.",
     reconnecting: "Connection lost — reconnecting…",
   },
   pt: {
@@ -67,7 +66,6 @@ const UI = {
     flip: "Virar a câmera",
     tryAgain: "Tentar de novo",
     back: "Voltar",
-    tooEarly: "Esta consulta ainda não abriu. Você entra a partir de dez minutos antes.",
     reconnecting: "Conexão caiu — reconectando…",
   },
 } as const;

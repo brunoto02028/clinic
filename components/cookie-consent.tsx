@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Shield, Settings, X, Check, Cookie } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 
@@ -57,7 +58,27 @@ export function CookieConsentBanner() {
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
 
+  const pathname = usePathname();
+
   useEffect(() => {
+    /**
+     * A sala da consulta não recebe a tarja (28/09/2026).
+     *
+     * `/video-room` é uma chamada em andamento, em tela cheia: a tarja nasce
+     * por cima dos controles da Daily — inclusive o de desligar — e a pessoa
+     * fica escolhendo cookie no meio de uma consulta clínica.
+     *
+     * Não é consentimento perdido: ela não some, só espera. A próxima tela que
+     * não for a sala mostra a mesma pergunta, e nada de analytics roda antes de
+     * a resposta existir.
+     */
+    if (pathname?.startsWith("/video-room")) {
+      // E se ela já estava aberta quando a pessoa entrou na sala, fecha: sair
+      // cedo só impediria de abrir, e a tarja continuaria por cima da chamada.
+      setVisible(false);
+      return;
+    }
+
     // Only show if no consent has been given yet
     const consent = getConsent();
     if (!consent) {
@@ -65,7 +86,7 @@ export function CookieConsentBanner() {
       const timer = setTimeout(() => setVisible(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [pathname]);
 
   const acceptAll = useCallback(() => {
     saveConsent({

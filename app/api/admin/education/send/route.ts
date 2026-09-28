@@ -24,9 +24,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "contentId is required" }, { status: 400 });
     }
 
-    // Verify content exists
-    const content = await prisma.educationContent.findUnique({
-      where: { id: contentId },
+    /**
+     * O material tem de ser **desta** clínica (28/09/2026).
+     *
+     * Era `findUnique({ where: { id } })`: o id vinha do corpo e ninguém
+     * conferia o dono. Quem administra a clínica A mandava o id de um material
+     * da clínica B e o distribuía aos próprios pacientes — e a resposta ainda
+     * devolvia o título dele.
+     */
+    const content = await prisma.educationContent.findFirst({
+      where: { id: contentId, clinicId },
       select: { id: true, title: true, tags: true, bodyParts: true, isPublished: true },
     });
 
@@ -43,9 +50,20 @@ export async function POST(req: NextRequest) {
         select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
       }) as any;
     } else if (sendTo === "specific" && Array.isArray(patientIds) && patientIds.length > 0) {
-      // Send to specific patients
+      /**
+       * **Com `clinicId`** (28/09/2026).
+       *
+       * A busca era `{ id: { in: patientIds }, role: "PATIENT" }` — sem o
+       * tenant. Uma lista de ids de pacientes de outra clínica virava uma lista
+       * de atribuições e avisos na caixa deles. A mesma forma do vazamento do
+       * envio em massa de 11/09/2026.
+       *
+       * Ids de fora agora simplesmente não aparecem no resultado: a rota
+       * responde com quem existe **aqui**, e o resto some sem virar erro que
+       * confirme a existência.
+       */
       targetPatients = await prisma.user.findMany({
-        where: { id: { in: patientIds }, role: "PATIENT", isActive: true },
+        where: { id: { in: patientIds }, clinicId, role: "PATIENT", isActive: true },
         select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
       }) as any;
     } else if (sendTo === "condition" && Array.isArray(conditionTags) && conditionTags.length > 0) {
@@ -90,9 +108,15 @@ export async function POST(req: NextRequest) {
 
       if (allMatchedIds.length > 0) {
         targetPatients = await prisma.user.findMany({
-          where: { id: { in: allMatchedIds as string[] }, role: "PATIENT", isActive: true },
-          select: { id: true, firstName: true, lastName: true, email: true },
-        });
+          // `clinicId` aqui também. Os protocolos e diagnósticos já são
+          // filtrados por clínica, então na prática não muda nada — e é
+          // exatamente por isso que vale a linha: no dia em que a consulta
+          // acima mudar, a rede de segurança tem de estar no lugar certo.
+          where: { id: { in: allMatchedIds as string[] }, clinicId, role: "PATIENT", isActive: true },
+          // `preferredLocale` aqui também: sem ele este ramo mandava o aviso
+          // sempre em inglês, e os outros dois respeitavam a língua da pessoa.
+          select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
+        }) as any;
       }
     }
 
@@ -101,6 +125,36 @@ export async function POST(req: NextRequest) {
         error: "No matching patients found for the selected criteria.",
         sentCount: 0,
       }, { status: 404 });
+    }
+
+    /**
+     * **Quem vai receber, antes de receber** (28/09/2026).
+     *
+     * O padrão da tela era "All Patients" e um clique em "Send Now" escrevia
+     * uma atribuição e um aviso para **todo paciente ativo da clínica**, sem
+     * que ninguém soubesse quantos eram. A regra da casa é que nada sai sem o
+     * Bruno ver a prévia; um número faz parte dessa prévia.
+     *
+     * `dryRun` responde a mesma conta sem escrever nada, e a tela usa isso para
+     * dizer "isto vai para 34 pessoas" antes de existir um botão que confirme.
+     */
+    if (body?.dryRun) {
+      const jaTem = await (prisma as any).educationAssignment.findMany({
+        where: { contentId, patientId: { in: targetPatients.map((p) => p.id) } },
+        select: { patientId: true },
+      });
+      const jaTemIds = new Set(jaTem.map((a: any) => a.patientId));
+      return NextResponse.json({
+        dryRun: true,
+        totalPatients: targetPatients.length,
+        wouldSend: targetPatients.length - jaTemIds.size,
+        alreadyAssigned: jaTemIds.size,
+        patients: targetPatients.map((p) => ({
+          id: p.id,
+          name: `${p.firstName} ${p.lastName}`,
+          already: jaTemIds.has(p.id),
+        })),
+      });
     }
 
     // Create assignments for each patient

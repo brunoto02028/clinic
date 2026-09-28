@@ -11,6 +11,7 @@ import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
 import { janelaAberta } from "@/api/video";
+import { estadoDoPagamento } from "@/lib/pagamento-da-consulta";
 
 
 function AppointmentsScreen() {
@@ -119,6 +120,38 @@ function AppointmentsScreen() {
                       </Text>
                     </View>
                   ) : null}
+
+                  {/* Espera pagamento — **na lista** (101 T-3).
+
+                      Uma consulta marcada pela clínica chega igual a qualquer
+                      outra, e a diferença é que ela só existe de verdade depois
+                      de paga. Quem abre a lista e vê "pendente" não tem como
+                      saber que a pendência é dele. */}
+                  {estadoDoPagamento(item) === "espera_cartao" && (
+                    <Pressable
+                      testID={`pagar-${item.id}`}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        router.push(`/(app)/(clinica)/appointment/${item.id}` as never);
+                      }}
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 10,
+                        marginLeft: 56,
+                        opacity: pressed ? 0.7 : 1,
+                      })}
+                    >
+                      <Ionicons name="card-outline" size={14} color={t.colors.warn} />
+                      <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "600" }}>
+                        {tr(lang, {
+                          en: `Waiting for your payment — £${item.price}`,
+                          pt: `Esperando seu pagamento — £${item.price}`,
+                        })}
+                      </Text>
+                    </Pressable>
+                  )}
 
                   {/* A consulta à distância se anuncia **aqui**, na lista (089).
                       O Bruno: *"se agendamento for uma consulta à distância, eu

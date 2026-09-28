@@ -117,13 +117,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  // Consulta cancelada não tem sala para entrar. A janela de horário continuaria
-  // válida, então sem isto daria para entrar numa consulta desmarcada.
-  if (consulta.status === "CANCELLED" || consulta.status === "NO_SHOW") {
+  /**
+   * Cancelada, faltou — e **concluída**.
+   *
+   * A janela de horário continuaria válida, então sem isto dava para entrar
+   * numa consulta desmarcada. `COMPLETED` faltava: uma consulta que o terapeuta
+   * já marcou como feita continuava abrindo a sala enquanto a janela não
+   * fechasse — e o paciente, entrando, encontraria uma sala vazia de uma
+   * consulta que já aconteceu.
+   *
+   * A rota de **chamar** fechou esse mesmo buraco no QA da 089 T-8 e esta ficou
+   * para trás: as duas portas da mesma consulta discordavam sobre quando ela
+   * existe.
+   */
+  if (
+    consulta.status === "CANCELLED" ||
+    consulta.status === "NO_SHOW" ||
+    consulta.status === "COMPLETED"
+  ) {
     return NextResponse.json(
       {
-        error: "This consultation is no longer scheduled.",
-        errorPt: "Esta consulta não está mais marcada.",
+        error:
+          consulta.status === "COMPLETED"
+            ? "This consultation has already finished."
+            : "This consultation is no longer scheduled.",
+        errorPt:
+          consulta.status === "COMPLETED"
+            ? "Esta consulta já foi concluída."
+            : "Esta consulta não está mais marcada.",
         code: "not_scheduled",
       },
       { status: 409 }
