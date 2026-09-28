@@ -1532,8 +1532,25 @@ export default function AdminScansPage() {
               <FileText className="h-5 w-5 text-primary" />
               Biomechanical Scan Report
             </DialogTitle>
-            <DialogDescription>
-              {reportData?.reportId} — {reportData?.patient?.name}
+            <DialogDescription className="flex flex-wrap items-center gap-2">
+              <span>{reportData?.reportId} — {reportData?.patient?.name}</span>
+              {/* A página inteira, para imprimir ou entregar.
+                  `/admin/scans/report-preview` existia e **ninguém chegava
+                  nela** — a varredura da 100 T-4 a listou como órfã e a
+                  explicação dizia "alcançada a partir de /admin/scans", o que
+                  não era verdade. É a mesma prévia desta caixa, em folha
+                  cheia: aqui se olha, lá se imprime. */}
+              {selectedScan?.id && (
+                <a
+                  href={`/admin/scans/report-preview?id=${selectedScan.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open the full page
+                </a>
+              )}
             </DialogDescription>
           </DialogHeader>
           {reportData && (

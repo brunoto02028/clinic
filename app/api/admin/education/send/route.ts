@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (!clinicId) return NextResponse.json({ error: "No clinic context" }, { status: 400 });
 
     const body = await req.json();
-    const { contentId, sendTo, patientIds, conditionTags } = body;
+    const { contentId, sendTo, conditionTags } = body;
 
     if (!contentId) {
       return NextResponse.json({ error: "contentId is required" }, { status: 400 });
@@ -49,23 +49,18 @@ export async function POST(req: NextRequest) {
         where: { clinicId, role: "PATIENT", isActive: true },
         select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
       }) as any;
-    } else if (sendTo === "specific" && Array.isArray(patientIds) && patientIds.length > 0) {
-      /**
-       * **Com `clinicId`** (28/09/2026).
-       *
-       * A busca era `{ id: { in: patientIds }, role: "PATIENT" }` — sem o
-       * tenant. Uma lista de ids de pacientes de outra clínica virava uma lista
-       * de atribuições e avisos na caixa deles. A mesma forma do vazamento do
-       * envio em massa de 11/09/2026.
-       *
-       * Ids de fora agora simplesmente não aparecem no resultado: a rota
-       * responde com quem existe **aqui**, e o resto some sem virar erro que
-       * confirme a existência.
-       */
-      targetPatients = await prisma.user.findMany({
-        where: { id: { in: patientIds }, clinicId, role: "PATIENT", isActive: true },
-        select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
-      }) as any;
+    /**
+     * **O ramo `"specific"` saiu** (28/09/2026).
+     *
+     * Ele lia `patientIds` do corpo e escrevia atribuicao para cada um — e
+     * **nenhuma tela o chamava**: a caixa de envio so oferece "todos" e "por
+     * condicao", e nunca mandou `patientIds`. Era uma porta que escrevia na
+     * caixa de entrada de pacientes escolhidos por quem chamasse a rota a mao,
+     * e que ate hoje de manha nem filtrava por clinica.
+     *
+     * Escolher paciente por paciente ja tem lugar:
+     * `/admin/education/assignments`, com previa do que vai ser mandado.
+     */
     } else if (sendTo === "condition" && Array.isArray(conditionTags) && conditionTags.length > 0) {
       // Find patients with matching diagnoses/protocols
       const lowerTags = conditionTags.map((t: string) => t.toLowerCase());

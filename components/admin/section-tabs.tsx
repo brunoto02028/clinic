@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { getActiveAdminNav, tabAllowedFor, routeMatches } from "@/lib/admin-sections";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -11,6 +11,7 @@ import { useVocab } from "@/hooks/use-vocab";
 // would silently disappear, even for the platform owner.
 export default function SectionTabs({ role }: { role: string | undefined }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
@@ -55,9 +56,31 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
   // The route's first matching tab may be one this tenant can't see (e.g. the
   // clinic's Journey on /admin/quizzes for a studio) — highlight a visible one.
   const clean = pathname.replace(/\/$/, "") || "/admin";
-  const activeKey = tabs.some((t) => t.key === activeTab?.key)
+  const porRota = tabs.some((t) => t.key === activeTab?.key)
     ? activeTab?.key
     : tabs.find((t) => [t.href, ...(t.matchRoutes || [])].some((r) => routeMatches(clean, r)))?.key;
+
+  /**
+   * A aba que se distingue pela **query**, e não pelo caminho (28/09/2026).
+   *
+   * "Calendário" é `/admin/appointments?view=calendar` — o mesmo caminho de
+   * "Semana". `getActiveAdminNav` só recebe o `pathname`, então ela nunca
+   * acendia: clicar nela levava à tela certa e o menu continuava apontando
+   * para a vizinha.
+   *
+   * Aqui existe `useSearchParams`, então a decisão cabe: uma aba cujo `href`
+   * traz query só ganha quando **toda** a query dela bate com a da página.
+   * Sem query no endereço, nada muda e quem decide continua sendo a rota.
+   */
+  const porQuery = tabs.find((t) => {
+    const [caminho, query] = t.href.split("?");
+    if (!query || !routeMatches(clean, caminho)) return false;
+    return [...new URLSearchParams(query).entries()].every(
+      ([k, v]) => searchParams?.get(k) === v
+    );
+  })?.key;
+
+  const activeKey = porQuery ?? porRota;
 
   return (
     <div className="section-tabs" role="tablist" aria-label={relabel(isPt ? section.labelPt : section.label)}>

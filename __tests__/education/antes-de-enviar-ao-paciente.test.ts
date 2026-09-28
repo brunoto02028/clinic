@@ -90,7 +90,9 @@ describe("mandar para a clínica inteira deixou de ser um clique", () => {
    * clínica, sem ninguém saber quantos eram.
    */
   it("**nada vem pré-selecionado**", () => {
-    expect(criar).toMatch(/useState<"all" \| "condition" \| "specific" \| null>\(null\)/);
+    // `"specific"` saiu da união depois: era caminho morto nas duas pontas —
+    // a tela nunca o oferecia nem mandava `patientIds`.
+    expect(criar).toMatch(/useState<"all" \| "condition" \| null>\(null\)/);
   });
 
   it("**publicar não abre mais a caixa de envio**", () => {
@@ -142,16 +144,22 @@ describe("o material e o paciente são desta clínica", () => {
   });
 
   it("**e todo ramo de destinatário filtra por `clinicId`**", () => {
-    // Uma linha de `where` pode ter chave aninhada (`{ in: patientIds }`), entao
-    // o recorte vai da palavra `where` ate `role: "PATIENT"`.
+    /**
+     * O recorte vai da palavra `where` até `role: "PATIENT"`.
+     *
+     * Eram três ramos; o de "pacientes escolhidos" saiu por ser caminho morto,
+     * então sobraram **dois**. A asserção é sobre "todos os que existem", e não
+     * sobre um número — congelar a contagem faria o teste reprovar quem apaga
+     * código morto.
+     */
     const ramos = rotaEnviar.match(/where: \{[\s\S]{0,120}?role: "PATIENT"/g) || [];
-    expect(ramos.length).toBeGreaterThanOrEqual(3);
+    expect(ramos.length).toBeGreaterThanOrEqual(2);
     for (const r of ramos) expect(r).toMatch(/clinicId/);
   });
 
-  it("a língua do aviso sai do paciente, nos três ramos", () => {
+  it("a língua do aviso sai do paciente, em todo ramo que resta", () => {
     const selects = rotaEnviar.match(/select: \{ id: true, firstName: true[^}]*\}/g) || [];
-    expect(selects.length).toBeGreaterThanOrEqual(3);
+    expect(selects.length).toBeGreaterThanOrEqual(2);
     for (const s of selects) expect(s).toMatch(/preferredLocale/);
   });
 });
