@@ -7419,6 +7419,18 @@ model PatientReport {
   /// O relatório pronto, como foi visto.
   html        String        @db.Text
 
+  /**
+   * Houve alguma coisa no período?
+   * `false` quer dizer que a linha existe para registrar que **olhamos e não
+   * havia nada** — nem sinal, nem pressão, nem exercício, nem check-in, nem
+   * consulta. A linha nasce mesmo assim porque é ela que impede a rodada
+   * seguinte de tentar de novo o mesmo período, e porque a clínica precisa
+   * saber de quem não veio nada.
+   * **O paciente não vê essas.** Um relatório semanal dizendo "nada" é pior
+   * que nenhum relatório.
+   */
+  hasData Boolean @default(true)
+
   /// O trecho que um terapeuta escreveu, quando escreveu. Sai com o nome dele.
   therapistNote   String? @db.Text
   therapistNoteBy String?

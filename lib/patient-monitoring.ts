@@ -96,6 +96,26 @@ export interface DadosDeMonitoramento {
   }>;
 }
 
+/**
+ * Houve **alguma** coisa no período?
+ *
+ * O Bruno pediu para ser avisado quando não houver informação nenhuma, em vez
+ * de relatórios vazios circulando em silêncio. Esta é a pergunta que responde
+ * isso — e ela olha **tudo**, não só o relógio: uma consulta feita já é algo
+ * a contar.
+ */
+export function temAlgumDado(mon: DadosDeMonitoramento | null | undefined): boolean {
+  if (!mon) return false;
+  return (
+    mon.temSinais ||
+    mon.pressao.leituras > 0 ||
+    mon.ecg.length > 0 ||
+    mon.exercicio.registros > 0 ||
+    mon.comoSeSentiu.registros > 0 ||
+    mon.consultas.length > 0
+  );
+}
+
 export async function getMonitoringData(
   patientId: string,
   opts: { days?: number } = {}

@@ -20,7 +20,9 @@ export async function GET() {
   if (gate.response) return gate.response;
 
   const reports = await (prisma as any).patientReport.findMany({
-    where: { patientId: gate.gate!.userId },
+    // Os vazios ficam para a clínica: um relatório semanal dizendo "nada" é
+    // pior que nenhum relatório.
+    where: { patientId: gate.gate!.userId, hasData: true },
     orderBy: { periodStart: "desc" },
     take: 52,
     select: {

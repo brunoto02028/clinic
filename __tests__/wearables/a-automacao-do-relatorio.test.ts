@@ -94,6 +94,33 @@ describe("a rodada", () => {
     expect(agenda).toMatch(/r\.falhas\+\+/);
   });
 
+  it("**período sem nada não vira relatório para o paciente**", () => {
+    /**
+     * O Bruno: *"se não tiver nenhum tipo de informação, eu vou ser avisado"*.
+     *
+     * A linha nasce mesmo assim — é o registro de que olhamos, e é o que
+     * impede a rodada seguinte de tentar o mesmo período de novo — mas
+     * marcada, e o paciente não a vê. Um relatório semanal dizendo "nada" é
+     * pior que nenhum relatório.
+     */
+    expect(agenda).toMatch(/const houveAlgo = temAlgumDado\(/);
+    expect(agenda).toMatch(/hasData: houveAlgo/);
+    expect(agenda).toMatch(/else r\.semDados\+\+/);
+
+    const lista = lerCodigo("app", "api", "patient", "reports", "route.ts");
+    expect(lista).toMatch(/hasData: true/);
+  });
+
+  it("e a clínica é avisada, com o nome de quem", () => {
+    // "3 sem dados" não diz a quem perguntar.
+    const rota = lerCodigo("app", "api", "admin", "monitoring", "reports", "route.ts");
+    expect(rota).toMatch(/hasData: false/);
+    expect(rota).toMatch(/patientName:/);
+    const painel = lerCodigo("app", "admin", "biohacking", "page.tsx");
+    expect(painel).toMatch(/Nothing to report for/);
+    expect(painel).toMatch(/These were not shown to the patient/);
+  });
+
   it("**a rodada não envia nada**", () => {
     expect(agenda).not.toMatch(/notifyPatient|sendEmail|pushConsulta|sendTemplatedEmail/);
   });

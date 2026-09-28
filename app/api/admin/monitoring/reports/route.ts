@@ -42,8 +42,10 @@ export async function GET(request: NextRequest) {
       select: { autoReportsEnabled: true, defaultReportCadence: true },
     });
 
-    const [gerados, pacientesAtivos] = await Promise.all([
-      (prisma as any).patientReport.count({ where: { clinicId: actor.clinicId } }).catch(() => 0),
+    const [gerados, pacientesAtivos, vazios] = await Promise.all([
+      (prisma as any).patientReport
+        .count({ where: { clinicId: actor.clinicId, hasData: true } })
+        .catch(() => 0),
       prisma.user.count({
         where: {
           clinicId: actor.clinicId,
@@ -53,9 +55,35 @@ export async function GET(request: NextRequest) {
           isClinicPatient: true,
         },
       }),
+      /**
+       * De quem não veio nada (099, pedido do Bruno).
+       *
+       * *"Se não tiver nenhum tipo de informação, eu vou ser avisado"*. A
+       * linha existe para registrar que olhamos; o paciente não a vê, e a
+       * clínica vê aqui — com o nome, porque "3 sem dados" não diz a quem
+       * perguntar.
+       */
+      (prisma as any).patientReport
+        .findMany({
+          where: { clinicId: actor.clinicId, hasData: false },
+          orderBy: { periodStart: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            periodStart: true,
+            patient: { select: { id: true, firstName: true, lastName: true } },
+          },
+        })
+        .catch(() => []),
     ]);
 
     return NextResponse.json({
+      noData: (vazios as any[]).map((v) => ({
+        id: v.id,
+        periodStart: v.periodStart,
+        patientId: v.patient.id,
+        patientName: `${v.patient.firstName} ${v.patient.lastName}`,
+      })),
       enabled: !!clinica?.autoReportsEnabled,
       defaultCadence: clinica?.defaultReportCadence ?? "WEEKLY",
       reportsGenerated: gerados,

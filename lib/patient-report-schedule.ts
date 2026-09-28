@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getPatientReportData, renderPatientReportHTML } from "@/lib/patient-report";
+import { temAlgumDado } from "@/lib/patient-monitoring";
 
 /**
  * O relatório que nasce sozinho (099 T-5).
@@ -69,6 +70,15 @@ export interface ResultadoDaRodada {
   gerados: number;
   jaExistiam: number;
   falhas: number;
+  /**
+   * Quantos períodos passaram **sem nada**.
+   *
+   * O Bruno: *"se não tiver nenhum tipo de informação, eu vou ser avisado"*.
+   * A linha nasce mesmo assim — é o registro de que olhamos — mas marcada, e
+   * o paciente não a vê: um relatório semanal dizendo "nada" é pior que
+   * nenhum relatório.
+   */
+  semDados: number;
 }
 
 /**
@@ -84,6 +94,7 @@ export async function gerarRelatoriosVencidos(
     gerados: 0,
     jaExistiam: 0,
     falhas: 0,
+    semDados: 0,
   };
 
   const clinicas = await prisma.clinic.findMany({
@@ -136,7 +147,9 @@ export async function gerarRelatoriosVencidos(
       try {
         const dados = await getPatientReportData(p.id, { days: diasDoPeriodo(cadencia) });
         if (!dados.patient) continue;
-        const html = renderPatientReportHTML(dados, { forEmail: true });
+
+        const houveAlgo = temAlgumDado((dados as any).monitoring);
+        const html = houveAlgo ? renderPatientReportHTML(dados, { forEmail: true }) : "";
 
         await (prisma as any).patientReport.create({
           data: {
@@ -146,9 +159,11 @@ export async function gerarRelatoriosVencidos(
             periodStart: inicio,
             periodEnd: fimDoPeriodo(cadencia, inicio),
             html,
+            hasData: houveAlgo,
           },
         });
-        r.gerados++;
+        if (houveAlgo) r.gerados++;
+        else r.semDados++;
       } catch (e: any) {
         // Um paciente que falha não pode levar os outros junto: a rodada
         // inteira ficaria sem relatório por causa de um prontuário estranho.
