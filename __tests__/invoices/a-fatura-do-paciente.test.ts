@@ -200,7 +200,9 @@ describe("a tela", () => {
      * JSON `session_expired`. Mesmo defeito que o QA de 25/09 achou nos
      * documentos, repetido num caminho novo (QA da 093, falha 3.1).
      */
-    expect(middleware).toMatch(/LINK_ASSINADO = \['\/api\/files\/', '\/api\/patient\/invoices\/'\]/);
+    // A lista cresce (os relatorios entraram na 099). O que este teste protege
+    // e a fatura estar nela, nao a lista estar congelada.
+    expect(middleware).toMatch(/LINK_ASSINADO = \[[^\]]*'\/api\/patient\/invoices\/'/);
     expect(middleware).toMatch(/LINK_ASSINADO\.some\(\(p\) => pathname\.startsWith\(p\)\)/);
   });
 

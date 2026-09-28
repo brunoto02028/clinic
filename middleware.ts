@@ -351,7 +351,7 @@ export async function middleware(request: NextRequest) {
    * caminho só. Foi o mesmo defeito do documento, repetido num caminho novo:
    * quem acrescentar o próximo link assinado acrescenta o prefixo aqui.
    */
-  const LINK_ASSINADO = ['/api/files/', '/api/patient/invoices/'];
+  const LINK_ASSINADO = ['/api/files/', '/api/patient/invoices/', '/api/patient/reports/'];
   if (LINK_ASSINADO.some((p) => pathname.startsWith(p)) && request.nextUrl.searchParams.get('t')) {
     return NextResponse.next();
   }

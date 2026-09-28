@@ -349,6 +349,45 @@ export default function AdminBiohackingPage() {
   const [desvios, setDesvios] = useState<any[]>([]);
   const [marcando, setMarcando] = useState<string | null>(null);
 
+  /**
+   * A chave mestra do acompanhamento automático (099 T-5).
+   *
+   * Ligá-la é o instante em que relatórios passam a ser gerados para **todos**
+   * os pacientes ativos. Por isso a tela diz o número antes de perguntar:
+   * ligar sem saber quantas pessoas isso alcança seria ligar no escuro.
+   */
+  const [auto, setAuto] = useState<any | null>(null);
+  const [mudandoAuto, setMudandoAuto] = useState(false);
+
+  const carregarAuto = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/monitoring/reports");
+      setAuto(r.ok ? await r.json() : null);
+    } catch {
+      setAuto(null);
+    }
+  }, []);
+
+  const trocarAuto = async (enabled: boolean) => {
+    if (enabled && auto?.patientsAffected > 0) {
+      const ok = window.confirm(
+        `Turn automatic reports on for ${auto.patientsAffected} active patient(s)? They will start being generated now.`
+      );
+      if (!ok) return;
+    }
+    setMudandoAuto(true);
+    try {
+      await fetch("/api/admin/monitoring/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled, defaultCadence: auto?.defaultCadence }),
+      });
+      await carregarAuto();
+    } finally {
+      setMudandoAuto(false);
+    }
+  };
+
   const carregarDesvios = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/monitoring/deviations");
@@ -385,7 +424,8 @@ export default function AdminBiohackingPage() {
     setProtocols(prData.protocols || []);
     setLoading(false);
     void carregarDesvios();
-  }, [carregarDesvios]);
+    void carregarAuto();
+  }, [carregarDesvios, carregarAuto]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -434,6 +474,48 @@ export default function AdminBiohackingPage() {
           </div>
         </div>
       </div>
+
+      {/* O acompanhamento automático (099 T-5). */}
+      {auto && (
+        <Card>
+          <CardContent className="p-4 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold">Automatic patient reports</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {auto.enabled
+                  ? `On · ${auto.defaultCadence.toLowerCase()} · ${auto.patientsAffected} active patient(s) · ${auto.reportsGenerated} generated so far`
+                  : `Off · would cover ${auto.patientsAffected} active patient(s), ${auto.defaultCadence.toLowerCase()}`}
+              </p>
+              {/* Dito antes de ligar, e não depois: o relatório **fica
+                  disponível** no app de cada um. Estar disponível não é ser
+                  enviado, e a diferença é o produto inteiro. */}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Reports appear in each patient&apos;s app. Nothing is pushed to them unless they
+                turned notifications on.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+                value={auto.defaultCadence}
+                onChange={(e) => setAuto({ ...auto, defaultCadence: e.target.value })}
+              >
+                <option value="WEEKLY">Weekly</option>
+                <option value="DAILY">Daily</option>
+              </select>
+              <Button
+                size="sm"
+                variant={auto.enabled ? "outline" : "default"}
+                className="h-7 text-xs"
+                disabled={mudandoAuto}
+                onClick={() => trocarAuto(!auto.enabled)}
+              >
+                {auto.enabled ? "Turn off" : "Turn on"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* A fila de desvios (099 T-6). Só aparece quando há o que olhar — uma
           caixa vazia dizendo "nenhum alerta" ocupa a tela todo dia por nada. */}

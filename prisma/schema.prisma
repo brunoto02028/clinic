@@ -329,6 +329,18 @@ model Clinic {
   name String
   slug String @unique // For URLs: /clinics/bruno-physical-rehab
 
+  /**
+   * A chave mestra do acompanhamento automatico (099 T-5).
+   * Nasce **desligada**, e isso nao e timidez: ligar e o momento em que
+   * relatorios passam a ser gerados para todos os pacientes ativos de uma vez.
+   * O Bruno pediu para ver tudo funcionando como paciente de teste antes disso
+   * acontecer com a clinica inteira — entao a automacao esta pronta e espera
+   * um clique dele.
+   */
+  autoReportsEnabled   Boolean       @default(false)
+  /// A cadencia de quem nao tem uma propria.
+  defaultReportCadence ReportCadence @default(WEEKLY)
+
   // Branding
   logoUrl        String?
   logoPath       String? // cloud_storage_path
@@ -751,12 +763,20 @@ model User {
   /// passa a ser paciente.
   isClinicPatient Boolean @default(false)
 
-  outcomeMeasures        PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
-  monitoringAcks         MonitoringAlertAck[]    @relation("PatientMonitoringAcks")
-  servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
-  couponsTargeted        Coupon[]                @relation("CouponTarget")
-  couponRedemptions      CouponRedemption[]      @relation("CouponRedemptions")
-  appSessions            AppSession[]            @relation("UserAppSessions")
+  outcomeMeasures PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  monitoringAcks  MonitoringAlertAck[]    @relation("PatientMonitoringAcks")
+  reports         PatientReport[]         @relation("PatientReports")
+
+  /// A cadência desta pessoa. **Nulo quer dizer "o que a clínica decidiu"** —
+  /// assim ligar o acompanhamento para todo mundo é uma chave só, e quem
+  /// precisa de exceção tem exceção (099 T-5).
+  reportCadence          ReportCadence?
+  /// Receber aviso quando um relatório novo ficar pronto.
+  reportNotify           Boolean               @default(true)
+  servicePriceExceptions PatientServicePrice[] @relation("PatientServicePrices")
+  couponsTargeted        Coupon[]              @relation("CouponTarget")
+  couponRedemptions      CouponRedemption[]    @relation("CouponRedemptions")
+  appSessions            AppSession[]          @relation("UserAppSessions")
 
   // Profile Image
   profileImageUrl  String?
@@ -7373,6 +7393,46 @@ model UnassignedMeasurement {
  * `ecg_afib:2026-09-20`. Como ele carrega a data, um desvio novo no dia
  * seguinte é outro achado, e volta para a fila.
  */
+/// Com que frequência o relatório de acompanhamento nasce (099 T-5).
+enum ReportCadence {
+  NONE
+  DAILY
+  WEEKLY
+}
+
+/**
+ * Um relatório de acompanhamento, do jeito que ele ficou (099 T-5).
+ * **O HTML é guardado, não recalculado.** Um relatório é um retrato de um
+ * período: se ele fosse gerado de novo a cada leitura, o de janeiro mudaria
+ * quando um dado de janeiro fosse corrigido em março — e a pessoa que leu o
+ * primeiro nunca saberia que leu outra coisa.
+ */
+model PatientReport {
+  id        String @id @default(cuid())
+  clinicId  String
+  patientId String
+  patient   User   @relation("PatientReports", fields: [patientId], references: [id], onDelete: Cascade)
+
+  cadence     ReportCadence
+  periodStart DateTime
+  periodEnd   DateTime
+  /// O relatório pronto, como foi visto.
+  html        String        @db.Text
+
+  /// O trecho que um terapeuta escreveu, quando escreveu. Sai com o nome dele.
+  therapistNote   String? @db.Text
+  therapistNoteBy String?
+
+  /// Quando o aviso saiu — nulo enquanto ninguém foi avisado.
+  notifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([patientId, cadence, periodStart])
+  @@index([clinicId])
+  @@index([patientId, createdAt])
+}
+
 model MonitoringAlertAck {
   id        String @id @default(cuid())
   clinicId  String
