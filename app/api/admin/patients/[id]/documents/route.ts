@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
 import { pushDocumento } from "@/lib/push-notify";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export async function POST(
     const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
     if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File;
     const title = (formData.get("title") as string) || null;
     const description = (formData.get("description") as string) || null;

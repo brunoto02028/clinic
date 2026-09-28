@@ -6,6 +6,8 @@ import { saveChatAttachment } from "@/lib/chat-attachment";
 import { signFileToken } from "@/lib/file-access-token";
 import { sendEmail } from "@/lib/email";
 import { patientGate } from "@/lib/patient-gate";
+import { camposDoFormulario } from "@/lib/form-fields";
+import { apagarRecadoDoPaciente } from "@/lib/apagar-recado";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
 
   const contentType = req.headers.get("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     content = ((formData.get("content") as string) || "").trim();
     const file = formData.get("file") as File | null;
     if (file && file.size > 0) {
@@ -156,4 +158,62 @@ export async function PATCH() {
   });
 
   return NextResponse.json({ updated: updated.count });
+}
+
+/**
+ * DELETE — o paciente desfaz o recado que mandou, enquanto ninguém o viu.
+ *
+ * A regra e os três alvos (mensagem, documento, arquivo) estão em
+ * `lib/apagar-recado.ts`. Aqui ficam só sessão, portão e as frases.
+ */
+export async function DELETE(req: NextRequest) {
+  const __gate = await patientGate({ module: "mod_messages" });
+  if (__gate.response) return __gate.response;
+
+  const effective = await getEffectiveUser();
+  if (!effective) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  /**
+   * Quem está vendo como paciente não apaga o recado dele.
+   *
+   * A mesma guarda de `/api/patient/account` e da rota de consentimento: no modo
+   * de leitura, a ação destrutiva é justamente a que não pode existir. Sem isto,
+   * um admin espiando a conversa poderia apagar o que a paciente mandou, e o
+   * registro diria que foi ela.
+   */
+  if (effective.isImpersonating) {
+    return NextResponse.json(
+      {
+        error: "Read-only while viewing as someone else",
+        errorPt: "Somente leitura enquanto você vê como outra pessoa",
+      },
+      { status: 403 }
+    );
+  }
+
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  const r = await apagarRecadoDoPaciente({ messageId: id, patientId: effective.userId });
+
+  if (!r.ok) {
+    // "Já lida" e "não existe" são notícias diferentes, e o app diz coisas
+    // diferentes: uma oferece mandar correção, a outra só recarrega a conversa.
+    return r.code === "already_read"
+      ? NextResponse.json(
+          {
+            error: "The clinic has already seen this message.",
+            errorPt: "A clínica já viu esta mensagem.",
+            code: "already_read",
+          },
+          { status: 409 }
+        )
+      : NextResponse.json({ error: "Not found", code: "not_found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ deleted: true, documentRemoved: r.documentoApagado });
 }

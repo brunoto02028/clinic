@@ -1,6 +1,7 @@
 import { API_URL } from "./config";
 import { AuthError, refreshRequest } from "./auth";
 import { tokenStorage } from "@/lib/secure-storage";
+import { tokenEmprestado, renovarEmprestimo } from "@/lib/emprestimo";
 import type { AuthUser } from "./types";
 
 /**
@@ -82,8 +83,27 @@ export class ApiError extends Error {
    * accepted the terms" — and only one of them is something the patient can
    * fix. Telling them apart needs more than a status code.
    */
-  constructor(public status: number, message: string, public code?: string) {
+  /**
+   * A mesma recusa em português.
+   *
+   * O servidor manda `error` e `errorPt` em toda recusa que o paciente lê, e
+   * este construtor descartava o segundo — então a tela mostrava inglês num
+   * aparelho em português, apesar de a frase certa ter chegado pela rede
+   * (achado do review da 084, 26/09/2026). Inglês é a língua primária aqui, mas
+   * "primária" não é "única".
+   */
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string,
+    public messagePt?: string
+  ) {
     super(message);
+  }
+
+  /** A frase no idioma do aparelho, com o inglês como reserva. */
+  localizada(lang: string): string {
+    return lang === "pt" && this.messagePt ? this.messagePt : this.message;
   }
 }
 
@@ -103,8 +123,14 @@ export async function apiUpload<T>(
   form: FormData,
   method: "POST" | "PUT" = "POST"
 ): Promise<T> {
+  // Upload é escrita, e a área do responsável é de leitura (091 T-7). Antes
+  // eu deixava o anexo passar com o token emprestado, argumentando que o vídeo
+  // era da criança — mas isso é uma escrita no prontuário dela vinda de uma
+  // sessão que não é dela, e liberá-la é decisão a tomar de propósito.
+  recusaSeEscritaEmprestada(method, path);
+
   const send = async (): Promise<Response> => {
-    const access = await tokenStorage.getAccess();
+    const access = tokenEmprestado() ?? (await tokenStorage.getAccess());
     const headers = new Headers();
     if (access) headers.set("Authorization", `Bearer ${access}`);
     return fetch(`${API_URL}${path}`, { method, headers, body: form });
@@ -112,8 +138,11 @@ export async function apiUpload<T>(
 
   let res = await send();
   if (res.status === 401) {
-    const refreshed = await refreshSession();
-    if (!refreshed.ok) await failSession();
+    const renovou = tokenEmprestado() ? await renovarEmprestimo() : false;
+    if (!renovou) {
+      const refreshed = await refreshSession();
+      if (!refreshed.ok) await failSession();
+    }
     res = await send();
     if (res.status === 401) await failSession();
   }
@@ -123,18 +152,61 @@ export async function apiUpload<T>(
     throw new ApiError(
       res.status,
       (data as any)?.error || `Request failed (${res.status})`,
-      (data as any)?.code
+      (data as any)?.code,
+      (data as any)?.errorPt
     );
   }
   return data as T;
+}
+
+/**
+ * A área do responsável é de leitura, e é **aqui** que isso é verdade (091 T-7).
+ *
+ * Eu havia afirmado que reusar `isImpersonating` no servidor já fechava as
+ * escritas. O review de segurança de 27/09/2026 mostrou que não: doze rotas
+ * conferem, cerca de trinta não. A afirmação estava errada, e o poder de
+ * escrever apareceu de graça junto com a sessão emprestada — exatamente o que
+ * os comentários dizem evitar.
+ *
+ * Esta porta fecha isso do lado do app, por construção: enquanto há token
+ * emprestado, só passa leitura. O servidor continua recusando por conta
+ * própria o que é grave — comprar exame, trocar credencial, gerir pessoas —,
+ * e a auditoria rota a rota fica para ser feita de propósito, não às pressas.
+ */
+function recusaSeEscritaEmprestada(method: string | undefined, path?: string): void {
+  if (!tokenEmprestado()) return;
+  /**
+   * Entrar na consulta por video e a excecao (089, review de 27/09/2026).
+   *
+   * Sem ela, uma mae nao consegue entrar na consulta da filha — e a filha nao
+   * tem credencial propria, porque o login recusa quem tem `managedById`. A
+   * consulta a distancia de menor simplesmente nao acontecia.
+   *
+   * O servidor tem a mesma excecao, em `lib/sessao-emprestada.ts`, e e la que
+   * ela vale. Esta aqui existe so para o toque nao morrer no aparelho.
+   */
+  if (path && /^\/api\/appointments\/[^/]+\/video$/.test(path)) return;
+  const verbo = (method ?? "GET").toUpperCase();
+  if (verbo === "GET" || verbo === "HEAD" || verbo === "OPTIONS") return;
+  throw new ApiError(
+    403,
+    "Switch back to your own account to make changes.",
+    "on_behalf_read_only",
+    "Volte para a sua conta para fazer alterações."
+  );
 }
 
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  recusaSeEscritaEmprestada(options.method);
+
   const send = async (): Promise<Response> => {
-    const access = await tokenStorage.getAccess();
+    // O token emprestado ganha do próprio, quando existe (091 T-7): enquanto o
+    // responsável está vendo como a criança, **toda** chamada é sobre ela, e é
+    // isso que faz as dezenas de telas clínicas funcionarem sem mudar.
+    const access = tokenEmprestado() ?? (await tokenStorage.getAccess());
     const headers = new Headers(options.headers);
     if (access) headers.set("Authorization", `Bearer ${access}`);
     if (options.body && !headers.has("Content-Type")) {
@@ -146,8 +218,15 @@ export async function apiFetch<T>(
   let res = await send();
 
   if (res.status === 401) {
-    const refreshed = await refreshSession();
-    if (!refreshed.ok) await failSession();
+    // Empréstimo vencido é outra coisa de sessão vencida. Renovar o empréstimo
+    // **não** pode passar pelo `refreshSession`, que renovaria a sessão do
+    // responsável e devolveria um token dele — e aí a tela da filha passaria a
+    // mostrar os dados da mãe, em silêncio, que é o pior desfecho possível.
+    const renovou = tokenEmprestado() ? await renovarEmprestimo() : false;
+    if (!renovou) {
+      const refreshed = await refreshSession();
+      if (!refreshed.ok) await failSession();
+    }
     res = await send(); // retry once with the new token
     if (res.status === 401) await failSession(); // retry still unauthorized → give up
   }
@@ -157,7 +236,8 @@ export async function apiFetch<T>(
     throw new ApiError(
       res.status,
       (data as any)?.error || `Request failed (${res.status})`,
-      (data as any)?.code
+      (data as any)?.code,
+      (data as any)?.errorPt
     );
   }
   return data as T;

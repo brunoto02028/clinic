@@ -129,7 +129,7 @@ export async function buildPatientReminderEmail(firstName: string, missingTitles
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
     ${body}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
-      <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+      <a href="${BASE_URL}/abrir?para=exercicios&lang=${isPt ? "pt" : "en"}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
   return wrapInLayout(content, todayPlainMessage(missingTitles, isPt, customTemplate).slice(0, 100), locale, clinicId);
@@ -188,7 +188,7 @@ export async function buildYesterdayFollowupEmail(
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
     ${body}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
-      <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+      <a href="${BASE_URL}/abrir?para=exercicios&lang=${isPt ? "pt" : "en"}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
   return wrapInLayout(content, isPt ? "Precisamos de você por aqui" : "We miss you in your plan", locale, clinicId);

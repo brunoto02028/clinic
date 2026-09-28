@@ -30,6 +30,16 @@ export async function POST(
     // Corpo vazio é válido: revisar sem escrever nada.
   }
   const note = typeof body?.note === "string" ? body.note.trim() : "";
+  /**
+   * Como o terapeuta respondeu, quando não foi só texto (095 T-6).
+   *
+   * A mídia não passa por aqui: ela vai como **mensagem** para o paciente, pela
+   * rota que já sabe guardar anexo de conversa. O que fica gravado no envio é o
+   * rastro — quem abrir o vídeo depois precisa saber que houve resposta e de
+   * que tipo, senão o card parece um "vi e não disse nada".
+   */
+  const replyKind =
+    body?.replyKind === "audio" || body?.replyKind === "video" ? body.replyKind : null;
 
   // A clínica no `where`: um id de outra clínica simplesmente não existe aqui.
   const submission = await (prisma as any).exerciseSubmission.findFirst({
@@ -44,8 +54,9 @@ export async function POST(
       reviewedById: actor.userId,
       reviewedAt: new Date(),
       reviewNote: note || null,
+      replyKind,
     },
-    select: { id: true, reviewedAt: true, reviewNote: true },
+    select: { id: true, reviewedAt: true, reviewNote: true, replyKind: true },
   });
 
   await logAudit({

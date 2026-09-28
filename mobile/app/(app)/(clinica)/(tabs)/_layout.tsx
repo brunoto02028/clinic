@@ -12,9 +12,9 @@ export default function ClinicaTabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: t.colors.health,
-        tabBarInactiveTintColor: "#9AA0AC",
+        tabBarInactiveTintColor: t.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: t.colors.surface,
           borderTopColor: t.colors.border,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 88 : 64,

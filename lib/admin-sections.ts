@@ -116,6 +116,27 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
+        // Quem tem o app, onde está e quanto tempo fica (085, T-3). O dado já
+        // era gravado desde a T-1 e não tinha tela; `/admin/analytics` mostra
+        // visitante do site, que responde outra pergunta.
+        key: "app-usage",
+        label: "App",
+        labelPt: "App",
+        href: "/admin/app-usage",
+        matchRoutes: ["/admin/app-usage"],
+      },
+      {
+        // O badge vermelho contava os vídeos e não dizia quais. O backend já
+        // respondia `?pending=1` desde a 076 e nenhuma tela perguntava — o
+        // único caminho até um vídeo era abrir o prontuário e achar a aba
+        // (087, T-4). Aqui está a porta.
+        key: "submissions",
+        label: "Videos",
+        labelPt: "Vídeos",
+        href: "/admin/exercise-submissions",
+        matchRoutes: ["/admin/exercise-submissions"],
+      },
+      {
         // Readings from the clinic's own cuff that matched no measurement
         // window (activity 074, T-15). It needs a door in the navigation, or
         // the only way to reach it is the link on an expired measurement.
@@ -266,6 +287,17 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         clinicalOnly: true,
       },
       {
+        // Exames de laboratório vendidos pelo app (081): catálogo com preço e
+        // margem, pedidos, e a fila de resultados esperando a revisão do
+        // terapeuta antes de o paciente ver.
+        key: "labs",
+        label: "Lab tests",
+        labelPt: "Exames",
+        href: "/admin/labs",
+        matchRoutes: ["/admin/labs"],
+        clinicalOnly: true,
+      },
+      {
         key: "exercises",
         label: "Exercises",
         labelPt: "Exercicios",
@@ -312,6 +344,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/protocols",
       "/admin/equipment",
       "/admin/clinical/rehab",
+      // Sem isto, /admin/labs caía na seção Schedule (QA da T-2, 081).
+      "/admin/labs",
     ],
   },
   {
@@ -470,6 +504,14 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         superadminOnly: true,
       },
       {
+        key: "coupons",
+        label: "Coupons",
+        labelPt: "Cupons",
+        href: "/admin/coupons",
+        // Mesma mão que define preço define desconto (084): superadmin.
+        superadminOnly: true,
+      },
+      {
         key: "memberships",
         label: "Memberships",
         labelPt: "Memberships",
@@ -491,6 +533,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     matchRoutes: [
       "/admin/finance",
       "/admin/service-pricing",
+      "/admin/coupons",
       "/admin/memberships",
       "/admin/marketplace",
       "/admin/stripe-branding",

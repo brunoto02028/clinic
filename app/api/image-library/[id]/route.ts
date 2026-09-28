@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { deleteFile, getFileUrl } from "@/lib/s3";
 import { unlink } from "fs/promises";
 import path from "path";
+import { campoDoIdVirtual } from "@/lib/site-settings-images";
 
 export async function PATCH(
   request: NextRequest,
@@ -76,21 +77,22 @@ export async function DELETE(
 
     // Virtual "settings-*" images come from SiteSettings fields, not ImageLibrary table
     if (id.startsWith("settings-")) {
-      const SETTINGS_FIELD_MAP: Record<string, string> = {
-        "settings-logo-":       "logoUrl",
-        "settings-logo-":       "darkLogoUrl",
-        "settings-hero-":       "heroImageUrl",
-        "settings-about-":      "aboutImageUrl",
-        "settings-services-":   "insolesImageUrl",
-        "settings-general-":    "ogImageUrl",
-      };
-      const fieldEntry = Object.entries(SETTINGS_FIELD_MAP).find(([prefix]) => id.startsWith(prefix));
-      if (fieldEntry) {
-        const settings = await prisma.siteSettings.findFirst();
-        if (settings) {
+      /**
+       * O campo sai do **arquivo**, e nao do prefixo do id.
+       *
+       * Havia aqui um mapa de prefixo para campo, e ele estava errado por
+       * construção: o id é `settings-<categoria>-<arquivo>`, e três campos
+       * dividem a categoria `logo`. O mapa ainda tinha `"settings-logo-"`
+       * **duas vezes** — apagar a logo clara apagava a escura — e não tinha o
+       * favicon. Ver `lib/site-settings-images.ts`.
+       */
+      const settings = await prisma.siteSettings.findFirst();
+      if (settings) {
+        const campo = campoDoIdVirtual(id, settings as unknown as Record<string, unknown>);
+        if (campo) {
           await prisma.siteSettings.update({
             where: { id: settings.id },
-            data: { [fieldEntry[1]]: null },
+            data: { [campo]: null },
           });
         }
       }

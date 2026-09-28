@@ -49,7 +49,7 @@ function YesNo({ value, onChange }: { value?: boolean; onChange: (v: boolean) =>
               backgroundColor: active ? t.colors.accent : "transparent",
             }}
           >
-            <Text variant="label" color={active ? "#fff" : t.colors.text}>{o.label}</Text>
+            <Text variant="label" color={active ? t.colors.primaryFg : t.colors.text}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -321,7 +321,7 @@ function ScreeningScreen() {
         {step === 4 && (
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Previous treatment", pt: "Tratamento anterior" })}</Text>
-            <ChipSelect options={[{ value: "yes", label: tr(lang, { en: "Yes, I had therapy", pt: "Sim, fiz fisioterapia" }) }, { value: "no", label: tr(lang, { en: "No", pt: "Não" }) }]} selected={form.previousPhysio ? "yes" : form.previousPhysio === false ? "no" : null} onSelect={v => set("previousPhysio", v === "yes")} />
+            <ChipSelect options={[{ value: "yes", label: tr(lang, { en: "Yes, I had therapy", pt: "Sim, fiz terapia" }) }, { value: "no", label: tr(lang, { en: "No", pt: "Não" }) }]} selected={form.previousPhysio ? "yes" : form.previousPhysio === false ? "no" : null} onSelect={v => set("previousPhysio", v === "yes")} />
             {form.previousPhysio && <Input label={tr(lang, { en: "Details", pt: "Detalhes" })} value={form.previousPhysioDetails ?? ""} onChangeText={v => set("previousPhysioDetails", v)} placeholder={tr(lang, { en: "When, where, outcome...", pt: "Quando, onde, resultado..." })} multiline style={{ minHeight: 60, textAlignVertical: "top" }} />}
           </Card>
         )}
@@ -398,7 +398,7 @@ function ScreeningScreen() {
                       alignItems: "center", justifyContent: "center",
                     }}
                   >
-                    {form.consentGiven ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+                    {form.consentGiven ? <Ionicons name="checkmark" size={16} color={t.colors.primaryFg} /> : null}
                   </View>
                   <Text variant="body" style={{ flex: 1 }}>{consentText}</Text>
                 </Pressable>
@@ -449,7 +449,7 @@ function ScreeningScreen() {
                 if (step < STEPS.length - 1) { autosave.mutate(); setStep(s => s + 1); }
                 else submit.mutate();
               }}
-              icon={<Ionicons name={step < STEPS.length - 1 ? "chevron-forward" : "checkmark"} size={16} color="#fff" />}
+              icon={<Ionicons name={step < STEPS.length - 1 ? "chevron-forward" : "checkmark"} size={16} color={t.colors.accentFg} />}
             />
           </View>
         </View>

@@ -6,6 +6,7 @@ import {
   withingsSleep,
   type WithingsBpReading,
 } from "@/lib/withings";
+import { ignoraPressao } from "@/lib/withings-routing";
 
 /**
  * Writing Withings data into the models that already hold it.
@@ -30,6 +31,11 @@ export interface WithingsConnection {
   /** A cuff owned by the clinic, measuring many patients (T-14). */
   isClinicDevice?: boolean;
   clinicId?: string | null;
+  /**
+   * O id da conta **no provedor** — o mesmo dos dois lados quando um aparelho
+   * serve à clínica e ao dono. É o que diz que ele é compartilhado (092 T-1).
+   */
+  providerUserId?: string | null;
 }
 
 /**
@@ -39,6 +45,26 @@ export interface WithingsConnection {
  * timestamp match kept for readings saved before T-9 added the column — those
  * have no id and would otherwise all come back as new on the next sync.
  */
+/**
+ * A mesma conta Withings também está ligada como aparelho da clínica?
+ *
+ * `providerUserId` é o id **da conta na Withings** — o mesmo dos dois lados, e
+ * a única coisa que diz que são o mesmo aparelho. Sem ele não dá para saber, e
+ * a resposta segura é `false`: uma conexão pessoal comum não deve parar de
+ * gravar pressão por falta de dado.
+ */
+async function contaTambemEhDaClinica(connection: {
+  providerUserId?: string | null;
+}): Promise<boolean> {
+  const id = connection.providerUserId;
+  if (!id) return false;
+  const daClinica = await (prisma as any).wearableConnection.findFirst({
+    where: { provider: "WITHINGS", providerUserId: id, isClinicDevice: true },
+    select: { id: true },
+  });
+  return !!daClinica;
+}
+
 export async function saveBloodPressure(
   patientId: string,
   clinicId: string | null,
@@ -173,7 +199,7 @@ export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
   opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals"> } = {}
-): Promise<{ bloodPressure: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number }> {
+): Promise<{ bloodPressure: number; bloodPressureRead: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number }> {
   const token = await withingsAccessToken(connection);
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals"];
@@ -184,7 +210,36 @@ export async function ingestWithings(
   // open measurement session names. So it reads blood pressure only, and each
   // reading goes through attribution instead of straight into a record.
   const forClinic = connection.isClinicDevice === true;
-  const wanted: Array<"bp" | "activity" | "sleep" | "vitals"> = forClinic ? ["bp"] : kinds;
+
+  /**
+   * A conexão pessoal de um aparelho **compartilhado** não processa pressão
+   * (092 T-1).
+   *
+   * O Bruno usa um medidor só nos dois papéis, então a mesma conta Withings
+   * está ligada a nós duas vezes. O webhook escolhia uma delas por sorteio — e
+   * isso já foi corrigido —, mas **a varredura diária itera todas**, e a
+   * pessoal salvava no prontuário do dono **todas** as leituras da janela,
+   * inclusive as medidas em pacientes. Ainda disparava os alertas delas como
+   * se fossem dele: o 210/130 de um paciente chegando como se fosse do dono.
+   *
+   * Isto já acontecia antes da 092; o sorteio do webhook só escondia metade.
+   * Achado do review de 27/09/2026.
+   *
+   * Num aparelho compartilhado só a conexão da clínica sabe perguntar de quem
+   * é a leitura — é ela que enxerga as janelas de medição. Então ela é a
+   * autoridade, e a pessoal se cala **para pressão**. Passos e sono continuam,
+   * porque esses são de quem carrega o aparelho, não de quem foi medido.
+   */
+  const pulaPressaoDaClinica = ignoraPressao({
+    ehDaClinica: forClinic,
+    contaTambemEhDaClinica: await contaTambemEhDaClinica(connection),
+  });
+
+  const wanted: Array<"bp" | "activity" | "sleep" | "vitals"> = forClinic
+    ? ["bp"]
+    : pulaPressaoDaClinica
+      ? kinds.filter((k) => k !== "bp")
+      : kinds;
 
   const [bp, activity, sleep] = await Promise.all([
     wanted.includes("bp") ? withingsBloodPressure(token, since, opts.until) : Promise.resolve([]),
@@ -197,6 +252,10 @@ export async function ingestWithings(
     const { attributeClinicReading } = await import("@/lib/clinic-device");
     for (const reading of bp) {
       const outcome = await attributeClinicReading(
+        // A atribuição recebe a conexão, não a conta: quem olha o
+        // `providerUserId` é `ignoraPressao`, acima, e já decidiu. Passar o id
+        // da conta adiante foi o que sustentou o atalho "sem sessão vai para o
+        // dono", derrubado no review de 27/09/2026.
         { id: connection.id, clinicId: connection.clinicId ?? null, isClinicDevice: true },
         reading
       );
@@ -297,6 +356,10 @@ export async function ingestWithings(
 
   return {
     bloodPressure: bpSaved,
+    // Quantas a Withings devolveu nesta janela, salvas ou nao. "Veio uma e
+    // foi para a caixa" e "nao veio nada" sao noticias opostas, e sem este
+    // numero a tela dizia a segunda nos dois casos (092, review de 27/09).
+    bloodPressureRead: bp.length,
     activityDays: activity.length,
     sleepNights: sleep.length,
     vitalsDays,

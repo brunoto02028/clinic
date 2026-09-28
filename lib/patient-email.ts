@@ -128,7 +128,7 @@ export function looksLikeHomeVisit(a: { treatmentType?: string | null; notes?: s
 /**
  * Prefilled EN/PT text for a confirmation. Date and time are formatted in
  * Europe/London whatever the server's own timezone is. Wording uses
- * "therapist"/"terapeuta" (never "fisioterapeuta").
+ * "therapist"/"terapeuta" (never "terapeuta").
  */
 export function confirmationTemplate(opts: {
   kind: "home" | "clinic";

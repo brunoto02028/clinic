@@ -44,6 +44,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const fields = [
       'title', 'description', 'contentType', 'categoryId', 'body',
+      // As três do português (096 T-1). Na lista genérica de propósito: o
+      // `for` abaixo só escreve o que veio no corpo, então quem salvar só o
+      // inglês não apaga o português.
+      'titlePt', 'descriptionPt', 'bodyPt',
       'videoUrl', 'videoProvider', 'thumbnailUrl', 'imageUrls',
       'duration', 'difficulty', 'equipment', 'bodyParts', 'instructions',
       'repetitions', 'precautions', 'tags', 'isPublished', 'isFeatured',

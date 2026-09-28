@@ -6,11 +6,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { fetchPlans, fetchSubscription, subscribeToPlan, cancelSubscription } from "@/api/extras";
 import { useTheme } from "@/theme/useTheme";
+import { openCheckout } from "@/lib/checkout";
 
-const MODULES = [
-  "Dashboard", "Meu Perfil", "Planos & Assinatura", "Avaliação",
-  "Consultas", "Registros", "Exercícios", "Scans 3D",
-  "Documentos", "Tratamento", "Body Assessment",
+/**
+ * O que o plano dá, dito como cuidado — não como tela de app.
+ *
+ * Era a lista dos módulos do aplicativo ("Dashboard", "Meu Perfil", "Scans
+ * 3D"), sob o título "MÓDULOS INCLUÍDOS". É literalmente a moldura que a
+ * regra 3.1.1 da Apple descreve para exigir compra in-app: assinatura que
+ * desbloqueia funcionalidade. O que estes planos dão é atendimento — e dizer
+ * a verdade também resolve o problema da loja (083, 26/09/2026).
+ */
+const INCLUIDO = [
+  "Atendimento presencial na clínica",
+  "Acompanhamento do seu terapeuta",
+  "Revisão dos seus exames",
+  "Programa de exercícios feito para você",
 ];
 
 export default function Membership() {
@@ -41,7 +52,11 @@ export default function Membership() {
     onSuccess: async (res) => {
       if (res.checkoutUrl) {
         setNotice("Abrindo pagamento seguro…");
-        Linking.openURL(res.checkoutUrl).catch(() => setNotice("Não foi possível abrir."));
+        // Dentro do app: `openURL` entregava a pessoa ao Safari no meio do
+        // pagamento e não trazia de volta (083).
+        openCheckout(res.checkoutUrl)
+          .then(() => qc.invalidateQueries({ queryKey: ["subscription"] }))
+          .catch(() => setNotice("Não foi possível abrir."));
       } else {
         setNotice(res.message || "Assinatura ativada.");
         qc.invalidateQueries({ queryKey: ["subscription"] });
@@ -118,14 +133,14 @@ export default function Membership() {
             </Text>
           </View>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4, marginBottom: 12 }}>
-            Acesso completo gratuito a todos os módulos do portal.
+Acompanhamento da sua clínica.
           </Text>
 
           <Text variant="caption" color={t.colors.textMuted} style={{ fontWeight: "600", marginBottom: 8 }}>
-            MÓDULOS INCLUÍDOS
+            O QUE ESTÁ INCLUÍDO
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-            {MODULES.map((m) => (
+            {INCLUIDO.map((m) => (
               <View key={m} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Ionicons name="checkmark-circle" size={14} color={t.colors.ok} />
                 <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 12 }}>{m}</Text>
@@ -155,7 +170,7 @@ export default function Membership() {
         )}
 
         {/* Available plans */}
-        <Text variant="subtitle">Upgrade</Text>
+        <Text variant="subtitle">Outros planos da clínica</Text>
         {plans.isLoading ? (
           <Spinner center />
         ) : (plans.data ?? []).length === 0 ? (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getActor, isStaff } from "@/lib/tenant-access";
 import { uploadToR2, listR2 } from "@/lib/r2";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Next's FormData type (undici) doesn't line up with lib.dom's here —
   // same pre-existing TS quirk as app/api/patient/consultation-recording.
-  const formData = await req.formData().catch(() => null) as FormData | null;
+  const formData = await camposDoFormulario(req).catch(() => null) as FormData | null;
   const audio = formData?.get("audio");
   const chunkIndexRaw = formData?.get("chunkIndex");
   if (!(audio instanceof File) || audio.size === 0) {

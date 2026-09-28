@@ -1,11 +1,28 @@
+import { View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { HeaderBack } from "@/components/HeaderBack";
+import { FaixaVendoComo } from "@/components/FaixaVendoComo";
+import { BotaoDeTom } from "@/components/BotaoDeTom";
 import { Screen, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
+import { useSessionPing } from "@/lib/session-ping";
 
 /** Route guard: only authenticated sessions reach screens in this group. */
 export default function AppLayout() {
   const status = useAuth((s) => s.status);
+
+  /**
+   * O sinal de uso (085, T-1).
+   *
+   * Aqui, e não na raiz, porque este layout é o que só existe para quem está
+   * autenticado — é a definição de "usando o app". E antes de qualquer `return`
+   * condicional: mover o hook para depois deles o faria montar e desmontar
+   * conforme o status, e cada remontagem começaria uma sessão.
+   *
+   * `locked` conta como uso: a tranca é uma cortina, a pessoa está com o app
+   * aberto e volta em segundos.
+   */
+  useSessionPing(status === "authenticated" || status === "locked");
 
   if (status === "loading") {
     return (
@@ -43,13 +60,34 @@ export default function AppLayout() {
    * desenham o próprio header; o que muda é que, quando uma tela daqui pede
    * header, ela recebe o nosso botão em vez do nativo.
    */
+  /**
+   * A faixa de "vendo como" fica **por fora do Stack** (091 T-7).
+   *
+   * Dentro dele ela sumiria a cada navegação, e um aviso que aparece só em
+   * algumas telas é pior que nenhum: enquanto o responsável vê a clínica como
+   * quem ele cuida, toda tela mostra dados de outra pessoa, e ler a dor da
+   * filha como se fosse a própria não é um engano pequeno num app clínico.
+   */
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        headerBackButtonDisplayMode: "minimal",
-        headerLeft: () => <HeaderBack />,
-      }}
-    />
+    <View style={{ flex: 1 }}>
+      <FaixaVendoComo />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerBackButtonDisplayMode: "minimal",
+          headerLeft: () => <HeaderBack />,
+          /**
+           * O tom, no canto livre de toda tela com cabeçalho (092 T-6).
+           *
+           * Aqui, e não em cada tela, porque são cinquenta e cinco delas e a
+           * versão editada à mão esqueceria alguma. E como é **padrão** do
+           * layout, qualquer tela que já use o canto direito para uma ação
+           * própria continua com a dela: o que a tela define sobrepõe isto.
+           * Trocar de tom é raro; a ação da tela é o motivo de ela existir.
+           */
+          headerRight: () => <BotaoDeTom />,
+        }}
+      />
+    </View>
   );
 }

@@ -98,10 +98,15 @@ export default function Register() {
       // todos pela mesma causa. Aluno de estúdio não faz avaliação clínica —
       // a rota é bloqueada para o tenant dele —, então esse vai ao seletor.
       const criado = useAuth.getState().user;
+      // A pergunta antes da suposição (083). Mandar todo cadastro para a
+      // triagem clínica era interrogar sobre dor noturna e histórico de câncer
+      // quem baixou o app para comprar um exame de vitamina D. Agora a pessoa
+      // diz o que veio fazer, e a triagem é o caminho de quem escolheu a
+      // clínica. Aluno de estúdio não faz avaliação clínica — vai ao seletor.
       router.replace(
         criado?.clinicType === "PERSONAL_TRAINER"
           ? "/(app)/module-select"
-          : "/(app)/(clinica)/screening"
+          : "/(app)/welcome-choice"
       );
     } catch (e) {
       const status = e instanceof AuthError ? e.status : undefined;
@@ -153,7 +158,7 @@ export default function Register() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ gap: 28, paddingVertical: 16 }}
       >
-          <Logo tone="ink" height={96} style={{ alignSelf: "center" }} />
+          <Logo height={96} style={{ alignSelf: "center" }} />
 
           <View style={{ gap: 6 }}>
             <Text variant="hero">{tr(lang, { en: "Create your account", pt: "Crie sua conta" })}</Text>
@@ -350,7 +355,7 @@ export default function Register() {
                     borderColor: active ? t.colors.primary : t.colors.border,
                   }}
                 >
-                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? "#FFFFFF" : "#4A4F59" }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: active ? t.colors.primaryFg : t.colors.textSecondary }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>
                 </Pressable>

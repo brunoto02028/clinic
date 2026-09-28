@@ -148,7 +148,30 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
     const arg = notify.mock.calls[0][0];
     expect(arg.patientId).toBe("pat-1");
     expect(arg.emailTemplateSlug).toBe("EXERCISES_PRESCRIBED");
-    expect(arg.emailVars).toMatchObject({ exerciseCount: "3", programmeName: "Swimmer's Shoulder" });
+    /**
+     * O nome do programa é o **`displayGroup`**, não a pasta da biblioteca
+     * (QA da 095 T-5).
+     *
+     * Este teste fixava `"Swimmer's Shoulder"` — o nome da pasta — e com isso
+     * fixava o vazamento: o card de aderência do Bruno passou a cobrar dez
+     * exercícios de *"Advanced Core"*, que é como **nós** arrumamos a estante,
+     * por região do corpo e por lote de importação.
+     *
+     * Uma pasta pode ser as duas coisas, e a mensagem não tem como saber qual.
+     * `displayGroup` é o campo que existe para dizer o que o paciente vê; sem
+     * ele, a mensagem fica genérica, que é honesto.
+     */
+    expect(arg.emailVars).toMatchObject({ exerciseCount: "3", programmeName: "New exercises" });
+  });
+
+  it("e usa o grupo escolhido para o paciente, quando existe", async () => {
+    // `displayGroup` é *"o que o paciente vê este exercício filado sob"*.
+    // Quando quem prescreve escolhe um, é esse nome que a mensagem leva.
+    await POST(
+      request({ patientId: "pat-1", folderId: "f1", displayGroup: "Semana 1 — Ombro" })
+    );
+    const arg = notify.mock.calls.at(-1)![0];
+    expect(arg.emailVars.programmeName).toBe("Semana 1 — Ombro");
   });
 
   it("counts only what was actually prescribed, not what was skipped", async () => {

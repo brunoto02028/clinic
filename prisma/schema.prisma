@@ -21,9 +21,20 @@ enum UserRole {
 
 // What kind of tenant a Clinic row is. Drives vocabulary (patient/student,
 // treatment/workout), which modules are on, and the onboarding flow.
+/// Que tipo de profissional é este tenant.
+///
+/// Eram dois porque o produto era dois. O app passou a ser uma porta para
+/// vários — um médico, um psicólogo, um nutricionista — e cada um deles é um
+/// tenant com a própria agenda, os próprios preços e os próprios pacientes
+/// (083). O valor aqui só diz **o que a pessoa é**; quem pode vê-la é a
+/// combinação de `acceptingPatients` e `languages`.
 enum TenantType {
   CLINIC
   PERSONAL_TRAINER
+  DOCTOR
+  PSYCHOLOGIST
+  NUTRITIONIST
+  OTHER_PROFESSIONAL
 }
 
 enum ExtraSessionPayment {
@@ -372,7 +383,7 @@ model Clinic {
   // owner reviews the reminder copy) never messages a patient without an
   // explicit opt-in. The manual per-patient "Send now" button is never
   // gated by this — only the unattended cron is.
-  dailyRemindersEnabled Boolean @default(false)
+  dailyRemindersEnabled Boolean             @default(false)
   /**
    * Como a sessao extra e cobrada — a que o paciente marca com o pacote
    * esgotado. `INVOICE` por padrao: e o mais proximo do que a clinica faz
@@ -380,7 +391,20 @@ model Clinic {
    * reduzir risco. A primeira consulta nao passa por aqui: ela sempre paga no
    * ato, porque ali nao existe relacao nenhuma ainda (atividade 080).
    */
-  extraSessionPayment ExtraSessionPayment @default(INVOICE)
+  extraSessionPayment   ExtraSessionPayment @default(INVOICE)
+  /// Quantos dias úteis a clínica promete para revisar um resultado de exame
+  /// antes de liberar ao paciente (081). É o prazo que a tela do paciente
+  /// escreve em "em revisão com o seu terapeuta" — sem prazo vira espera
+  /// aberta e gera mensagem.
+  labReviewDays         Int                 @default(2)
+
+  /// O laboratório aparece no app dos pacientes desta clínica? (081)
+  ///
+  /// Era um interruptor de build (`EXPO_PUBLIC_SHOW_LAB`), o que obrigava um
+  /// binário novo a cada mudança de ideia. Aqui é dado: a clínica liga e
+  /// desliga na tela, e o app responde na próxima vez que pergunta quais áreas
+  /// existem. Nasce desligado — o módulo só aparece quando alguém decide.
+  labVisibleInApp Boolean @default(false)
 
   // Baseline module/permission grant every new PATIENT of this clinic starts
   // with (act.62) — same key vocabulary as User.moduleOverrides
@@ -401,6 +425,19 @@ model Clinic {
 
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
+
+  /// Em que línguas este profissional atende — `["en-GB"]`, `["pt-BR"]`, ou
+  /// as duas (083).
+  ///
+  /// Um médico que só fala português não deve aparecer para quem lê o app em
+  /// inglês: a consulta não aconteceria, e oferecer o que não se pode cumprir
+  /// é a mesma falha do botão que promete uma porta inexistente. Vazio quer
+  /// dizer "sem restrição" — é o caso de toda clínica que já existe.
+  languages String[] @default([])
+
+  /// Este profissional aceita gente nova pelo app? Nasce `false`: um tenant
+  /// aparece para desconhecidos quando alguém decide, nunca por existir.
+  acceptingPatients Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -518,6 +555,10 @@ model Clinic {
   outboundMessages       OutboundMessage[]
   automationRuns         AutomationRun[]
   exerciseSubmissions    ExerciseSubmission[]
+  labOrders              LabOrder[]
+  patientServicePrices   PatientServicePrice[]
+  coupons                Coupon[]
+  appSessions            AppSession[]
 
   @@index([slug])
   @@index([isActive])
@@ -664,11 +705,28 @@ model User {
   sex                      String? // "M" | "F" — used by the personal-trainer skinfold %BF formula (activity 21)
   photoConsentAt           DateTime? // consent for progress photos in personal-trainer assessments (activity 21)
   address                  String?
+  /// Cidade e código postal separados do endereço (081, 26/09/2026). Estavam
+  /// colados dentro de `address` numa string só — e um ponto de coleta se
+  /// acha por código postal, não por "12 Harley St, W1G 9QD". Guardado
+  /// normalizado, na forma do Reino Unido: "SW1A 1AA".
+  city                     String?
+  postcode                 String?
   emergencyContactName     String?
   emergencyContactPhone    String?
   emergencyContactRelation String?
   role                     UserRole  @default(PATIENT)
   isActive                 Boolean   @default(true)
+  /// Quando a pessoa pediu para apagar a conta pelo app.
+  ///
+  /// **A conta some; o prontuário fica.** A Apple exige que quem cria conta
+  /// consiga apagá-la de dentro do app, e o registro clínico tem retenção
+  /// legal de anos — apagar o `User` cascatearia sobre consultas, notas e
+  /// exames que a clínica é obrigada a guardar.
+  ///
+  /// Então isto marca o fim do **acesso**: a pessoa não entra mais, o login
+  /// não funciona, os avisos param. O que a lei manda guardar continua
+  /// guardado, e os termos já dizem por quanto tempo (089/090, 26/09/2026).
+  deletedAt                DateTime?
   emailVerified            DateTime?
 
   /// Whether patients can book appointments with this person. Role cannot
@@ -677,7 +735,24 @@ model User {
   /// account never appears on the booking screen by accident.
   bookable Boolean @default(false)
 
-  outcomeMeasures PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  /// Esta pessoa é paciente da clínica, ou só alguém que baixou o app?
+  ///
+  /// O app deixou de ser só o app dos pacientes (26/09/2026): alguém indicado
+  /// por um amigo baixa, se cadastra e compra um exame de laboratório sem
+  /// nunca ter sido atendido. Mostrar a ele prontuário, exercícios e mensagens
+  /// de uma clínica que nunca o viu é oferecer a casa de outra pessoa.
+  ///
+  /// Nasce `false` num cadastro feito pela própria pessoa e `true` quando é a
+  /// clínica que cria a conta. Vira `true` sozinho no primeiro ato clínico —
+  /// uma consulta marcada, um pacote — que é o momento em que ela de fato
+  /// passa a ser paciente.
+  isClinicPatient Boolean @default(false)
+
+  outcomeMeasures        PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
+  couponsTargeted        Coupon[]                @relation("CouponTarget")
+  couponRedemptions      CouponRedemption[]      @relation("CouponRedemptions")
+  appSessions            AppSession[]            @relation("UserAppSessions")
 
   // Profile Image
   profileImageUrl  String?
@@ -884,6 +959,39 @@ model User {
 
   // BA One — Labs Module
   labOrders LabOrder[] @relation("PatientLabOrders")
+
+  /// Quem responde por este paciente, quando ele nao entra sozinho (091 T-7).
+  ///
+  /// O Bruno: "se o paciente e uma crianca, a mae tem que fazer o cadastro e
+  /// colocar a crianca como uma dependente. E e a crianca que esta fazendo o
+  /// tratamento de reabilitacao."
+  ///
+  /// A crianca precisa de prontuario de verdade: consulta, protocolo,
+  /// exercicio, nota clinica. Sao 45 relacoes clinicas penduradas aqui, e
+  /// aponta-las para uma tabela separada seria duplicar o sistema inteiro.
+  /// Entao a crianca e um User — **sem e-mail e sem senha**, e o login recusa
+  /// quem tem managedById. Nao ha credencial para usar, e ha uma recusa
+  /// explicita: duas camadas, porque esta nao pode falhar.
+  /// O parentesco com quem responde pela pessoa — "filha", "filho" (091 T-7).
+  ///
+  /// A tela coleta, a validacao aceita, e ate o review de 27/09/2026 o valor
+  /// era **descartado em silencio**: a tabela `Dependent` tinha a coluna, o
+  /// `User` nao, e a unificacao esqueceu de trazer.
+  managedRelationship String?
+  // A descrição de "outro" — só preenchida quando `managedRelationship` é
+  // `OTHER`, e obrigatória nesse caso (095 T-3). Coluna separada, e não um
+  // "OTHER: texto" encaixado na de cima, porque valor codificado dentro de
+  // valor é o tipo de coisa que alguém um dia lê inteiro como se fosse o
+  // parentesco.
+  managedRelationshipOther String?
+  managedById         String?
+  guardian            User?      @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
+  /// SetNull e nao Cascade de proposito: apagar um responsavel nunca pode
+  /// destruir o prontuario de quem ele cuidava. O registro fica, sem dono, e a
+  /// clinica reatribui.
+  managedPatients     User[]     @relation("ManagedPatients")
+  exerciseSubmissionArchives ExerciseSubmission[] @relation("ExerciseSubmissionArchives")
+  labOrdersAsSubject  LabOrder[] @relation("LabOrderSubject")
 
   // BA One — Entitlements
   entitlements Entitlement[] @relation("UserEntitlements")
@@ -1101,11 +1209,11 @@ model MedicalScreening {
 /// inteira. Consulta nasce com 1 porque avaliacao e um a um; tratamento a
 /// clinica decide caso a caso (atividade 080, T-5).
 model ScheduleWindow {
-  id          String             @id @default(cuid())
+  id          String @id @default(cuid())
   clinicId    String
-  clinic      Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   therapistId String
-  therapist   User               @relation("TherapistScheduleWindows", fields: [therapistId], references: [id], onDelete: Cascade)
+  therapist   User   @relation("TherapistScheduleWindows", fields: [therapistId], references: [id], onDelete: Cascade)
 
   dayOfWeek   Int // 0 = domingo
   startTime   String // "09:00"
@@ -1135,9 +1243,9 @@ model ScheduleException {
   therapistId String?
   therapist   User?   @relation("TherapistScheduleExceptions", fields: [therapistId], references: [id], onDelete: Cascade)
 
-  date   String // "YYYY-MM-DD"
+  date      String // "YYYY-MM-DD"
   /// Fechado o dia todo. Quando falso, `startTime`/`endTime` encurtam o dia.
-  closed Boolean @default(false)
+  closed    Boolean @default(false)
   startTime String?
   endTime   String?
   note      String?
@@ -1187,29 +1295,30 @@ model Appointment {
   therapistId String
   therapist   User   @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
 
-  dateTime        DateTime
-  duration        Int               @default(60) // Duration in minutes
-  treatmentType   String
+  dateTime         DateTime
+  duration         Int               @default(60) // Duration in minutes
+  treatmentType    String
   /**
    * Que tipo de marcacao isto e — decidido pelo servidor, nunca pelo cliente.
-   *
    * Sem isto, primeira consulta, sessao de pacote e sessao extra eram a mesma
    * linha, e a clinica so distinguia pelo preco que alguem digitou.
    */
-  kind            AppointmentKind   @default(CLINIC_BOOKED)
-  /** O pacote que pagou por esta consulta, quando foi um. */
+  kind             AppointmentKind   @default(CLINIC_BOOKED)
+  /**
+   * O pacote que pagou por esta consulta, quando foi um.
+   */
   patientPackageId String?
-  patientPackage   PatientPackage?  @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
-  status          AppointmentStatus @default(PENDING)
-  mode            AppointmentMode   @default(IN_PERSON)
-  paymentMethod   PaymentMethod     @default(ONLINE)
-  videoRoomId     String? // For video consultations
-  videoRoomUrl    String? // Join URL for video call
-  notes           String?
-  price           Float             @default(60.00)
-  treatmentPlanId String?
-  treatmentPlan   TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
-  protocolId      String? // Links appointment to a TreatmentProtocol (soft reference)
+  patientPackage   PatientPackage?   @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
+  status           AppointmentStatus @default(PENDING)
+  mode             AppointmentMode   @default(IN_PERSON)
+  paymentMethod    PaymentMethod     @default(ONLINE)
+  videoRoomId      String? // For video consultations
+  videoRoomUrl     String? // Join URL for video call
+  notes            String?
+  price            Float             @default(60.00)
+  treatmentPlanId  String?
+  treatmentPlan    TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+  protocolId       String? // Links appointment to a TreatmentProtocol (soft reference)
 
   // Reminders
   reminderSent Boolean @default(false)
@@ -1430,6 +1539,9 @@ model Article {
   @@index([published])
   @@index([authorId])
   @@index([published, createdAt(sort: Desc)])
+
+  /// Os materiais educativos que nasceram deste artigo (096 T-2).
+  asEducation       EducationContent[] @relation("ArticleAsEducation")
 }
 
 // ============================================
@@ -2824,6 +2936,18 @@ model EducationContent {
   description   String?  @db.Text
   contentType   String   @default("article") // "article", "video", "exercise", "infographic"
   body          String?  @db.Text
+
+  /// A versão em português (096 T-1).
+  ///
+  /// `Article` sempre teve as duas línguas; `EducationContent` tinha uma só, e
+  /// importar um artigo como estava jogava fora metade do que já tinha sido
+  /// escrito — com a Ana lendo em inglês e outro paciente em português.
+  ///
+  /// Anuláveis de propósito: material só em inglês é um estado legítimo, e a
+  /// tela mostra o que existe em vez de um espaço vazio.
+  titlePt       String?
+  descriptionPt String?  @db.Text
+  bodyPt        String?  @db.Text
   videoUrl      String?
   videoProvider String?
   thumbnailUrl  String?
@@ -2844,6 +2968,19 @@ model EducationContent {
   isFeatured  Boolean  @default(false)
   sortOrder   Int      @default(0)
   viewCount   Int      @default(0)
+
+  /// De qual artigo este material veio (096 T-2). Nulo em material escrito à
+  /// mão, que é a maioria do que virá depois.
+  ///
+  /// **Cópia, não vínculo**, e o id existe para dois motivos: não duplicar ao
+  /// reimportar, e saber quando o artigo mudou depois. `SetNull` porque apagar
+  /// o artigo não pode levar junto o material que um paciente está lendo.
+  sourceArticleId        String?
+  sourceArticle          Article?  @relation("ArticleAsEducation", fields: [sourceArticleId], references: [id], onDelete: SetNull)
+  /// O `updatedAt` do artigo na hora da importação. Quando o artigo passar
+  /// disto, o painel avisa — e quem decide reimportar é uma pessoa, não o
+  /// sistema por trás de alguém que está lendo.
+  sourceArticleUpdatedAt DateTime?
 
   assignments EducationAssignment[]
   progress    EducationProgress[]
@@ -4180,9 +4317,23 @@ model ExerciseSubmission {
   reviewedAt   DateTime?
   reviewNote   String?   @db.Text
 
+  /// Arquivado: sai da fila e da lista do prontuário, e **não some** (095 T-6).
+  /// O Bruno pediu para limpar o painel, não para apagar registro clínico — o
+  /// vídeo continua no prontuário do paciente e volta pelo filtro.
+  archivedAt   DateTime?
+  archivedById String?
+  archivedBy   User?     @relation("ExerciseSubmissionArchives", fields: [archivedById], references: [id], onDelete: SetNull)
+
+  /// Como o terapeuta respondeu, quando não foi só texto: `audio` ou `video`.
+  /// A mídia em si viaja como mensagem para o paciente — aqui fica o rastro,
+  /// para quem abrir o envio depois saber que houve resposta e de que tipo.
+  replyKind String?
+
   createdAt DateTime @default(now())
 
   @@index([patientId, submittedAt])
+  /// A fila esconde o que foi arquivado.
+  @@index([clinicId, archivedAt])
   /// A fila da clínica é "ainda não revisados".
   @@index([clinicId, reviewedAt])
   @@index([exercisePrescriptionId])
@@ -4591,7 +4742,12 @@ model DailyCheckIn {
   patientId String
   patient   User    @relation("PatientDailyCheckIns", fields: [patientId], references: [id], onDelete: Cascade)
 
-  checkinDate   String // "YYYY-MM-DD" — one per patient per day
+  checkinDate   String // "YYYY-MM-DD"
+  /// Manhã, tarde ou noite (087, 26/09/2026). O Bruno: *"pode piorar de manhã
+  /// à noite"* — e a dor de manhã e a da noite são dois fatos, não um que
+  /// sobrescreve o outro. Quem já registrava antes disto tem `"day"`, que é o
+  /// honesto: aquele registro descreve o dia, sem dizer a hora.
+  period        String  @default("day")
   painLevel     Int // 0-10 (0=no pain, 10=severe)
   moodLevel     Int // 1-5 (1=terrible, 5=excellent)
   exercisesDone Boolean @default(false)
@@ -4605,7 +4761,7 @@ model DailyCheckIn {
 
   createdAt DateTime @default(now())
 
-  @@unique([patientId, checkinDate])
+  @@unique([patientId, checkinDate, period])
   @@index([patientId])
   @@index([clinicId])
   @@index([checkinDate])
@@ -4669,6 +4825,190 @@ enum ServiceType {
   TREATMENT_SESSION
   FOOT_SCAN
   BODY_ASSESSMENT
+}
+
+/// Uma exceção de preço para **um** paciente (082).
+///
+/// Linha própria, e não uma coluna em `ServicePrice`, por duas razões. A
+/// técnica: aquele modelo tem `@@unique([clinicId, serviceType])`, e acrescentar
+/// `patientId` obrigaria a trocar a restrição — um `DROP INDEX` em produção,
+/// que é o que o guard de migração existe para impedir. A honesta: o preço da
+/// clínica e a exceção de uma pessoa são coisas diferentes, e a exceção tem
+/// motivo — que fica gravado aqui.
+///
+/// Zero é um preço válido (cortesia registrada). "Sem linha" é que significa
+/// "este paciente paga o preço da clínica".
+model PatientServicePrice {
+  id        String @id @default(cuid())
+  clinicId  String
+  clinic    Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User   @relation("PatientServicePrices", fields: [patientId], references: [id], onDelete: Cascade)
+
+  serviceType ServiceType
+  price       Float
+  currency    String      @default("GBP")
+  /// Por que esta pessoa paga diferente. Para a clínica, não para o paciente.
+  note        String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([patientId, serviceType])
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+/// O cupom de desconto (084) — um código com prazo e limite.
+///
+/// Diferente da exceção de preço da 082: aquela é a clínica decidindo o que uma
+/// pessoa paga, e vale enquanto existir. Este é uma campanha — tem janela, tem
+/// limite, e a pessoa participa dela digitando algo.
+///
+/// **Exame de laboratório não é um alcance possível**, e é decisão do Bruno
+/// (26/09/2026). A razão de fundo confirma: em 081 nós revendemos, então um
+/// desconto no exame sai da nossa margem e não do custo da LML. Não existir no
+/// enum é garantia mais forte que qualquer validação — nem um cupom mal
+/// configurado alcança um exame.
+enum CouponScope {
+  CONSULTATION
+  TREATMENT_SESSION
+  /// Pacote de sessões (`/api/patient/packages/checkout`).
+  PACKAGE
+  /// Plano de tratamento (`/api/patient/treatment-plans/checkout`) — compra
+  /// distinta do pacote, e as duas são "plano de pacote de tratamento".
+  TREATMENT_PLAN
+  /// Adesão a uma assinatura da clínica. Vale na adesão, não numa mensalidade
+  /// que já corre: mexer nisso é mexer na `Subscription` do Stripe.
+  MEMBERSHIP
+}
+
+model Coupon {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// Gravado em maiúsculas. A comparação normaliza a entrada, então `verao10` e
+  /// `VERAO10` são o mesmo cupom — o paciente digita como quiser.
+  code        String
+  /// O nome da campanha, que o paciente vê quando o cupom pega. Um desconto sem
+  /// nome parece erro de cálculo.
+  description String?
+
+  /// Um dos dois, nunca os dois somados. "Exatamente um destes" não é algo que
+  /// o banco saiba dizer, então quem garante é `lib/coupon.ts` e a rota.
+  discountPercent Float?
+  discountAmount  Float?
+  currency        String @default("GBP")
+
+  /// Onde vale. Lista vazia não vale para nada, e a tela não deixa salvar assim.
+  appliesTo CouponScope[]
+
+  /// Mirado numa pessoa, ou aberto a qualquer paciente da clínica — a mesma
+  /// pergunta da 082: para quem isto vale?
+  patientId String?
+  patient   User?   @relation("CouponTarget", fields: [patientId], references: [id], onDelete: Cascade)
+
+  startsAt       DateTime?
+  endsAt         DateTime?
+  /// `null` = sem limite total.
+  maxRedemptions Int?
+  maxPerPatient  Int       @default(1)
+
+  isActive Boolean @default(true)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions CouponRedemption[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+/// Um resgate, guardado mesmo depois de o cupom ser desativado: o histórico de
+/// uma cobrança não se apaga. É por isso que apagar um cupom que já foi usado
+/// desativa em vez de remover.
+model CouponRedemption {
+  id       String @id @default(cuid())
+  couponId String
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("CouponRedemptions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  scope          CouponScope
+  /**
+   * **Qual compra** este resgate desconta: o id da consulta, do pacote, do
+   * plano ou da assinatura.
+   * Sem isto, o reaproveitamento da reserva não distinguia *dois toques na
+   * mesma compra* de *duas compras diferentes do mesmo tipo*: com um cupom de
+   * um uso por paciente, a pessoa abria duas consultas, ganhava duas sessões
+   * descontadas e o banco registrava **um** resgate (R-1 do reteste,
+   * 26/09/2026). Agora a chave do reaproveitamento é
+   * (cupom, paciente, escopo, compra).
+   * Opcional porque resgates gravados antes desta coluna não têm o dado — e
+   * porque um caminho futuro pode descontar algo sem id próprio.
+   */
+  targetId       String?
+  originalAmount Float
+  discountAmount Float
+  finalAmount    Float
+
+  /// A sessão do Stripe que este resgate pagou, e o instante em que o webhook
+  /// confirmou. Resgate sem confirmação **não** conta para o limite: senão um
+  /// checkout abandonado consumiria a campanha de graça.
+  stripeSessionId String?
+  confirmedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([couponId, patientId])
+  @@index([couponId, patientId, scope, targetId])
+  @@index([patientId])
+  @@index([stripeSessionId])
+}
+
+/**
+ * Uma sessão de uso do app (085, T-1).
+ * "Quanto tempo essa pessoa usa o app" era uma pergunta sem resposta: o
+ * cadastro dizia quem ela é, e nada dizia se ela abriu. Contar **toques**
+ * responderia, e geraria uma tabela enorme para uma pergunta simples — então o
+ * que se guarda é a sessão: começo, último sinal, fim.
+ * O app manda um sinal na abertura e a cada poucos minutos **em primeiro
+ * plano**. Em segundo plano, nada: bateria é do paciente.
+ * Quem fecha a sessão é o **silêncio**, não um cron — fechar o app não manda
+ * nada confiável, e os crons deste projeto estão desligados de propósito.
+ * `city` e `country` vêm do IP no login (T-2). **O IP cru não é guardado aqui**:
+ * ele já vive no `ConsentLog` quando tem função, e uma cidade responde "onde
+ * estão meus usuários" sem guardar de onde cada um fala.
+ */
+model AppSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("UserAppSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// A clínica no momento da sessão. Opcional porque uma conta só-laboratório
+  /// pode não ter nenhuma.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+
+  startedAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  /// Preenchido quando o silêncio passa da janela — na leitura, não por cron.
+  endedAt    DateTime?
+
+  platform   String?
+  appVersion String?
+  city       String?
+  country    String?
+
+  @@index([userId, lastSeenAt])
+  @@index([clinicId, lastSeenAt])
+  @@index([endedAt])
 }
 
 model ServicePrice {
@@ -4832,6 +5172,11 @@ enum ConsentAction {
   // connecting their first health device (activity 074, T-13). Recorded with
   // the wording's version, so "which text did they agree to" has an answer.
   MONITORING_NOTICE_ACCEPTED
+  // The patient agreed to buy a laboratory test through the app (081, T-4):
+  // that a third-party laboratory receives their name, date of birth, address
+  // and sample, and that the result is informational and reviewed by their
+  // therapist before they see it. Versioned like the notice above.
+  LAB_TESTS_CONSENT_ACCEPTED
   CONSENT_WITHDRAWN
   DATA_ACCESS_REQUEST
   DATA_DELETION_REQUEST
@@ -5165,7 +5510,6 @@ model PatientPackage {
   endDate         DateTime?
   /**
    * Quantas sessoes ja foram usadas.
-   *
    * Existia e **ninguem incrementava**: zero leitores e zero escritores em
    * `app/`, `lib/` e `components/`. Um pacote de 10 nao limitava nada. A
    * verdade agora sao as consultas ligadas em `appointments`; esta coluna e
@@ -6869,6 +7213,22 @@ model WearableConnection {
   measurementSessions    ClinicMeasurementSession[]
   unassignedMeasurements UnassignedMeasurement[]
 
+  /// Uma conexão por pessoa e provedor. **E é só isto que existe de trava.**
+  ///
+  /// Tentei acrescentar `@@unique([provider, providerUserId, userId])` na 092
+  /// T-4, apresentando como "a trava voltou". Não voltou: qualquer chave que
+  /// **contenha** `userId` e `provider` é implicada por esta aqui, então era um
+  /// índice que não restringia nada. O review de 27/09/2026 pegou.
+  ///
+  /// O que uma trava precisaria impedir é **duas conexões pessoais na mesma
+  /// conta do provedor** — e a chave para isso seria
+  /// `(provider, providerUserId, isClinicDevice)`. Ela não está aqui de
+  /// propósito: `db push` engole falha, e se produção já tiver duplicata o
+  /// índice não nasce e ninguém fica sabendo. Antes de acrescentá-la, contar.
+  ///
+  /// Enquanto isso, o roteamento não depende de unicidade nenhuma: em
+  /// `withings-ingest.ts`, **toda** conexão pessoal de uma conta que também é
+  /// da clínica ignora pressão, quantas forem.
   @@unique([userId, provider])
   // Uma conta de provedor pertence a uma conexão só — a regra está certa, mas o
   // índice único ficou FORA deste deploy de propósito. Em produção o schema é
@@ -7593,6 +7953,23 @@ model LabOrder {
   patientId   String
   patient     User   @relation("PatientLabOrders", fields: [patientId], references: [id], onDelete: Cascade)
 
+  /// De quem é este exame (091 T-3).
+  ///
+  /// Nulo significa "do próprio titular", que é o que todo pedido feito até
+  /// aqui quis dizer — por isso nulo, e não um campo obrigatório que mudaria
+  /// o sentido do que já está gravado.
+  ///
+  /// SetNull, e não Cascade: remover um dependente não pode levar junto o
+  /// pedido nem o resultado de um exame que a LML já analisou.
+  subjectId String?
+  subject   User?   @relation("LabOrderSubject", fields: [subjectId], references: [id], onDelete: SetNull)
+
+  /// Qual clínica vendeu. Opcional no schema só para as linhas que já existem;
+  /// obrigatório em código (081). Sem isto o pedido não sabe de quem é a margem
+  /// e a equipe de uma clínica enxerga o de outra.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
   status   LabOrderStatus @default(BASKET)
   subtotal Float          @default(0)
   total    Float          @default(0)
@@ -7609,13 +7986,28 @@ model LabOrder {
   resultsUrl  String?
   resultsPdf  String?
 
+  /// O paciente só vê o resultado depois que a clínica libera (decisão do
+  /// Bruno, 25/09/2026). Quem liberou fica no AuditLog; aqui fica o quando e
+  /// o comentário que o paciente lê em cima dos valores, EN primeiro.
+  /// Decidido na compra, e não depois: quem comprou tinha relação clínica
+  /// naquele momento? Congelado porque a relação muda, e um pedido antigo não
+  /// pode trocar de regra no meio.
+  reviewMode LabReviewMode @default(DIRECT)
+
+  releasedToPatientAt DateTime?
+  releasedById        String?
+  releaseNote         String?   @db.Text
+  releaseNotePt       String?   @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items  LabOrderItem[]
-  events LabOrderEvent[]
+  items         LabOrderItem[]
+  events        LabOrderEvent[]
+  registrations LabTestRegistration[]
 
   @@index([patientId])
+  @@index([clinicId])
   @@index([status])
   @@map("lab_orders")
 }
@@ -7629,6 +8021,9 @@ model LabOrderItem {
   productName String
   quantity    Int        @default(1)
   unitPrice   Float
+  /// O custo no instante da venda. Preço muda; a margem de um pedido antigo
+  /// não pode mudar junto, senão a contabilidade mente.
+  unitCost    Float      @default(0)
   total       Float
 
   @@index([orderId])
@@ -7647,6 +8042,94 @@ model LabOrderEvent {
 
   @@index([orderId])
   @@map("lab_order_events")
+}
+
+/// Os estados da LML, um para um, sem tradução criativa. O nome deles é
+/// minúsculo (`awaiting_patient`); o mapa em lib/lab-registration-status.ts
+/// faz a ponte, e um teste lê este enum do schema para o mapa não divergir.
+/// Quem lê o resultado primeiro (081, corrigido em 26/09/2026).
+///
+/// O desenho original supunha que todo exame era de um paciente da clínica, e
+/// que o terapeuta lia antes. Mas o exame é **independente**: alguém que ouviu
+/// falar do app pode baixar, se cadastrar e comprar um exame sem nunca ter sido
+/// atendido. Não há terapeuta nessa relação — segurar o resultado dessa pessoa
+/// seria prender o que é dela esperando uma revisão que ninguém vai fazer.
+///
+/// `THERAPIST`: quem comprou é paciente da clínica, com história de atendimento.
+/// O resultado chega, a clínica lê, escreve uma nota e libera.
+/// `DIRECT`: quem comprou não tem relação clínica. O resultado é dele e aparece
+/// assim que chega.
+enum LabReviewMode {
+  THERAPIST
+  DIRECT
+}
+
+enum LabRegistrationStatus {
+  AWAITING_PATIENT
+  PENDING
+  PENDING_AUTHENTICATION
+  SUCCESS
+  PARTIAL_RESULT
+  FAIL
+  PROCESSING_ERROR
+}
+
+/// O kit entre o despacho e o resultado (081). A LML separa o pedido (o kit
+/// físico) do registro (o kit ligado a uma pessoa): o registro nasce sem
+/// paciente e recebe um quando a pessoa registra o kit que chegou em casa.
+model LabTestRegistration {
+  id      String   @id @default(cuid())
+  orderId String
+  order   LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  lmlRegistrationId String? @unique
+  /// Nosso id do lado deles: idempotência nas chamadas e, na sandbox, o
+  /// valor mágico (`test:abnormal_high:<ref>`) que força um cenário.
+  foreignId         String  @unique
+
+  status            LabRegistrationStatus @default(AWAITING_PATIENT)
+  resultsReady      Boolean               @default(false)
+  assignedPatientAt DateTime?
+  trfUrl            String?
+  labelUrl          String?
+  /// O PDF no nosso storage — a URL assinada deles expira e não pode ser o
+  /// único caminho até um exame que a pessoa pagou.
+  resultsPdfPath    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  values LabResultValue[]
+
+  @@index([orderId])
+  @@index([status])
+  @@map("lab_test_registrations")
+}
+
+/// Um biomarcador com a faixa de referência (081). Guardar só o PDF faz disto
+/// uma loja; guardar o valor faz prontuário — a terceira ferritina na mesma
+/// linha do tempo das outras duas.
+model LabResultValue {
+  id             String              @id @default(cuid())
+  registrationId String
+  registration   LabTestRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  biomarker  String
+  value      Float?
+  /// Resultado qualitativo ("Negative", "Detected") quando não há número.
+  valueText  String?
+  unit       String?
+  minRange   Float?
+  maxRange   Float?
+  status     String?
+  outOfRange Boolean   @default(false)
+  measuredAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([registrationId, biomarker])
+  @@index([registrationId])
+  @@map("lab_result_values")
 }
 
 // ============================================

@@ -28,10 +28,7 @@
         "image": "latest",
         "buildType": "app-bundle"
       },
-      "channel": "production",
-      "env": {
-        "EXPO_PUBLIC_SHOW_LAB": "false"
-      }
+      "channel": "production"
     }
   },
   "submit": {

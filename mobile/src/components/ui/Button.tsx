@@ -41,10 +41,10 @@ export function Button({
     primary: { bg: t.colors.primary, fg: t.colors.primaryFg },
     greige: { bg: t.colors.greige, fg: t.colors.greigeFg },
     ghost: { bg: t.colors.surface, fg: t.colors.text, border: t.colors.border },
-    danger: { bg: t.colors.bad, fg: "#FFFFFF" },
-    work: { bg: t.colors.work, fg: "#FFFFFF" },
-    health: { bg: t.colors.health, fg: "#FFFFFF" },
-    community: { bg: t.colors.community, fg: "#FFFFFF" },
+    danger: { bg: t.colors.bad, fg: t.colors.accentFg },
+    work: { bg: t.colors.work, fg: t.colors.accentFg },
+    health: { bg: t.colors.health, fg: t.colors.accentFg },
+    community: { bg: t.colors.community, fg: t.colors.accentFg },
   };
 
   const c = colorMap[variant];

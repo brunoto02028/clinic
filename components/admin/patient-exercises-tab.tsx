@@ -2,7 +2,7 @@
 
 // Lists exercises prescribed to this patient — view, edit sets/reps/frequency, and remove.
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Loader2, Dumbbell, Play, Pencil, Trash2, Save, X, FileVideo, FolderPlus, Folder, LayoutGrid, ArrowLeft, Check } from "lucide-react";
+import { Loader2, Dumbbell, Play, Pencil, Trash2, Save, X, FileVideo, FolderPlus, Folder, Plus, LayoutGrid, ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -100,6 +100,25 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
   const [tree, setTree] = useState<FolderNode[]>([]);
   const [loadingTree, setLoadingTree] = useState(false);
   const [chosenFolder, setChosenFolder] = useState<{ id: string; name: string; count: number } | null>(null);
+
+  /**
+   * Mandar **um** exercício (095 T-5).
+   *
+   * Pedido do Bruno: *"quero poder enviar exercícios individuais e não a pasta
+   * toda"*. O modelo sempre soube — `ExercisePrescription` é uma linha por
+   * exercício, e a API já aceita `exercises: [...]`. O que não existia era o
+   * botão: a única porta do painel prescrevia a pasta inteira, e foi assim que
+   * o card de aderência dele passou a cobrar dez exercícios por dia.
+   *
+   * A pasta continua: quem manda um programa inteiro continua mandando.
+   */
+  const [umAberto, setUmAberto] = useState(false);
+  const [buscaExercicio, setBuscaExercicio] = useState("");
+  const [biblioteca, setBiblioteca] = useState<{ id: string; name: string; folder?: { name: string } | null }[]>([]);
+  const [carregandoBiblioteca, setCarregandoBiblioteca] = useState(false);
+  const [escolhido, setEscolhido] = useState<{ id: string; name: string } | null>(null);
+  const [umaFrequencia, setUmaFrequencia] = useState("");
+  const [umaNota, setUmaNota] = useState("");
   const [folderFrequency, setFolderFrequency] = useState("");
   const [folderNotes, setFolderNotes] = useState("");
   const [prescribing, setPrescribing] = useState(false);
@@ -163,6 +182,59 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     if (data.restored > 0) parts.push(`${data.restored} back from an archived plan`);
     if (data.skipped > 0) parts.push(`${data.skipped} already prescribed`);
     toast({ description: `${label}: ${parts.join(", ")}.` });
+  };
+
+  const abrirUm = async () => {
+    setUmAberto(true);
+    setEscolhido(null);
+    setBuscaExercicio("");
+    if (biblioteca.length > 0) return;
+    setCarregandoBiblioteca(true);
+    try {
+      const res = await fetch("/api/admin/exercises");
+      const data = await res.json();
+      const lista = Array.isArray(data) ? data : data.exercises || [];
+      setBiblioteca(lista.map((e: any) => ({ id: e.id, name: e.name, folder: e.folder })));
+    } catch {
+      toast({ description: "Could not load the exercise library.", variant: "destructive" });
+    } finally {
+      setCarregandoBiblioteca(false);
+    }
+  };
+
+  const prescreverUm = async () => {
+    if (!escolhido) return;
+    setPrescribing(true);
+    try {
+      const res = await fetch("/api/admin/exercise-prescriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          // Um item na lista: a API já trata isto como prescrição avulsa, com
+          // `protocolId` nulo — que é o que faz o exercício não sumir quando
+          // um plano é arquivado.
+          exercises: [{ exerciseId: escolhido.id }],
+          frequency: umaFrequencia.trim() || undefined,
+          notes: umaNota.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      toast({
+        description: data.count
+          ? `${escolhido.name} prescribed.`
+          : `${escolhido.name} was already prescribed to this patient.`,
+      });
+      setUmAberto(false);
+      setUmaFrequencia("");
+      setUmaNota("");
+      fetchPrescriptions();
+    } catch (e: any) {
+      toast({ description: e.message || "Could not prescribe.", variant: "destructive" });
+    } finally {
+      setPrescribing(false);
+    }
   };
 
   const prescribeFolder = async () => {
@@ -502,14 +574,105 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     </Dialog>
   );
 
+  const umPicker = (
+    <Dialog open={umAberto} onOpenChange={setUmAberto}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Prescribe one exercise</DialogTitle>
+          <DialogDescription>
+            One exercise, with its own default sets and reps. It is not tied to a plan, so archiving
+            a plan never takes it back.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Input
+          placeholder="Search the library…"
+          value={buscaExercicio}
+          onChange={(e) => setBuscaExercicio(e.target.value)}
+          className="text-sm"
+        />
+
+        {carregandoBiblioteca ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="max-h-[40vh] overflow-y-auto space-y-1 pr-1">
+            {biblioteca
+              .filter((e) => e.name.toLowerCase().includes(buscaExercicio.toLowerCase()))
+              .slice(0, 60)
+              .map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => setEscolhido({ id: e.id, name: e.name })}
+                  className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    escolhido?.id === e.id
+                      ? "border-primary/50 bg-primary/10"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  {e.name}
+                  {/* A pasta aparece **aqui**, para quem prescreve se situar na
+                      biblioteca — e não na tela do paciente. */}
+                  {e.folder?.name && (
+                    <span className="block text-[11px] text-muted-foreground">{e.folder.name}</span>
+                  )}
+                </button>
+              ))}
+            {biblioteca.length > 0 &&
+              biblioteca.filter((e) => e.name.toLowerCase().includes(buscaExercicio.toLowerCase())).length === 0 && (
+                <p className="py-6 text-center text-sm text-muted-foreground">Nothing matches that.</p>
+              )}
+          </div>
+        )}
+
+        {escolhido && (
+          <div className="space-y-2 border-t pt-3">
+            <Input
+              placeholder="Frequency (e.g. 3x per week)"
+              value={umaFrequencia}
+              onChange={(e) => setUmaFrequencia(e.target.value)}
+              className="text-sm"
+            />
+            <Textarea
+              placeholder="Notes for the patient (optional)"
+              value={umaNota}
+              onChange={(e) => setUmaNota(e.target.value)}
+              className="text-sm min-h-[60px]"
+            />
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setUmAberto(false)} disabled={prescribing}>
+            Cancel
+          </Button>
+          <Button onClick={prescreverUm} disabled={!escolhido || prescribing} className="gap-2">
+            {prescribing && <Loader2 className="h-4 w-4 animate-spin" />}
+            {escolhido ? `Prescribe ${escolhido.name}` : "Pick an exercise"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const header = (
     <div className="flex items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">
         {prescriptions.length} exercise{prescriptions.length === 1 ? "" : "s"} prescribed
       </p>
-      <Button size="sm" onClick={openPicker} className="gap-1.5">
-        <FolderPlus className="h-4 w-4" /> Add exercises
-      </Button>
+      <div className="flex gap-2">
+        {/* O avulso vem primeiro: é o caso mais comum no dia a dia, e era o
+            que não tinha porta (095 T-5). Busca por nome, sem sair da ficha.
+            "Add exercises" é a outra porta pro mesmo lugar: entra numa pasta e
+            mostra os vídeos em miniatura, pra escolher vendo (075). */}
+        <Button size="sm" variant="outline" onClick={abrirUm} className="gap-1.5">
+          <Plus className="h-4 w-4" /> Add one
+        </Button>
+        <Button size="sm" onClick={openPicker} className="gap-1.5">
+          <FolderPlus className="h-4 w-4" /> Add exercises
+        </Button>
+      </div>
     </div>
   );
 
@@ -521,11 +684,12 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           <Dumbbell className="h-10 w-10 text-muted-foreground/20 mb-3" />
           <p className="text-sm text-muted-foreground">No exercises prescribed yet.</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Use &ldquo;Add exercises&rdquo; above to prescribe a whole folder, or open one to pick
-            single videos.
+            Use &ldquo;Add one&rdquo; above to search by name, or &ldquo;Add exercises&rdquo; to
+            prescribe a whole folder — or open one to pick single videos by thumbnail.
           </p>
         </div>
         {picker}
+        {umPicker}
       </div>
     );
   }
@@ -534,6 +698,12 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     <div className="space-y-2">
       {header}
       {picker}
+      {/* O diálogo do avulso **também aqui**, e este é o caso comum.
+          Uma edição minha deixou duas cópias no ramo do estado vazio e nenhuma
+          neste: o botão "Add one" aparecia para todo paciente que já tem
+          exercício e não abria nada. O QA achou a duplicata; tirá-la mostrou a
+          ausência. */}
+      {umPicker}
       {prescriptions.map((p) => (
         <div key={p.id} className="border rounded-lg p-3 flex items-start gap-3">
           <div className="w-14 h-14 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">

@@ -73,6 +73,22 @@ export async function GET(request: NextRequest) {
           where: { senderRole: "patient", readAt: null },
           select: { id: true },
         },
+        /**
+         * Vídeos de exercício esperando revisão.
+         *
+         * Eu tinha posto esta contagem em `/api/admin/patients` — e a lista
+         * lê **esta** rota. A marca existia na tela e nunca chegava dado para
+         * acendê-la, o que é o pior tipo de defeito: nada quebra, e a pessoa
+         * conclui que ninguém mandou vídeo (achado pelo Bruno no iPad,
+         * 26/09/2026).
+         *
+         * Vem junto do `include` que já busca mensagens e perguntas: não é
+         * consulta a mais por paciente.
+         */
+        // `select: { id: true }` carregava **todas** as linhas só para medir
+        // o tamanho da lista. Com trinta pacientes e um histórico de vídeos,
+        // é payload sem teto para desenhar um ponto (revisão de 26/09/2026).
+        _count: { select: { exerciseSubmissions: { where: { reviewedAt: null } } } },
         diagnosesAsPatient: {
           orderBy: { createdAt: "desc" as const },
           take: 1,
@@ -86,9 +102,11 @@ export async function GET(request: NextRequest) {
       ...p,
       answeredQCount: p.patientQuestionsReceived?.length ?? 0,
       unreadMessages: p.clinicMessagesReceived?.length ?? 0,
+      videosEsperando: p._count?.exerciseSubmissions ?? 0,
       latestDiagnosisStatus: p.diagnosesAsPatient?.[0]?.status ?? null,
       patientQuestionsReceived: undefined,
       clinicMessagesReceived: undefined,
+      _count: undefined,
       diagnosesAsPatient: undefined,
     }));
 

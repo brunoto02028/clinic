@@ -8,6 +8,7 @@ import { useAuth } from "@/store/auth";
 import { capability, type BiometricCapability } from "@/lib/biometrics";
 import { deviceLang, t as tr } from "@/lib/i18n";
 
+import { useTheme } from "@/theme/useTheme";
 /**
  * A tranca é uma cortina, não um destino.
  *
@@ -28,6 +29,7 @@ import { deviceLang, t as tr } from "@/lib/i18n";
  * sensor.
  */
 export function LockOverlay() {
+  const t = useTheme();
   const status = useAuth((s) => s.status);
   const unlock = useAuth((s) => s.unlock);
   const logout = useAuth((s) => s.logout);
@@ -92,14 +94,14 @@ export function LockOverlay() {
     cap?.kind === "face" ? "scan-outline" : "finger-print-outline";
 
   return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#20242D" }}>
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.colors.background }}>
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flex: 1, justifyContent: "space-between", paddingHorizontal: 20 }}>
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 20 }}>
             <Logo tone="bone" height={108} />
-            <Ionicons name={icon} size={44} color="#8A8F9A" />
+            <Ionicons name={icon} size={44} color={t.colors.textMuted} />
             <Text
-              style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: "#B9BDC6", textAlign: "center" }}
+              style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: t.colors.textSecondary, textAlign: "center" }}
             >
               {outcome === "offline"
                 ? tr(lang, {
@@ -140,7 +142,7 @@ export function LockOverlay() {
               style={{ alignItems: "center", paddingVertical: 14 }}
               testID="lock-use-password"
             >
-              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11.5, color: "#FFFFFF" }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11.5, color: t.colors.primaryFg }}>
                 {tr(lang, { en: "Sign out and use password", pt: "Sair e entrar com a senha" })}
               </Text>
             </Pressable>

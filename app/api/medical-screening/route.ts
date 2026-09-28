@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getRequestSession } from "@/lib/dual-auth";
 import { prisma } from "@/lib/db";
+import { registrarAceiteDosTermos } from "@/lib/terms-version";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
 import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
@@ -196,10 +197,16 @@ export async function POST(request: NextRequest) {
       // `updateMany` with a null filter so an earlier, real acceptance date is
       // never overwritten by this one.
       if (body?.consentGiven) {
-        await prisma.user.updateMany({
+        const r = await prisma.user.updateMany({
           where: { id: userId, consentAcceptedAt: null } as any,
           data: { consentAcceptedAt: new Date() } as any,
         });
+        // Só quando o carimbo foi de fato gravado agora: o `updateMany` com
+        // filtro nulo não sobrescreve um aceite anterior, e um log para um
+        // aceite que não houve seria pior que log nenhum.
+        if (r.count === 1) {
+          await registrarAceiteDosTermos({ patientId: userId, req: request, onde: "triagem" });
+        }
       }
 
       // FIX 6: Log notification failure with CRITICAL so admin can see in system logs
@@ -342,10 +349,16 @@ export async function POST(request: NextRequest) {
     // `updateMany` with a null filter so an earlier, real acceptance date is
     // never overwritten by this one.
     if (body?.consentGiven) {
-      await prisma.user.updateMany({
+      const r = await prisma.user.updateMany({
         where: { id: userId, consentAcceptedAt: null } as any,
         data: { consentAcceptedAt: new Date() } as any,
       });
+      // Só quando o carimbo foi de fato gravado agora: o `updateMany` com
+      // filtro nulo não sobrescreve um aceite anterior, e um log para um
+      // aceite que não houve seria pior que log nenhum.
+      if (r.count === 1) {
+        await registrarAceiteDosTermos({ patientId: userId, req: request, onde: "triagem" });
+      }
     }
 
     // FIX 6: Log with CRITICAL prefix so admin can see in system logs

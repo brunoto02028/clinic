@@ -4,6 +4,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { getExpectedToday } from "@/lib/patient-daily-adherence";
 import { notifyPatient } from "@/lib/notify-patient";
 import { logAudit } from "@/lib/system-logger";
+import { pushLembreteDeAtividades } from "@/lib/push-notify";
 import { REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION } from "@/lib/daily-adherence-email";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,11 @@ export async function POST(req: NextRequest) {
     todayMissingTitles: missingTitles,
     forceLocale: locale,
   });
+  // O toque no ombro, junto do e-mail. Uma pessoa apertou o botão logo
+  // acima desta linha — é por isso que ele pode sair daqui e não de dentro
+  // de `notifyPatient`, que os crons chamam.
+  await pushLembreteDeAtividades(patientId).catch(() => {});
+
   await logAudit({
     userId: patientId,
     userEmail: "",

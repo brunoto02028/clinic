@@ -164,6 +164,16 @@ node /app/scripts/backfill-wearable-last-reading.js || echo "[start.sh] last-rea
 echo "[start.sh] Seeding automation rules..."
 node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
 
+# Home-kit catalogue of the laboratory partner (081). New kits are born
+# inactive; the clinic's price and on/off switch are never overwritten.
+# Quem a clinica ja atendeu continua vendo a area clinica depois de 083.
+# So preenche false -> true, a partir do que ja existe no banco.
+echo "[start.sh] Backfilling clinic-patient flag..."
+node /app/scripts/backfill-clinic-patient-flag.js || echo "[start.sh] clinic-patient backfill warning — check logs"
+
+echo "[start.sh] Seeding lab products..."
+node /app/scripts/seed-lab-products.js || echo "[start.sh] lab products seed warning — check logs"
+
 # Corrects generic template placeholder content (wrong city, fake address,
 # placeholder phone) that app/api/settings/route.ts's auto-create used to
 # fill in on a fresh DB — idempotent, only touches fields still matching the

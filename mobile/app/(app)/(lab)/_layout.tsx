@@ -1,8 +1,11 @@
 import { Stack } from "expo-router";
+import { BotaoDeTom } from "@/components/BotaoDeTom";
 import ModuleGuard from "@/components/ModuleGuard";
 import { HeaderBack } from "@/components/HeaderBack";
 
+import { useTheme } from "@/theme/useTheme";
 export default function LabLayout() {
+  const t = useTheme();
   return (
     <ModuleGuard module="lab">
       <Stack screenOptions={{
@@ -21,8 +24,15 @@ export default function LabLayout() {
         // O toque sempre faz alguma coisa.
         headerBackButtonDisplayMode: "minimal" as const,
         headerLeft: () => <HeaderBack />,
-        headerStyle: { backgroundColor: "#F5F4F1" },
-        headerTintColor: "#20242D",
+        // O tom, do lado oposto ao voltar (092 T-6).
+        //
+        // Repetido aqui, e nao herdado: cada modulo monta o proprio `Stack`, e
+        // `screenOptions` **nao** se herda entre navegadores. Eu tinha posto so no
+        // layout de `(app)` e escrito que cobria cinquenta e cinco telas "de graca
+        // pelo expo-router" — cobria cinco. Achado do review de 27/09/2026.
+        headerRight: () => <BotaoDeTom />,
+        headerStyle: { backgroundColor: t.colors.background },
+        headerTintColor: t.colors.text,
         headerShadowVisible: false,
       }}
 

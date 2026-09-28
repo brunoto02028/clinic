@@ -57,7 +57,12 @@ export async function POST(req: NextRequest) {
 
           // Handle sitemap index (nested sitemaps)
           const sitemapLocs: string[] = [];
-          $("sitemap > loc").each((_, el) => sitemapLocs.push($(el).text().trim()));
+          // Chaves, e nao arrow de expressao: o `each` do cheerio le o retorno
+          // do callback (`false` interrompe), e `Array.push` devolve o novo
+          // tamanho — um numero, que nao e `void | boolean`.
+          $("sitemap > loc").each((_, el) => {
+            sitemapLocs.push($(el).text().trim());
+          });
 
           for (const subUrl of sitemapLocs) {
             try {

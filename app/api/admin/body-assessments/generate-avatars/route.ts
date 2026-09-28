@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { generateImage } from "@/lib/ai-provider";
 import { writeFile, mkdir, access } from "fs/promises";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = 'force-dynamic';
 
@@ -178,7 +179,7 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const key = formData.get("key") as string;
     const file = formData.get("file") as File;
 

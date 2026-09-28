@@ -61,8 +61,19 @@ export async function POST(request: NextRequest) {
             where: { email: email.toLowerCase() },
         });
 
-        // For security, don't reveal if user exists
-        if (!user) {
+        /**
+         * Conta gerida não tem senha para recuperar (091 T-7).
+         *
+         * O envio já era cortado — o endereço é sintético, em domínio que
+         * ninguém entrega —, mas o **token** era criado e ficava válido por
+         * uma hora. Um token de redefinição para uma conta que não deveria ter
+         * senha nenhuma é a credencial que as três camadas existem para não
+         * criar. Achado do QA de 27/09/2026.
+         *
+         * A resposta é a mesma de e-mail desconhecido, pela mesma razão de
+         * sempre: não confirmar que a conta existe.
+         */
+        if (!user || user.managedById) {
             return corsJson({
                 message: "If an account exists with that email, a reset link has been sent."
             });

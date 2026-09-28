@@ -38,5 +38,13 @@ export async function saveChatAttachment(opts: {
     description: "Sent via chat",
   });
 
-  return { fileUrl: doc.fileUrl, fileName: file.name, fileType: file.type };
+  // O tipo que vale é o que os bytes disseram, não o rótulo que o telefone
+  // mandou. `storePatientDocument` já guarda o farejado (`tipoReal ||
+  // file.type`); devolver `file.type` aqui fazia a **mensagem** ficar com o
+  // rótulo vago enquanto o documento ficava certo.
+  //
+  // O efeito era visível: a conversa decide entre tocador e anexo genérico por
+  // `attachmentType`, então um recado de voz perfeitamente gravado aparecia
+  // como arquivo para baixar — sem como ouvir ali mesmo.
+  return { fileUrl: doc.fileUrl, fileName: file.name, fileType: doc.fileType || file.type };
 }

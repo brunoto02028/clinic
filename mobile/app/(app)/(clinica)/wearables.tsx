@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Spinner, Card } from "@/components/ui";
 import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { useTheme } from "@/theme/useTheme";
+import { openCheckout } from "@/lib/checkout";
 import {
   fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS,
   fetchMonitoringConsent, acceptMonitoringConsent, resubscribeWithings,
@@ -93,7 +94,9 @@ function WearablesScreen() {
 
   const connectMut = useMutation({
     mutationFn: fetchConnectUrl,
-    onSuccess: (url) => Linking.openURL(url),
+    // A autorização do fabricante também acontece dentro do app: sair para o
+    // Safari no meio de um OAuth é o mesmo defeito do pagamento (083).
+    onSuccess: (url) => { void openCheckout(url); },
     onError: (e) => Alert.alert(
       tr(lang, { en: "Devices", pt: "Dispositivos" }),
       (e as Error).message
@@ -279,7 +282,7 @@ function WearablesScreen() {
                             opacity: resubMut.isPending ? 0.6 : 1,
                           }}
                         >
-                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: t.colors.accentFg }}>
                             {resubMut.isPending ? "..." : tr(lang, { en: "Fix", pt: "Corrigir" })}
                           </Text>
                         </Pressable>
@@ -295,7 +298,7 @@ function WearablesScreen() {
                           opacity: syncMut.isPending ? 0.6 : 1,
                         }}
                       >
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: t.colors.accentFg }}>
                           {syncMut.isPending ? "..." : tr(lang, { en: "Sync", pt: "Sincronizar" })}
                         </Text>
                       </Pressable>
@@ -339,7 +342,7 @@ function WearablesScreen() {
                         opacity: consent && !consent.accepted ? 0.6 : 1,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: consent && !consent.accepted ? t.colors.textMuted : t.colors.primaryFg }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>
                     </Pressable>
                   )}
                 </View>

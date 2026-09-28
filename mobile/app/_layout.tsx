@@ -11,6 +11,7 @@ import { wireAppLock } from "@/lib/app-lock";
 import { PrivacyCover } from "@/components/PrivacyCover";
 import { LockOverlay } from "@/components/LockOverlay";
 import { PushRouter } from "@/components/PushRouter";
+import { useThemeStore } from "@/store/theme";
 import { applyUpdateOnLaunch } from "@/lib/app-updates";
 import { consumirOndeEstava } from "@/lib/return-to";
 import { router } from "expo-router";
@@ -34,7 +35,14 @@ import {
  * A cor que atravessa a abertura inteira: splash, o vão do carregamento, a
  * raiz e a primeira tela. Qualquer diferença entre elas vira piscada.
  */
-const FUNDO = "#F5F4F1";
+/**
+ * A cor do splash, que vive no `app.json` e **não muda sem build**.
+ *
+ * Só é usada no vão entre o splash e as fontes carregarem: ali a tela tem
+ * de ser da cor do splash, senão a transição pisca. Depois disso, quem manda
+ * é o tema escolhido pela pessoa (086).
+ */
+const FUNDO_DO_SPLASH = "#F5F4F1";
 
 // Sem o `.catch`, uma rejeição aqui (o splash já ter se escondido sozinho)
 // vira promessa não tratada — e a tela pisca sem ninguém saber por quê.
@@ -42,6 +50,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 
 export default function RootLayout() {
+  const esquema = useThemeStore((s) => s.modo);
+  const fundoDoTema = esquema === "dark" ? "#191C23" : FUNDO_DO_SPLASH;
   const bootstrap = useAuth((s) => s.bootstrap);
 
   const [fontsLoaded] = useFonts({
@@ -80,6 +90,17 @@ export default function RootLayout() {
   // Traduz "o app voltou ao primeiro plano" em "revalide o que está na tela".
   // Sem isto, o que a clínica muda só aparece quando o paciente fecha e abre
   // o app, porque as abas nunca desmontam (075, T-12).
+  /**
+   * A preferência de tom, lida antes de a primeira tela pintar (086).
+   *
+   * Sem isto o app abriria claro e trocaria para escuro um instante depois —
+   * um piscar branco na cara de quem escolheu escuro justamente para não levar
+   * luz no rosto.
+   */
+  useEffect(() => {
+    void useThemeStore.getState().carregar();
+  }, []);
+
   useEffect(() => wireAppFocus(), []);
   useEffect(() => wireNetwork(), []);
 
@@ -99,17 +120,23 @@ export default function RootLayout() {
     // e o que aparece nesse vão é o fundo do sistema — branco ou preto,
     // conforme o tema do aparelho. Era uma das piscadas da abertura. Uma tela
     // da cor do splash não se distingue do splash: a transição some.
-    return <View style={{ flex: 1, backgroundColor: FUNDO }} />;
+    return <View style={{ flex: 1, backgroundColor: FUNDO_DO_SPLASH }} />;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        {/* A barra de status acompanha o tom: conteúdo escuro sobre fundo
+            claro, claro sobre escuro. Em tempo de execução, sem `app.json`
+            — e portanto sem build. */}
+        <StatusBar style={esquema === "dark" ? "light" : "dark"} />
         {/* A cor é explícita e igual à do splash. Sem ela, entre o splash
             sumir e a primeira tela pintar, aparecia o fundo da janela — a
             segunda piscada. */}
-        <View style={{ flex: 1, backgroundColor: FUNDO }} onLayout={onReady}>
+        {/* Daqui para baixo quem manda é o tom escolhido. Cravar bege aqui
+            deixava uma faixa clara de tela inteira atrás de todo o app no
+            modo escuro — o meio-caminho que um tema pela metade produz. */}
+        <View style={{ flex: 1, backgroundColor: fundoDoTema }} onLayout={onReady}>
           <Stack screenOptions={{ headerShown: false }} />
           {/* A tranca cobre o app em vez de navegar até ele. Como rota, ela
               trocava o <Stack> por um <Redirect> e destruía o histórico de

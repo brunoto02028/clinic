@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getBookConfig } from "@/lib/book";
 import LandingPage from "@/components/landing-page";
+import { logosDeTela } from "@/lib/site-settings-images";
 
 // Enable ISR (Incremental Static Regeneration) - revalidate every 1 hour
 export const revalidate = 3600;
@@ -73,5 +74,12 @@ export default async function HomePage() {
     console.error("Failed to fetch data:", error);
   }
 
-  return <LandingPage initialSettings={settings} initialArticles={articles} book={book} />;
+  // `screenLogos` e `Json?` no banco, logo `JsonValue` aqui — pode ser string,
+  // numero ou array. A tela espera um mapa, e lia direto. `logosDeTela` confere
+  // a forma e descarta o que nao serve, caindo no logo padrao.
+  const settingsParaTela = settings
+    ? { ...settings, screenLogos: logosDeTela(settings.screenLogos) }
+    : settings;
+
+  return <LandingPage initialSettings={settingsParaTela} initialArticles={articles} book={book} />;
 }

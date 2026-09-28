@@ -47,6 +47,18 @@ interface NotifyPatientParams {
    *  useReminderTemplate all otherwise recompute their own language straight
    *  from the patient's record, ignoring anything the caller passes). */
   forceLocale?: "en" | "pt";
+  /**
+   * **Não existe opção de push aqui, e isso é deliberado.**
+   *
+   * Eu tinha posto uma, ligada por padrão, em 26/09/2026. A revisão pegou:
+   * este arquivo é chamado pelos quatro crons de lembrete — os que o Bruno
+   * mandou desligar em 17/09, "nunca enviar a paciente automaticamente".
+   * Bastaria alguém religar um cron para o robô começar a vibrar o celular de
+   * paciente, e ninguém teria decidido isso.
+   *
+   * O push mora em `lib/push-notify.ts`, onde cada função é chamada de **um**
+   * lugar em que uma pessoa da clínica já apertou um botão.
+   */
 }
 
 export async function notifyPatient({
@@ -78,6 +90,7 @@ export async function notifyPatient({
     if (!user) return { channel: "none", success: false, error: "Patient not found" };
 
     const u = user as any;
+
     const pref = forceChannel || u.communicationPreference || "EMAIL";
     const phone: string | null = u.phone || null;
     const email: string = u.email;

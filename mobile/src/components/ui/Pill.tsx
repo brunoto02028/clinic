@@ -19,7 +19,7 @@ export function Pill({ label, variant = "muted" }: PillProps) {
     work: { bg: t.colors.workSoft, fg: t.colors.work },
     health: { bg: t.colors.healthSoft, fg: t.colors.health },
     community: { bg: t.colors.communitySoft, fg: t.colors.community },
-    muted: { bg: "#F0EFEB", fg: "#9AA0AC" },
+    muted: { bg: t.colors.surfaceMuted, fg: t.colors.textMuted },
   };
 
   const c = colorMap[variant];

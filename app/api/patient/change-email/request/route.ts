@@ -19,6 +19,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    /**
+     * Nem trocar o e-mail (091 T-7).
+     *
+     * Era o segundo elo da cadeia que o review de 27/09/2026 encontrou:
+     * definir uma senha na conta gerida, usá-la aqui, receber a confirmação no
+     * endereço **novo** — que é o de quem pediu — e a conta da criança passa a
+     * ter e-mail real. Com e-mail real, ela vira uma conta como outra
+     * qualquer para qualquer porta que não confira `managedById`.
+     */
+    if (effectiveUser.isImpersonating) {
+      return NextResponse.json(
+        {
+          error: "Read-only: you cannot change the email of someone else's account.",
+          errorPt: "Somente leitura: você não pode trocar o e-mail da conta de outra pessoa.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { newEmail, currentPassword } = await req.json();
 
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {

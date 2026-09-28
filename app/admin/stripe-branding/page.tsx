@@ -21,8 +21,8 @@ interface BrandingState {
 export default function StripeBrandingPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [siteLogoUrl, setSiteLogoUrl] = useState("");
+  const [painel, setPainel] = useState<{ contaId: string; modo: string; url: string } | null>(null);
   const [branding, setBranding] = useState<BrandingState>({
     primaryColor: "#5dc9c0",
     secondaryColor: "#1a6b6b",
@@ -53,32 +53,12 @@ export default function StripeBrandingPage() {
           logoUrl: data.branding?.logoUrl || "",
         });
         setSiteLogoUrl(data.siteSettings?.logoUrl || "");
+        setPainel(data.painel || null);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/stripe-branding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(branding),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Stripe branding updated! ✅", description: "Changes will appear on the next checkout." });
-      } else {
-        toast({ title: "Error", description: data.error || "Failed to update", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to save branding", variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -103,7 +83,9 @@ export default function StripeBrandingPage() {
             Stripe Branding & Checkout
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure how your brand appears on Stripe payment pages. Changes apply to all future checkouts.
+            What Stripe has on the account today — logo, colours and the business profile that appear on every
+            invoice, receipt and Checkout page. Read-only here: Stripe only accepts these changes from its own
+            dashboard.
           </p>
         </div>
         <div className="flex gap-2">
@@ -113,15 +95,18 @@ export default function StripeBrandingPage() {
           >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+          {/* Era "Save to Stripe", e o Stripe respondia 403 a cada clique: a
+              conta da própria plataforma só se configura no painel dele. O botão
+              agora leva aonde a mudança acontece. */}
+          <a
+            href={painel?.url || "https://dashboard.stripe.com/settings/branding"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity"
             style={{ background: "linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%)" }}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving..." : "Save to Stripe"}
-          </button>
+            <ExternalLink className="h-4 w-4" /> Edit in Stripe
+          </a>
         </div>
       </div>
 
@@ -140,13 +125,15 @@ export default function StripeBrandingPage() {
                   <input
                     type="color"
                     value={branding.primaryColor}
-                    onChange={e => setBranding(b => ({ ...b, primaryColor: e.target.value }))}
+                    readOnly
+                    disabled
                     className="w-12 h-10 rounded-lg border cursor-pointer"
                   />
                   <input
                     type="text"
                     value={branding.primaryColor}
-                    onChange={e => setBranding(b => ({ ...b, primaryColor: e.target.value }))}
+                    readOnly
+                    disabled
                     className="flex-1 px-3 py-2 text-sm border rounded-lg font-mono"
                     placeholder="#5dc9c0"
                   />
@@ -159,13 +146,15 @@ export default function StripeBrandingPage() {
                   <input
                     type="color"
                     value={branding.secondaryColor}
-                    onChange={e => setBranding(b => ({ ...b, secondaryColor: e.target.value }))}
+                    readOnly
+                    disabled
                     className="w-12 h-10 rounded-lg border cursor-pointer"
                   />
                   <input
                     type="text"
                     value={branding.secondaryColor}
-                    onChange={e => setBranding(b => ({ ...b, secondaryColor: e.target.value }))}
+                    readOnly
+                    disabled
                     className="flex-1 px-3 py-2 text-sm border rounded-lg font-mono"
                     placeholder="#1a6b6b"
                   />
@@ -173,9 +162,36 @@ export default function StripeBrandingPage() {
                 <p className="text-[10px] text-muted-foreground">Used for hover states</p>
               </div>
             </div>
-            <div className="bg-muted/30 rounded-xl p-3 text-xs text-muted-foreground flex items-start gap-2">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              Your logo is automatically synced from Admin → Settings. The logo shown on Stripe checkout is the one configured there.
+            {/* A frase daqui dizia que o logo "is automatically synced from
+                Admin → Settings". Nada o enviava, e nada poderia: o Stripe não
+                aceita link nem upload prendido na própria conta. A invoice saía
+                sem imagem, e a prévia ao lado mostrava o logo do site — o que
+                faz parecer certo. Agora a tela diz o que fazer. */}
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-3 text-xs space-y-2">
+              <p className="flex items-start gap-2 font-medium text-amber-900 dark:text-amber-200">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                Branding is set in the Stripe dashboard, not here
+              </p>
+              <p className="text-amber-800 dark:text-amber-300">
+                Stripe refuses these fields over the API for your own account (403 — “you may only use it on
+                connected accounts”). Open <strong>Settings → Branding</strong> and set:
+              </p>
+              <ul className="list-disc pl-5 text-amber-800 dark:text-amber-300 space-y-0.5">
+                <li><strong>Logo</strong> — the BPR logo (the same <code>/logo.png</code> shown in the preview)</li>
+                <li><strong>Icon</strong> — <code>/favicon.png</code>, the square one; Stripe crops a rectangular image</li>
+                <li><strong>Brand colour</strong> — <code>#4F7361</code>, the clinic moss</li>
+              </ul>
+              {painel && (
+                <p className="text-amber-800 dark:text-amber-300">
+                  You are looking at <code>{painel.contaId}</code>
+                  {painel.modo === "test" ? (
+                    <> — a <strong>test</strong> account. Branding set here never reaches a real invoice; set it
+                      again on the live account.</>
+                  ) : (
+                    <> — the <strong>live</strong> account.</>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
@@ -190,7 +206,8 @@ export default function StripeBrandingPage() {
                 <input
                   type="text"
                   value={branding.businessName}
-                  onChange={e => setBranding(b => ({ ...b, businessName: e.target.value }))}
+                  readOnly
+                    disabled
                   className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5dc9c0]"
                   placeholder="Bruno Physical Rehabilitation"
                 />
@@ -203,7 +220,8 @@ export default function StripeBrandingPage() {
                   <input
                     type="email"
                     value={branding.supportEmail}
-                    onChange={e => setBranding(b => ({ ...b, supportEmail: e.target.value }))}
+                    readOnly
+                    disabled
                     className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5dc9c0]"
                     placeholder="info@clinic.co.uk"
                   />
@@ -215,7 +233,8 @@ export default function StripeBrandingPage() {
                   <input
                     type="tel"
                     value={branding.supportPhone}
-                    onChange={e => setBranding(b => ({ ...b, supportPhone: e.target.value }))}
+                    readOnly
+                    disabled
                     className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5dc9c0]"
                     placeholder="+44 20 1234 5678"
                   />
@@ -228,7 +247,8 @@ export default function StripeBrandingPage() {
                 <input
                   type="url"
                   value={branding.websiteUrl}
-                  onChange={e => setBranding(b => ({ ...b, websiteUrl: e.target.value }))}
+                  readOnly
+                    disabled
                   className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5dc9c0]"
                   placeholder="https://bpr.clinic"
                 />

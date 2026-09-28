@@ -5,6 +5,7 @@ import { extractDocumentText, isImageMime } from "@/lib/extract-text";
 import { analyzeImage } from "@/lib/ai-provider";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const owned = await prisma.studyProject.findFirst({ where: { id: params.id, ownerId: userId }, select: { id: true } });
   if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const form = await req.formData();
+  const form = await camposDoFormulario(req);
   const file = form.get("file") as File | null;
   const kind = (form.get("kind") as string) || "brief";
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });

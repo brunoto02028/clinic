@@ -15,6 +15,7 @@ import { PlanGate } from "@/components/PlanGate";
 import { API_URL } from "@/api/config";
 import { tokenStorage } from "@/lib/secure-storage";
 import { explainDeniedPermission } from "@/lib/ask-permission";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 async function uploadDocument(uri: string, fileName: string, mimeType: string) {
   const formData = new FormData();
@@ -37,6 +38,7 @@ function DocumentsScreen() {
   const lang = useLang();
   const caminho = usePathname();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
   const [uploading, setUploading] = useState(false);
@@ -159,6 +161,7 @@ function DocumentsScreen() {
           </Card>
         ) : (
           <FlatList
+            refreshControl={controle}
             data={data}
             keyExtractor={d => d.id}
             contentContainerStyle={{ gap: 10 }}

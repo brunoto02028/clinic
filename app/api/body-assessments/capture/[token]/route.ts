@@ -16,6 +16,7 @@ import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { removeBackground } from "@/lib/remove-bg";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 const execFileAsync = promisify(execFile);
 
@@ -131,7 +132,7 @@ export async function PUT(
     const contentType = request.headers.get("content-type") || "";
 
     if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData();
+      const formData = await camposDoFormulario(request);
       view = formData.get("view") as string | null;
       imageFile = formData.get("image") as File | null;
       const landmarksStr = formData.get("landmarks") as string | null;

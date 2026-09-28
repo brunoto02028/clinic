@@ -1,4 +1,6 @@
 import { getToken } from 'next-auth/jwt';
+import { ehEscritaEmprestada } from '@/lib/sessao-emprestada';
+import { gemeoNoAdmin } from '@/lib/dashboard-admin-twins';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
@@ -48,7 +50,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 // with no access-control headers at all and the patient could not book —
 // while /api/patient answered fine, which is what made it look like a bug in
 // the screen rather than in the allowlist.
-const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files', '/api/exercise-submissions', '/api/push-token'];
+const MOBILE_API_PREFIXES = ['/api/terms', '/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables', '/api/files', '/api/exercise-submissions', '/api/push-token'];
 // CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
 // bearer (not cookie) auth means "*" doesn't expose any ambient session.
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
@@ -103,6 +105,16 @@ const publicRoutes = [
   '/pt/articles', // PT-language article URLs (activity 12) — public, server-rendered for SEO
   '/api/service-pages',
   '/api/version',
+  // A porta para o app. Ela precisa abrir para quem clicou num e-mail e não
+  // está logado no navegador — se pedisse sessão, o paciente cairia no login
+  // em vez de no app, que é exatamente o desvio que ela existe para evitar.
+  '/abrir',
+  // Os termos são públicos de propósito: termos que só quem já entrou consegue
+  // ler são termos que ninguém lê antes de concordar. Estar em
+  // `MOBILE_API_PREFIXES` não bastava — aquilo diz que a rota **aceita** o
+  // bearer do app, não que ela dispensa sessão, e um navegador sem cookie
+  // continuava caindo no login (achado em produção, 26/09/2026).
+  '/api/terms',
   '/api/client-error',
   '/api/foot-scans/session',
   '/api/webhooks',
@@ -332,13 +344,53 @@ export async function middleware(request: NextRequest) {
    *
    * Deixar passar aqui não abre nada: quem decide continua sendo a rota, que
    * confere a assinatura, o dono e o prazo. Sem `?t=` válido, ela responde 404.
+   *
+   * **A fatura entrou depois, e pelo mesmo motivo** (QA da 093, falha 3.1). A
+   * lista sabia assinar o link, a rota sabia conferir, e o paciente que tocava
+   * em "Abrir PDF" via o JSON `session_expired` — porque a exceção listava um
+   * caminho só. Foi o mesmo defeito do documento, repetido num caminho novo:
+   * quem acrescentar o próximo link assinado acrescenta o prefixo aqui.
    */
-  if (pathname.startsWith('/api/files/') && request.nextUrl.searchParams.get('t')) {
+  const LINK_ASSINADO = ['/api/files/', '/api/patient/invoices/'];
+  if (LINK_ASSINADO.some((p) => pathname.startsWith(p)) && request.nextUrl.searchParams.get('t')) {
     return NextResponse.next();
   }
 
   const authHeader = request.headers.get('authorization');
   if (authHeader?.toLowerCase().startsWith('bearer ') && isMobileApiPath(pathname)) {
+    /**
+     * Sessão emprestada só lê (091 T-7).
+     *
+     * Quem responde por alguém pode **ver** o tratamento dessa pessoa. Escrever
+     * é outra coisa, e eu tinha afirmado que já estava fechado porque reusei
+     * `isImpersonating` — falso: o review de 27/09/2026 mediu doze rotas que
+     * conferem e cerca de trinta que não, incluindo dinheiro, mensagem ao
+     * terapeuta e check-in. O poder apareceu de graça.
+     *
+     * **Aqui é o único lugar que torna a regra verdadeira por construção.**
+     * Trinta guardas copiadas à mão erram uma; esta é uma. E ela cobre o que
+     * importa, porque `MOBILE_API_PREFIXES` já inclui `/api/patient`,
+     * `/api/appointments`, `/api/exercises` e `/api/push-token` — a lista
+     * inteira do achado.
+     *
+     * Liberar uma escrita específica — marcar exercício feito, confirmar
+     * consulta — passa a exigir uma exceção explícita aqui, que é o custo
+     * certo para uma decisão dessas.
+     */
+    if (ehEscritaEmprestada(request.method, authHeader, pathname)) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Switch back to your own account to make changes.',
+          errorPt: 'Volte para a sua conta para fazer alterações.',
+          code: 'on_behalf_read_only',
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN, ...SECURITY_HEADERS },
+        }
+      );
+    }
+
     // The personal-studio block must hold for the app too (activity 52, T-7).
     // The token's payload is read here without verifying it: that's enough to
     // *restrict* — a forged token still fails the route's own verification.
@@ -366,6 +418,30 @@ export async function middleware(request: NextRequest) {
 
   // If no token, redirect to login
   if (!token) {
+    /**
+     * Uma chamada de API sem sessão recebe 401 em JSON, não o redirect.
+     *
+     * O redirect é a resposta certa para uma **página** — a pessoa vai ao
+     * login e volta. Para um `fetch()` de dentro de uma tela ele é um desastre
+     * silencioso: o navegador **segue** o 307, recebe 200 com o HTML do
+     * `/login`, e o `res.json()` do chamador estoura num erro de parse. A
+     * terapeuta não lê "sua sessão expirou", lê um erro de sintaxe — e todo o
+     * esforço de dar `code` e `errorPt` a cada falha morre nesse caso.
+     *
+     * O arquivo já tinha este cuidado em dois lugares (o 404 do tenant
+     * pessoal, o 403 do paciente em rota de equipe); faltava no caso mais
+     * comum de todos. Achado do QA da 092, cenário 2.5.
+     */
+    if (pathname.startsWith('/api')) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Your session has expired. Sign in again.',
+          errorPt: 'Sua sessão expirou. Entre de novo.',
+          code: 'session_expired',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS } }
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
@@ -486,9 +562,12 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL(target, request.url));
         }
       }
-      // Default: /dashboard/X → /admin/X (works for exercises, education, clinical-notes, etc.)
-      const subPath = pathname.replace('/dashboard', '');
-      return NextResponse.redirect(new URL('/admin' + subPath, request.url));
+      // Era: /dashboard/X → /admin/X, sempre, sem conferir se /admin/X existe.
+      // Vinte e duas das trinta e sete telas do paciente não têm equivalente,
+      // e para essas o desvio entregava um 404 — a forma mais cara de errar,
+      // porque quem clica conclui que o sistema perdeu a página.
+      const gemeo = gemeoNoAdmin(pathname);
+      return NextResponse.redirect(new URL(gemeo ?? '/admin', request.url));
     }
   }
 

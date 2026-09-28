@@ -1,45 +1,22 @@
 import { useState } from "react";
-import { View, Pressable, ScrollView, Alert, TextInput, Linking } from "react-native";
+import { View, Pressable, Alert, TextInput, Linking } from "react-native";
 import { Stack, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchDependentes, type Dependente } from "@/api/dependents";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout } from "@/api/booking";
+import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes, type DetailedSlot, type ClinicTreatmentType } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
-import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { useAuth } from "@/store/auth";
 import { zonedTimeToUtc } from "@/lib/clinic-timezone";
-
-const TYPES = [
-  "Initial Assessment", "Follow-up", "Physiotherapy", "Sports Therapy",
-  "Biomechanical Assessment", "Foot Scan", "Review",
-];
-
-function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
-  const dates = [];
-  // Weekday initials in the patient's language, not a hardcoded Portuguese
-  // list — the app is read in English by most of these patients.
-  const dayNames = lang === "pt"
-    ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  for (let i = 1; i <= 14; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    if (closedDays.includes(d.getDay())) continue;
-    dates.push({
-      label: d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }),
-      // Local parts, not `toISOString()`: the chip is labelled from `getDate()`
-      // in the phone's own timezone, and the value was being taken from UTC.
-      // In BST a patient opening this between midnight and 01:00 got a value
-      // one day BEFORE the chip they tapped; west of UTC it lands one day
-      // after. The booking then went to the wrong day.
-      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-      day: dayNames[d.getDay()],
-      date: d.getDate(),
-    });
-  }
-  return dates;
-}
+import { openCheckout } from "@/lib/checkout";
+import { ApiError } from "@/api/client";
+import { CouponField, PrecoComCupom } from "@/components/CouponField";
+import { CalendarioDeAgenda } from "@/components/CalendarioDeAgenda";
+import { fetchAppointments } from "@/api/appointments";
+import type { CouponPreviewOk } from "@/api/coupons";
 
 function BookAppointmentScreen() {
   const lang = useLang();
@@ -61,6 +38,10 @@ function BookAppointmentScreen() {
   const porta = opcao.data;
   const janela = porta?.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : porta?.kind ? "TREATMENT" : undefined;
 
+  // Os tratamentos desta clínica (082): a lista de "Tipo de consulta" deixou
+  // de ser escrita no código e passou a ser o que a clínica cadastrou.
+  const tipos = useQuery({ queryKey: ["treatment-types"], queryFn: fetchTreatmentTypes });
+
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   // Which days the clinic opens is not something to guess at. When the schedule
   // fails to load, or comes back with no open day at all, `closedDays` was `[]`
@@ -68,8 +49,29 @@ function BookAppointmentScreen() {
   // shuts on Sunday. The patient picked one, waited, and got "No times
   // available". The web says so up front instead, and now so does this.
   const scheduleKnown = schedule.isSuccess && (schedule.data?.length ?? 0) > 0;
-  const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
-  const dates = scheduleKnown ? generateDates(closedDays, lang) : [];
+  // O dia fechado deixou de ser filtrado aqui: quem diz que um dia não abre
+  // agora é o servidor, dia a dia, junto com o motivo — e ele sabe de feriado e
+  // de folga, que uma lista de dias da semana no cliente nunca soube.
+
+  /**
+   * O que eu já tenho marcado, para o calendário mostrar junto das vagas
+   * (095 T-8).
+   *
+   * Cancelada não conta: o dia volta a estar livre, e marcar uma barrinha nele
+   * faria a pessoa achar que já tem compromisso onde não tem.
+   */
+  const minhas = useQuery({ queryKey: ["appointments"], queryFn: fetchAppointments });
+  const meusDias = (minhas.data ?? [])
+    .filter((a) => a.status !== "CANCELLED" && a.status !== "NO_SHOW")
+    .map((a) => {
+      const d = new Date(a.dateTime);
+      return {
+        // Data local, nunca `toISOString()`: ele devolve UTC, e uma consulta
+        // das 00h30 cairia no dia anterior na grade.
+        data: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        porVideo: a.mode === "VIDEO",
+      };
+    });
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate, janela],
@@ -79,7 +81,25 @@ function BookAppointmentScreen() {
 
   const slots = availability.data?.slots ?? [];
   const detalhados = availability.data?.detailedSlots ?? [];
-  const vagasDe = (hora: string) => detalhados.find((s) => s.time === hora)?.spacesLeft ?? null;
+  const vagasDe = (hora: string) => detalhados.find((s: DetailedSlot) => s.time === hora)?.spacesLeft ?? null;
+
+  // O cupom aplicado nesta tela (084). `null` é o caso normal: quem não
+  // digita nada paga o preço da 082.
+  const [cupom, setCupom] = useState<CouponPreviewOk | null>(null);
+
+  /**
+   * Para quem é esta consulta (089/091).
+   *
+   * `null` é "para mim", e é o padrão — quem marca para si mesmo não deve ter de
+   * escolher nada. A lista só aparece para quem de fato cuida de alguém.
+   *
+   * Até agora dava para **comprar exame** para uma filha e não dava para marcar
+   * consulta: nem esta tela nem a rota conheciam dependente. A mãe cadastrava a
+   * filha e ficava presa na metade do caminho.
+   */
+  const [paraQuem, setParaQuem] = useState<string | null>(null);
+  const geridas = useQuery({ queryKey: ["dependentes"], queryFn: fetchDependentes });
+  const cuidaDeAlguem = (geridas.data?.length ?? 0) > 0;
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -91,25 +111,55 @@ function BookAppointmentScreen() {
         dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
         treatmentType: type,
         notes: notes || undefined,
+        // Ausente = para mim. Quem valida o vínculo é o servidor.
+        dependentId: paraQuem ?? undefined,
       });
     },
     onSuccess: async (res: any) => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       qc.invalidateQueries({ queryKey: ["booking-options"] });
 
-      // Quando o horário só vale depois de pago, o Checkout abre aqui, no
-      // navegador do sistema. A consulta já existe, mas **não** está
-      // confirmada: quem confirma é o webhook, quando o dinheiro entra. Se a
-      // pessoa fechar a aba, o horário não fica preso a ela.
+      // Quando o horário só vale depois de pago, o Checkout abre numa folha
+      // **dentro do app** e fecha sozinha ao voltar (083) — antes, `openURL`
+      // entregava a pessoa ao Safari no meio do pagamento. A consulta já
+      // existe, mas **não** está confirmada: quem confirma é o webhook, quando
+      // o dinheiro entra. Se a pessoa fechar a folha, o horário não fica preso.
       if (porta?.requiresPayment && res?.appointment?.id) {
         try {
-          const url = await startAppointmentCheckout(res.appointment.id);
+          // O **código**, não o valor: o servidor recalcula antes de cobrar.
+          const url = await startAppointmentCheckout(res.appointment.id, cupom?.code ?? null);
           if (url) {
-            await Linking.openURL(url);
+            await openCheckout(url);
             router.replace("/(app)/(clinica)/(tabs)/appointments");
             return;
           }
-        } catch {
+        } catch (e) {
+          /**
+           * A recusa do cupom tem de chegar **inteira** à pessoa.
+           *
+           * Este `catch` engolia tudo e dizia "marcado, ainda não pago — abra
+           * Consultas para pagar", numa tela que não tem botão de pagar. Quem
+           * digitou um código expirado ficava com uma consulta pendente e nenhuma
+           * pista do motivo (achado do review das correções, 26/09/2026).
+           *
+           * Agora o motivo do servidor aparece, no idioma do aparelho, e a frase
+           * diz o que fazer: tirar o código e marcar de novo.
+           */
+          const cupomRecusado =
+            e instanceof ApiError && (e.code === "coupon_rejected" || e.code === "amount_too_small");
+          if (cupomRecusado) {
+            Alert.alert(
+              tr(lang, { en: "That code did not apply", pt: "Esse código não valeu" }),
+              `${(e as ApiError).localizada(lang)}
+
+${tr(lang, {
+                en: "Your slot is held. Remove the code and confirm again to pay the normal price.",
+                pt: "Seu horário está reservado. Remova o código e confirme de novo para pagar o preço normal.",
+              })}`
+            );
+            router.replace("/(app)/(clinica)/(tabs)/appointments");
+            return;
+          }
           Alert.alert(
             tr(lang, { en: "Booked, not paid yet", pt: "Marcado, ainda não pago" }),
             tr(lang, {
@@ -153,6 +203,77 @@ function BookAppointmentScreen() {
       <View style={{ gap: 20 }}>
         <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
 
+        {/* Para quem é a consulta (089/091).
+            Antes da porta, de propósito: o preço e a opção dependem de quem vai
+            ser atendido, então escolher depois seria escolher duas vezes.
+            Só aparece para quem de fato cuida de alguém — quem marca para si
+            mesmo não deve ter de responder uma pergunta que só tem uma resposta. */}
+        {cuidaDeAlguem && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>
+              {tr(lang, { en: "Who is this for?", pt: "Para quem é?" })}
+            </Text>
+            <View style={{ gap: 8 }}>
+              <Pressable
+                testID="para-mim"
+                onPress={() => setParaQuem(null)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: paraQuem === null ? t.colors.health : t.colors.borderSubtle,
+                  backgroundColor: paraQuem === null ? t.colors.healthSoft : "transparent",
+                }}
+              >
+                <Ionicons
+                  name={paraQuem === null ? "radio-button-on" : "radio-button-off"}
+                  size={20}
+                  color={paraQuem === null ? t.colors.health : t.colors.textMuted}
+                />
+                <Text variant="body">{tr(lang, { en: "For me", pt: "Para mim" })}</Text>
+              </Pressable>
+
+              {(geridas.data ?? []).map((p: Dependente) => (
+                <Pressable
+                  key={p.id}
+                  testID={`para-${p.id}`}
+                  onPress={() => setParaQuem(p.id)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: 12,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: paraQuem === p.id ? t.colors.health : t.colors.borderSubtle,
+                    backgroundColor: paraQuem === p.id ? t.colors.healthSoft : "transparent",
+                  }}
+                >
+                  <Ionicons
+                    name={paraQuem === p.id ? "radio-button-on" : "radio-button-off"}
+                    size={20}
+                    color={paraQuem === p.id ? t.colors.health : t.colors.textMuted}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text variant="body">{p.firstName} {p.lastName}</Text>
+                    {p.menorDeIdade && (
+                      <Text variant="caption" color={t.colors.textMuted}>
+                        {tr(lang, {
+                          en: "A minor is always accompanied by you.",
+                          pt: "Um menor está sempre acompanhado por você.",
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </Card>
+        )}
+
         {/* A porta, antes de tudo. Sem isto o paciente descobria o preço
             depois de escolher o horário — ou descobria, pior ainda, que nem
             podia marcar. */}
@@ -179,6 +300,29 @@ function BookAppointmentScreen() {
               />
             </View>
           </Card>
+        ) : porta?.blockedReason === "price_not_set" ? (
+          /* A clínica não precificou isto. Antes, este caso virava £60
+             inventados na tela do paciente — um número que ninguém escolheu. */
+          <Card>
+            <View style={{ gap: 10 }}>
+              <Text variant="label">
+                {tr(lang, { en: "Booking is not open yet", pt: "A marcação ainda não está aberta" })}
+              </Text>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                {tr(lang, {
+                  en: "Your clinic has not set the price for this yet. Send them a message and they will sort it out.",
+                  pt: "Sua clínica ainda não definiu o preço disto. Mande uma mensagem e eles resolvem.",
+                })}
+              </Text>
+              <Button
+                title={tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" })}
+                variant="health"
+                size="md"
+                onPress={() => router.push("/(app)/(clinica)/messages")}
+                testID="booking-price-not-set-cta"
+              />
+            </View>
+          </Card>
         ) : porta?.kind === "PACKAGE_SESSION" ? (
           <Card>
             <Text variant="label">
@@ -200,35 +344,61 @@ function BookAppointmentScreen() {
                 ? tr(lang, { en: "First consultation", pt: "Primeira consulta" })
                 : tr(lang, { en: "Extra session", pt: "Sessão extra" })}
             </Text>
-            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
-              {porta.currency} {porta.price.toFixed(2)}
-              {" · "}
-              {porta.requiresPayment
-                ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
-                : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })}
-            </Text>
+            <View style={{ marginTop: 4, gap: 10 }}>
+              <PrecoComCupom
+                currency={porta.currency}
+                original={porta.price}
+                cupom={cupom}
+                suffix={
+                  /* Zerado pelo cupom não é "pago ao marcar": prometer um
+                     pagamento que não vai acontecer, no lugar exato onde a
+                     pessoa confere se vai pagar, é o tipo de frase que faz ela
+                     desconfiar do resto (N-1 do QA das telas). */
+                  cupom && cupom.final === 0
+                    ? tr(lang, { en: "nothing to pay", pt: "nada a pagar" })
+                    : porta.requiresPayment
+                      ? tr(lang, { en: "paid when you book", pt: "pago ao marcar" })
+                      : tr(lang, { en: "added to your invoice", pt: "entra na sua fatura" })
+                }
+              />
+              {/* Só onde há o que descontar: numa sessão do pacote não há nada
+                  a pagar, e oferecer cupom ali seria oferecer desconto no nada. */}
+              {porta.price > 0 && (
+                <CouponField
+                  scope={porta.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT_SESSION"}
+                  onChange={setCupom}
+                />
+              )}
+            </View>
           </Card>
         ) : null}
 
-        {/* Type */}
-        <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {TYPES.map(t2 => (
-              <Pressable key={t2} onPress={() => setType(t2)}
-                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === t2 ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === t2 ? t.colors.health : t.colors.borderSubtle }}>
-                <Text variant="caption" color={type === t2 ? t.colors.health : t.colors.textSecondary}>{t2}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
+        {/* Tipo — o que ESTA clínica oferece, não sete nomes escritos no
+            código. Sem tratamento cadastrado a seção não existe: a consulta
+            é marcada do mesmo jeito, e o servidor põe o rótulo. */}
+        {(tipos.data ?? []).length > 0 && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {(tipos.data ?? []).map((tt: ClinicTreatmentType) => {
+                const rotulo = lang === "pt" ? tt.namePt || tt.name : tt.name;
+                return (
+                  <Pressable key={tt.id} onPress={() => setType(tt.name)} testID={`appointment-type-${tt.id}`}
+                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === tt.name ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === tt.name ? t.colors.health : t.colors.borderSubtle }}>
+                    <Text variant="caption" color={type === tt.name ? t.colors.health : t.colors.textSecondary}>{rotulo}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+        )}
 
         {/* Date */}
         <Card>
           <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
           {schedule.isLoading ? (
             <Spinner />
-          ) : dates.length === 0 ? (
+          ) : !scheduleKnown ? (
             <Text variant="caption" color={t.colors.textMuted}>
               {tr(lang, {
                 en: "No available dates at the moment. Please contact the clinic.",
@@ -236,15 +406,16 @@ function BookAppointmentScreen() {
               })}
             </Text>
           ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {dates.map(d => (
-              <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
-                style={{ alignItems: "center", paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: selectedDate === d.value ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: selectedDate === d.value ? t.colors.health : t.colors.borderSubtle }}>
-                <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{d.day}</Text>
-                <Text variant="subtitle" color={selectedDate === d.value ? t.colors.health : t.colors.text} style={{ fontSize: 18 }}>{d.date}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+            /* Era uma tira reta de catorze dias em que **todo dia parecia
+               igual**: só tocando em cada um dava para saber se havia vaga.
+               Não era desleixo da tela — a rota respondia um dia por chamada
+               (087, T-3). */
+            <CalendarioDeAgenda
+              selecionada={selectedDate}
+              onEscolher={(d) => { setSelectedDate(d); setSelectedTime(null); }}
+              kind={janela}
+              meusDias={meusDias}
+            />
           )}
         </Card>
 
@@ -259,7 +430,7 @@ function BookAppointmentScreen() {
             <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "No times available on this date.", pt: "Sem horários disponíveis nesta data." })}</Text>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {slots.map(time => {
+              {slots.map((time: string) => {
                 // Quantas vagas restam naquele horário — e **nunca** quem
                 // ocupa as outras. Quem está na sala é assunto da clínica.
                 const vagas = vagasDe(time);

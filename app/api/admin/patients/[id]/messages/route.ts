@@ -7,6 +7,7 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { pushNovaMensagem } from "@/lib/push-notify";
 import { pickForPatient } from "@/lib/patient-language";
 import { saveChatAttachment } from "@/lib/chat-attachment";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF", "THERAPIST"];
@@ -83,7 +84,7 @@ export async function POST(
 
   const reqContentType = req.headers.get("content-type") || "";
   if (reqContentType.includes("multipart/form-data")) {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     content = ((formData.get("content") as string) || "").trim();
     title = (formData.get("title") as string) || null;
     contentPt = ((formData.get("contentPt") as string) || "").trim() || null;

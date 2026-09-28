@@ -10,6 +10,7 @@ import {
   discardStoredMedia,
   type StoredExerciseMedia,
 } from "@/lib/exercise-media";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     // The clinic the caller works in — never "whichever clinic came first",
     // which used to drop a SUPERADMIN's upload into another tenant's library.
     const clinicId = await resolveClinicId(session);

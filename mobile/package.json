@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "^13.0.0",
+    "@daily-co/react-native-daily-js": "^0.87.1",
+    "@daily-co/react-native-webrtc": "^124.0.6-daily.2",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/sora": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/netinfo": "11.4.1",
+    "@react-native-google-signin/google-signin": "^16.1.5",
+    "@stripe/stripe-react-native": "0.75.0",
     "@tanstack/react-query": "^5.101.0",
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.37",
+    "expo-apple-authentication": "~8.0.8",
+    "expo-audio": "~1.1.1",
     "expo-constants": "~18.0.14",
     "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
@@ -29,6 +36,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-background-timer": "^2.4.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.2",
@@ -44,5 +52,12 @@
     "ios": "expo run:ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "expo-apple-authentication"
+      ]
+    }
+  }
 }

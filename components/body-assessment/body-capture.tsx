@@ -185,7 +185,10 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   const stableCountRef = useRef(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // `ReturnType<typeof setInterval>` e nao `NodeJS.Timeout`: em componente de
+  // navegador o `setInterval` global devolve `number`, e o tipo do Node nao
+  // casava com ele. Assim o tipo acompanha o ambiente em vez de apostar nele.
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartRef = useRef<number>(0);
   const mountedRef = useRef(true);
 

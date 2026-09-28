@@ -25,7 +25,9 @@
     "cap:android": "npx cap open android",
     "cap:run:ios": "npx cap run ios",
     "cap:run:android": "npx cap run android",
-    "test:tenants": "node tests/tenant-isolation/run.cjs"
+    "test:tenants": "node tests/tenant-isolation/run.cjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:mobile": "tsc --noEmit -p mobile/tsconfig.json"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/seed.ts"
@@ -146,6 +148,7 @@
     "gray-matter": "4.0.3",
     "imap-simple": "^5.1.0",
     "input-otp": "1.2.4",
+    "jose": "4.15.9",
     "jotai": "2.6.0",
     "jsonwebtoken": "9.0.2",
     "jspdf": "^4.2.1",

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { callAI, parseAIJson } from "@/lib/ai-provider";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (user.role !== "ADMIN" && user.role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const file = formData.get("file") as File | null;
 
     if (!file) {

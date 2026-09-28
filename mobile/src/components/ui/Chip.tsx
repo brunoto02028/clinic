@@ -14,7 +14,7 @@ export function Chip({ label, selected, onPress, accentColor, style }: ChipProps
   const t = useTheme();
 
   const bg = selected ? (accentColor ?? t.colors.primary) : t.colors.surface;
-  const fg = selected ? "#FFFFFF" : "#4A4F59";
+  const fg = selected ? t.colors.primaryFg : t.colors.textSecondary;
   const border = selected ? (accentColor ?? t.colors.primary) : t.colors.border;
 
   return (
@@ -36,8 +36,10 @@ export function Chip({ label, selected, onPress, accentColor, style }: ChipProps
       ]}
     >
       <Text
+        variant="caption"
         style={{
-          fontSize: 10.5,
+          // Cravava 10,5 e por isso não acompanhou a subida da escala. Sai do
+          // `caption` como todo rótulo pequeno do app; só o peso é próprio.
           fontFamily: "Inter_600SemiBold",
           color: fg,
         }}

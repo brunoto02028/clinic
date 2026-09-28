@@ -64,7 +64,14 @@ export async function patientGate(options: PatientGateOptions = {}): Promise<Gua
 
   const patient = await (prisma as any).user.findUnique({
     where: { id: effective.userId },
-    select: { ...PATIENT_ACCESS_SELECT, clinicId: true, consentAcceptedAt: true },
+    select: {
+      ...PATIENT_ACCESS_SELECT,
+      clinicId: true,
+      consentAcceptedAt: true,
+      // Quem responde por esta pessoa, e se **ele** aceitou (091 T-7).
+      managedById: true,
+      guardian: { select: { consentAcceptedAt: true } },
+    },
   });
   if (!patient) {
     return { response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
@@ -86,7 +93,23 @@ export async function patientGate(options: PatientGateOptions = {}): Promise<Gua
     return { gate: base };
   }
 
-  if (!options.skipConsent && !patient.consentAcceptedAt) {
+  /**
+   * Quem aceita pela pessoa gerida e quem responde por ela (091 T-7).
+   *
+   * Uma crianca nao tem como aceitar termos: nao faz login, nao tem tela. O
+   * portao exigia `consentAcceptedAt` dela e, como nunca havia, **toda** tela
+   * clinica respondia "aceite os termos" quando a mae entrava para ver o
+   * tratamento da filha — a area inteira ficava inutil. Achado do QA de
+   * 27/09/2026.
+   *
+   * A regra honesta nao e dar um aceite que ela nunca fez: e olhar o de quem
+   * responde por ela, que e quem de fato aceitou e quem de fato esta usando.
+   */
+  const aceite = patient.managedById
+    ? patient.guardian?.consentAcceptedAt ?? null
+    : patient.consentAcceptedAt;
+
+  if (!options.skipConsent && !aceite) {
     return {
       response: NextResponse.json(
         {

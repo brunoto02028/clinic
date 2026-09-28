@@ -150,6 +150,28 @@ async function handleUpdate(
     if (body?.notes !== undefined) updateData.notes = body.notes;
     if (body?.price) updateData.price = body.price;
 
+    /**
+     * Virar uma consulta já marcada para vídeo, ou de volta para presencial.
+     *
+     * O modo só existia na **criação**: quem marcasse presencial e depois
+     * combinasse por vídeo tinha de apagar e remarcar, perdendo o horário e o
+     * histórico. Foi assim que a consulta por vídeo pareceu não existir — a
+     * agenda estava cheia de presenciais e não havia por onde transformar uma.
+     *
+     * Fora da lista do paciente de propósito: a guarda acima já recusa
+     * qualquer campo que não seja `status: CANCELLED` vindo dele, e mudar o
+     * formato do próprio atendimento é decisão de quem atende.
+     */
+    if (body?.mode !== undefined) {
+      if (body.mode !== "IN_PERSON" && body.mode !== "VIDEO") {
+        return NextResponse.json(
+          { error: "mode must be IN_PERSON or VIDEO" },
+          { status: 400 }
+        );
+      }
+      updateData.mode = body.mode;
+    }
+
     const appointment = await prisma.appointment.update({
       where: { id },
       data: updateData,

@@ -191,7 +191,10 @@ export default function AdminScansPage() {
     status: string; leftImageCount: number; rightImageCount: number; totalImages: number;
     leftImages: string[]; rightImages: string[]; captureMode: string | null; lastUpdated: string;
   } | null>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // `ReturnType<typeof setInterval>` e nao `NodeJS.Timeout`: em componente de
+  // navegador o `setInterval` global devolve `number`, e o tipo do Node nao
+  // casava com ele. Assim o tipo acompanha o ambiente em vez de apostar nele.
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetchScans();

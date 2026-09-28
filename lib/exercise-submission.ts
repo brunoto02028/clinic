@@ -95,6 +95,10 @@ export function sniffSubmissionType(buffer: Buffer): string | null {
     const marca = buffer.subarray(8, 12).toString("latin1").toLowerCase();
     if (marca === "qt  ") return "video/quicktime";
     if (["heic", "heix", "hevc", "hevx", "mif1", "msf1"].includes(marca)) return "image/heic";
+    // `M4A ` é a marca de áudio da mesma caixa. Sem esta linha um recado de
+    // voz é farejado como `video/mp4` — e aí ou ele é recusado como anexo, ou
+    // passa por vídeo de exercício. Os dois errados (089).
+    if (["m4a ", "m4b ", "mp4a"].includes(marca)) return "audio/mp4";
     return "video/mp4";
   }
 

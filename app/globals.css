@@ -1054,6 +1054,26 @@ html.native-app .site-footer-web-only {
   border-bottom-color: hsl(var(--accent-bright));
 }
 
+/* O número ao lado do rótulo da aba. O contador do menu diz que há algo em
+   Pacientes, e Pacientes tem sete abas — saber qual delas exigia abrir as
+   sete (pedido do Bruno, 26/09/2026). */
+.section-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: hsl(var(--destructive));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 /* Patient sidebar styles are inline in the component */
 
 /* ========================================

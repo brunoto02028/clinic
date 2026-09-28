@@ -11,9 +11,12 @@ import {
   sendMessage,
   markMessagesRead,
   attachmentIsImage,
+  attachmentIsAudio,
   attachmentHref,
   ATTACHMENT_MAX_BYTES,
   type ClinicMessage,
+  apagarMensagem,
+  podeApagar,
   type OutgoingAttachment,
 } from "@/api/messages";
 import * as ImagePicker from "expo-image-picker";
@@ -23,6 +26,8 @@ import { explainDeniedPermission } from "@/lib/ask-permission";
 import { t as tr } from "@/lib/i18n";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
+import { GravadorDeVoz } from "@/components/GravadorDeVoz";
+import { AudioDaMensagem } from "@/components/AudioDaMensagem";
 import { LoadFailure } from "@/components/LoadFailure";
 import { PlanGate } from "@/components/PlanGate";
 
@@ -41,6 +46,15 @@ const UI = {
     sendFailed: "Your message was not sent. Try again.",
     attachment: "Attachment",
     notice: "Notice",
+    undo: "Delete",
+    undoAsk: "Delete this message?",
+    undoAskBody: "The clinic has not seen it yet, so it will be removed — including the voice recording.",
+    undoCancel: "Keep it",
+    undoConfirm: "Delete",
+    undoFailed: "It was not deleted. Try again.",
+    seenByClinic: "Seen by the clinic",
+    sendCorrection: "Send a correction",
+    tooLate: "The clinic has already seen this message. Send a correction instead.",
   },
   pt: {
     header: "Mensagens",
@@ -55,6 +69,15 @@ const UI = {
     sendFailed: "Sua mensagem não foi enviada. Tente de novo.",
     attachment: "Anexo",
     notice: "Aviso",
+    undo: "Apagar",
+    undoAsk: "Apagar esta mensagem?",
+    undoAskBody: "A clínica ainda não viu, então ela será removida — inclusive a gravação de voz.",
+    undoCancel: "Manter",
+    undoConfirm: "Apagar",
+    undoFailed: "Não foi apagada. Tente de novo.",
+    seenByClinic: "Vista pela clínica",
+    sendCorrection: "Enviar uma correção",
+    tooLate: "A clínica já viu esta mensagem. Mande uma correção.",
   },
 } as const;
 
@@ -94,7 +117,7 @@ function MessagesScreen() {
   // Reading the thread is what marks it read — the same thing the web does on
   // open. Fire and forget: failing to clear the badge must not break the screen.
   useEffect(() => {
-    if (messages.some((m) => m.senderRole === "staff" && !m.readAt)) {
+    if (messages.some((m: ClinicMessage) => m.senderRole === "staff" && !m.readAt)) {
       markMessagesRead()
         .then(() => qc.invalidateQueries({ queryKey: ["messages"] }))
         .catch(() => {});
@@ -109,6 +132,36 @@ function MessagesScreen() {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
   });
+
+  /**
+   * Desfazer o recado que acabou de sair.
+   *
+   * Quem decide é o servidor: ele confere que o recado é do paciente e que
+   * `readAt` é nulo, e leva junto o documento e o arquivo do áudio — um recado de
+   * voz é três coisas, e apagar só a mensagem deixaria o áudio na lista de
+   * documentos.
+   *
+   * O 409 `already_read` não é falha: é a notícia de que alguem ja ouviu. Nesse
+   * caso a conversa é recarregada, o `readAt` chega, e a bolha passa a mostrar
+   * "vista pela clínica" com a oferta de mandar uma correção.
+   */
+  const apagar = useMutation({
+    mutationFn: (id: string) => apagarMensagem(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["messages"] }),
+    onError: (e: any) => {
+      const jaViu = String(e?.message ?? "").includes("already_read") || e?.status === 409;
+      qc.invalidateQueries({ queryKey: ["messages"] });
+      Alert.alert(jaViu ? ui.seenByClinic : ui.undoFailed, jaViu ? ui.tooLate : undefined);
+    },
+  });
+
+  const pedirParaApagar = (m: ClinicMessage) => {
+    // Pergunta antes, porque nao tem volta: o audio vai junto.
+    Alert.alert(ui.undoAsk, ui.undoAskBody, [
+      { text: ui.undoCancel, style: "cancel" },
+      { text: ui.undoConfirm, style: "destructive", onPress: () => apagar.mutate(m.id) },
+    ]);
+  };
 
   /**
    * Anexar uma imagem.
@@ -295,29 +348,56 @@ function MessagesScreen() {
               ) : (
                 messages.map((m: ClinicMessage) => {
                   const mine = m.senderRole === "patient";
+                  /**
+                   * Aviso da clínica não é conversa (095 T-9).
+                   *
+                   * Um comunicado para todos os pacientes aparecia no mesmo fio
+                   * em que a pessoa fala com quem a atende, com a mesma forma
+                   * de balão. Funciona, e confunde duas coisas de naturezas
+                   * diferentes: uma é conversa, a outra é mural — e o mural
+                   * some no meio do histórico.
+                   *
+                   * Então o aviso ocupa a largura toda, encostado à esquerda
+                   * com uma faixa, em vez de virar balão. O histórico não muda
+                   * de lugar: muda de cara.
+                   */
+                  const aviso = m.kind !== "message";
                   return (
                     <View
                       key={m.id}
-                      style={{
-                        alignSelf: mine ? "flex-end" : "flex-start",
-                        maxWidth: "86%",
-                        backgroundColor: mine ? t.colors.health : t.colors.surfaceMuted,
-                        borderRadius: 14,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        gap: 4,
-                      }}
+                      style={
+                        aviso
+                          ? {
+                              alignSelf: "stretch",
+                              backgroundColor: t.colors.surfaceMuted,
+                              borderLeftWidth: 3,
+                              borderLeftColor: t.colors.health,
+                              borderRadius: 10,
+                              paddingHorizontal: 14,
+                              paddingVertical: 12,
+                              gap: 4,
+                            }
+                          : {
+                              alignSelf: mine ? "flex-end" : "flex-start",
+                              maxWidth: "86%",
+                              backgroundColor: mine ? t.colors.health : t.colors.surfaceMuted,
+                              borderRadius: 14,
+                              paddingHorizontal: 14,
+                              paddingVertical: 10,
+                              gap: 4,
+                            }
+                      }
                     >
                       {m.kind !== "message" && (
                         <Text
                           variant="caption"
-                          color={mine ? "#FFFFFF" : t.colors.textMuted}
+                          color={mine ? t.colors.accentFg : t.colors.textMuted}
                           style={{ fontWeight: "700", textTransform: "uppercase", fontSize: 10 }}
                         >
                           {m.title || ui.notice}
                         </Text>
                       )}
-                      <Text variant="body" color={mine ? "#FFFFFF" : t.colors.text} style={{ lineHeight: 20 }}>
+                      <Text variant="body" color={mine ? t.colors.accentFg : t.colors.text} style={{ lineHeight: 20 }}>
                         {m.content}
                       </Text>
 
@@ -327,7 +407,9 @@ function MessagesScreen() {
                           app — e mandá-la para o Safari deixava um link de
                           documento clínico no histórico de outro aplicativo. */}
                       {m.attachmentUrl && (
-                        attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
+                        attachmentIsAudio(m.attachmentType) && attachmentHref(m) ? (
+                          <AudioDaMensagem uri={attachmentHref(m)!} minha={mine} />
+                        ) : attachmentIsImage(m.attachmentType) && attachmentHref(m) ? (
                           <Pressable
                             onPress={() => {
                               const href = attachmentHref(m);
@@ -353,10 +435,10 @@ function MessagesScreen() {
                             hitSlop={8}
                             style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}
                           >
-                            <Ionicons name="document-outline" size={16} color={mine ? "#FFFFFF" : t.colors.text} />
+                            <Ionicons name="document-outline" size={16} color={mine ? t.colors.accentFg : t.colors.text} />
                             <Text
                               variant="caption"
-                              color={mine ? "#FFFFFF" : t.colors.text}
+                              color={mine ? t.colors.accentFg : t.colors.text}
                               style={{ textDecorationLine: "underline", flexShrink: 1 }}
                             >
                               {m.attachmentName ?? ui.attachment}
@@ -364,14 +446,55 @@ function MessagesScreen() {
                           </Pressable>
                         )
                       )}
-                      <Text
-                        variant="caption"
-                        color={mine ? "rgba(255,255,255,0.75)" : t.colors.textMuted}
-                        style={{ fontSize: 10 }}
-                      >
-                        {!mine && m.sender ? `${m.sender.firstName} · ` : ""}
-                        {formatWhen(m.createdAt, lang)}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <Text
+                          variant="caption"
+                          color={mine ? t.colors.accentFgSoft : t.colors.textMuted}
+                          style={{ fontSize: 10 }}
+                        >
+                          {!mine && m.sender ? `${m.sender.firstName} · ` : ""}
+                          {formatWhen(m.createdAt, lang)}
+                        </Text>
+
+                        {/* Desfazer, enquanto ninguem viu. Depois de vista, a
+                            bolha diz isso e oferece a correcao — "apagar" o que
+                            ja foi ouvido esconderia de quem mandou, e nao de
+                            quem ouviu. */}
+                        {mine && podeApagar(m) && (
+                          <Pressable
+                            onPress={() => pedirParaApagar(m)}
+                            disabled={apagar.isPending}
+                            accessibilityRole="button"
+                            accessibilityLabel={ui.undo}
+                            hitSlop={10}
+                          >
+                            <Text
+                              variant="caption"
+                              color={t.colors.accentFgSoft}
+                              style={{ fontSize: 10, textDecorationLine: "underline" }}
+                            >
+                              {ui.undo}
+                            </Text>
+                          </Pressable>
+                        )}
+
+                        {mine && !podeApagar(m) && (
+                          <>
+                            <Text variant="caption" color={t.colors.accentFgSoft} style={{ fontSize: 10 }}>
+                              {ui.seenByClinic}
+                            </Text>
+                            {/* Orientacao, e nao botao: o `Input` do projeto nao
+                                repassa ref, e acrescentar `forwardRef` a um
+                                componente usado em toda a app so para abrir o
+                                teclado seria mexer em muita coisa por pouco. O
+                                campo de escrever esta logo abaixo, na mesma
+                                tela. */}
+                            <Text variant="caption" color={t.colors.accentFgSoft} style={{ fontSize: 10 }}>
+                              {ui.sendCorrection}
+                            </Text>
+                          </>
+                        )}
+                      </View>
                     </View>
                   );
                 })
@@ -437,6 +560,15 @@ function MessagesScreen() {
                 multiline
               />
             </View>
+            {/* O recado de voz (089). Fica ao lado do enviar porque é a
+                alternativa a digitar, não a anexar: quem segura aqui está
+                dizendo o que diria no campo do lado. */}
+            <View style={{ marginBottom: 4 }}>
+              <GravadorDeVoz
+                desabilitado={send.isPending || !!anexo}
+                onGravou={(a) => setAnexo(a)}
+              />
+            </View>
             <Pressable
               onPress={() => send.mutate()}
               disabled={(!draft.trim() && !anexo) || send.isPending}
@@ -451,7 +583,7 @@ function MessagesScreen() {
                 backgroundColor: pressed ? t.colors.healthSoft : t.colors.health,
               })}
             >
-              <Ionicons name="send" size={18} color="#FFFFFF" />
+              <Ionicons name="send" size={18} color={t.colors.accentFg} />
             </Pressable>
           </SafeAreaView>
 

@@ -49,6 +49,13 @@ export interface ClinicWaiting {
    * domingo, enterrada num feed de atividade, é a informação chegando tarde.
    */
   patientsInPain: number;
+  /**
+   * Resultado de exame que chegou do laboratório e ninguém liberou (081).
+   *
+   * O paciente só vê depois que a clínica olha — então o exame parado aqui é
+   * alguém esperando, e a tela dele diz "em revisão com o seu terapeuta".
+   */
+  labResultsAwaitingRelease: number;
   total: number;
 }
 
@@ -75,9 +82,18 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     patientsWithoutExercises,
     messagesAwaitingApproval,
     patientsInPain,
+    labResultsAwaitingRelease,
   ] = await Promise.all([
     (prisma as any).exerciseSubmission.count({
-      where: { clinicId, reviewedAt: null },
+      where: {
+        clinicId,
+        reviewedAt: null,
+        // Arquivado sai da fila **e da contagem** (QA da 095 T-6). Sem isto o
+        // badge dizia "Videos 4" sobre uma fila de 3 — e era um número que não
+        // dava para zerar, porque o arquivado não aparece na fila para ser
+        // revisado. O mesmo contador alimenta o e-mail diário da clínica.
+        archivedAt: null,
+      },
     }),
     (prisma as any).clinicMessage.count({
       where: { clinicId, senderRole: "patient", readAt: null },
@@ -111,6 +127,10 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
         distinct: ["patientId"],
       })
       .then((r: { patientId: string }[]) => r.length),
+    // Sempre zero: o resultado sai direto para a pessoa e não há fila de
+    // liberação (26/09/2026). Mantido como posição do array para não mexer no
+    // formato que as telas leem.
+    Promise.resolve(0),
   ]);
 
   return {
@@ -120,13 +140,15 @@ export async function getClinicWaiting(clinicId: string): Promise<ClinicWaiting>
     patientsWithoutExercises,
     messagesAwaitingApproval,
     patientsInPain,
+    labResultsAwaitingRelease,
     total:
       exerciseVideos +
       unreadMessages +
       unassignedMeasurements +
       patientsWithoutExercises +
       messagesAwaitingApproval +
-      patientsInPain,
+      patientsInPain +
+      labResultsAwaitingRelease,
   };
 }
 
@@ -155,12 +177,13 @@ export function waitingEmailBlock(waiting: ClinicWaiting, baseUrl: string): stri
       <tr><td style="background-color:#F3ECDD;border-left:3px solid #826637;border-radius:8px;padding:14px 16px;">
         <p style="margin:0 0 8px;font-weight:700;color:#20242D;">Waiting for you</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/patients")}
+          ${linha("exercise video to watch", "exercise videos to watch", waiting.exerciseVideos, "/admin/exercise-submissions")}
           ${linha("message from a patient", "messages from patients", waiting.unreadMessages, "/admin/patients")}
           ${linha("blood pressure reading to assign", "blood pressure readings to assign", waiting.unassignedMeasurements, "/admin/measurements/inbox")}
           ${linha("patient in treatment with no exercises yet", "patients in treatment with no exercises yet", waiting.patientsWithoutExercises, "/admin/patients")}
           ${linha("message waiting for your approval", "messages waiting for your approval", waiting.messagesAwaitingApproval, "/admin/outbox")}
           ${linha("patient reporting severe pain this week", "patients reporting severe pain this week", waiting.patientsInPain, "/admin/patients")}
+          ${linha("lab result waiting for your review", "lab results waiting for your review", waiting.labResultsAwaitingRelease, "/admin/labs/orders")}
         </table>
       </td></tr>
     </table>`;

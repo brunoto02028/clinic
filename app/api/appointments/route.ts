@@ -14,6 +14,8 @@ import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access"
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
+import { markAsClinicPatient } from "@/lib/lab-review-mode";
+import { pessoaGeridaMinha } from "@/lib/managed-patients";
 import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
@@ -173,6 +175,32 @@ export async function POST(request: NextRequest) {
         return accessErrorResponse(err);
       }
       patientId = body.patientId;
+    } else if (body?.dependentId) {
+      /**
+       * Marcar consulta **para quem eu cuido** (089/091).
+       *
+       * O Bruno: *"os pais que têm filhos menores e precisam fazer um exame ou
+       * querem fazer uma consulta... o cadastro dos filhos na conta deles"*.
+       *
+       * Metade disso já existia e a outra metade não: dava para **comprar exame**
+       * para a filha (`dependentId` em `/api/mobile/labs/orders`) e **não dava
+       * para marcar consulta** — nem a tela nem esta rota conheciam dependente.
+       * Uma mãe cadastrava a filha e ficava presa na metade do caminho.
+       *
+       * O desenho é o mesmo do exame, de propósito: o corpo manda `dependentId`,
+       * e quem valida é o servidor, exigindo que a pessoa seja **gerida por quem
+       * está pedindo**. Não é "o paciente escolhe o paciente" — é "quem responde
+       * por alguém marca para essa pessoa", e a diferença é a linha
+       * `managedById: actor.userId`.
+       *
+       * Quem não for gerido por ele recebe 404: dizer "existe, mas não é seu"
+       * contaria a um estranho que aquela pessoa existe.
+       */
+      const gerida = await pessoaGeridaMinha(String(body.dependentId), actor.userId);
+      if (!gerida) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      patientId = gerida.id;
     }
 
     // The therapist is always a member of that same tenant: a patient may only
@@ -202,18 +230,29 @@ export async function POST(request: NextRequest) {
     // servidor cobrando outro é o defeito que isto impede (atividade 080).
     const opcao = isPatient ? await bookingOptionsFor(patientId) : null;
     if (opcao && !opcao.kind) {
-      return NextResponse.json(
-        {
-          error:
-            opcao.blockedReason === "screening_required"
-              ? "Complete your medical screening before booking."
-              : "This account is not linked to a clinic",
-          errorPt:
-            opcao.blockedReason === "screening_required"
-              ? "Preencha sua triagem antes de marcar."
-              : "Esta conta não está ligada a uma clínica",
-          code: opcao.blockedReason,
+      // Cada motivo tem a sua frase. O ternário que existia aqui distinguia
+      // só a triagem e jogava todo o resto em "esta conta não está ligada a
+      // uma clínica" — então o paciente sem preço configurado era mandado
+      // procurar o problema no lugar errado, e a clínica não descobria que o
+      // interruptor "Active" estava desligado. Era justamente o buraco que a
+      // correção do £60 existia para fechar (QA da 082, F2).
+      const MOTIVOS = {
+        screening_required: {
+          en: "Complete your medical screening before booking.",
+          pt: "Preencha sua triagem antes de marcar.",
         },
+        price_not_set: {
+          en: "The clinic has not set a price for this yet.",
+          pt: "A clínica ainda não definiu um preço para isto.",
+        },
+        no_clinic: {
+          en: "This account is not linked to a clinic.",
+          pt: "Esta conta não está ligada a uma clínica.",
+        },
+      } as const;
+      const motivo = MOTIVOS[opcao.blockedReason ?? "no_clinic"] ?? MOTIVOS.no_clinic;
+      return NextResponse.json(
+        { error: motivo.en, errorPt: motivo.pt, code: opcao.blockedReason },
         { status: 409 }
       );
     }
@@ -274,11 +313,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // O que o paciente escolheu em "Tipo de consulta", quando é um tratamento
+    // que esta clínica oferece de verdade. Qualquer outra coisa é ignorada.
+    const tipoEscolhido = isPatient && typeof treatmentType === "string"
+      ? (await prisma.treatmentType.findFirst({
+          where: { clinicId: actor.clinicId, isActive: true, name: treatmentType },
+          select: { name: true },
+        }))?.name ?? null
+      : null;
+
+    // A clínica pode marcar sem preço configurado: ela cobra fora do app e é
+    // ela quem abre exceção. O paciente não chega aqui sem preço — a recusa
+    // dele é a de `bookingOptionsFor`, setenta linhas acima. (Havia uma
+    // segunda guarda `isPatient && !opcao` neste ponto: `opcao` é sempre um
+    // objeto para o paciente, então ela nunca rodava — QA da 082, F3.)
+    const precoConfigurado = await patientBookingPrice(actor.clinicId, patientId);
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
       : opcao
         ? opcao.price
-        : await patientBookingPrice(actor.clinicId);
+        : precoConfigurado ?? 0;
+
+    // Marcar consulta é o ato que transforma alguém que comprou um exame em
+    // paciente da clínica: a partir daqui ele tem prontuário, exercícios e
+    // conversa (083). Idempotente para quem já era.
+    await markAsClinicPatient(patientId, actor.clinicId);
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -287,13 +346,13 @@ export async function POST(request: NextRequest) {
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
-        // O tipo também é do servidor quando quem marca é o paciente: o
-        // `price` já era ignorado, e deixar o rótulo passar seria a mesma
-        // porta, mais estreita (QA de 25/09, falha 9).
+        // O rótulo do paciente vale **se for um dos tratamentos que a clínica
+        // cadastrou** (082): antes, o que ele escolhia era descartado — ele
+        // tocava em "Sports Therapy" e a consulta nascia "Treatment Session".
+        // Validar contra a lista da clínica fecha a mesma porta que a falha 9
+        // fechou (nenhuma string arbitrária entra) sem jogar fora a escolha.
         treatmentType: opcao
-          ? opcao.kind === "FIRST_CONSULTATION"
-            ? "Initial Consultation"
-            : "Treatment Session"
+          ? tipoEscolhido ?? (opcao.kind === "FIRST_CONSULTATION" ? "Initial Consultation" : "Treatment Session")
           : treatmentType,
         notes: notes || null,
         price: resolvedPrice,
@@ -310,7 +369,25 @@ export async function POST(request: NextRequest) {
               ? "ONLINE"
               : "IN_PERSON"
           : resolvedPaymentMethod,
-        kind: opcao ? opcao.kind : "CLINIC_BOOKED",
+        /**
+         * `opcao?.kind ?? "CLINIC_BOOKED"`, e não `opcao ? opcao.kind : …`.
+         *
+         * `BookingOption.kind` é `BookingKind | null`, e `null` quer dizer
+         * **bloqueada** — sem clínica, triagem pendente, ou preço não
+         * configurado. A guarda da linha 205 já devolveu erro nesses casos,
+         * então aqui `opcao.kind` nunca é nulo; o TypeScript só não consegue
+         * estreitar a essa distância, com `await`s pelo meio.
+         *
+         * O `??` diz isso de forma que o compilador verifique: se houver opção,
+         * o `kind` dela vale; se não houver — quem marcou foi a clínica —, é
+         * `CLINIC_BOOKED`. Comportamento idêntico ao de antes.
+         *
+         * E não é cosmético: este era o **único** erro real do arquivo, e ele
+         * fazia o TypeScript perder a inferência do `include` do `create`
+         * logo abaixo. Os outros 19 erros aqui eram cascata dele — todos
+         * dizendo que `appointment.patient` não existe, quando existe.
+         */
+        kind: opcao?.kind ?? "CLINIC_BOOKED",
         // O vínculo é o que permite devolver a sessão no cancelamento. Um
         // contador solto não sabe qual consulta gastou qual sessão.
         patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,

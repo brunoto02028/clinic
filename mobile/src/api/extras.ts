@@ -42,11 +42,15 @@ export interface SubscribeResult {
   subscription?: any; // present when activated directly (free / manual mode)
   message?: string;
 }
-export function subscribeToPlan(planId: string): Promise<SubscribeResult> {
+export function subscribeToPlan(
+  planId: string,
+  /** O código do cupom (084) — o servidor recalcula o desconto antes de cobrar. */
+  couponCode?: string | null
+): Promise<SubscribeResult> {
   return apiFetch<SubscribeResult>("/api/patient/membership/subscribe", {
     method: "POST",
     headers: { "x-platform": "mobile" },
-    body: JSON.stringify({ planId }),
+    body: JSON.stringify(couponCode ? { planId, couponCode } : { planId }),
   });
 }
 

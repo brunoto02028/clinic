@@ -81,7 +81,10 @@ Guidelines:
 - Plank / core / abs → CORE_ABDOMEN
 - If uncertain → OTHER`;
 
-    const result = await callAI(prompt, "");
+    // O segundo parametro de `callAI` e `AICallOptions`, nao uma string. O `""`
+    // nao tinha propriedade nenhuma em comum com ele; omitir e o que o codigo
+    // queria dizer.
+    const result = await callAI(prompt);
     const cleaned = result.trim().toUpperCase().replace(/[^A-Z_]/g, "");
     if ((VALID_REGIONS as readonly string[]).includes(cleaned)) return cleaned;
   } catch (e) {

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   Video,
+  BellRing,
   Plus,
   Phone,
   Calendar,
@@ -84,6 +85,46 @@ export default function VideoConsultationsPage() {
   });
   const { toast } = useToast();
 
+  /**
+   * "Testar agora": o mesmo agendamento, com a hora já preenchida (095 T-2).
+   *
+   * O Bruno não achou onde testar a videochamada. A tela sabia agendar desde o
+   * começo — o que faltava era um caminho que não exigisse escolher data, hora
+   * e duração só para ver a sala abrir.
+   *
+   * **O paciente continua sendo escolhido por você.** Criar um paciente de
+   * teste por botão encheria a lista de gente que não existe, e a regra da casa
+   * é que QA usa paciente de teste **identificado** — quem identifica é quem
+   * sabe qual é.
+   *
+   * Cinco minutos à frente porque a sala abre dez minutos antes: assim ela já
+   * está aberta quando a tela recarregar.
+   */
+  const agendarTeste = () => {
+    const daqui = new Date(Date.now() + 5 * 60000);
+    const local = new Date(daqui.getTime() - daqui.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setForm((f) => ({
+      ...f,
+      dateTime: local,
+      duration: 30,
+      /**
+       * Um tipo que **existe na lista** (QA da 095, T-2).
+       *
+       * Eu punha `"TEST — video call"`, que não casa com nenhum `SelectItem` —
+       * então o campo Tipo aparecia **em branco**. O valor sobrevivia no estado
+       * e a consulta nascia com ele, mas um campo vazio convida a pessoa a
+       * tocar no seletor, e aí a marca de teste se perdia.
+       *
+       * A marca vai na observação, que é texto livre e ninguém precisa tocar.
+       */
+      treatmentType: "Video Consultation",
+      notes: "TEST — consulta de teste. Apague depois.",
+    }));
+    setShowDialog(true);
+  };
+
   useEffect(() => {
     fetchVideoAppointments();
     fetchPatients();
@@ -122,10 +163,6 @@ export default function VideoConsultationsPage() {
     } catch {}
   };
 
-  const generateRoomId = () => {
-    return `room-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-  };
-
   const handleCreate = async () => {
     if (!form.patientId || !form.dateTime) {
       toast({ title: "Error", description: "Patient and date/time are required", variant: "destructive" });
@@ -133,8 +170,6 @@ export default function VideoConsultationsPage() {
     }
     setSubmitting(true);
     try {
-      const roomId = generateRoomId();
-      const videoRoomUrl = `/video-room/${roomId}`;
       
       const res = await fetch("/api/admin/appointments", {
         method: "POST",
@@ -142,8 +177,9 @@ export default function VideoConsultationsPage() {
         body: JSON.stringify({
           ...form,
           mode: "VIDEO",
-          videoRoomId: roomId,
-          videoRoomUrl,
+          // Sem `videoRoomId`/`videoRoomUrl`: a sala nasce no servidor, na
+          // primeira vez que alguem pede para entrar. Inventar um id aqui
+          // criava um endereco que nao correspondia a sala nenhuma.
           price: 0,
         }),
       });
@@ -162,12 +198,82 @@ export default function VideoConsultationsPage() {
     }
   };
 
-  const startCall = (appointment: VideoAppointment) => {
-    if (appointment.videoRoomUrl) {
-      window.open(appointment.videoRoomUrl, "_blank");
-    } else {
-      toast({ title: "No Room", description: "Video room not configured for this appointment", variant: "destructive" });
+  /**
+   * Entrar pela pagina da sala, e nao pela URL gravada.
+   *
+   * Isto fazia `window.open(appointment.videoRoomUrl)`, e o valor gravado era
+   * `/video-room/<id aleatorio>` — uma pagina que **nao existia**. O clique
+   * abria 404, e nenhuma sala tinha sido criada em lugar nenhum.
+   *
+   * A sala e privada: a URL dela sozinha nao abre nada. Quem entra precisa de um
+   * token nosso, preso a esta pessoa e a janela do horario, e quem o emite e o
+   * servidor — por isso o caminho e a pagina, que pede o token, e nao o link.
+   */
+  /**
+   * Chamar o paciente — a metade da videochamada que não existia.
+   *
+   * O terapeuta conseguia entrar na sala e esperar, e **nada avisava o
+   * paciente**. Se ele não estivesse com o app aberto naquele minuto, a consulta
+   * não acontecia.
+   *
+   * É botão e não automático ao entrar, de propósito: abrir a sala cedo para
+   * testar o microfone faria o telefone do paciente tocar sem ninguém ter
+   * decidido. E a resposta diz **quantos aparelhos tocaram** — zero é notícia,
+   * não erro: quer dizer que ele não tem o app ou desligou os avisos, e o
+   * terapeuta precisa saber disso antes de esperar dez minutos.
+   */
+  const [chamando, setChamando] = useState<string | null>(null);
+
+  const chamarPaciente = async (appointment: VideoAppointment) => {
+    setChamando(appointment.id);
+    try {
+      const res = await fetch(`/api/appointments/${appointment.id}/video/call`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: relabel("Could not call"),
+          description: data.error || `HTTP ${res.status}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast(
+        data.aparelhos > 0
+          ? {
+              title: relabel("Patient called"),
+              description: relabel(
+                `Their phone is ringing on ${data.aparelhos} device${data.aparelhos > 1 ? "s" : ""}.`
+              ),
+            }
+          : data.falhas > 0
+            ? {
+                // `falhas > 0` com `aparelhos: 0` é envio que não saiu — não é
+                // um fato sobre o paciente (achado 4 do QA da T-8).
+                title: relabel("The call did not go out"),
+                description: relabel(
+                  "The patient has a device, but the send failed. Try again, and reach them another way if it persists."
+                ),
+                variant: "destructive" as const,
+              }
+          : {
+              // Sem aparelho não é falha da chamada: é um fato sobre o paciente, e
+              // o terapeuta tem de saber para avisar por outro caminho.
+              title: relabel("Nobody to ring"),
+              description: relabel(
+                "This patient has no device registered, or has notifications off. Reach them another way."
+              ),
+              variant: "destructive",
+            }
+      );
+    } catch {
+      toast({ title: relabel("Could not call"), description: relabel("Try again."), variant: "destructive" });
+    } finally {
+      setChamando(null);
     }
+  };
+
+  const startCall = (appointment: VideoAppointment) => {
+    window.open(`/video-room/${appointment.id}`, "_blank");
   };
 
   if (loading) {
@@ -183,7 +289,25 @@ export default function VideoConsultationsPage() {
     );
   }
 
-  const upcoming = appointments.filter((a) => ["PENDING", "CONFIRMED"].includes(a.status));
+  /**
+   * "Upcoming" passa a significar **a janela ainda aberta**, e não "hoje".
+   *
+   * O QA de 27/09/2026 viu o painel oferecer "Join Video Call" numa consulta das
+   * 16:35 cuja janela fechou às 17:05 — o botão ativo, e o clique levando a
+   * "esta consulta já terminou". O servidor recusava certo; era a tela prometendo
+   * o que não entrega.
+   *
+   * A mesma folga do servidor (`FOLGA_DEPOIS_MIN`), para as duas pontas
+   * concordarem sobre quando uma consulta deixa de estar por vir.
+   */
+  const FIM_COM_FOLGA_MIN = 30;
+  const aindaPorVir = (a: VideoAppointment) => {
+    const fim = new Date(a.dateTime).getTime() + ((a.duration ?? 60) + FIM_COM_FOLGA_MIN) * 60_000;
+    return Date.now() <= fim;
+  };
+  const upcoming = appointments.filter(
+    (a) => ["PENDING", "CONFIRMED"].includes(a.status) && aindaPorVir(a)
+  );
   const past = appointments.filter((a) => ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(a.status));
 
   return (
@@ -195,9 +319,18 @@ export default function VideoConsultationsPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">{T("admin.videoConsultDesc")}</p>
         </div>
-        <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
-          <Plus className="h-4 w-4" /> Schedule Call
-        </Button>
+        <div className="flex gap-2">
+          {/* "Testar agora" **fora** do estado vazio (QA da 095, T-2).
+              O botão morava dentro da lista vazia: bastava existir uma consulta
+              por vídeo para ele sumir — e o roteiro de teste é justamente o que
+              alguém abre quando quer testar **de novo**. */}
+          <Button variant="outline" onClick={agendarTeste} className="gap-2">
+            <Video className="h-4 w-4" /> {relabel("Test it now")}
+          </Button>
+          <Button onClick={() => { setForm({ patientId: "", dateTime: "", duration: 30, treatmentType: "Video Consultation", notes: "" }); setShowDialog(true); }} className="gap-2">
+            <Plus className="h-4 w-4" /> Schedule Call
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -212,11 +345,35 @@ export default function VideoConsultationsPage() {
         <h2 className="text-lg font-semibold mb-3">Upcoming Consultations</h2>
         {upcoming.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
+            {/* Uma lista vazia não ensina nada, e esta tela só tem conteúdo
+                depois que alguém já soube marcar por vídeo — foi por isso que a
+                videochamada pareceu não existir (095 T-2). */}
+            <CardContent className="flex flex-col items-center justify-center py-12 px-6">
               <VideoOff className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium mb-1">No upcoming video consultations</h3>
-              <p className="text-sm text-muted-foreground mb-4">{relabel("Schedule a video call with a patient")}</p>
-              <Button onClick={() => setShowDialog(true)} className="gap-2"><Plus className="h-4 w-4" /> Schedule Call</Button>
+              <p className="text-sm text-muted-foreground mb-5 text-center max-w-md">
+                {relabel(
+                  "There are two ways in: schedule one here, or open an appointment you already have in the agenda and change its format to Remote."
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button onClick={() => setShowDialog(true)} className="gap-2">
+                  <Plus className="h-4 w-4" /> Schedule Call
+                </Button>
+                <Button variant="outline" onClick={agendarTeste} className="gap-2">
+                  <Video className="h-4 w-4" /> {relabel("Test it now")}
+                </Button>
+                <Button variant="outline" asChild className="gap-2">
+                  <a href="/admin/appointments">
+                    <Calendar className="h-4 w-4" /> {relabel("Open the agenda")}
+                  </a>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-5 text-center max-w-md">
+                {relabel(
+                  "The room opens ten minutes before the time and closes thirty after. The patient joins from the app; you join from here or from the agenda, and \"Call patient\" rings their phone."
+                )}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -239,9 +396,24 @@ export default function VideoConsultationsPage() {
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{new Date(apt.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
                     <span>{apt.duration} min</span>
                   </div>
-                  <Button size="sm" className="gap-1 w-full" onClick={() => startCall(apt)}>
-                    <Phone className="h-3.5 w-3.5" /> Join Video Call
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="gap-1 flex-1" onClick={() => startCall(apt)}>
+                      <Phone className="h-3.5 w-3.5" /> Join Video Call
+                    </Button>
+                    {/* Chamar vem ao lado de entrar, e não no lugar: são duas
+                        coisas, e o terapeuta costuma fazer as duas — entra, vê
+                        que está sozinho, chama. */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      disabled={chamando === apt.id}
+                      onClick={() => chamarPaciente(apt)}
+                    >
+                      <BellRing className="h-3.5 w-3.5" />
+                      {chamando === apt.id ? relabel("Calling...") : relabel("Call patient")}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

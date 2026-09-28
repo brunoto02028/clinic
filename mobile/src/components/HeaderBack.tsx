@@ -2,6 +2,7 @@ import { Pressable } from "react-native";
 import { useNavigation, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { PATIENT_HOME } from "@/lib/go-back";
+import { useTheme } from "@/theme/useTheme";
 
 /**
  * O botão de voltar do app.
@@ -28,7 +29,19 @@ import { PATIENT_HOME } from "@/lib/go-back";
  * Nenhum dos três pode falhar em silêncio, que era o problema original: um
  * botão que não responde, sem erro, sem log, sem nada.
  */
-export function HeaderBack({ tint = "#20242D" }: { tint?: string }) {
+/**
+ * **A cor não pode ter valor fixo.** Era `"#20242D"` — o `ink` — e os sete
+ * layouts chamam `<HeaderBack />` sem passar nada. No tom escuro isso é ink
+ * sobre quase-ink: **1,10:1**, e a seta desaparece de toda tela com cabeçalho,
+ * em todo módulo (medido pelo QA da 086, 26/09/2026).
+ *
+ * Quarta vez que este botão é consertado, e as três anteriores foram sobre
+ * *para onde* ele leva. Esta é sobre ele ser visível — o que, num botão, vem
+ * antes.
+ */
+export function HeaderBack({ tint }: { tint?: string }) {
+  const t = useTheme();
+  const cor = tint ?? t.colors.text;
   const navigation = useNavigation();
 
   const voltar = () => {
@@ -59,7 +72,7 @@ export function HeaderBack({ tint = "#20242D" }: { tint?: string }) {
         opacity: pressed ? 0.5 : 1,
       })}
     >
-      <Ionicons name="chevron-back" size={26} color={tint} />
+      <Ionicons name="chevron-back" size={26} color={cor} />
     </Pressable>
   );
 }

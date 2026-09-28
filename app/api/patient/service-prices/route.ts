@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getActor } from "@/lib/tenant-access";
-import { servicePricesForClinic } from "@/lib/service-price";
+import { servicePricesForPatient } from "@/lib/service-price";
 import { patientGate } from "@/lib/patient-gate";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json(await servicePricesForClinic(actor.clinicId));
+    return NextResponse.json(await servicePricesForPatient(actor.clinicId, actor.userId));
   } catch (error: any) {
     console.error("[patient/service-prices GET]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

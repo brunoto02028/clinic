@@ -1,8 +1,10 @@
 import { Stack } from "expo-router";
+import { BotaoDeTom } from "@/components/BotaoDeTom";
 import ModuleGuard from "@/components/ModuleGuard";
 import { HeaderBack } from "@/components/HeaderBack";
 import { deviceLang, t as tr } from "@/lib/i18n";
 
+import { useTheme } from "@/theme/useTheme";
 /**
  * A âncora do módulo.
  *
@@ -16,6 +18,7 @@ export const unstable_settings = {
 };
 
 export default function ClinicaLayout() {
+  const t = useTheme();
   // O idioma vem do aparelho, não do paciente: este layout monta antes de
   // qualquer consulta ao perfil, e é só um rótulo de botão.
   const lang = deviceLang();
@@ -50,8 +53,15 @@ export default function ClinicaLayout() {
           // O toque sempre faz alguma coisa.
           headerBackButtonDisplayMode: "minimal" as const,
           headerLeft: () => <HeaderBack />,
-          headerStyle: { backgroundColor: "#F5F4F1" },
-          headerTintColor: "#20242D",
+          // O tom, do lado oposto ao voltar (092 T-6).
+          //
+          // Repetido aqui, e nao herdado: cada modulo monta o proprio `Stack`, e
+          // `screenOptions` **nao** se herda entre navegadores. Eu tinha posto so no
+          // layout de `(app)` e escrito que cobria cinquenta e cinco telas "de graca
+          // pelo expo-router" — cobria cinco. Achado do review de 27/09/2026.
+          headerRight: () => <BotaoDeTom />,
+          headerStyle: { backgroundColor: t.colors.background },
+          headerTintColor: t.colors.text,
           headerShadowVisible: false,
         }}
       >

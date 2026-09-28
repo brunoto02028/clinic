@@ -30,7 +30,8 @@ export function Avatar({ label, uri, pillar, round, size = 36, style }: AvatarPr
   };
 
   const bg = pillar ? bgMap[pillar] : t.colors.primary;
-  const fg = pillar ? fgMap[pillar] : "#FFFFFF";
+  // Sobre `primary`, que é bone no escuro: branco sobre bone é 1,10:1.
+  const fg = pillar ? fgMap[pillar] : t.colors.primaryFg;
 
   const radius = round ? 9999 : 11;
   // Objeto apagado no storage, domínio fora do ar: sem isto sobrava um círculo

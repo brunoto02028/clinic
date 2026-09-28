@@ -140,7 +140,7 @@ export function ProfilePhotoPicker({ size = 80 }: { size?: number }) {
             borderColor: t.colors.background,
           }}
         >
-          <Ionicons name="camera" size={14} color="#FFFFFF" />
+          <Ionicons name="camera" size={14} color={t.colors.primaryFg} />
         </View>
       </View>
 

@@ -66,7 +66,33 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json(patients);
+    // Quem tem vídeo esperando (087, T-5).
+    //
+    // A fila responde "o que está esperando"; esta marca responde a outra
+    // pergunta, que é a que se faz olhando a lista: "**deste** paciente, tem
+    // algo para eu ver?" Sem ela, quem abre um prontuário não tem sinal nenhum
+    // de que há vídeo a assistir.
+    //
+    // Um `groupBy` e não uma contagem por linha: com trinta pacientes na tela,
+    // uma consulta por linha são trinta idas ao banco para desenhar um ponto.
+    const pendentes = patients.length
+      ? await (prisma as any).exerciseSubmission.groupBy({
+          by: ["patientId"],
+          where: {
+            clinicId: where.clinicId,
+            reviewedAt: null,
+            patientId: { in: patients.map((p) => p.id) },
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const porPaciente = new Map<string, number>(
+      pendentes.map((g: any) => [g.patientId, g._count._all as number])
+    );
+
+    return NextResponse.json(
+      patients.map((p) => ({ ...p, videosEsperando: porPaciente.get(p.id) ?? 0 }))
+    );
   } catch (error) {
     console.error("Error fetching admin patients:", error);
     return NextResponse.json({ error: "Failed to fetch patients" }, { status: 500 });
@@ -175,6 +201,9 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
 
         role: "PATIENT",
+        // Conta criada pela própria clínica: já é paciente dela (083). Um
+        // cadastro feito pela pessoa nasce `false` e vê só o laboratório.
+        isClinicPatient: true,
         isActive: true,
         emailVerified: new Date(), // Mark as verified since admin created it
         clinicId: actor.clinicId,
@@ -346,6 +375,37 @@ export async function DELETE(request: NextRequest) {
     }
     if (currentUser.role !== "SUPERADMIN" && patient.clinicId !== currentUser.clinicId) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    /**
+     * Não se apaga quem tem exame de laboratório, nem o dele nem o de outra
+     * pessoa (091 T-7, achado do review de 27/09/2026).
+     *
+     * `LabOrder.patientId` cascateia. Apagar **quem pagou** destruiria o
+     * pedido e o resultado do filho dele — registro de um terceiro. E apagar
+     * **o sujeito** zeraria `subjectId`, e aí `identidadeParaOLaboratorio`
+     * passaria a devolver o nome e a data de nascimento do responsável para
+     * uma amostra que é da criança: faixa de referência errada com cara de
+     * certa, que é o defeito que aquela função existe para impedir.
+     *
+     * Registro clínico e financeiro não é para apagar a pedido. Quem precisa
+     * sair do sistema é desativado — o caminho que a exclusão de conta do
+     * próprio paciente já usa.
+     */
+    const exames = await prisma.labOrder.count({
+      where: { OR: [{ patientId }, { subjectId: patientId }] },
+    });
+    if (exames > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This person has laboratory orders and cannot be deleted. Deactivate the account instead.",
+          errorPt:
+            "Esta pessoa tem pedidos de exame e não pode ser apagada. Desative a conta em vez disso.",
+          code: "has_lab_orders",
+        },
+        { status: 409 }
+      );
     }
 
     await prisma.user.delete({ where: { id: patientId } });

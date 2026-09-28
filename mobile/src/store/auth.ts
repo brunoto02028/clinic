@@ -1,7 +1,15 @@
 import { create } from "zustand";
 import { tokenStorage } from "@/lib/secure-storage";
+import { definirTokenEmprestado } from "@/lib/emprestimo";
 import { setOnAuthFailure, refreshSession, pendingRefresh } from "@/api/client";
-import { loginRequest, logoutRequest, registerRequest } from "@/api/auth";
+import {
+  loginRequest,
+  logoutRequest,
+  registerRequest,
+  googleSignInRequest,
+  appleSignInRequest,
+} from "@/api/auth";
+import type { CredencialApple } from "@/lib/social-signin";
 import { registrarParaPush, desregistrarPush } from "@/lib/push";
 import type { AuthUser } from "@/api/types";
 import { clearSessionCache } from "@/lib/query-client";
@@ -25,6 +33,18 @@ interface AuthState {
   /** Volta a trancar sem derrubar a sessão (app ficou tempo demais em segundo plano). */
   relock: () => void;
   login: (email: string, password: string) => Promise<void>;
+  /**
+   * Entrar com uma credencial que a **tela** já obteve (097 T-3/T-4).
+   *
+   * Quem fala com o SDK é a tela, não a loja. Parece detalhe e não é: quando o
+   * servidor responde 409 (*já existe conta com esse e-mail*), a tela precisa
+   * **guardar aquela mesma credencial** para ligar o provedor depois da senha.
+   * Se a loja a obtivesse por dentro, o token morreria aqui e a tela teria de
+   * abrir a folha do Google uma segunda vez, em cima da mensagem de erro — ou,
+   * na Apple, pedir o Face ID de novo.
+   */
+  loginComGoogle: (idToken: string) => Promise<void>;
+  loginComApple: (cred: CredencialApple) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -113,8 +133,32 @@ export const useAuth = create<AuthState>((set) => ({
     void registrarParaPush();
   },
 
+  /**
+   * O depois do login é **o mesmo** dos três caminhos (097 T-3/T-4).
+   *
+   * Guardar tokens, limpar o cache da sessão anterior, virar o status e só
+   * então pedir push. Três cópias disto seria a garantia de que uma delas
+   * esqueceria o `clearSessionCache` — e aí quem entrasse depois abriria o
+   * app com os dados de saúde de quem usou o aparelho antes.
+   */
   register: async (firstName, lastName, email, password, tenantSlug) => {
     const res = await registerRequest(firstName, lastName, email, password, tenantSlug);
+    await tokenStorage.save(res.accessToken, res.refreshToken);
+    await clearSessionCache();
+    set({ status: "authenticated", user: res.user });
+    void registrarParaPush();
+  },
+
+  loginComGoogle: async (idToken) => {
+    const res = await googleSignInRequest(idToken);
+    await tokenStorage.save(res.accessToken, res.refreshToken);
+    await clearSessionCache();
+    set({ status: "authenticated", user: res.user });
+    void registrarParaPush();
+  },
+
+  loginComApple: async (cred) => {
+    const res = await appleSignInRequest(cred);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     await clearSessionCache();
     set({ status: "authenticated", user: res.user });
@@ -131,6 +175,13 @@ export const useAuth = create<AuthState>((set) => ({
     const refresh = await tokenStorage.getRefresh();
     if (refresh) await logoutRequest(refresh);
     await tokenStorage.clear();
+    // E o token emprestado, que mora em memória e não no armazenamento (091
+    // T-7). Sem esta linha ele sobrevivia ao logout: a mãe saía sem tocar em
+    // "Voltar para mim", outra pessoa logava no mesmo aparelho, e **toda**
+    // chamada seguinte saía com o Bearer da filha — lendo e escrevendo no
+    // prontuário dela, porque o emprestado ganha do próprio. Achado do review
+    // de segurança de 27/09/2026.
+    definirTokenEmprestado(null);
     // The step that was missing: tokens went, cached health data stayed.
     await clearSessionCache();
     set({ status: "unauthenticated", user: null });
@@ -141,7 +192,9 @@ export const useAuth = create<AuthState>((set) => ({
 // reflect that in the store so the UI redirects to login.
 setOnAuthFailure(() => {
   // A lost session is an identity change too — the next person to sign in
-  // must not inherit this one's cache.
+  // must not inherit this one's cache. Nem o token emprestado (091 T-7): ele
+  // é de memória, então sobrevive a tudo que não o apague à mão.
+  definirTokenEmprestado(null);
   void clearSessionCache();
   useAuth.setState({ status: "unauthenticated", user: null });
 });

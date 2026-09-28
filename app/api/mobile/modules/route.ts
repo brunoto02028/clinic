@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     // The extra per-user flags this endpoint needs beyond the actor.
     const user = await prisma.user.findUnique({
       where: { id: actor.userId },
-      select: { moduleOverrides: true, fullAccessOverride: true },
+      select: { moduleOverrides: true, fullAccessOverride: true, isClinicPatient: true },
     });
 
     // Training is default-on for a personal-trainer tenant (or explicitly enabled).
@@ -69,8 +69,54 @@ export async function GET(request: NextRequest) {
     // Lab/Clinic/BA — mirroring the web separation. Checked before the
     // admins-see-everything path so a personal ADMIN doesn't get clinic modules.
     const clinic = actor.clinicId
-      ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } })
+      ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true, labVisibleInApp: true } })
       : null;
+
+    /**
+     * O laboratório aparece? (081)
+     *
+     * Era o build que decidia (`EXPO_PUBLIC_SHOW_LAB`), então mudar de ideia
+     * custava um binário. Agora é a clínica, na tela: desligado, o módulo some
+     * do app na próxima vez que ele pergunta quais áreas existem — inclusive
+     * para a equipe, senão "esconder" não esconderia de quem testa.
+     */
+    const labOn = clinic?.labVisibleInApp === true;
+    /**
+     * A liberação individual vence o interruptor geral (decisão do Bruno,
+     * 26/09/2026).
+     *
+     * O interruptor de /admin/labs é o **padrão da clínica**, não uma chave
+     * mestra: desligado, o laboratório desaparece para todos — menos para quem
+     * tem `mod_lab` liberado na tela de permissões daquele paciente. É o que
+     * permite um piloto de duas pessoas antes de abrir para todo mundo.
+     *
+     * A negação individual continua vencendo nos dois casos: ligado o geral,
+     * `mod_lab` bloqueado ou oculto ainda esconde.
+     */
+    const overrides = (user?.moduleOverrides as Record<string, unknown> | null) || {};
+    const labDele = overrideGrants(overrides["mod_lab"]);
+    const labParaEste = labDele === false ? false : labOn || labDele === true;
+    const semLab = <T extends { key: string }>(mods: T[]): T[] =>
+      labParaEste ? mods : mods.filter((m) => m.key !== "lab");
+
+    /**
+     * **A BA não entra no app do paciente.**
+     *
+     * Este binário é o app da clínica: laboratório e clínica. A BA é outro
+     * produto, para outra gente, e aparecia no seletor porque o atalho de
+     * "admin vê tudo" devolve `MODULE_DEFS` inteiro — então o Bruno abria o app
+     * e via três áreas onde deviam existir duas (medido no aparelho dele,
+     * 26/09/2026).
+     *
+     * Paciente nunca recebeu: a BA depende de `ORDERS`/`SOCIAL_MEDIA` em
+     * `ClinicModuleAccess`, que a BPR não tem. Quem via era só a equipe.
+     *
+     * Uma concessão explícita continua abrindo a porta — é o mesmo desenho do
+     * laboratório, e é o que permite voltar atrás sem mexer em código.
+     */
+    const baLiberado = overrideGrants(overrides["mod_ba"]) === true;
+    const semBa = <T extends { key: string }>(mods: T[]): T[] =>
+      baLiberado ? mods : mods.filter((m) => m.key !== "ba");
     if (isPersonalTenant(clinic?.type)) {
       return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
@@ -86,10 +132,8 @@ export async function GET(request: NextRequest) {
       actor.role === "ADMIN" ||
       actor.role === "THERAPIST"
     ) {
-      return corsJson(withTraining([...MODULE_DEFS]));
+      return corsJson(withTraining(semBa(semLab([...MODULE_DEFS]))));
     }
-
-    const overrides = (user?.moduleOverrides as Record<string, boolean> | null) || {};
 
     // Check clinic-level module access
     let clinicModules: string[] = [];
@@ -117,8 +161,22 @@ export async function GET(request: NextRequest) {
     // have done that to all of them at once. An explicit override removes it.
     const clinicaDenied = overrideGrants(overrides["mod_clinica"]) === false;
     const keys = new Set(available.map((m) => m.key));
-    if (!clinicaDenied) {
+    // A área da clínica é de quem é paciente dela. Alguém indicado por um
+    // amigo baixa o app, compra um exame de laboratório e nunca foi atendido —
+    // dar a ele prontuário, exercícios e mensagens de uma clínica que nunca o
+    // viu é oferecer a casa de outra pessoa (083). Uma concessão explícita no
+    // `moduleOverrides` continua valendo: é a clínica dizendo "este é meu".
+    const clinicaConcedida = overrideGrants(overrides["mod_clinica"]) === true || user?.isClinicPatient === true;
+    if (!clinicaDenied && clinicaConcedida) {
       keys.add("clinica");
+    }
+    // O interruptor da clínica **concede**, não só remove. Escrito só como
+    // filtro, ligar o laboratório não ligava nada: o paciente continuava
+    // dependendo de uma linha `DIAGNOSTICS` em ClinicModuleAccess que a BPR
+    // nunca teve, e o módulo não aparecia (medido em produção, 26/09/2026).
+    // Uma negação explícita do paciente continua valendo.
+    if (labParaEste) {
+      keys.add("lab");
     }
     const result = MODULE_DEFS.filter((m) => keys.has(m.key));
 
@@ -135,7 +193,7 @@ export async function GET(request: NextRequest) {
     // here was unreachable: when clinica is not denied it is added to `keys`
     // above, so `result` is never empty; when it is denied the condition is
     // already true. An empty list is the honest answer for a denied account.
-    return corsJson(withTraining(result));
+    return corsJson(withTraining(semBa(semLab(result))));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

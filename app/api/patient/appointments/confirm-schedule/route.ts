@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     // during impersonation like the other patient-initiated writes
     // (app/api/patient/profile, app/api/patient/consent).
     if (effective.isImpersonating) {
-      return NextResponse.json({ error: "Cannot confirm schedule while impersonating" }, { status: 403 });
+      return NextResponse.json({ error: "Cannot confirm a schedule while viewing as someone else", errorPt: "Não dá para confirmar uma agenda enquanto você vê como outra pessoa" }, { status: 403 });
     }
     const patientId = effective.userId;
 

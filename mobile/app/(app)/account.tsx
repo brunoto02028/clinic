@@ -1,14 +1,15 @@
-import { View } from "react-native";
+import { View, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, ListItem, Button, Spinner } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { useModule } from "@/store/module";
-import { fetchProfile } from "@/api/profile";
+import { fetchProfile, updateProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { CLINIC_ONLY } from "@/lib/feature-flags";
+import { useAreaSwitch } from "@/lib/areas";
+import { useThemeStore } from "@/store/theme";
 import { BiometricLockRow, useBiometricCapability } from "@/components/BiometricLockRow";
 import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 
@@ -29,7 +30,33 @@ export default function Account() {
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
+  const { canSwitch, switchArea } = useAreaSwitch();
+  const escolhaDeTema = useThemeStore((s) => s.escolha);
+  const definirModo = useThemeStore((s) => s.definir);
   const bio = useBiometricCapability();
+  const qc = useQueryClient();
+
+  /**
+   * Trocar de idioma vale na hora, e não ao salvar um formulário.
+   *
+   * `useLang()` lê a consulta `profile`, então mexer no cache já repinta o app
+   * inteiro antes de o servidor responder. Se o servidor recusar, o
+   * `invalidateQueries` do fim traz a verdade de volta — e o pior caso é a
+   * língua voltar sozinha, não a pessoa ficar presa na errada.
+   */
+  const trocarIdioma = useMutation({
+    mutationFn: (locale: string) => updateProfile({ preferredLocale: locale }),
+    onMutate: async (locale) => {
+      await qc.cancelQueries({ queryKey: ["profile"] });
+      const antes = qc.getQueryData(["profile"]);
+      qc.setQueryData(["profile"], (p: any) => (p ? { ...p, preferredLocale: locale } : p));
+      return { antes };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.antes) qc.setQueryData(["profile"], ctx.antes);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  });
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -38,11 +65,6 @@ export default function Account() {
 
   const fullName = profile ? `${profile.firstName} ${profile.lastName}` : user?.name ?? "";
   const email = profile?.email ?? user?.email ?? "";
-
-  const handleSwitchModule = () => {
-    clearModule();
-    router.replace("/module-select");
-  };
 
   const handleLogout = async () => {
     clearModule();
@@ -106,6 +128,13 @@ export default function Account() {
             title={tr(lang, { en: "Change password", pt: "Alterar senha" })}
             icon={<Ionicons name="lock-closed-outline" size={18} color={t.colors.text} />}
             onPress={() => router.push("/change-password")}
+          />
+          {/* Contas conectadas (097 T-2): é aqui que se desfaz o vínculo com o
+              Google ou a Apple — e a T-2 exige que dê para desfazer. */}
+          <ListItem
+            title={tr(lang, { en: "Connected accounts", pt: "Contas conectadas" })}
+            icon={<Ionicons name="link-outline" size={18} color={t.colors.text} />}
+            onPress={() => router.push("/connected-accounts")}
             last={!bio || !bio.hasHardware}
           />
           {/* Num aparelho sem sensor a linha não existe, e aí quem fecha a
@@ -113,14 +142,133 @@ export default function Account() {
           {bio?.hasHardware && <BiometricLockRow cap={bio} last />}
         </Card>
 
-        {/* Nothing to switch to in a clinic-only build, and the chooser it
-            opens is the screen that build exists to skip. */}
-        {!CLINIC_ONLY && (
+        {/* O idioma morava **só** dentro de "Editar perfil", num formulário
+            que exige tocar em Salvar — e quem entra no app na língua errada
+            tem dificuldade justamente para achar o caminho até lá. Aqui, ao
+            lado da aparência, ele é o que é: uma preferência de leitura, que
+            muda na hora (pedido do Bruno, 26/09/2026). */}
+        <Card>
+          <View style={{ paddingVertical: 4 }}>
+            <Text variant="label" style={{ fontWeight: "600" }}>
+              {tr(lang, { en: "Language", pt: "Idioma" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+              {tr(lang, { en: "The language you read the app in.", pt: "A língua em que você lê o app." })}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              {([
+                { codigo: "en-GB", rotulo: "English", bandeira: "🇬🇧" },
+                { codigo: "pt-BR", rotulo: "Português", bandeira: "🇧🇷" },
+              ] as const).map((l) => {
+                const ativo = (lang === "pt") === l.codigo.startsWith("pt");
+                return (
+                  <Pressable
+                    key={l.codigo}
+                    onPress={() => trocarIdioma.mutate(l.codigo)}
+                    disabled={trocarIdioma.isPending}
+                    testID={`lang-${l.codigo}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: ativo }}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: ativo ? 2 : 1,
+                      borderColor: ativo ? t.colors.health : t.colors.border,
+                      backgroundColor: ativo ? t.colors.healthSoft : t.colors.surface,
+                      opacity: trocarIdioma.isPending ? 0.6 : 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{l.bandeira}</Text>
+                    <Text
+                      variant="caption"
+                      color={ativo ? t.colors.health : t.colors.textSecondary}
+                      style={{ fontWeight: ativo ? "700" : "400" }}
+                    >
+                      {l.rotulo}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </Card>
+
+        {/* A aparência é escolha da pessoa (086). Dois botões e não um
+            interruptor: "claro/escuro" como par mostra o que existe, enquanto
+            um switch obriga a descobrir o que o estado desligado significa. */}
+        <Card>
+          <View style={{ paddingVertical: 4 }}>
+            <Text variant="label" style={{ fontWeight: "600" }}>
+              {tr(lang, { en: "Appearance", pt: "Aparência" })}
+            </Text>
+            <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+              {tr(lang, { en: "How the app looks on this phone.", pt: "Como o app fica neste aparelho." })}
+            </Text>
+            {/* Três, e "o aparelho" é o primeiro: é o padrão de quem nunca
+                escolheu, e o que a maior parte das pessoas quer sem saber que
+                quer — o telefone escurece à noite e o app acompanha. */}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+              {(["system", "light", "dark"] as const).map((m) => {
+                const ativo = escolhaDeTema === m;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => definirModo(m)}
+                    testID={`theme-${m}`}
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      gap: 6,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: ativo ? 2 : 1,
+                      borderColor: ativo ? t.colors.health : t.colors.border,
+                      backgroundColor: ativo ? t.colors.healthSoft : t.colors.surface,
+                    }}
+                  >
+                    <Ionicons
+                      name={
+                        m === "dark"
+                          ? "moon-outline"
+                          : m === "light"
+                            ? "sunny-outline"
+                            : "phone-portrait-outline"
+                      }
+                      size={20}
+                      color={ativo ? t.colors.health : t.colors.textMuted}
+                    />
+                    <Text
+                      variant="caption"
+                      color={ativo ? t.colors.health : t.colors.textSecondary}
+                      style={{ fontWeight: ativo ? "700" : "400" }}
+                    >
+                      {m === "dark"
+                        ? tr(lang, { en: "Dark", pt: "Escuro" })
+                        : m === "light"
+                          ? tr(lang, { en: "Light", pt: "Claro" })
+                          : tr(lang, { en: "Phone", pt: "Aparelho" })}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </Card>
+
+        {/* Escondido por `!CLINIC_ONLY`, o que deixava a conta sem saída neste
+            build: o servidor concedia o laboratório e nada no app levava até
+            ele. Quem manda agora é quantas áreas a conta tem — `CLINIC_ONLY`
+            decide onde a pessoa cai, não onde ela pode ir. */}
+        {canSwitch && (
           <Button
-            title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })}
+            title={tr(lang, { en: "Switch area", pt: "Trocar de área" })}
             variant="ghost"
-            onPress={handleSwitchModule}
+            onPress={switchArea}
             size="md"
+            testID="account-switch-area"
           />
         )}
 
@@ -131,6 +279,21 @@ export default function Account() {
           size="md"
           testID="sign-out"
         />
+
+        {/* Apagar a conta fica **depois** de sair, e em texto pequeno.
+            A Apple exige que exista e seja alcançável; nada exige que ela
+            divida espaço com as coisas do dia a dia. Quem procura, acha; quem
+            não procura, não esbarra (090). */}
+        <Text
+          variant="caption"
+          color={t.colors.textMuted}
+          onPress={() => router.push("/delete-account")}
+          accessibilityRole="button"
+          testID="ir-apagar-conta"
+          style={{ textAlign: "center", textDecorationLine: "underline", paddingVertical: 12 }}
+        >
+          {tr(lang, { en: "Delete my account", pt: "Apagar minha conta" })}
+        </Text>
       </View>
     </Screen>
   );

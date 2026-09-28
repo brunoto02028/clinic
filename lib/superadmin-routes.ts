@@ -7,6 +7,7 @@ export const SUPERADMIN_ONLY_ADMIN_PAGES = [
   "/admin/settings",
   "/admin/patient-portal",
   "/admin/service-pricing",
+  "/admin/coupons", // campanhas de desconto (084) — a mesma mão que precifica
   "/admin/articles", // BPR's public blog
   "/admin/clinics",
   "/admin/stripe-branding",

@@ -8,6 +8,7 @@ import { ProfilePhotoPicker } from "@/components/ProfilePhotoPicker";
 import { useTheme } from "@/theme/useTheme";
 import { fetchProfile, updateProfile } from "@/api/profile";
 import { useLang, t as tr } from "@/lib/i18n";
+import { paraIsoDate } from "@/lib/datas";
 
 // The system's Locale type is "en-GB" | "pt-BR" (lib/i18n.ts), and the web's
 // switch writes exactly those. This wrote "en" / "pt", which nothing reads —
@@ -35,6 +36,9 @@ export default function ProfileEdit() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
   const [preferredLocale, setPreferredLocale] = useState("en-GB");
 
   useEffect(() => {
@@ -43,6 +47,9 @@ export default function ProfileEdit() {
     setLastName(profile.lastName ?? "");
     setEmail(profile.email ?? "");
     setPhone(profile.phone ?? "");
+    setAddress(profile.address ?? "");
+    setCity(profile.city ?? "");
+    setPostcode(profile.postcode ?? "");
     // The API sends "1990-05-12T00:00:00.000Z" into a field whose placeholder
     // says DD/MM/YYYY. The web splits on "T"; this showed the raw timestamp.
     const dob = profile.dateOfBirth ? String(profile.dateOfBirth).split("T")[0] : "";
@@ -69,15 +76,9 @@ export default function ProfileEdit() {
     ),
   });
 
-  /** The field asks for DD/MM/YYYY; the API parses with `new Date`, which reads
-   *  that as an Invalid Date. Convert here rather than ask the patient to type
-   *  ISO. */
-  const toIsoDate = (v: string): string | undefined => {
-    const trimmed = v.trim();
-    if (!trimmed) return undefined;
-    const br = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return br ? `${br[3]}-${br[2]}-${br[1]}` : trimmed;
-  };
+  // A conversão DD/MM/YYYY → ISO mora em `@/lib/datas` desde a 091 T-2, quando
+  // a tela de dependentes passou a precisar da mesma coisa.
+  const toIsoDate = paraIsoDate;
 
   const nameMissing = !firstName.trim() || !lastName.trim();
 
@@ -95,6 +96,11 @@ export default function ProfileEdit() {
       phone,
       dateOfBirth: toIsoDate(dateOfBirth),
       preferredLocale,
+      // String vazia apaga o campo de propósito: se a pessoa limpou o endereço,
+      // ela quis limpar. `null` é o que o servidor grava para "não tenho".
+      address: address.trim() || null,
+      city: city.trim() || null,
+      postcode: postcode.trim() || null,
     });
   };
 
@@ -185,6 +191,37 @@ export default function ProfileEdit() {
             onChangeText={setDateOfBirth}
             placeholder="DD/MM/YYYY"
           />
+          {/* Endereço, cidade e código postal não tinham campo aqui — quem
+              digitasse errado no cadastro ficava preso, sem nada na tela para
+              corrigir. E o código postal é o que acha ponto de coleta perto de
+              casa, então ele não pode depender de alguém do outro lado. */}
+          <Input
+            label={tr(lang, { en: "Address", pt: "Endereço" })}
+            value={address}
+            onChangeText={setAddress}
+            placeholder={tr(lang, { en: "Street and number", pt: "Rua e número" })}
+            autoCapitalize="words"
+          />
+          <Input
+            label={tr(lang, { en: "City", pt: "Cidade" })}
+            value={city}
+            onChangeText={setCity}
+            autoCapitalize="words"
+          />
+          <Input
+            label={tr(lang, { en: "Postcode", pt: "Código postal" })}
+            value={postcode}
+            onChangeText={setPostcode}
+            placeholder="W1G 9QD"
+            autoCapitalize="characters"
+            testID="profile-postcode"
+          />
+          <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: -8 }}>
+            {tr(lang, {
+              en: "We use your postcode to find blood collection points near you.",
+              pt: "Usamos seu código postal para achar pontos de coleta perto de você.",
+            })}
+          </Text>
         </Card>
 
         {/* Language preference */}

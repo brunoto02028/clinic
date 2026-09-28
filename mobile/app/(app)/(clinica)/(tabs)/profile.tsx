@@ -13,7 +13,31 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "Messages", pt: "Mensagens" }, icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages" },
   { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
   { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents" },
+  /**
+   * Faturas.
+   *
+   * A clínica emitia, numerava, gerava o PDF com o logo da BPR e mandava por
+   * e-mail depois da aprovação — e o paciente não tinha onde vê-las. Quem
+   * apagasse o e-mail perdia a fatura, e o app é o único lugar dele depois do
+   * lançamento. Fica ao lado dos documentos porque é o que é: papel da clínica
+   * que pertence ao paciente.
+   */
+  { title: { en: "Invoices", pt: "Faturas" }, icon: "receipt-outline", href: "/(app)/(clinica)/invoices" },
+  /**
+   * Quem eu cuido (089/091).
+   *
+   * A tela existia e só era alcançável **de dentro do laboratório** — pelo perfil
+   * do lab e pelo checkout do exame. Uma mãe que quer marcar **consulta** para a
+   * filha não tinha por onde cadastrá-la: o recurso existia e não tinha porta.
+   *
+   * O caminho continua o mesmo arquivo, de propósito: duas telas para a mesma
+   * lista seriam duas listas em duas semanas.
+   */
+  { title: { en: "People I look after", pt: "Quem eu cuido" }, icon: "people-outline", href: "/(app)/(lab)/dependents" },
   { title: { en: "Treatment plan", pt: "Plano de tratamento" }, icon: "heart-outline", href: "/(app)/(clinica)/treatment-protocol" },
+  // Os planos que a clínica oferece a este paciente (082, T-3). A API já
+  // filtrava por paciente; faltava a porta.
+  { title: { en: "Plans", pt: "Planos" }, icon: "pricetags-outline", href: "/(app)/(clinica)/plans" },
   { title: { en: "Pending actions", pt: "Pendências" }, icon: "notifications-outline", href: "/(app)/(clinica)/tasks" },
   { title: { en: "Assessment screening", pt: "Avaliação" }, icon: "shield-outline", href: "/(app)/(clinica)/screening" },
   { title: { en: "My progress", pt: "Meu progresso" }, icon: "trending-up-outline", href: "/(app)/(clinica)/assessment-progress" },

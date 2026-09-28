@@ -83,6 +83,7 @@ describe("GET /api/admin/pending-count", () => {
       unreviewedSubmissions: 0,
       patientsWithoutExercises: 0,
       messagesAwaitingApproval: 0,
+      labResultsAwaitingRelease: 0,
       patientsInPain: 0,
     });
     expect(users.findMany).not.toHaveBeenCalled();

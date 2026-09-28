@@ -7,6 +7,7 @@ import { deleteR2Url, uploadToR2 } from "@/lib/r2";
 import { processAndStoreExerciseVideo, MediaStorageError } from "@/lib/exercise-media";
 import { ALLOWED_THUMBNAIL_TYPES, MAX_THUMBNAIL_BYTES } from "@/lib/exercise-media";
 import path from "path";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
     }
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
 
     const updateData: any = {};
 

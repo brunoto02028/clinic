@@ -214,6 +214,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ prescriptions: [], count: 0, skipped, restored, folderName }, { status: 200 });
     }
 
+    /**
+     * O padrão de cada exercício, para o ramo da lista.
+     *
+     * O ramo da pasta já lia isto ao expandir a pasta; o da lista não lia
+     * nunca, e quem manda um exercício avulso não digita a dose que o próprio
+     * exercício já traz.
+     */
+    const padrao = new Map(
+      (
+        (await prisma.exercise.findMany({
+          where: { clinicId, id: { in: toCreate.map((ex: any) => ex.exerciseId) } },
+          select: { id: true, defaultSets: true, defaultReps: true, defaultHoldSec: true, defaultRestSec: true },
+        })) ?? []
+        // `?? []` porque a prescrição não pode morrer por causa da **dose
+        // padrão**: sem a lista, cada exercício entra com o que veio no pedido
+        // e o resto fica nulo — que é exatamente o comportamento de antes.
+      ).map((e) => [e.id, e])
+    );
+
     const created = await prisma.$transaction(
       toCreate.map((ex: any) =>
         prisma.exercisePrescription.create({
@@ -222,10 +241,29 @@ export async function POST(req: NextRequest) {
             therapistId,
             patientId,
             exerciseId: ex.exerciseId,
-            sets: ex.sets || null,
-            reps: ex.reps || null,
-            holdSeconds: ex.holdSeconds || null,
-            restSeconds: ex.restSeconds || null,
+            /**
+             * Dose e orientação, com as duas quedas certas (QA da 095, 5.4).
+             *
+             * O exercício avulso nascia **sem nada**: sem série, sem repetição,
+             * sem frequência e sem observação — e o diálogo dizia o contrário,
+             * *"with its own default sets and reps"*.
+             *
+             * Eram duas perdas na mesma linha. O padrão do exercício
+             * (`defaultSets`/`defaultReps`) só era aplicado no ramo da pasta; e
+             * `frequency`/`notes` chegavam **no topo** do corpo, enquanto aqui
+             * só se lia por item — sumiam sem erro nenhum.
+             *
+             * Pior que o campo vazio: painel e paciente passavam a discordar do
+             * mesmo exercício. O painel dizia "No sets/reps set" e a tela do
+             * paciente, que cai no padrão do exercício, mostrava 3×12 — uma dose
+             * que ninguém escolheu.
+             */
+            sets: ex.sets ?? padrao.get(ex.exerciseId)?.defaultSets ?? null,
+            reps: ex.reps ?? padrao.get(ex.exerciseId)?.defaultReps ?? null,
+            holdSeconds: ex.holdSeconds ?? padrao.get(ex.exerciseId)?.defaultHoldSec ?? null,
+            restSeconds: ex.restSeconds ?? padrao.get(ex.exerciseId)?.defaultRestSec ?? null,
+            frequency: ex.frequency || frequency || null,
+            notes: ex.notes || notes || null,
             // Per exercise, falling back to one given for the whole request:
             // prescribing a set under a single group is the common case, and
             // requiring it to be repeated on every entry invites drift.
@@ -270,7 +308,24 @@ export async function POST(req: NextRequest) {
     let notified: { channel: string; success: boolean } | null = null;
     try {
       const count = created.length;
-      const programme = folderName || (count === 1 ? "New exercise" : "New exercises");
+      /**
+       * O nome que o **paciente** vê, e não o da nossa estante (QA da 095 T-5).
+       *
+       * Isto era `folderName`, e daí saía *"A sua clínica adicionou 7 novos
+       * exercícios (**Advanced Core**) ao seu portal"*. Uma pasta pode ser um
+       * programa que a pessoa reconhece — "Swimmer's Shoulder" — ou o nosso
+       * arquivo, organizado por região do corpo e por lote de importação. A
+       * mensagem não tem como saber qual é.
+       *
+       * `displayGroup` existe exatamente para isto: *"o que o paciente vê este
+       * exercício filado sob"*. Quando quem prescreve escolhe um, ele vai; sem
+       * ele, a mensagem fica genérica, que é honesto — em vez de expor como a
+       * clínica arruma a biblioteca.
+       *
+       * `folderName` continua no retorno da rota e no log: lá é da clínica,
+       * para a clínica.
+       */
+      const programme = displayGroup || (count === 1 ? "New exercise" : "New exercises");
       const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
       const result = await notifyPatient({
         patientId,

@@ -151,114 +151,38 @@ export async function POST(
     const leftImages = (footScan.leftFootImages as string[]) || [];
     const rightImages = (footScan.rightFootImages as string[]) || [];
     const captureMetadata = footScan.captureMetadata as any;
-    const hasLeftSTL = !!footScan.leftFootScanUrl;
-    const hasRightSTL = !!footScan.rightFootScanUrl;
-    
-    // Allow analysis with STL only (no images required for testing)
-    if (leftImages.length === 0 && rightImages.length === 0 && !hasLeftSTL && !hasRightSTL) {
-      return NextResponse.json({ error: 'No foot images or STL files to analyze' }, { status: 400 });
-    }
-    
-    // If no images but has STL, provide mock analysis for testing
-    if (leftImages.length === 0 && rightImages.length === 0 && (hasLeftSTL || hasRightSTL)) {
-      // STL-only test mode - return mock analysis
-      const mockAnalysis = {
-        archType: 'Normal',
-        archIndex: 0.25,
-        pronation: 'Neutral',
-        calcanealAlignment: 0,
-        halluxValgusAngle: 10,
-        metatarsalSpread: 95,
-        navicularHeight: 25,
-        leftFootLength: hasLeftSTL ? 260 : 0,
-        rightFootLength: hasRightSTL ? 260 : 0,
-        leftFootWidth: hasLeftSTL ? 100 : 0,
-        rightFootWidth: hasRightSTL ? 100 : 0,
-        leftArchHeight: hasLeftSTL ? 25 : 0,
-        rightArchHeight: hasRightSTL ? 25 : 0,
-        gaitAnalysis: {
-          pattern: 'Normal',
-          symmetry: 'Symmetric',
-          concerns: []
+    /**
+     * Havia aqui um "modo de teste" que devolvia análise **inventada**, e ele
+     * foi removido em 27/09/2026.
+     *
+     * O que existia: dois sinalizadores, `hasLeftSTL` e `hasRightSTL`, lidos de
+     * `footScan.leftFootScanUrl` e `footScan.rightFootScanUrl` — campos que
+     * **não existem** no model (há um `scanUrl`, um só). Eram sempre
+     * `undefined`, sempre falsos, e por isso o ramo abaixo deles nunca rodava.
+     *
+     * E era bom que não rodasse: o ramo montava um `mockAnalysis` com tipo de
+     * arco "Normal", pé de 260 mm, altura de arco de 25 mm, cadência 110 — e
+     * gravava tudo com `prisma.footScan.update` no **prontuário do paciente**,
+     * indistinguível de uma análise de verdade. Consertar o nome do campo, que
+     * era o conserto óbvio do erro de tipo, teria ligado exatamente isso.
+     *
+     * Então o defeito estava protegendo o sistema, e a correção certa é tirar o
+     * ramo: **análise por imagem precisa de imagem.** Um arquivo 3D sozinho não
+     * é analisável por esta rota, e dizer isso é mais honesto que preencher.
+     */
+    if (leftImages.length === 0 && rightImages.length === 0) {
+      return NextResponse.json(
+        {
+          error: footScan.scanUrl
+            ? "This scan has a 3D file but no photographs. The biomechanical analysis reads photographs — capture them to analyse."
+            : "No foot photographs to analyse.",
+          errorPt: footScan.scanUrl
+            ? "Este scan tem arquivo 3D, mas não tem fotos. A análise biomecânica lê fotos — capture-as para analisar."
+            : "Não há fotos do pé para analisar.",
+          code: "no_images",
         },
-        strideLength: 750,
-        cadence: 110,
-        biomechanicFindings: {
-          pressureDistribution: 'STL-only test mode - no visual data available',
-          alignmentIssues: [],
-          muscularImbalances: [],
-          riskFactors: [],
-          skinConditions: [],
-          toeDeformities: []
-        },
-        a4Calibration: {
-          detected: false,
-          confidence: 'low',
-          estimatedScale: null
-        },
-        recommendations: {
-          insoleType: 'Comfort',
-          supportLevel: 'Moderate',
-          archSupportHeight: 15,
-          heelCupDepth: 12,
-          metatarsalPad: false,
-          additionalSupport: [],
-          exercises: [],
-          footwearAdvice: 'STL-only test mode'
-        },
-        clinicalSummary: 'TEST MODE: Analysis based on STL files only without photographs. This is for calibration testing purposes. Measurements are estimated defaults.',
-        patientSummary: 'This is a test analysis using 3D scan files only.',
-        confidenceLevel: 'low',
-        shoeWearAnalysis: null,
-        imageQualityNotes: `STL-only test mode. ${hasLeftSTL ? 'Left foot STL uploaded. ' : ''}${hasRightSTL ? 'Right foot STL uploaded. ' : ''}No photographs available for visual assessment.`
-      };
-      
-      // Update foot scan with mock analysis
-      const updatedScan = await prisma.footScan.update({
-        where: { id },
-        data: {
-          status: 'PENDING_REVIEW',
-          workflowStatus: 'CLINICAL_REVIEW_PENDING',
-          confidenceBand: 'LOW',
-          archType: mockAnalysis.archType,
-          archIndex: mockAnalysis.archIndex,
-          pronation: mockAnalysis.pronation,
-          calcanealAlignment: mockAnalysis.calcanealAlignment,
-          halluxValgusAngle: mockAnalysis.halluxValgusAngle,
-          metatarsalSpread: mockAnalysis.metatarsalSpread,
-          navicularHeight: mockAnalysis.navicularHeight,
-          leftFootLength: mockAnalysis.leftFootLength,
-          rightFootLength: mockAnalysis.rightFootLength,
-          leftFootWidth: mockAnalysis.leftFootWidth,
-          rightFootWidth: mockAnalysis.rightFootWidth,
-          leftArchHeight: mockAnalysis.leftArchHeight,
-          rightArchHeight: mockAnalysis.rightArchHeight,
-          strideLength: mockAnalysis.strideLength,
-          cadence: mockAnalysis.cadence,
-          gaitAnalysis: mockAnalysis.gaitAnalysis,
-          biomechanicData: mockAnalysis.biomechanicFindings,
-          aiRecommendation: JSON.stringify({
-            recommendations: mockAnalysis.recommendations,
-            clinicalSummary: mockAnalysis.clinicalSummary,
-            patientSummary: mockAnalysis.patientSummary,
-            confidenceLevel: mockAnalysis.confidenceLevel
-          }),
-          insoleType: mockAnalysis.recommendations.insoleType
-        },
-        include: {
-          patient: {
-            select: { id: true, firstName: true, lastName: true, email: true }
-          }
-        }
-      });
-      
-      return NextResponse.json({
-        success: true,
-        footScan: updatedScan,
-        analysis: mockAnalysis,
-        testMode: true,
-        message: 'STL-only test mode - mock analysis generated'
-      });
+        { status: 400 }
+      );
     }
 
     // Warn if calibration reference is missing (measurements will be estimated, not calibrated)
@@ -527,8 +451,25 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
             footScanId: id,
             measurementSetId: measurementSet.id,
             analysisType: 'BIOMECHANICAL',
-            modelProvider: 'google',
-            modelName: geminiModel,
+            /**
+             * Procedencia do que a analise diz, e por que ela e `null`.
+             *
+             * Isto gravava `modelProvider: 'google'` e `modelName: geminiModel`
+             * — e `geminiModel` **nao existe neste arquivo**, era ReferenceError
+             * ao montar o objeto. Sobrou de quando a rota chamava o Gemini
+             * direto.
+             *
+             * Hoje ela chama `analyzeMultipleImages` (`lib/ai-provider.ts`), que
+             * escolhe entre OpenRouter, Minimax e Gemini conforme a chave
+             * disponivel e **devolve so o texto** — nao diz quem respondeu.
+             *
+             * Entao `null`, e nao um palpite: num registro de analise clinica,
+             * inventar de qual modelo veio o laudo e fabricar procedencia. Se
+             * isso importa (e importa), quem tem de mudar e o provider, para
+             * devolver o modelo junto do texto.
+             */
+            modelProvider: 'ai-provider',
+            modelName: null,
             promptVersion: 'footscan-v1',
             inputSummary: {
               leftImageCount: leftImages.length,
@@ -568,7 +509,8 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
             payload: {
               measurementSetId: measurementSet.id,
               analysisId: analysisRecord.id,
-              modelName: geminiModel,
+              // Ver o bloco acima: o provider nao informa qual modelo respondeu.
+              modelName: null,
               confidenceLevel: analysis.confidenceLevel ?? 'low',
             }
           }

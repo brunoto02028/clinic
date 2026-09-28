@@ -1,27 +1,88 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Screen, Text, Input, Button, Logo } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { AuthError } from "@/api/auth";
+import { ligarApple, ligarGoogle } from "@/api/social-link";
+import {
+  SocialCancelado,
+  appleDisponivel,
+  credencialDaApple,
+  googlePronto,
+  tokenDoGoogle,
+  type CredencialApple,
+} from "@/lib/social-signin";
 import { useTheme } from "@/theme/useTheme";
 import { deviceLang, t as tr, type Lang } from "@/lib/i18n";
+
+/** A credencial de um provedor, enquanto ela ainda não virou sessão. */
+type Pendente =
+  | null
+  | { tipo: "google"; idToken: string }
+  | ({ tipo: "apple" } & CredencialApple);
 
 export default function Login() {
   const t = useTheme();
   const login = useAuth((s) => s.login);
+  const loginComGoogle = useAuth((s) => s.loginComGoogle);
+  const loginComApple = useAuth((s) => s.loginComApple);
   const [lang, setLang] = useState<Lang>(deviceLang);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [social, setSocial] = useState<null | "google" | "apple">(null);
+  const [temApple, setTemApple] = useState(false);
+
+  /**
+   * A credencial que ficou pendurada num 409 (097 T-2).
+   *
+   * O servidor recusou porque já existe conta com aquele e-mail e ela não tem
+   * o provedor ligado — o e-mail sozinho não prova que é a mesma pessoa. A
+   * prova a mais é a senha, e é por isso que a credencial fica guardada aqui:
+   * assim que o login por senha dá certo, o vínculo se cria sem obrigar
+   * ninguém a repetir a viagem toda.
+   *
+   * Só em memória, e só nesta tela. Sair daqui a descarta, que é o certo: ela
+   * é de uma tentativa, não da pessoa.
+   */
+  const [pendente, setPendente] = useState<Pendente>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void appleDisponivel().then((ok) => vivo && setTemApple(ok));
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   const onSubmit = async () => {
     setError(null);
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // A senha acabou de provar quem é. Se havia um provedor esperando, é
+      // agora que ele entra — em silêncio: o login já deu certo, e uma falha
+      // aqui não pode virar uma tela de erro sobre uma entrada bem-sucedida.
+      if (pendente) {
+        try {
+          if (pendente.tipo === "google") {
+            await ligarGoogle(pendente.idToken);
+          } else {
+            await ligarApple({
+              identityToken: pendente.identityToken,
+              nonce: pendente.nonce,
+              fullName: pendente.fullName,
+            });
+          }
+        } catch {
+          // Fica para a próxima: a pessoa entrou, que era o que ela queria.
+        }
+        setPendente(null);
+      }
       router.replace("/(app)/module-select");
     } catch (e) {
       // The API answers in English only, and "Invalid email or password" is
@@ -52,6 +113,80 @@ export default function Login() {
     }
   };
 
+  /**
+   * Entrar com Google ou com Apple (097 T-3/T-4).
+   *
+   * Desistir não é erro: quem fecha a folha do Google não quer ler "não foi
+   * possível entrar" — quer a tela de antes, como estava.
+   */
+  const entrarSocial = async (tipo: "google" | "apple") => {
+    setError(null);
+    setSocial(tipo);
+    /**
+     * A credencial é obtida **uma vez**, e fica aqui fora do `try`.
+     *
+     * É o que permite reaproveitá-la quando o servidor responde 409: pedi-la de
+     * novo abriria a folha do Google uma segunda vez **em cima da mensagem de
+     * erro** — ou, na Apple, pediria o Face ID outra vez. A pessoa acabou de
+     * escolher a conta; perguntar de novo parece que algo deu errado nela.
+     */
+    let credencial: Pendente = null;
+    try {
+      credencial =
+        tipo === "google"
+          ? { tipo: "google", idToken: await tokenDoGoogle() }
+          : { tipo: "apple", ...(await credencialDaApple()) };
+
+      if (credencial.tipo === "google") {
+        await loginComGoogle(credencial.idToken);
+      } else {
+        await loginComApple(credencial);
+      }
+      router.replace("/(app)/module-select");
+    } catch (e) {
+      if (e instanceof SocialCancelado) return;
+
+      if (e instanceof AuthError && e.status === 409 && e.data?.code === "account_exists") {
+        // Guardada para o login por senha logo abaixo: é ela que faz o vínculo
+        // acontecer sozinho, sem uma segunda viagem ao provedor.
+        setPendente(credencial);
+        setError(
+          e.data?.hasPassword === false
+            ? tr(lang, {
+                en: "There is already an account with this email, and it has no password yet. Use 'Forgot your password?' to set one.",
+                pt: "Já existe uma conta com esse e-mail, e ela ainda não tem senha. Use 'Esqueceu sua senha?' para definir uma.",
+              })
+            : tr(lang, {
+                en: "There is already an account with this email. Sign in with your password once, and we will connect it for next time.",
+                pt: "Já existe uma conta com esse e-mail. Entre com a sua senha uma vez e a gente liga para as próximas.",
+              })
+        );
+        return;
+      }
+
+      if (e instanceof AuthError && e.status === 403) {
+        setError(
+          tr(lang, {
+            en: "The BPR app is for patients. This is a clinic account — please use bpr.clinic in your browser.",
+            pt: "O app da BPR é para pacientes. Esta é uma conta da clínica — use o bpr.clinic no navegador.",
+          })
+        );
+        return;
+      }
+
+      setError(
+        e instanceof AuthError
+          ? e.message
+          : tr(lang, {
+              en: "Unable to sign in. Please try again.",
+              pt: "Não foi possível entrar. Tente de novo.",
+            })
+      );
+    } finally {
+      setSocial(null);
+    }
+  };
+
   return (
     <Screen scroll testID="login-screen">
       <KeyboardAvoidingView
@@ -59,7 +194,7 @@ export default function Login() {
         style={{ gap: 32, paddingVertical: 16 }}
       >
         <View style={{ gap: 32 }}>
-          <Logo tone="ink" height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
+          <Logo height={96} style={{ alignSelf: "center", marginBottom: 4 }} />
 
           {/* Header */}
           <View style={{ gap: 6 }}>
@@ -152,15 +287,55 @@ export default function Login() {
             </Pressable>
           </View>
 
-          {/* "Continue with Apple" and "Continue with Google" sat here with no
-              onPress at all. Neither provider exists anywhere in the product —
-              no NextAuth provider, no /api/mobile route, no native library — so
-              they were mockup artwork on the first screen a patient ever sees.
-              Someone taps them before finding the email field and concludes the
-              app is broken, which is exactly what happened. Same reasoning that
-              removed "Directions" from the home and "Add to calendar" from the
-              booking confirmation. They come back when there is a provider
-              behind them. */}
+          {/* Os dois botões voltaram (097).
+              Eles já estiveram aqui como desenho — sem onPress, sem provedor,
+              sem rota — e foram tirados porque um botão que promete um caminho
+              inexistente é pior que a ausência do botão. Agora há provedor:
+              `/api/mobile/auth/google` e `/api/mobile/auth/apple`.
+              Cada um só aparece onde de fato funciona: a Apple pergunta ao
+              aparelho, e o Google fica fora do Android até o cliente OAuth de
+              lá existir (ver GOOGLE_DISPONIVEL em lib/social-signin.ts). */}
+          {temApple || googlePronto() ? (
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+                <Text variant="caption" color={t.colors.textMuted}>
+                  {tr(lang, { en: "or", pt: "ou" })}
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+              </View>
+
+              {temApple ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={
+                    t.isDark
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                  }
+                  cornerRadius={t.radius.md}
+                  style={{ height: 50, opacity: social ? 0.6 : 1 }}
+                  testID="login-apple"
+                  onPress={() => {
+                    if (!social) void entrarSocial("apple");
+                  }}
+                />
+              ) : null}
+
+              {googlePronto() ? (
+                <Button
+                  title={tr(lang, { en: "Continue with Google", pt: "Continuar com o Google" })}
+                  variant="ghost"
+                  size="lg"
+                  loading={social === "google"}
+                  disabled={!!social}
+                  testID="login-google"
+                  icon={<Ionicons name="logo-google" size={17} color={t.colors.text} />}
+                  onPress={() => void entrarSocial("google")}
+                />
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Language switcher */}
           <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
@@ -185,7 +360,7 @@ export default function Login() {
                   <Text style={{
                     fontFamily: "Inter_600SemiBold",
                     fontSize: 10.5,
-                    color: active ? "#FFFFFF" : "#4A4F59",
+                    color: active ? t.colors.primaryFg : t.colors.textSecondary,
                   }}>
                     {code === "en" ? "🌐 English" : "Português"}
                   </Text>

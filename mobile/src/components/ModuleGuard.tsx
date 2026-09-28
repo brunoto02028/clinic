@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchModules, type AppModule } from "@/api/modules";
-import { SHOW_LAB } from "@/lib/feature-flags";
 
 /**
  * Route guard for a module's route group.
@@ -53,12 +52,10 @@ export default function ModuleGuard({
     queryFn: fetchModules,
   });
 
-  // The lab is offered by the build, not only by the server — same rule as the
-  // chooser, so a card that appears there is a card that opens. Still only for
-  // someone the server treats as a clinic patient. See lib/feature-flags.ts.
-  const granted =
-    modules?.some((m) => m.key === module) ||
-    (module === "lab" && SHOW_LAB && !!modules?.some((m) => m.key === "clinica"));
+  // Quem concede é o servidor, e só ele: a lista que a tela mostra é a mesma
+  // que esta guarda lê. O laboratório entra nela quando a clínica o liga em
+  // /admin/labs — antes disso, a rota não abre nem por link.
+  const granted = modules?.some((m) => m.key === module);
 
   // Só esta saída desmonta os filhos, e ela é terminal: o paciente está saindo
   // do módulo de qualquer forma.

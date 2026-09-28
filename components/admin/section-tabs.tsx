@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getActiveAdminNav, tabAllowedFor, routeMatches } from "@/lib/admin-sections";
@@ -13,6 +14,34 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
+
+  /**
+   * Quantos vídeos estão esperando, no rótulo da própria aba.
+   *
+   * O Bruno: *"quando eu vou para a página dos vídeos, eu preciso ter
+   * notificação ali, pelo menos do lado, que tem vídeos que chegou."* O
+   * contador vermelho do menu diz que há algo em Pacientes — e Pacientes tem
+   * sete abas. Saber **qual** delas exige abrir as sete.
+   */
+  const [videosEsperando, setVideosEsperando] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    const buscar = () =>
+      fetch("/api/admin/pending-count")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (vivo && d?.unreviewedSubmissions !== undefined) setVideosEsperando(d.unreviewedSubmissions);
+        })
+        .catch(() => {});
+    void buscar();
+    // O mesmo ritmo do contador do menu: é pergunta barata e a resposta muda
+    // quando um paciente grava, não quando alguém recarrega a página.
+    const t = setInterval(buscar, 60_000);
+    return () => {
+      vivo = false;
+      clearInterval(t);
+    };
+  }, []);
 
   if (!activeNav) return null;
 
@@ -41,6 +70,11 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
             aria-selected={activeKey === tab.key}
           >
             {relabel(isPt ? tab.labelPt : tab.label)}
+            {tab.key === "submissions" && videosEsperando > 0 && (
+              <span className="section-tab-badge" aria-label={`${videosEsperando} waiting`}>
+                {videosEsperando > 9 ? "9+" : videosEsperando}
+              </span>
+            )}
           </Link>
         ))}
     </div>

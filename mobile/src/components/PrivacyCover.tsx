@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, View } from "react-native";
 import { Logo } from "@/components/ui";
-import { lockIsActive } from "@/lib/biometrics";
+import { lockIsActive, biometriaEmAndamento } from "@/lib/biometrics";
 
 /**
  * A cortina que o multitarefa fotografa.
@@ -49,6 +49,13 @@ export function PrivacyCover() {
       }
       // `inactive` é onde o print é tirado (troca de app, central de controle).
       // Nada de `await` aqui.
+      //
+      // **Mas `inactive` causado por nós não conta.** A folha de Face ID do
+      // iOS também põe o app em `inactive`, e cobrir nela fazia a cortina
+      // subir por cima da tela de tranca e descer logo em seguida — o app
+      // "gaguejando" ao abrir, que o Bruno viu em 27/09/2026. O print do
+      // multitarefa não acontece durante o nosso próprio prompt.
+      if (biometriaEmAndamento()) return;
       if (armed.current && jaEsteveAtivo.current) setCovered(true);
     });
     return () => sub.remove();

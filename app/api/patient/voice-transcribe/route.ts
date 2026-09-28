@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { getConfigValue } from '@/lib/system-config';
 import { patientGate } from "@/lib/patient-gate";
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     const userId = effectiveUser.userId;
     const _u = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } }); const clinicId = _u?.clinicId || null;
 
-    const formData = await req.formData();
+    const formData = await camposDoFormulario(req);
     const audioFile = formData.get("audio") as File | null;
     const context = (formData.get("context") as string) || "general";
     const language = (formData.get("language") as string) || "pt-BR";

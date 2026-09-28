@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { uploadToS3 } from '@/lib/s3';
+import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function POST(
   try {
     const { id } = params;
 
-    const formData = await request.formData();
+    const formData = await camposDoFormulario(request);
     const file = formData.get('file') as File;
     const angle = formData.get('angle') as string;
     const foot = formData.get('foot') as string; // 'left' or 'right'

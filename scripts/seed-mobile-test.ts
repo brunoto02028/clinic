@@ -186,8 +186,8 @@ async function main() {
   if ((await prisma.membershipPlan.count({ where: { clinicId: clinic.id } })) === 0) {
     await prisma.membershipPlan.createMany({
       data: [
-        { clinicId: clinic.id, name: "Plano Mensal", description: "Acesso completo, cobrança mensal.", price: 60, interval: "MONTHLY", isFree: false, patientScope: "all", status: "ACTIVE" },
-        { clinicId: clinic.id, name: "Plano Anual", description: "Acesso completo, cobrança anual com desconto.", price: 600, interval: "YEARLY", isFree: false, patientScope: "all", status: "ACTIVE" },
+        { clinicId: clinic.id, name: "Plano Mensal", description: "Acompanhamento com o seu terapeuta, cobrança mensal.", price: 60, interval: "MONTHLY", isFree: false, patientScope: "all", status: "ACTIVE" },
+        { clinicId: clinic.id, name: "Plano Anual", description: "Acompanhamento com o seu terapeuta, cobrança anual com desconto.", price: 600, interval: "YEARLY", isFree: false, patientScope: "all", status: "ACTIVE" },
       ] as any,
     });
     console.log("Created membership plans");

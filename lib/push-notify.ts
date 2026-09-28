@@ -87,6 +87,41 @@ export function pushConsulta(patientId: string, tipo: "marcada" | "remarcada" | 
 }
 
 /**
+ * **O terapeuta está esperando na consulta por vídeo** (089).
+ *
+ * Sem isto, a videochamada não acontece. O terapeuta conseguia entrar na sala e
+ * esperar, e **nada avisava o paciente** — se ele não estivesse com o app aberto
+ * na hora exata, a consulta simplesmente não ocorria. "Chamar alguém" é metade
+ * do que uma videochamada é, e essa metade não existia.
+ *
+ * O toque leva **direto para a chamada**, e não para a lista: quem está sendo
+ * chamado não deve ter de procurar.
+ *
+ * E o aviso diz quem espera, não o que será tratado — ele aparece na tela
+ * bloqueada, à vista de quem estiver por perto.
+ *
+ * Quando o paciente é uma pessoa gerida, o aviso chega a **quem responde por
+ * ela**, com o nome dela no corpo: `lib/push-send.ts` faz essa tradução num
+ * lugar só, e uma criança não tem aparelho para onde o aviso pudesse ir.
+ */
+export function pushChamadaComecou(patientId: string, appointmentId: string) {
+  return avisar(
+    patientId,
+    {
+      en: {
+        title: "Your therapist is waiting",
+        body: "Your video consultation is open. Tap to join.",
+      },
+      pt: {
+        title: "Seu terapeuta está esperando",
+        body: "Sua consulta por vídeo está aberta. Toque para entrar.",
+      },
+    },
+    `/(app)/(clinica)/consulta-video?id=${appointmentId}`
+  );
+}
+
+/**
  * A clínica criou uma ação para o paciente resolver.
  *
  * O título da tarefa é texto livre de quem a criou — "assinar consentimento
@@ -112,5 +147,28 @@ export function pushDocumento(patientId: string) {
       pt: { title: "Sua clínica", body: "Um novo documento está no seu app." },
     },
     "/(app)/(clinica)/documents"
+  );
+}
+
+/**
+ * A clínica mandou o lembrete de atividades — pelo botão, por uma pessoa.
+ *
+ * Nasceu de uma correção: eu tinha ligado push dentro de `notifyPatient`, que
+ * é chamado pelos quatro crons de lembrete. A revisão pegou antes de ir ao ar
+ * (26/09/2026). Aqui ele fica no lugar certo — a rota do botão manual, onde
+ * alguém da clínica já decidiu enviar.
+ *
+ * O texto **não diz quais atividades**. A lista aparece na tela bloqueada se
+ * disser, e "Advanced Core 009, Advanced Core 001…" na tela bloqueada é o
+ * tratamento de alguém à vista de quem estiver por perto.
+ */
+export function pushLembreteDeAtividades(patientId: string) {
+  return avisar(
+    patientId,
+    {
+      en: { title: "Your clinic", body: "A reminder about today's plan is waiting for you." },
+      pt: { title: "Sua clínica", body: "Um lembrete do seu plano de hoje está esperando por você." },
+    },
+    "/(app)/(clinica)/(tabs)/exercises"
   );
 }

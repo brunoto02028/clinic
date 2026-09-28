@@ -53,9 +53,24 @@ export async function GET(req: NextRequest) {
     device: {
       id: device.id,
       label: device.deviceLabel,
-      delivery: deliveryState(device),
+      // `soPressao`: este aparelho é um manguito. Passos e sono nunca serão
+      // confirmados nele, e exigi-los fazia `partial` ser o estado permanente —
+      // um aviso âmbar que nunca apagava. Ver `deliveryState`.
+      delivery: deliveryState(device, { soPressao: true }),
       daysSilent: daysSilent(device),
       silent: isSilent(device, limite),
+      /**
+       * Os três dados que respondem "por que nada chega?" (092 T-3).
+       *
+       * A tela mostrava o aviso âmbar só quando o estado era `silent` ou
+       * `partial`. Com `receiving` **e** com `unchecked` ela não dizia nada —
+       * ou seja, "está tudo certo" e "não fazemos ideia" eram visualmente
+       * idênticos. O Bruno passou semanas sem uma leitura sequer com a página
+       * dizendo apenas "aparelho conectado".
+       */
+      lastReadingAt: device.lastReadingAt ?? null,
+      checkedAt: device.notifyCheckedAt ?? null,
+      confirmedAppli: device.notifyConfirmedAppli ?? [],
     },
     open,
   });

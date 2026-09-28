@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchScreening } from "@/api/screening";
 import { fetchAccess } from "@/api/access";
 import { fetchProfile } from "@/api/profile";
+import { fetchTermos } from "@/api/terms";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
@@ -47,51 +48,17 @@ const UI = {
   },
 } as const;
 
-const SECTIONS: { en: { title: string; items: string[] }; pt: { title: string; items: string[] } }[] = [
-  {
-    en: {
-      title: "Terms & Conditions of Service",
-      items: [
-        "This platform provides physical rehabilitation and health services.",
-        "Clinical services follow the laws of England and Wales.",
-        "All content, exercises and recommendations require professional supervision.",
-        "Informed consent to treatment is required before any session.",
-      ],
-    },
-    pt: {
-      title: "Termos e Condições de Serviço",
-      items: [
-        "Esta plataforma oferece serviços de saúde e reabilitação física.",
-        "Os serviços clínicos seguem as leis da Inglaterra e do País de Gales.",
-        "Todo conteúdo, exercício e recomendação exige acompanhamento profissional.",
-        "O consentimento informado para tratamento é obrigatório antes de qualquer sessão.",
-      ],
-    },
-  },
-  {
-    en: {
-      title: "Data Protection (UK GDPR)",
-      items: [
-        "Your data is processed on the basis of consent and legitimate interest.",
-        "We collect: identification details, email, medical history and treatment data.",
-        "Data retention: at least 5 years after your last treatment.",
-        "Your rights: access, rectification, erasure and portability of your data.",
-        "Use of AI: clinical analysis and reports are processed by Anthropic (Claude); recordings are transcribed by Groq, with Google as a fallback. Your data is not sent to any other AI provider.",
-      ],
-    },
-    pt: {
-      title: "Proteção de Dados (GDPR do Reino Unido)",
-      items: [
-        "Seus dados são processados com base no consentimento e no legítimo interesse.",
-        "Coletamos: dados de identificação, e-mail, histórico médico e dados de tratamento.",
-        "Retenção de dados: no mínimo 5 anos após o seu último tratamento.",
-        "Seus direitos: acesso, retificação, exclusão e portabilidade dos seus dados.",
-        "Uso de IA: análises clínicas e relatórios são processados pela Anthropic (Claude); gravações são transcritas pela Groq, com o Google como alternativa. Seus dados não são enviados a nenhum outro provedor de IA.",
-      ],
-    },
-  },
-];
-
+/**
+ * **O texto saiu daqui (26/09/2026).**
+ *
+ * Havia uma cópia local dos termos — duas seções, nove itens — enquanto os
+ * publicados tinham quatro seções e vinte e seis, incluindo a do laboratório
+ * inteira. O Bruno abriu esta tela para reler e achou curta. Estava.
+ *
+ * Duas cópias do mesmo texto divergem na primeira edição, e a esquecida é
+ * sempre a que ninguém abre para editar — aqui, a que o paciente lê. Agora
+ * vem do servidor, da mesma fonte que a página publicada.
+ */
 export default function Consent() {
   const { data: screening, isLoading, isError, refetch } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
   const { data: access } = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
@@ -107,6 +74,12 @@ export default function Consent() {
   // English unless the patient chose Portuguese. The app has no i18n yet, so
   // this screen reads the same `preferredLocale` the profile screen writes.
   const lang: "en" | "pt" = profile?.preferredLocale?.startsWith("pt") ? "pt" : "en";
+  // A chave inclui a língua: trocar de idioma tem de trocar o texto dos
+  // termos junto, e não servir o do idioma anterior vindo do cache.
+  const termos = useQuery({
+    queryKey: ["termos", lang],
+    queryFn: () => fetchTermos(lang === "pt" ? "pt-BR" : "en-GB"),
+  });
   const t = useTheme();
 
   return (
@@ -159,20 +132,42 @@ export default function Consent() {
           </Card>
         )}
 
-        {/* Terms sections */}
-        {SECTIONS.map((section) => (
-          <Card key={section.en.title}>
-            <Text variant="label" style={{ fontWeight: "600", marginBottom: 8 }}>{section[lang].title}</Text>
-            {section[lang].items.map((item, i) => (
-              <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
-                <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>•</Text>
-                <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1, lineHeight: 18 }}>
-                  {item}
-                </Text>
-              </View>
-            ))}
+        {/* O texto vem do servidor — a mesma fonte da página publicada. */}
+        {termos.isLoading ? (
+          <Card>
+            <Text variant="caption" color={t.colors.textMuted}>
+              {lang === "pt" ? "Carregando os termos…" : "Loading the terms…"}
+            </Text>
           </Card>
-        ))}
+        ) : termos.isError ? (
+          // Sem texto, a tela não pode fingir que mostrou os termos: ela diz
+          // que não conseguiu e oferece tentar de novo.
+          <Card>
+            <Text variant="caption" color={t.colors.bad}>
+              {lang === "pt" ? "Não foi possível carregar os termos." : "We could not load the terms."}
+            </Text>
+            <Button title={UI[lang].retry} variant="health" size="sm" onPress={() => termos.refetch()} style={{ marginTop: 10 }} />
+          </Card>
+        ) : (
+          (termos.data?.secoes ?? []).map((secao) => (
+            <Card key={secao.chave}>
+              <Text variant="label" style={{ fontWeight: "600", marginBottom: 8 }}>{secao.titulo}</Text>
+              {secao.itens.map((item) => (
+                <View key={item.n} style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2, minWidth: 16 }}>
+                    {item.n}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="caption" style={{ fontWeight: "700", marginBottom: 2 }}>{item.titulo}</Text>
+                    <Text variant="caption" color={t.colors.textSecondary} style={{ lineHeight: 18 }}>
+                      {item.corpo}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </Card>
+          ))
+        )}
       </View>
     </Screen>
   );

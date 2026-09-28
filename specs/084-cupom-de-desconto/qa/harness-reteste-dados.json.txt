@@ -1,0 +1,20 @@
+{
+  "clinicId": "cmui88zwu0000xzw0ycj3ebdg",
+  "patientA": "cmui88zx40004xzw06z53ilbt",
+  "patientB": "cmui88zx70006xzw0zlnblfg4",
+  "consultasA": [
+    "cmui88zxf000cxzw09t3e8z7g",
+    "cmui88zxj000exzw0n4bz8upc",
+    "cmui88zxl000gxzw03ysafr6a",
+    "cmui88zxn000ixzw0yjv3c7g7",
+    "cmui88zxo000kxzw0086trs8o",
+    "cmui88zxq000mxzw0wsleai3v",
+    "cmui88zxr000oxzw0zigjv8qa",
+    "cmui88zxt000qxzw0tjtudguk"
+  ],
+  "consultaB": "cmui88zxu000sxzw0z2qwloyi",
+  "planoTratamentoA": "cmui88zxw000uxzw0xr9qe0pd",
+  "pacoteCheioA": "cmui8hvuj0003xzag2w3d3mbb",
+  "pacoteSemanalA": "cmui8hvuq0005xzagymlsn1ag",
+  "planoAssinatura": "cmui88zxy000wxzw0h0zzf5m5"
+}

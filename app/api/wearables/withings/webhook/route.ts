@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { logSystem } from "@/lib/system-logger";
 import { ingestWithings } from "@/lib/withings-ingest";
 import { WITHINGS_APPLI } from "@/lib/withings";
 
@@ -50,11 +51,34 @@ export async function POST(req: NextRequest) {
 
     if (!userid) return ok();
 
+    /**
+     * A da clínica primeiro — e a ordem é o conserto (092 T-1).
+     *
+     * Uma conta Withings pode estar ligada a nós **duas vezes**: como aparelho
+     * da clínica e como aparelho pessoal de quem o comprou. É o caso do Bruno,
+     * e é o que ele quer — um medidor servindo aos dois papéis.
+     *
+     * Isto era `findFirst` **sem ordenação**. Com duas linhas casando, o banco
+     * devolve uma arbitrária, e qual delas vence é sorte — podendo mudar de uma
+     * medição para a outra. Sorteio num dado clínico.
+     *
+     * A da clínica vence de propósito, porque é a única que sabe decidir: se
+     * houver janela aberta a leitura é do paciente daquela janela; se não
+     * houver, vai para a caixa de entrada, para alguém dizer de quem era. O
+     * caminho pessoal não enxerga janela nenhuma, e atribuiria ao dono uma
+     * medição feita num paciente.
+     *
+     * Escrevi aqui, antes, que sem janela a leitura "cai para o dono pessoal do
+     * mesmo aparelho". Era o atalho que o review de 27/09/2026 derrubou: o
+     * terapeuta que esquece de abrir a janela produz exatamente este estado.
+     */
     const connection = await (prisma as any).wearableConnection.findFirst({
       where: { provider: "WITHINGS", providerUserId: String(userid) },
+      orderBy: { isClinicDevice: "desc" },
       select: {
         id: true, userId: true, accessToken: true, refreshToken: true,
         tokenExpiresAt: true, status: true, isClinicDevice: true, clinicId: true,
+        providerUserId: true,
       },
     });
 
@@ -65,7 +89,45 @@ export async function POST(req: NextRequest) {
     // The test is "is it connected", not "is it not disconnected": a
     // connection in any other state — including one whose revocation failed —
     // must not have data written to it.
-    if (!connection || connection.status !== "CONNECTED") return ok();
+    //
+    /**
+     * E o descarte **fica registrado** (092 T-3).
+     *
+     * Este `return` era seco. A Withings recebia `{"status":0}` e ficava
+     * satisfeita, a leitura ia para o lixo, e **não existia lugar nenhum** onde
+     * alguém descobrisse isso — nem log, nem tela. Foi assim que o medidor da
+     * clínica passou semanas sem entregar pressão ao paciente com todas as
+     * telas dizendo "conectado".
+     *
+     * Descarte silencioso é a falha que mais custa aqui, porque a única pessoa
+     * que notaria é a que não tem como olhar. Achado do QA da 092, cenário
+     * 3.1b.
+     */
+    if (!connection || connection.status !== "CONNECTED") {
+      const motivo = !connection ? "conta desconhecida" : `conexão ${connection.status}`;
+      console.warn(`[withings/webhook] descartada: ${motivo} userid=${userid} appli=${appli}`);
+      await logSystem({
+        level: "WARN",
+        category: "API",
+        message: `Withings descartou notificação: ${motivo}`,
+        source: "api/wearables/withings/webhook",
+        path: "/api/wearables/withings/webhook",
+        method: "POST",
+        userId: connection?.userId,
+        details: {
+          providerUserId: String(userid),
+          appli,
+          connectionId: connection?.id ?? null,
+          connectionStatus: connection?.status ?? null,
+          isClinicDevice: connection?.isClinicDevice ?? null,
+          // Uma assinatura órfã de paciente desconectado é esperada e não é
+          // defeito; a da clínica sumindo é o defeito. Quem lê o log precisa
+          // distinguir as duas sem abrir o banco.
+          esperado: !connection,
+        },
+      }).catch((e) => console.error("[withings/webhook] log falhou:", e?.message));
+      return ok();
+    }
 
     // Their window, widened by a minute at each end: the timestamps are whole
     // seconds and their clock is not ours, and a measurement missed here would

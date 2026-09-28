@@ -8,6 +8,7 @@ import { ExerciseBlockCard } from "@/components/ExerciseBlockCard";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 const REGION_ICONS: Record<string, string> = {
   LOWER_BODY: "footsteps-outline",
@@ -19,6 +20,7 @@ const REGION_ICONS: Record<string, string> = {
 function ExercisesScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
@@ -98,6 +100,7 @@ function ExercisesScreen() {
         </View>
       ) : (
         <FlatList
+            refreshControl={controle}
           data={data}
           keyExtractor={(item) => item.id}
           onRefresh={refetch}

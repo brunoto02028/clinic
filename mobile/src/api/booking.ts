@@ -6,6 +6,14 @@ export interface BookingRequest {
   duration?: number;
   treatmentType: string;
   notes?: string;
+  /**
+   * Para quem é a consulta, quando não é para quem está marcando (089/091).
+   *
+   * Ausente quer dizer "para mim", que é o caso comum. Quem valida é o servidor:
+   * a pessoa tem de ser **gerida por quem está pedindo**, e quem não for recebe
+   * 404 — dizer "existe, mas não é seu" contaria a um estranho que ela existe.
+   */
+  dependentId?: string;
 }
 
 export async function bookAppointment(data: BookingRequest) {
@@ -52,7 +60,7 @@ export async function fetchAvailability(date: string, kind?: string): Promise<Av
  */
 export interface BookingOption {
   kind: "FIRST_CONSULTATION" | "PACKAGE_SESSION" | "EXTRA_SESSION" | null;
-  blockedReason?: "screening_required" | "no_clinic";
+  blockedReason?: "screening_required" | "no_clinic" | "price_not_set";
   price: number;
   currency: string;
   requiresPayment: boolean;
@@ -65,10 +73,24 @@ export async function fetchBookingOptions(): Promise<BookingOption> {
 }
 
 /** Abre o pagamento da consulta e devolve a URL do Checkout. */
-export async function startAppointmentCheckout(appointmentId: string): Promise<string | null> {
+export async function startAppointmentCheckout(
+  appointmentId: string,
+  /**
+   * O cupom que a tela mostrou (084). Vai como **código**, nunca como valor:
+   * o servidor recalcula o desconto antes de cobrar, e a prévia da T-3 não
+   * autoriza nada.
+   */
+  couponCode?: string | null
+): Promise<string | null> {
   const r = await apiFetch<{ url: string | null }>(
     `/api/patient/appointments/${appointmentId}/checkout`,
-    { method: "POST" }
+    // O header diz ao servidor que o retorno do Stripe deve voltar para o
+    // app, e não para uma página do site (083).
+    {
+      method: "POST",
+      headers: { "x-platform": "mobile" },
+      body: JSON.stringify(couponCode ? { couponCode } : {}),
+    }
   );
   return r.url ?? null;
 }
@@ -90,4 +112,61 @@ export async function fetchSchedule(): Promise<ScheduleDay[]> {
     `/api/public/schedule${slug ? `?clinic=${encodeURIComponent(slug)}` : ""}`
   );
   return res.schedule ?? [];
+}
+
+/**
+ * Os tratamentos que **esta** clínica oferece (082).
+ *
+ * A tela trazia sete nomes escritos no código ("Initial Assessment",
+ * "Sports Therapy"…) que nenhuma clínica podia mudar — e o servidor descartava
+ * a escolha do paciente de qualquer jeito. Agora a lista é a da clínica,
+ * editável em /admin/treatment-types, e o que ele escolhe fica gravado.
+ *
+ * Lista vazia é resposta legítima: a clínica ainda não cadastrou nenhum. A
+ * tela some em vez de inventar opções.
+ */
+export interface ClinicTreatmentType {
+  id: string;
+  name: string;
+  namePt: string | null;
+  duration: number;
+  price: number;
+}
+
+export async function fetchTreatmentTypes(): Promise<ClinicTreatmentType[]> {
+  const res = await apiFetch<ClinicTreatmentType[]>("/api/patient/treatment-types");
+  return Array.isArray(res) ? res : [];
+}
+
+// ---------------------------------------------------------------------------
+// A agenda de um intervalo (087, T-2/T-3)
+// ---------------------------------------------------------------------------
+
+export interface DiaDaAgenda {
+  data: string;
+  livres: number;
+  fechado: boolean;
+  /** `blocked`, `closed`, `not_working` — por que não dá para marcar nesse dia. */
+  motivo?: string;
+}
+
+/**
+ * Quantos horários cada dia tem, para um intervalo.
+ *
+ * Existe porque a tela precisa saber **onde tem vaga antes de a pessoa tocar**.
+ * Perguntar isso com a rota de um dia custaria sete chamadas por semana e
+ * trinta e uma por mês; esta é uma.
+ *
+ * Vem a contagem, não os horários: um mês com todos os horários de todos os
+ * dias é uma resposta enorme para desenhar trinta e uma marcas. Os horários
+ * continuam vindo de `fetchAvailability` quando o dia é escolhido.
+ */
+export async function fetchAgendaDoIntervalo(
+  from: string,
+  to: string,
+  kind?: string
+): Promise<{ dias: DiaDaAgenda[]; therapistId?: string }> {
+  return apiFetch<{ dias: DiaDaAgenda[]; therapistId?: string }>(
+    `/api/availability?from=${from}&to=${to}${kind ? `&kind=${kind}` : ""}`
+  );
 }

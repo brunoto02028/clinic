@@ -9,10 +9,12 @@ import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
 import { LoadFailure } from "@/components/LoadFailure";
 import { formatDate } from "@/lib/format";
+import { usePullToRefresh } from "@/lib/pull-to-refresh";
 
 function TasksScreen() {
   const lang = useLang();
   const t = useTheme();
+  const { controle } = usePullToRefresh();
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
 
@@ -64,6 +66,7 @@ function TasksScreen() {
           </Card>
         ) : (
           <FlatList
+            refreshControl={controle}
             data={[...pending, ...completed]}
             keyExtractor={t => t.id}
             contentContainerStyle={{ gap: 8 }}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
-import { sendPushToUsers, countPushDevices } from "@/lib/push-send";
+import { sendPushToUsers, countPushDevices, type PushResult } from "@/lib/push-send";
 import { pickForPatient, groupByLang } from "@/lib/patient-language";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getActor, requireStaff, tenantWhere, accessErrorResponse, AccessError } from "@/lib/tenant-access";
@@ -198,8 +198,21 @@ export async function POST(req: NextRequest) {
         patients.map((p) =>
           notifyPatient({
             patientId: p.id,
-            plainMessage: `Notice from your clinic — ${title.trim()}: "${preview}" Read in your portal: ${appUrl}/dashboard/questions`,
-            plainMessagePt: `Aviso da sua clínica — ${title.trim()}: "${preview}" Leia no portal: ${appUrl}/dashboard/questions`,
+            /**
+             * **O app primeiro, o site como alternativa** (095 T-9).
+             *
+             * O texto dizia *"Read in your portal"* e dava o endereço da web.
+             * Depois do lançamento o paciente **perde o acesso à web** — o app
+             * é o único lugar dele —, e quem seguisse aquele link bateria numa
+             * porta fechada: o aviso morria no clique.
+             *
+             * Não é um link do app porque `bprclinic://` num e-mail não abre
+             * nada para quem ainda não instalou, e um link morto é pior que
+             * uma frase. O que existe hoje é dizer onde está: **Mensagens, no
+             * app**. O endereço fica para quem ainda usa o navegador.
+             */
+            plainMessage: `Notice from your clinic — ${title.trim()}: "${preview}" Open Messages in the BPR app to read it. Still on the web? ${appUrl}/dashboard/questions`,
+            plainMessagePt: `Aviso da sua clínica — ${title.trim()}: "${preview}" Abra Mensagens no app da BPR para ler. Ainda usa o navegador? ${appUrl}/dashboard/questions`,
           })
         )
       ).catch(() => {});
@@ -216,7 +229,9 @@ export async function POST(req: NextRequest) {
       const grupos = groupByLang(patients);
       const enviar = (ids: string[], t: { title: string | null; content: string }) =>
         ids.length === 0
-          ? Promise.resolve({ sent: 0, failed: 0, deactivated: 0 })
+          // Tipado: sem isto o ramo vazio nao tinha `error`, e a uniao dos dois
+          // ramos escondia o campo que a tela le para dizer por que nada saiu.
+          ? Promise.resolve<PushResult>({ sent: 0, failed: 0, deactivated: 0 })
           : sendPushToUsers(ids, {
               title: t.title || title.trim(),
               // O corpo é o texto do aviso, cortado. A notificação aparece na
