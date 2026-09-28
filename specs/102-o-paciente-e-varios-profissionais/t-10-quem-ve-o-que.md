@@ -1,7 +1,7 @@
-# T-9: A parede clínica — quem vê o quê
+# T-10: A parede clínica — quem vê o quê
 
 **Status:** pendente
-**Depende de:** T-3 · **fecha por último, e é testada em todas as outras**
+**Depende de:** T-3, T-9 · **fecha por último, e é testada em todas as outras**
 
 ## Objetivo
 
@@ -17,8 +17,8 @@ educativo — e um incidente de envio em massa em 11/09 com a mesma forma. Todos
 eram a mesma coisa: **o id vem de fora, o inquilino vem da sessão, e ninguém
 verifica que combinam.**
 
-A 102 abre, de propósito, uma porta entre inquilinos. Sem esta tarefa, ela abre
-três.
+A 102 abre, de propósito, uma porta entre inquilinos — e a T-9 abre uma
+segunda, entre profissionais. Sem esta tarefa, elas viram três.
 
 ## Passos
 

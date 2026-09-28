@@ -72,18 +72,38 @@ vínculo explícito.** ⬅ **recomendado**
 O vínculo nasce de um jeito só: **o paciente escolhe o profissional e paga**.
 Não existe profissional que "ganhe" um paciente por estar na mesma plataforma.
 
-## O que cada um enxerga
+## A equipe: são **duas** perguntas, não uma
 
-A regra que eu proponho, e que a T-9 mede:
+O Bruno: *"a clínica de reabilitação só vai compartilhar aquilo que foi
+necessário com os médicos. E a mesma coisa dos médicos. O paciente é um e a
+gente pode trabalhar com uma equipe multidisciplinar."*
 
-- **O profissional vê o que o vínculo autoriza**, e nada além: dados
-  cadastrais, exames que o paciente liberou, o que ele mesmo escreveu, e as
-  consultas dele com aquele paciente.
-- **O prontuário de reabilitação não é aberto por padrão.** O médico precisa de
-  exames e de anamnese; ele não precisa da evolução de fisioterapia, e a
-  recíproca vale. Compartilhar mais é uma escolha do paciente, por item.
-- **O que o profissional devolve** (receita, laudo, orientação) vai para o app
-  do paciente como documento, com o nome de quem assinou.
+Isso separa o problema em dois, e juntá-los seria o erro:
+
+**1. Este profissional pode agir sobre este paciente?** — o vínculo (T-3). Sim
+ou não, e nasce do pagamento.
+
+**2. O que, deste paciente, ele enxerga?** — a partilha (T-9). E a resposta é
+**só o que lhe foi passado, item a item**.
+
+Ter vínculo **não** abre o prontuário. O médico recebe o exame e a anamnese
+porque a reabilitação passou; a reabilitação recebe a receita porque o médico
+devolveu; a nota de sessão do psicólogo não vai a lugar nenhum a menos que ele
+a mande, com um passo a mais.
+
+Vale nos dois sentidos por simetria, e não por gentileza: um médico lendo a
+evolução inteira da fisioterapia sem ninguém ter passado é o mesmo defeito que
+uma fisioterapia lendo a sessão do psicólogo.
+
+**Quem decide é a clínica que detém o paciente** — *"eu da clínica quero
+determinar o que o médico vai ver do meu paciente (…) não pode ser
+automaticamente liberado para todo mundo, só com permissões"*. Partilhar é
+sempre com **uma pessoa nomeada**: não existe "mandar para a equipe", porque
+quem entrasse na equipe amanhã herdaria o acesso de hoje.
+
+**E o paciente vê a partilha acontecendo** — quem passou o quê, para quem, e
+quando —, com o direito de revogar. Revogar corta o futuro; o que já foi lido
+não se apaga, porque é registro clínico.
 
 ## Tarefas
 
@@ -97,11 +117,13 @@ A regra que eu proponho, e que a T-9 mede:
 | T-6 | [O paciente paga, a BPR repassa](t-6-pagar-e-repassar.md) | pendente |
 | T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | pendente |
 | T-8 | [O que o médico devolve: receita e documento](t-8-o-que-o-profissional-devolve.md) | pendente |
-| T-9 | [A parede clínica: quem vê o quê](t-9-quem-ve-o-que.md) | pendente |
+| T-9 | [A equipe: compartilhar item a item, nos dois sentidos](t-9-a-equipe-compartilha-item-a-item.md) | pendente |
+| T-10 | [A parede clínica: quem vê o quê](t-10-quem-ve-o-que.md) | pendente |
 
 **T-1 a T-4 são a fundação** e podem ir juntas. **T-5 a T-8 é o ciclo do
-paciente.** **T-9 é a que não pode falhar**, e por isso é a última a fechar e a
-primeira a ser testada em cada uma das outras.
+paciente.** **T-9 é a equipe multidisciplinar** — o coração do pedido. **T-10 é
+a que não pode falhar**, e por isso é a última a fechar e a primeira a ser
+testada em cada uma das outras.
 
 ## Dependências que não são minhas
 
@@ -132,9 +154,11 @@ começar** — cada uma muda código.
    ser a plataforma e vira intermediária de um pagamento que não vê.
 6. **Cancelamento e reembolso seguem a política da BPR**, não a de cada
    profissional. Uma política por profissional multiplica o suporte por N.
-7. **O prontuário não é compartilhado por padrão** (ver "O que cada um
-   enxerga"). Se você quiser o contrário — todo profissional vê tudo —, é uma
-   linha de código e uma decisão sua, e ela precisa estar escrita.
+7. **~~Suposição~~ — decidido por você em 28/09.** Nada é compartilhado por
+   padrão; a partilha é **item a item, colega a colega, nos dois sentidos**, e
+   quem decide é a clínica que detém o paciente. Não existe liberação
+   automática, nem para "todo mundo", nem por tipo de profissional. Detalhes e
+   critérios na [T-9](t-9-a-equipe-compartilha-item-a-item.md).
 8. **Nada disto muda o produto do personal trainer**, que continua separado
    ([[personal-independente-da-clinica]]).
 
