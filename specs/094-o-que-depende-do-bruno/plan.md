@@ -198,20 +198,43 @@ não existe SHA-1 para registrar. Por isso o botão do Google **não aparece no
 Android** nesta versão — um botão que só pode falhar é pior que nenhum botão. É
 uma linha de código e um build para ligar, no dia em que o Android for sair.
 
-### G-5 — o que o build já tentou, e onde parou (28/09, 08:47)
+### G-5 — **o build 26 saiu** (28/09, 09:42), mas sem o botão da Apple
 
-**Isto é a única coisa entre você e o app novo no TestFlight.** Tudo o mais
-está pronto: o build subiu, compilou, e morreu na assinatura com
+O app está no TestFlight: **1.0.0 (26)**, commit `5c959fe`. Foram cinco
+tentativas, e cada uma morreu de uma coisa diferente:
+
+| build | durou | o que matou |
+|---|---|---|
+| 22 | 12 s | pacote de **80 bytes** — `!/mobile/` com barra podava a pasta inteira |
+| 23 | — | cancelado de propósito (a folha do Google abria duas vezes) |
+| 24 | 1m58s | assinatura: o perfil não tinha *Sign in with Apple* |
+| 25 | 5m14s | compilação: `STPPaymentStatus` redeclarado no pacote do Stripe |
+| **26** | 6m56s | **passou** |
+
+**O que ainda depende de você, e só disso:** ligar a capability *Sign in with
+Apple*. Sem ela o botão da Apple fica fora do binário — e **um app com Google
+e sem Apple não passa na revisão da loja** (diretriz 4.8). O 26 serve para
+TestFlight interno; a submissão espera o próximo build.
+
+Religar são três coisas no código (estão escritas em
+`mobile/src/lib/social-signin.ts`, e um teste trava as três juntas) mais o menu
+abaixo.
+
+### Como ligar a capability, quando você estiver no computador
+
+O perfil que a EAS guarda é de 24/09 e não conhece o *Sign in with Apple*. O
+build 24 morreu com:
 
 ```
 Provisioning profile "*[expo] com.bpr.clinic AppStore 2026-09-24T08:24:50.705Z"
-doesn't include the Sign In with Apple capability.
 doesn't include the com.apple.developer.applesignin entitlement.
 ```
 
-É exatamente o que a nota antiga previa: **capability nova invalida o
-provisioning**. O perfil que a EAS guarda é de 24/09 e não conhece o *Sign in
-with Apple*, que passou a existir agora.
+**E não há caminho daqui que não passe por você.** Conferi as três portas: o
+`eas-cli` se recusa a perguntar qualquer coisa sem um terminal de verdade
+(`stdin is not readable`); a sessão da Apple guardada nesta máquina **expirou**;
+e não existe chave de API local. Ligar a capability exige a sua senha **e o
+código de dois fatores do seu aparelho**.
 
 **O que resolve, e leva dois minutos seus** — o menu é interativo, e por isso
 não dá para eu rodar:
