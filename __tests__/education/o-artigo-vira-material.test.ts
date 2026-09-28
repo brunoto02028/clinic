@@ -244,6 +244,32 @@ describe("a tela de escolher, e a do app (T-4 e T-5)", () => {
     expect(dialogo).toMatch(/d\.updated/);
   });
 
+  it("**o menu leva até lá, e até o passo que vincula**", () => {
+    /**
+     * Era o defeito que restava: a página existia, o diálogo existia, a tela
+     * de atribuir existia — e o único menu que as citava era
+     * `admin-sidebar.old.tsx`, que não é mais usado. O Bruno procurou "Educação"
+     * no painel e não achou; achou os artigos em Marketing e perguntou por onde
+     * se vincula um deles a um paciente.
+     *
+     * Agora mora em **Clínico**, ao lado de Exercícios e Protocolos, que é
+     * onde se procura o que mandar para alguém.
+     */
+    const nav = lerCodigo("lib", "admin-sections.ts");
+    const clinico = nav.slice(nav.indexOf('key: "clinical"'), nav.indexOf('key: "marketing"'));
+    expect(clinico).toMatch(/href: "\/admin\/education"/);
+    expect(clinico).toMatch(/href: "\/admin\/education\/assignments"/);
+    // E saiu de Marketing, onde ninguém procuraria material clínico.
+    const marketing = nav.slice(nav.indexOf('key: "marketing"'));
+    expect(marketing).not.toMatch(/href: "\/admin\/education"/);
+  });
+
+  it("e o artigo aponta para onde ele vira material do paciente", () => {
+    // O Bruno estava olhando os artigos quando perguntou. A ponte fica ali.
+    const artigos = lerCodigo("app", "admin", "articles", "page.tsx");
+    expect(artigos).toMatch(/href="\/admin\/education"/);
+  });
+
   it("e o botão de trazer artigos vem antes do de criar do zero", () => {
     expect(painel.indexOf("Trazer artigos")).toBeLessThan(painel.indexOf("Create Content"));
   });

@@ -303,6 +303,42 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Exercicios",
         href: "/admin/exercises",
       },
+      /**
+       * O material do paciente mora aqui, e não em Marketing (099/096).
+       *
+       * Estava na nona aba de Marketing, entre "Condições (SEO)" e
+       * "Materiais", chamado "Education" — e o Bruno não achou. Com razão:
+       * quem procura o que **mandar para um paciente** olha em Clínico, ao
+       * lado de Exercícios e Protocolos, não numa lista de coisas de
+       * divulgação.
+       *
+       * E o nome mudou: "Education" descrevia a tabela; "Patient education"
+       * descreve o que a pessoa quer fazer.
+       */
+      {
+        key: "education",
+        label: "Patient education",
+        labelPt: "Material do paciente",
+        href: "/admin/education",
+        matchRoutes: ["/admin/education", "/admin/education/create", "/admin/education/categories"],
+        clinicalOnly: true,
+      },
+      {
+        /**
+         * **O passo que vincula, visível.**
+         *
+         * `/admin/education/assignments` existia e **nenhum menu apontava para
+         * ele** — nem o antigo. Quem trouxesse os artigos ficava com eles na
+         * clínica e sem caminho até um paciente, que é justamente o passo que
+         * faz o material chegar a alguém.
+         */
+        key: "education-assignments",
+        label: "Assign material",
+        labelPt: "Atribuir material",
+        href: "/admin/education/assignments",
+        matchRoutes: ["/admin/education/assignments"],
+        clinicalOnly: true,
+      },
       {
         key: "programs",
         label: "Programs",
@@ -417,13 +453,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Conditions (SEO)",
         labelPt: "Condições (SEO)",
         href: "/admin/marketing/condition-pages",
-      },
-      {
-        key: "education",
-        label: "Education",
-        labelPt: "Educacao",
-        href: "/admin/education",
-        matchRoutes: ["/admin/education"],
       },
       {
         key: "materials",
