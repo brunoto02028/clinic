@@ -232,6 +232,23 @@ navegador (403). Fica conferido **localmente**, no mesmo commit que está no ar.
 | 1ª | **errou em 12 s** — o pacote subiu com **80 bytes**. Causa: `!/mobile/`, com barra, faz o varredor podar a pasta inteira antes de entrar nela |
 | 2ª | cancelada por mim, para não gastar um build com a folha do provedor abrindo duas vezes |
 | 3ª | **compilou** (pacote de 14,8 MB) e **parou na assinatura**: o provisioning profile de 24/09 não conhece o *Sign in with Apple* |
+| 4ª | sem a capability da Apple, passou da assinatura e **morreu compilando o Stripe**: `STPPaymentStatus` redeclarado (`NSInteger` vs `NSUInteger`) — defeito do próprio pacote em 0.50.3, corrigido pelo Stripe em 0.65.1 |
+| **5ª** | **passou em 6m56s** — build **1.0.0 (26)**, commit `5c959fe`, enviado ao TestFlight |
+
+**O quarto defeito estava esperando desde que o Stripe entrou no app**, nesta
+mesma sessão. Ele só apareceu agora porque **antes o build nunca chegava a
+compilar**: morria no pacote vazio e depois na assinatura.
+
+### O que o build 26 leva, e o que não leva
+
+**Leva:** as telas da 093/095, a tela de fatura com pagamento nativo, a
+educação em duas seções (096) e **o login com Google no iPhone** — que passou a
+funcionar de verdade quando os Client ID entraram na configuração de produção
+(a rota saiu de 503 para 401 com token inventado, ou seja, está validando).
+
+**Não leva:** o botão da Apple. E por isso **este build não é submetível à
+loja** — Google sem Apple é reprovação na diretriz 4.8. TestFlight interno,
+sim.
 
 A terceira é a nota antiga acontecendo de novo: **capability nova invalida o
 provisioning**. O menu que regenera o perfil é interativo — os passos estão em
