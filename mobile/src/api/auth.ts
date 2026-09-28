@@ -10,7 +10,18 @@ export class AuthError extends Error {
    * resolved. One sentence for all four would be a dead end in the first
    * case, which is the one a real patient meets.
    */
-  constructor(message: string, public status?: number) {
+  constructor(
+    message: string,
+    public status?: number,
+    /**
+     * O corpo inteiro da recusa (097 T-2).
+     *
+     * O 409 do login social traz `code: "account_exists"` e `hasPassword`, e
+     * a tela precisa dos dois: sem senha, "entre com a sua senha" é um beco
+     * sem saída — a conta nasceu pela clínica e nunca teve uma.
+     */
+    public data?: Record<string, any>
+  ) {
     super(message);
   }
 }
@@ -23,7 +34,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new AuthError(data?.error || `Request failed (${res.status})`, res.status);
+    throw new AuthError(data?.error || `Request failed (${res.status})`, res.status, data);
   }
   return data as T;
 }
@@ -57,6 +68,29 @@ export function registerRequest(
     password,
     ...(tenantSlug ? { tenantSlug } : {}),
   });
+}
+
+/**
+ * Entrar com Google e com Apple (097 T-3/T-4).
+ *
+ * Devolvem **o mesmo** `AuthResponse` que `/api/mobile/login` devolve — de
+ * propósito. Um formato próprio por provedor daria ao app três jeitos de estar
+ * logado, e dois deles envelheceriam sozinhos.
+ *
+ * O 409 (`account_exists`) não é erro de digitação: já existe conta com aquele
+ * e-mail e ela não tem o provedor ligado. O e-mail sozinho não prova que é a
+ * mesma pessoa, então o servidor pede a senha uma vez antes de ligar os dois.
+ */
+export function googleSignInRequest(idToken: string): Promise<AuthResponse> {
+  return postJson<AuthResponse>("/api/mobile/auth/google", { idToken });
+}
+
+export function appleSignInRequest(cred: {
+  identityToken: string;
+  nonce: string;
+  fullName: { givenName: string | null; familyName: string | null } | null;
+}): Promise<AuthResponse> {
+  return postJson<AuthResponse>("/api/mobile/auth/apple", cred);
 }
 
 export function refreshRequest(refreshToken: string): Promise<AuthResponse> {

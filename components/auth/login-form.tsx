@@ -27,6 +27,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const justVerified = searchParams?.get("verified") === "true";
+  const erroNaUrl = searchParams?.get("error") || null;
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -46,6 +47,49 @@ export default function LoginForm() {
       }
     } catch {}
   }, []);
+
+  /**
+   * O `?error=` que o servidor manda para cá **nunca era lido** (097 T-2).
+   *
+   * `lib/auth-options.ts` já redirecionava para `/login?error=AccessDenied` e
+   * `?error=AccountDeactivated`, e esta tela ignorava os dois: a pessoa voltava
+   * ao formulário vazio, sem uma frase, e tentava de novo achando que tinha
+   * errado a senha.
+   *
+   * Com a 097 isso deixou de ser um detalhe: a recusa nova
+   * (`OAuthAccountNotLinked`) **só faz sentido se disser o que fazer**.
+   */
+  useEffect(() => {
+    if (!erroNaUrl) return;
+    const frases: Record<string, { en: string; pt: string }> = {
+      OAuthAccountNotLinked: {
+        en: "There is already an account with this email. Sign in with your password once, and we will connect Google for next time.",
+        pt: "Já existe uma conta com esse e-mail. Entre com a sua senha uma vez e a gente liga o Google para as próximas.",
+      },
+      AccessDenied: {
+        en: "This account cannot sign in. Please contact the clinic.",
+        pt: "Esta conta não pode entrar. Fale com a clínica.",
+      },
+      AccountDeactivated: {
+        en: "Account is deactivated. Please contact support.",
+        pt: "Conta desativada. Fale com o suporte.",
+      },
+      NoTenant: {
+        en: "Sign-up is not available right now. Please contact the clinic.",
+        pt: "O cadastro não está disponível agora. Fale com a clínica.",
+      },
+    };
+    const f = frases[erroNaUrl];
+    setError(
+      f
+        ? isPt
+          ? f.pt
+          : f.en
+        : isPt
+          ? "Não foi possível entrar. Tente novamente."
+          : "Could not sign you in. Please try again."
+    );
+  }, [erroNaUrl, isPt]);
 
   const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
 

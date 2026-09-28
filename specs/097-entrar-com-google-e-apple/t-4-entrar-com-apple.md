@@ -1,6 +1,6 @@
 # T-4: Sign in with Apple — exigência, não opção
 
-**Status:** pendente
+**Status:** concluído (28/09/2026) — espera a capability no App ID
 **Depende de:** T-1
 
 ## Objetivo

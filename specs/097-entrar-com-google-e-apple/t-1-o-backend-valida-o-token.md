@@ -1,6 +1,6 @@
 # T-1: O backend valida o token do Google e emite a sessão BPR
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** nenhuma
 
 ## Objetivo

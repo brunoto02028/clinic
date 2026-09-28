@@ -157,18 +157,62 @@ por você em 27/09. Falta:
 
 | # | o que falta | por que trava |
 |---|---|---|
-| **G-1** | Client ID **Android** (`com.bpr.clinic` + SHA-1) | sem ele, não há login no Android |
-| **G-2** | Client ID **iOS** (`com.bpr.clinic`) | idem no iPhone |
-| **G-3** | Os **três SHA-1**: debug, upload key e **App signing key do Play** | sem o terceiro, funciona no teste e **quebra na loja** (`DEVELOPER_ERROR`) |
+| ~~**G-2**~~ | ~~Client ID **iOS**~~ — **feito em 28/09**, no navegador, com você logado | — |
+| **G-7** | `GOOGLE_CLIENT_SECRET` no Coolify (os dois Client ID eu ponho no push) | **sem ele o botão não aparece na web** |
 | **G-4** | **Publicar a tela de consentimento** (sair de "Testing") | só usuários de teste conseguem entrar |
 | **G-5** | Capability **Sign in with Apple** no App ID | e ela **invalida o provisioning**: menu interativo, precisa de você |
 | **G-6** | Domínio `bpr.clinic` em *Sign in with Apple for Email Communication* | e-mail da clínica não chega a quem esconder o endereço |
-| **G-7** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_IOS_CLIENT_ID` no Coolify | nada funciona em produção |
+| **G-1** | Client ID **Android** (`com.bpr.clinic` + SHA-1) | o botão do Google **não aparece no Android** até isso existir |
+| **G-3** | Os **três SHA-1**: debug, upload key e **App signing key do Play** | sem o terceiro, funciona no teste e **quebra na loja** (`DEVELOPER_ERROR`) |
+
+### O que eu já fiz, e o que sobrou para você
+
+**G-2 está feito.** O cliente iOS existe no projeto `rb-rehab`:
+
+```
+48914887762-6k58gs99rmivdvv9uevk5t1sv5qjerhj.apps.googleusercontent.com
+```
+
+Client ID **não é segredo** — ele viaja dentro do aplicativo, por desenho. Ele
+já está no código do app e no `.env` local. O que **é** segredo é o
+`GOOGLE_CLIENT_SECRET` do cliente Web, e ele nunca passa por aqui: você o cola
+direto no Coolify.
+
+**G-7, exatamente o que pôr no Coolify:**
+
+| variável | valor |
+|---|---|
+| `GOOGLE_CLIENT_ID` | `48914887762-n5snld1ogr1et1djpmp7m3rkurk4e6c6.apps.googleusercontent.com` |
+| `GOOGLE_IOS_CLIENT_ID` | `48914887762-6k58gs99rmivdvv9uevk5t1sv5qjerhj.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | **o segredo do cliente Web** — copie do Console, cole no Coolify |
+| `APPLE_CLIENT_ID` | `com.bpr.clinic` |
+
+Sem `GOOGLE_CLIENT_SECRET` o provedor da web não é montado e o botão some de
+`/login` — que é o comportamento de hoje. O **app** não depende dele: ele usa
+`GOOGLE_CLIENT_ID` e `GOOGLE_IOS_CLIENT_ID` só para conferir o `aud`.
+
+**G-1 e G-3 não têm como ser feitos ainda**, e não é teimosia: o cliente Android
+é casado com o SHA-1 do certificado que assina o APK, **não existe build Android
+nenhum** no EAS (conferi: a lista voltou vazia), logo não existe keystore, logo
+não existe SHA-1 para registrar. Por isso o botão do Google **não aparece no
+Android** nesta versão — um botão que só pode falhar é pior que nenhum botão. É
+uma linha de código e um build para ligar, no dia em que o Android for sair.
+
+**G-8 — a chave `.p8` da Apple, que apareceu agora.** A Apple exige que todo
+app que oferece *Sign in with Apple* **e** exclusão de conta **revogue o token
+do lado dela** quando a pessoa apaga a conta. Isso é uma chamada à API da Apple
+assinada com uma chave privada `.p8` que só você pode gerar (Apple Developer →
+Keys → *Sign in with Apple*). Preciso do arquivo, do **Key ID** e do Team ID.
+
+Sem ela, o resto da exclusão funciona: o acesso acaba, os vínculos com Google e
+Apple são apagados, o prontuário fica sob retenção. O que falta é o aviso à
+Apple — e é item de revisão da loja.
 
 **Uma pendência da sua spec já está resolvida:** *"package name e Bundle ID
 definitivos"* — são `com.bpr.clinic` nos dois, e o app já está no TestFlight com
 eles. Pode riscar.
 
-**E uma decisão sua, que não é configuração:** vincular ou não vincular
-automaticamente uma conta Google a um paciente que já existe com o mesmo e-mail.
-A sua spec diz **não**; o código em produção diz **sim**. Está na T-2 da 097.
+**E a decisão sua:** eu segui a **sua spec** — *não vincular automaticamente*.
+Quem entra pelo Google e já tem conta com aquele e-mail recebe uma frase
+pedindo a senha uma vez; depois disso o vínculo se cria sozinho. A web passou a
+responder igual. Se você preferir o contrário, é uma troca pequena e eu faço.

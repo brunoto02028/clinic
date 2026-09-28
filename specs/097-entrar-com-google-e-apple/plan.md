@@ -30,6 +30,53 @@ par de tokens** que o login por senha emite. Nada de inventar sessão nova.
 novo cria conta pelo Google" não é decisão de produto nova: é o caminho que já
 existe, por outra porta.
 
+## O que foi feito em 28/09
+
+**As seis tarefas estão implementadas.** O que falta é seu, e é configuração —
+está na tabela do fim.
+
+| T-N | o que ficou pronto |
+|---|---|
+| T-1 | `POST /api/mobile/auth/google` valida o ID token de verdade e emite **o mesmo par de tokens** que `/api/mobile/login` |
+| T-2 | **não vincular automaticamente** — 409 no app, `OAuthAccountNotLinked` na web, rota de vincular/desvincular e uma tela para isso |
+| T-3 | o botão no app, com `@react-native-google-signin/google-signin` |
+| T-4 | `POST /api/mobile/auth/apple` e o botão oficial da Apple |
+| T-5 | a web já responde igual; falta **só** o `GOOGLE_CLIENT_SECRET` no Coolify |
+| T-6 | a política de privacidade diz, nome por nome, o que vem de cada provedor |
+
+**Três decisões que mudaram em relação ao plano, e por quê:**
+
+**1. `jose` no lugar de `google-auth-library`.** A biblioteca do Google traz dez
+pacotes para fazer uma coisa — conferir a assinatura de um JWT — e **não serve
+para a Apple**, que precisaria de outra. O `jose` já vinha instalado (o
+`next-auth` depende dele) e serve aos dois. Nada novo foi baixado: só declarei
+no `package.json` o que já estava lá. Uma dependência a menos, não a mais.
+
+**2. `allowDangerousEmailAccountLinking` continua `true` na web.** A spec pedia
+`false` e **não dá** — o `PrismaAdapter` cria usuário com `{ name, image }`, e
+este `User` tem `firstName`, `lastName` e `profileImageUrl`, todas obrigatórias.
+Quem cria o usuário é o nosso `signIn`, e o adapter depois o acha pelo e-mail
+para pendurar o `Account`; com `false`, **nenhum cadastro novo pelo Google
+funciona**. A proteção que você queria está no `signIn`: conta que já existe e
+não tem Google ligado é recusada antes, e aí a bandeira só chega a vincular ao
+usuário que nasceu uma linha acima.
+
+**3. O botão do Google não aparece no Android.** Não existe build Android nenhum
+no EAS, logo não existe keystore, logo não existe SHA-1 para registrar o cliente
+OAuth de lá — e sem ele o SDK responde `DEVELOPER_ERROR`, que na tela vira "não
+foi possível entrar", sem mais nada. É uma linha e um build para ligar quando o
+Android sair.
+
+**E três defeitos que apareceram no caminho e foram corrigidos junto:**
+
+- A tela de login da web **nunca leu o `?error=`**. `lib/auth-options.ts` já
+  mandava `/login?error=AccessDenied` e `?error=AccountDeactivated`, e a pessoa
+  voltava ao formulário vazio, sem uma frase, achando que tinha errado a senha.
+- O Google entrava numa conta que já existia **só porque o e-mail batia** — que
+  é justamente o que a sua regra 2 proíbe.
+- `corsJson` não sabia mandar cabeçalho, então um 429 não conseguia dizer quando
+  voltar.
+
 ## A contradição que precisa da sua palavra
 
 A sua spec diz, na regra 2:
@@ -74,12 +121,12 @@ exige verificação do Google e reabre a tela de consentimento.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | O backend valida o token do Google e emite a sessão BPR | — | pendente |
-| T-2 | Quem já tem conta: o vínculo, do jeito que você decidir | T-1 | pendente |
-| T-3 | O botão no app (dependência nativa → **build**) | T-1 | pendente |
-| T-4 | Sign in with Apple — exigência da App Review, não opção | T-1 | pendente |
-| T-5 | Ligar o Google na web, que já está escrito | — | pendente |
-| T-6 | A política de privacidade e a exclusão de conta | T-1 | pendente |
+| T-1 | O backend valida o token do Google e emite a sessão BPR | — | **concluído** |
+| T-2 | Quem já tem conta: **não vincular automaticamente** | T-1 | **concluído** |
+| T-3 | O botão no app (dependência nativa → **build**) | T-1 | **concluído** (espera o build) |
+| T-4 | Sign in with Apple — exigência da App Review, não opção | T-1 | **concluído** (espera a capability e o build) |
+| T-5 | Ligar o Google na web, que já está escrito | — | **concluído** (espera o segredo no Coolify) |
+| T-6 | A política de privacidade e a exclusão de conta | T-1 | **concluído** |
 
 **Ordem:** T-1 e T-5 primeiro — são servidor, sobem sem build e dão para testar
 na web no mesmo dia. T-3 e T-4 dependem de build e de coisas que só você faz.

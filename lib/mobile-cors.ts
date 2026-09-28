@@ -16,7 +16,10 @@ const HEADERS = {
 
 export function corsJson(
   data: unknown,
-  init?: { status?: number }
+  // `headers` existe para o `Retry-After` do rate limit (097 T-1): é assim que
+  // se diz a um cliente quando voltar, e pôr o número só no corpo obrigaria
+  // cada tela a reinventar a leitura dele.
+  init?: { status?: number; headers?: Record<string, string> }
 ): NextResponse {
   const res = NextResponse.json(data, init);
   for (const [k, v] of Object.entries(HEADERS)) res.headers.set(k, v);

@@ -160,6 +160,22 @@ export async function closePatientAccount(input: CloseAccountInput): Promise<Clo
       where: { userId: { in: [user.id] } },
     });
 
+    /**
+     * E o Google e a Apple deixam de apontar para cá (097 T-6).
+     *
+     * Hoje `isActive: false` já barra a entrada, então isto não é o que tranca
+     * a porta — é o que impede o vínculo de sobreviver à conta. Deixado para
+     * trás, ele amarra o `sub` daquela pessoa a uma conta morta: uma
+     * reativação futura traria o provedor junto, sem ninguém ter pedido, e o
+     * mesmo Google não poderia ser ligado a uma conta nova porque o par
+     * (`provider`, `providerAccountId`) é único.
+     *
+     * **O que isto não faz:** revogar o token do lado da Apple. Ela exige isso
+     * de quem oferece Sign in with Apple **e** exclusão de conta, e depende de
+     * uma chave `.p8` que só o Bruno pode gerar (094 G-8).
+     */
+    await (tx as any).account.deleteMany({ where: { userId: user.id } });
+
     return geridas.count as number;
   });
 

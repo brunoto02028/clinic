@@ -180,6 +180,13 @@ export default function PrivacyPolicyPage() {
               <li><strong>{isPt ? "Documentos que você envia" : "Documents you send"}</strong>{isPt
                 ? " — exames, laudos e receitas que você anexa, guardados no seu prontuário."
                 : " — reports, tests and prescriptions you attach, kept in your record."}</li>
+              {/* Entrar com Google ou Apple (097 T-6).
+                  A verificação da tela de consentimento do Google exige que a
+                  política diga, nome por nome, quais dados vêm de lá e para
+                  que servem — e a App Review compara o mesmo para a Apple. */}
+              <li><strong>{isPt ? "Entrar com Google ou com Apple" : "Sign in with Google or Apple"}</strong>{isPt
+                ? " — se você escolher entrar assim, recebemos do provedor apenas o seu nome, o seu endereço de e-mail e a sua foto de perfil, e só para criar e reconhecer a sua conta. Não pedimos, não lemos e não guardamos nada mais: nem e-mails, nem agenda, nem arquivos, nem contatos. Nada disso é usado para publicidade nem compartilhado com terceiros. Na Apple, você pode ocultar o seu e-mail real, e nós falaremos com você pelo endereço de encaminhamento que ela nos der. Você pode desligar o provedor a qualquer momento nas configurações da conta, desde que tenha uma senha definida."
+                : " — if you choose to sign in this way, we receive from the provider only your name, your email address and your profile picture, and only to create and recognise your account. We do not request, read or store anything more: no email, no calendar, no files, no contacts. None of it is used for advertising or shared with third parties. With Apple, you may hide your real email address, and we will write to you at the relay address it gives us. You can disconnect the provider at any time in your account settings, as long as you have a password set."}</li>
             </ul>
             <p className="mt-3 font-semibold text-foreground">{isPt ? "O que o aplicativo NÃO faz:" : "What the app does NOT do:"}</p>
             <ul className="list-disc pl-5 space-y-1">

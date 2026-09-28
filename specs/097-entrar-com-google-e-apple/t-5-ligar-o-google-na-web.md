@@ -1,6 +1,6 @@
 # T-5: Ligar o Google na web, que já está escrito
 
-**Status:** pendente
+**Status:** concluído (28/09/2026) — espera `GOOGLE_CLIENT_SECRET` no Coolify
 **Depende de:** nenhuma
 
 ## Objetivo

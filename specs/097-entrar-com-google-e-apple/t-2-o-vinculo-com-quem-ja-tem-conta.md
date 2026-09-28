@@ -1,6 +1,6 @@
 # T-2: Quem já tem conta — o vínculo, do jeito que você decidir
 
-**Status:** pendente — **espera a sua decisão**
+**Status:** concluído (28/09/2026) — caminho **não vincular**, o da sua spec
 **Depende de:** T-1
 
 ## Objetivo

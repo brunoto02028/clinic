@@ -1,6 +1,6 @@
 # T-6: A política de privacidade e a exclusão de conta
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo

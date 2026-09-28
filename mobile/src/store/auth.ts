@@ -2,7 +2,14 @@ import { create } from "zustand";
 import { tokenStorage } from "@/lib/secure-storage";
 import { definirTokenEmprestado } from "@/lib/emprestimo";
 import { setOnAuthFailure, refreshSession, pendingRefresh } from "@/api/client";
-import { loginRequest, logoutRequest, registerRequest } from "@/api/auth";
+import {
+  loginRequest,
+  logoutRequest,
+  registerRequest,
+  googleSignInRequest,
+  appleSignInRequest,
+} from "@/api/auth";
+import { tokenDoGoogle, credencialDaApple } from "@/lib/social-signin";
 import { registrarParaPush, desregistrarPush } from "@/lib/push";
 import type { AuthUser } from "@/api/types";
 import { clearSessionCache } from "@/lib/query-client";
@@ -26,6 +33,10 @@ interface AuthState {
   /** Volta a trancar sem derrubar a sessão (app ficou tempo demais em segundo plano). */
   relock: () => void;
   login: (email: string, password: string) => Promise<void>;
+  /** Entrar com Google (097 T-3). Lança `SocialCancelado` se a pessoa desistiu. */
+  loginComGoogle: () => Promise<void>;
+  /** Entrar com Apple (097 T-4). Lança `SocialCancelado` se a pessoa desistiu. */
+  loginComApple: () => Promise<void>;
   register: (firstName: string, lastName: string, email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -114,8 +125,33 @@ export const useAuth = create<AuthState>((set) => ({
     void registrarParaPush();
   },
 
+  /**
+   * O depois do login é **o mesmo** dos três caminhos (097 T-3/T-4).
+   *
+   * Guardar tokens, limpar o cache da sessão anterior, virar o status e só
+   * então pedir push. Três cópias disto seria a garantia de que uma delas
+   * esqueceria o `clearSessionCache` — e aí quem entrasse depois abriria o
+   * app com os dados de saúde de quem usou o aparelho antes.
+   */
   register: async (firstName, lastName, email, password, tenantSlug) => {
     const res = await registerRequest(firstName, lastName, email, password, tenantSlug);
+    await tokenStorage.save(res.accessToken, res.refreshToken);
+    await clearSessionCache();
+    set({ status: "authenticated", user: res.user });
+    void registrarParaPush();
+  },
+
+  loginComGoogle: async () => {
+    const res = await googleSignInRequest(await tokenDoGoogle());
+    await tokenStorage.save(res.accessToken, res.refreshToken);
+    await clearSessionCache();
+    set({ status: "authenticated", user: res.user });
+    void registrarParaPush();
+  },
+
+  loginComApple: async () => {
+    const cred = await credencialDaApple();
+    const res = await appleSignInRequest(cred);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     await clearSessionCache();
     set({ status: "authenticated", user: res.user });
