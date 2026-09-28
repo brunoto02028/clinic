@@ -1,18 +1,33 @@
-# O app do paciente mora em mobile/, dentro deste repo, então o EAS empacota o
-# repositório inteiro: o primeiro build iOS subiu 672 MB e gastou quase cinco
-# minutos só no upload.
+# O que a EAS **não** precisa para construir o app.
 #
-# Nada listado aqui participa da compilação do app. As dependências o EAS
-# instala do zero, e o resto é o site Next.js, conteúdo editorial e specs.
-# Deliberadamente conservador: nenhuma pasta de mobile/ entra nesta lista.
-.next/
-node_modules/
-recovered-content/
-book/
-reconstruir/
-.qa-tmp/
-specs/
-docs/
-tests/
-__tests__/
-public/uploads/
+# ## Por que este arquivo está na raiz, e não em `mobile/`
+#
+# A EAS empacota a **raiz do repositório**, não a pasta do projeto — é assim que
+# ela suporta monorepo. Então um `.easignore` dentro de `mobile/` não governa o
+# envio: eu pus um lá primeiro e o arquivo continuou com 593 MB.
+#
+# O que estava indo junto, medido em 28/09/2026:
+#
+#     total rastreado:   413 MB
+#        recovered-content  186 MB   imagens recuperadas do site
+#        specs              177 MB   screenshots de QA
+#        book                11 MB
+#
+# Nada disso é lido pelo build nativo. O app é `mobile/`, que tem o próprio
+# `package.json` e as próprias dependências — a EAS instala lá dentro.
+#
+# ## Por que é lista de exclusão com uma exceção
+#
+# Nomear os culpados um a um resolve hoje e falha amanhã: a próxima pasta
+# grande entra sem ninguém perceber, e o sintoma é só o build demorar mais.
+# Excluir tudo e reabrir `mobile/` mantém o envio pequeno por construção.
+#
+# **Se um build falhar por arquivo ausente**, a causa provável está aqui: algo
+# na raiz que o prebuild lia. Reabra aquele caminho com `!`, não apague este
+# arquivo.
+
+# Tudo que está na raiz…
+/*
+
+# …menos o aplicativo.
+!/mobile/
