@@ -74,6 +74,49 @@ Elas estão na lista de exceções do teste, **com motivo escrito**, e cada linh
 Quatro que me parecem valer a pergunta: **`/admin/documents`**,
 **`/admin/foot-scans`**, **`/admin/treatments`** e **`/admin/global-dashboard`**.
 
+## Correção da própria varredura (mesma tarde)
+
+O Bruno perguntou onde ficam as **consultas por vídeo**. A varredura dizia que
+`/admin/video-consultations` tinha caminho. **Não tinha**, e a varredura estava
+errada por dois motivos:
+
+1. **`matchRoutes` contava como caminho.** Ele só **acende a seção** quando
+   você já está na tela — não leva a lugar nenhum. Só `href:` é clicável.
+2. **Menção em comentário contava como link.** As duas citações da rota em
+   `app/admin/appointments/page.tsx` são comentários explicando por que algo
+   mudou.
+
+Corrigidas as duas, apareceram **mais sete** sem caminho: `agent-keys`,
+`ai-coworker`, `analytics`, `calls`, `clinical-ai`, `sales`, `voice-costs`.
+
+Total real: **24 telas sem caminho**, não 16.
+
+## O que foi feito com elas
+
+*"Coloca tudo no menu (…) eu quero escolher o que não vamos usar depois"* —
+então entraram **todas as 20 que podem virar entrada de menu**:
+
+- **Agenda:** Consultas por vídeo · Ligações
+- **Clínico:** IA clínica · Escaneamento de pés · Scans (2ª versão?) ·
+  Tratamentos (2ª versão?) · Modelos 3D · Documentos
+- **Marketing:** Vendas · Analytics
+- **Configurações:** IA colega · Chaves de agente · Custos de voz · Central de
+  comando · Todas as clínicas · Estudo · Cursos CPD · Minha educação · Teste de
+  e-mail · Tela de login (antiga)
+
+Dois rótulos dizem o que eu não sei julgar: **"Scans (2ª versão?)"** e
+**"Tratamentos (2ª versão?)"** usam os mesmos títulos de telas que já existem —
+provavelmente são duplicatas, e a decisão é sua.
+
+## As quatro que sobraram, e por quê
+
+Três são sub-telas do paciente (`documents`, `permissions`, `report`): não
+podem virar entrada de menu, porque não existe menu sem um paciente escolhido.
+O caminho delas é um link na ficha — ainda não existe.
+
+A quarta é `/admin/scans/report-preview`, prévia alcançada a partir de
+`/admin/scans`.
+
 ## Veredito
 
 **Aprovado.** A varredura roda na suíte, acha as 113 telas, aponta as 16 sem

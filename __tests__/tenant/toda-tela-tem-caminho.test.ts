@@ -3,7 +3,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { raiz } from "../helpers/codigo";
+import { raiz, semComentarios } from "../helpers/codigo";
 
 /**
  * Toda tela do painel tem caminho? (100 T-4, 28/09/2026)
@@ -66,28 +66,16 @@ function arquivosVivos(dir: string): string[] {
  * partir de alguma tela, ou apagar.
  */
 const SEM_CAMINHO_CONHECIDAS: Record<string, string> = {
-  // Só o menu antigo (`admin-sidebar.old.tsx`) as citava. Ou seja: desde que
-  // ele saiu de uso, ninguém chega nelas pelo painel.
-  "/admin/body-models": "só no menu antigo",
-  "/admin/command-center": "só no menu antigo",
-  "/admin/cpd-courses": "só no menu antigo",
-  "/admin/documents": "só no menu antigo",
-  "/admin/email-test": "só no menu antigo",
-  "/admin/foot-scans": "só no menu antigo",
-  "/admin/global-dashboard": "só no menu antigo",
-  "/admin/my-education": "só no menu antigo",
-  "/admin/study": "só no menu antigo",
+  // Sub-telas do paciente. Nao podem virar entrada de menu — nao existe menu
+  // sem um paciente escolhido —, entao o caminho delas e um link na ficha
+  // dele. Ainda nao existe.
+  "/admin/patients/[id]/documents": "a ficha do paciente nao leva ate ela",
+  "/admin/patients/[id]/permissions": "a ficha do paciente nao leva ate ela",
+  "/admin/patients/[id]/report": "a ficha abre a API do relatorio, nao esta tela",
 
-  // Nunca citadas em lugar nenhum.
-  "/admin/login": "nunca citada — o login da equipe é /staff-login",
-  "/admin/scans": "nunca citada",
-  "/admin/scans/report-preview": "nunca citada",
-  "/admin/treatments": "nunca citada",
-
-  // Sub-telas do paciente que a ficha dele não abre.
-  "/admin/patients/[id]/documents": "a ficha do paciente não leva até ela",
-  "/admin/patients/[id]/permissions": "a ficha do paciente não leva até ela",
-  "/admin/patients/[id]/report": "a ficha abre a **API** do relatório, não esta tela",
+  // Sub-tela de `/admin/scans`, alcancada a partir dela quando aquela tela
+  // ganhar o link. Entrou no menu como parte de "Scans".
+  "/admin/scans/report-preview": "previa alcancada a partir de /admin/scans",
 };
 
 describe("toda tela do painel tem caminho", () => {
@@ -96,8 +84,19 @@ describe("toda tela do painel tem caminho", () => {
     .sort();
 
   const nav = fs.readFileSync(path.join(raiz, "lib", "admin-sections.ts"), "utf8");
+  /**
+   * **Só `href:` conta como caminho.**
+   *
+   * A primeira versão desta varredura aceitava qualquer `/admin/...` citado no
+   * arquivo — e `matchRoutes` é outra coisa: ele **acende a seção** quando
+   * você já está na tela, e não leva a lugar nenhum.
+   *
+   * Foi assim que `/admin/video-consultations` passou pela varredura: citada
+   * em `matchRoutes`, sem aba nenhuma. O Bruno perguntou duas vezes onde ela
+   * ficava, e a suite dizia que estava tudo bem.
+   */
   const citadas = new Set(
-    [...nav.matchAll(/["']\/admin[^"']*["']/g)].map((m) => m[0].slice(1, -1))
+    [...nav.matchAll(/href:\s*["'](\/admin[^"']*)["']/g)].map((m) => m[1])
   );
 
   const vivos = [
@@ -106,7 +105,16 @@ describe("toda tela do painel tem caminho", () => {
   ]
     // Uma rota de API não é um link: ninguém navega para ela.
     .filter((f) => !f.includes("/app/api/"));
-  const conteudo = vivos.map((f) => [f, fs.readFileSync(f, "utf8")] as const);
+  /**
+   * **Menção em comentário não é link.**
+   *
+   * `app/admin/appointments/page.tsx` cita `/admin/video-consultations` duas
+   * vezes — as duas explicando por que algo mudou. A varredura contou como
+   * caminho, e não havia caminho nenhum.
+   */
+  const conteudo = vivos.map(
+    (f) => [f, semComentarios(fs.readFileSync(f, "utf8"))] as const
+  );
 
   /** O caminho sem os segmentos dinâmicos — é assim que o menu o cita. */
   const estatico = (t: string) => t.split("/").filter((s) => !s.startsWith("[")).join("/");
