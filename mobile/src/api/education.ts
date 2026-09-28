@@ -1,11 +1,29 @@
 import { apiFetch } from "./client";
 
+/**
+ * Um pedaco do artigo, ja traduzido de HTML pelo servidor (28/09/2026).
+ *
+ * O corpo do material vem em HTML — e o `<Text>` desenha o que recebe, entao
+ * o paciente lia `<h2><span style=...` e dezenas de `&nbsp;`. A traducao mora
+ * em `lib/rich-text-blocks.ts`, num lugar so, e aqui chega pronto.
+ */
+export type BlocoDoArtigo =
+  | { tipo: "titulo"; nivel: 1 | 2 | 3; texto: string }
+  | { tipo: "paragrafo"; texto: string }
+  | { tipo: "lista"; itens: string[]; ordenada: boolean }
+  | { tipo: "citacao"; texto: string }
+  | { tipo: "imagem"; url: string; legenda?: string }
+  | { tipo: "separador" };
+
 export interface EduContent {
   id: string;
   title: string;
   description: string | null;
   contentType: string;
   category?: { id: string; name: string; color: string | null } | null;
+  /** A imagem de capa do artigo, quando ele tem uma. */
+  thumbnailUrl?: string | null;
+  blocks?: BlocoDoArtigo[];
   [key: string]: any;
 }
 

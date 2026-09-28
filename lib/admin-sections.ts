@@ -9,6 +9,7 @@ import {
   BellRing,
   Trophy,
   Apple,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -73,6 +74,41 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Availability",
         labelPt: "Disponibilidade",
         href: "/admin/appointments/availability",
+      },
+      /**
+       * Telas que a varredura (100 T-4) achou sem caminho.
+       *
+       * O Bruno: *"coloca tudo no menu"* e *"eu quero escolher o que nao vamos
+       * usar depois"*. Entao elas entram como estao, e a triagem e dele.
+       *
+       * Os rotulos descrevem o que a tela **e**, nao o que o nome da rota
+       * sugere — e onde duas telas parecem a mesma coisa, o rotulo diz isso.
+       */
+      {
+        key: "calls",
+        label: "Calls",
+        labelPt: "Ligacoes",
+        href: "/admin/calls",
+        matchRoutes: ["/admin/calls"],
+      },
+      {
+        /**
+         * A consulta por video, clicavel (28/09/2026).
+         *
+         * `/admin/video-consultations` era citada so em `matchRoutes` — que
+         * **acende a secao e nao leva a lugar nenhum** — e as duas mencoes na
+         * agenda sao comentarios, nao links. Ou seja: a tela nao tinha porta,
+         * e o Bruno perguntou duas vezes onde ela ficava.
+         *
+         * E dela que sai o "Test it now", que marca uma consulta de teste para
+         * daqui a cinco minutos.
+         */
+        key: "video-consultations",
+        label: "Video consultations",
+        labelPt: "Consultas por video",
+        href: "/admin/video-consultations",
+        matchRoutes: ["/admin/video-consultations"],
+        clinicalOnly: true,
       },
       {
         key: "waitlist",
@@ -316,14 +352,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
        * descreve o que a pessoa quer fazer.
        */
       {
-        key: "education",
-        label: "Patient education",
-        labelPt: "Material do paciente",
-        href: "/admin/education",
-        matchRoutes: ["/admin/education", "/admin/education/create", "/admin/education/categories"],
-        clinicalOnly: true,
-      },
-      {
         /**
          * O acompanhamento contínuo, no menu (099).
          *
@@ -341,20 +369,65 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         matchRoutes: ["/admin/biohacking", "/admin/measurements"],
         clinicalOnly: true,
       },
+      /**
+       * As telas que a varredura (100 T-4) achou sem caminho nenhum.
+       *
+       * O Bruno: *"coloca tudo no menu"* e *"eu quero escolher o que nao vamos
+       * usar depois"*. Entao elas entram como estao, e a triagem e dele.
+       *
+       * Os rotulos dizem o que a tela **e**, nao o que a rota sugere — e onde
+       * duas parecem a mesma coisa, o rotulo diz isso em vez de esconder.
+       */
       {
-        /**
-         * **O passo que vincula, visível.**
-         *
-         * `/admin/education/assignments` existia e **nenhum menu apontava para
-         * ele** — nem o antigo. Quem trouxesse os artigos ficava com eles na
-         * clínica e sem caminho até um paciente, que é justamente o passo que
-         * faz o material chegar a alguém.
-         */
-        key: "education-assignments",
-        label: "Assign material",
-        labelPt: "Atribuir material",
-        href: "/admin/education/assignments",
-        matchRoutes: ["/admin/education/assignments"],
+        key: "clinical-ai",
+        label: "Clinical AI",
+        labelPt: "IA clinica",
+        href: "/admin/clinical-ai",
+        matchRoutes: ["/admin/clinical-ai"],
+        clinicalOnly: true,
+      },
+      {
+        key: "foot-scans",
+        label: "Foot scans",
+        labelPt: "Escaneamento de pes",
+        href: "/admin/foot-scans",
+        matchRoutes: ["/admin/foot-scans"],
+        clinicalOnly: true,
+      },
+      {
+        // Usa o mesmo titulo de "Foot scans" (`admin.footScansTitle`): pode ser
+        // uma segunda versao da mesma tela.
+        key: "scans",
+        label: "Scans (2nd version?)",
+        labelPt: "Scans (2a versao?)",
+        href: "/admin/scans",
+        matchRoutes: ["/admin/scans", "/admin/scans/report-preview"],
+        clinicalOnly: true,
+      },
+      {
+        // Usa `admin.treatmentTypesTitle` — provavelmente outra porta para os
+        // tipos de tratamento, que ja tem a aba "Treatments".
+        key: "treatments-legacy",
+        label: "Treatments (2nd version?)",
+        labelPt: "Tratamentos (2a versao?)",
+        href: "/admin/treatments",
+        matchRoutes: ["/admin/treatments"],
+        clinicalOnly: true,
+      },
+      {
+        key: "body-models",
+        label: "3D body models",
+        labelPt: "Modelos 3D do corpo",
+        href: "/admin/body-models",
+        matchRoutes: ["/admin/body-models"],
+        clinicalOnly: true,
+      },
+      {
+        key: "patient-documents",
+        label: "Documents (upload & process)",
+        labelPt: "Documentos (enviar e processar)",
+        href: "/admin/documents",
+        matchRoutes: ["/admin/documents"],
         clinicalOnly: true,
       },
       {
@@ -401,6 +474,61 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       // Sem isto, /admin/labs caía na seção Schedule (QA da T-2, 081).
       "/admin/labs",
     ],
+  },
+  {
+    /**
+     * Material do paciente tem espaco proprio (28/09/2026).
+     *
+     * O Bruno: *"esta indo la em Schedule (...) Schedule e a agenda. Nao pode
+     * misturar. Tem que criar um outro espaco para isso"*.
+     *
+     * Ele tem razao por um motivo que vai alem do engano do menu: os artigos
+     * que viram material clinico sao um assunto inteiro — trazer do site,
+     * organizar, atribuir a alguem, acompanhar quem leu. Pendurar isso numa
+     * aba de outra coisa foi o que o fez procurar em tres lugares.
+     */
+    key: "education",
+    label: "Patient education",
+    labelPt: "Material do paciente",
+    icon: GraduationCap,
+    clinicalOnly: true,
+    tabs: [
+      {
+        key: "education-library",
+        label: "Material",
+        labelPt: "Material",
+        href: "/admin/education",
+        matchRoutes: ["/admin/education"],
+      },
+      {
+        /**
+         * O passo que faz o material chegar a alguem.
+         *
+         * Trazer para a clinica e mandar para um paciente sao duas decisoes
+         * (096), e a segunda nao tinha porta nenhuma no menu.
+         */
+        key: "education-assignments",
+        label: "Assign material",
+        labelPt: "Atribuir material",
+        href: "/admin/education/assignments",
+        matchRoutes: ["/admin/education/assignments"],
+      },
+      {
+        key: "education-categories",
+        label: "Categories",
+        labelPt: "Categorias",
+        href: "/admin/education/categories",
+        matchRoutes: ["/admin/education/categories"],
+      },
+      {
+        key: "education-create",
+        label: "Write material",
+        labelPt: "Escrever material",
+        href: "/admin/education/create",
+        matchRoutes: ["/admin/education/create"],
+      },
+    ],
+    matchRoutes: ["/admin/education"],
   },
   {
     key: "marketing",
@@ -471,6 +599,20 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Conditions (SEO)",
         labelPt: "Condições (SEO)",
         href: "/admin/marketing/condition-pages",
+      },
+      {
+        key: "sales",
+        label: "Sales",
+        labelPt: "Vendas",
+        href: "/admin/sales",
+        matchRoutes: ["/admin/sales"],
+      },
+      {
+        key: "analytics",
+        label: "Analytics",
+        labelPt: "Analytics",
+        href: "/admin/analytics",
+        matchRoutes: ["/admin/analytics"],
       },
       {
         key: "materials",
@@ -608,6 +750,87 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/studio-branding",
         ownerOnly: true,
       },
+      /**
+       * Telas sem caminho, achadas pela varredura (100 T-4), postas aqui a
+       * pedido do Bruno para ele decidir depois o que fica.
+       */
+      {
+        key: "ai-coworker",
+        label: "AI Coworker",
+        labelPt: "IA colega",
+        href: "/admin/ai-coworker",
+        matchRoutes: ["/admin/ai-coworker"],
+      },
+      {
+        key: "agent-keys",
+        label: "Agent keys",
+        labelPt: "Chaves de agente",
+        href: "/admin/agent-keys",
+        matchRoutes: ["/admin/agent-keys"],
+        superadminOnly: true,
+      },
+      {
+        key: "voice-costs",
+        label: "Voice costs",
+        labelPt: "Custos de voz",
+        href: "/admin/voice-costs",
+        matchRoutes: ["/admin/voice-costs"],
+        superadminOnly: true,
+      },
+      {
+        key: "command-center",
+        label: "Command Center",
+        labelPt: "Central de comando",
+        href: "/admin/command-center",
+        matchRoutes: ["/admin/command-center"],
+      },
+      {
+        key: "global-dashboard",
+        label: "All clinics (platform)",
+        labelPt: "Todas as clinicas (plataforma)",
+        href: "/admin/global-dashboard",
+        matchRoutes: ["/admin/global-dashboard"],
+        superadminOnly: true,
+      },
+      {
+        key: "study",
+        label: "Study & activities",
+        labelPt: "Estudo e atividades",
+        href: "/admin/study",
+        matchRoutes: ["/admin/study"],
+      },
+      {
+        key: "cpd-courses",
+        label: "CPD courses",
+        labelPt: "Cursos CPD",
+        href: "/admin/cpd-courses",
+        matchRoutes: ["/admin/cpd-courses"],
+      },
+      {
+        key: "my-education",
+        label: "My education (AI advisor)",
+        labelPt: "Minha educacao (consultor IA)",
+        href: "/admin/my-education",
+        matchRoutes: ["/admin/my-education"],
+      },
+      {
+        key: "email-test",
+        label: "Email test",
+        labelPt: "Teste de e-mail",
+        href: "/admin/email-test",
+        matchRoutes: ["/admin/email-test"],
+        superadminOnly: true,
+      },
+      {
+        // Tela de login dentro do painel: quem esta aqui ja entrou. Fica na
+        // lista para o Bruno ver e decidir — provavelmente para apagar.
+        key: "admin-login-legacy",
+        label: "Login page (legacy)",
+        labelPt: "Tela de login (antiga)",
+        href: "/admin/login",
+        matchRoutes: ["/admin/login"],
+        superadminOnly: true,
+      },
       {
         key: "users",
         label: "Users",
@@ -715,7 +938,23 @@ export function getActiveAdminNav(pathname: string): {
     // Skip agenda (fallback) on first pass
     if (section.key === "agenda" && clean !== "/admin") continue;
 
-    const sectionMatch = section.matchRoutes?.some((r) => routeMatches(clean, r));
+    /**
+     * A secao casa pelas **proprias abas** tambem (28/09/2026).
+     *
+     * Antes ela dependia so de `matchRoutes`, e isso quebrou assim que uma aba
+     * mudou de secao: `/admin/education` saiu de Marketing, entrou em Clinico
+     * como aba — e ninguem lembrou de mexer no `matchRoutes` da secao. Nenhuma
+     * casou, caiu no fallback, e o menu passou a acender **Agenda** para a tela
+     * de material do paciente.
+     *
+     * Uma aba com `href` e, por definicao, um caminho daquela secao. Ler isso
+     * daqui mata a classe inteira do erro: acrescentar uma aba passa a bastar.
+     */
+    const sectionMatch =
+      section.matchRoutes?.some((r) => routeMatches(clean, r)) ||
+      section.tabs.some((t) =>
+        [t.href, ...(t.matchRoutes || [])].some((r) => routeMatches(clean, r))
+      );
     if (!sectionMatch) continue;
 
     let matchedTab: AdminTab | null = null;
