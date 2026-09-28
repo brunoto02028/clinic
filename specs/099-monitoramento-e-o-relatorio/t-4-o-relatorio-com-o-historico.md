@@ -1,6 +1,6 @@
 # T-4: O relatório passa a incluir o histórico inteiro
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** nenhuma
 
 ## Objetivo

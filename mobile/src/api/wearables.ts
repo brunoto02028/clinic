@@ -40,6 +40,18 @@ export interface WearableDataPoint {
   steps: number | null;
   activeCalories: number | null;
   activeMinutes: number | null;
+  /**
+   * O registro de ECG, ja lido pelo servidor (099 T-1).
+   *
+   * So existe quando `dataType === "ECG"`. A conclusao e a do **aparelho** —
+   * nos nao interpretamos tracado, e nao recebemos um.
+   */
+  ecg?: {
+    recordedAt: string | null;
+    heartRate: number | null;
+    conclusao: "sem_sinal" | "normal" | "fibrilacao" | "inconclusivo";
+    signalId: string | null;
+  } | null;
 }
 
 export async function fetchConnections(): Promise<WearableConnection[]> {

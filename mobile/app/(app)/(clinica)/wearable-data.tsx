@@ -57,6 +57,15 @@ function WearableDataScreen() {
   const body = latest("BODY");
   const activity = latest("ACTIVITY");
 
+  /**
+   * Os ECG do período (099 T-1).
+   *
+   * Eram guardados desde a 074 e **nenhuma tela lia** — um dado clínico que
+   * existe no banco e em lugar nenhum dá a impressão de cobertura que não
+   * existe. São vários por período, então aqui é lista, não o último.
+   */
+  const ecgs = (data ?? []).filter((d) => d.dataType === "ECG" && d.ecg);
+
   const fmtDuration = (mins: number | null) => {
     if (mins == null) return "—";
     return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`;
@@ -115,6 +124,60 @@ function WearableDataScreen() {
                   { label: tr(lang, { en: "Active min", pt: "Min ativos" }), value: activity.activeMinutes != null ? `${activity.activeMinutes} min` : "—" },
                 ]}
               />
+            )}
+
+            {ecgs.length > 0 && (
+              <View
+                style={{
+                  padding: 16,
+                  backgroundColor: t.colors.surface,
+                  borderRadius: t.radius.lg,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  gap: 12,
+                }}
+              >
+                <Text
+                  variant="caption"
+                  color={t.colors.textSecondary}
+                  style={{ textTransform: "uppercase", letterSpacing: 1, fontSize: 11, fontWeight: "700" }}
+                >
+                  ECG
+                </Text>
+                {ecgs.map((d) => {
+                  const e = d.ecg!;
+                  // A conclusão é **do aparelho**. Não lemos traçado — não temos
+                  // um, de propósito — e não acrescentamos opinião.
+                  const grave = e.conclusao === "fibrilacao";
+                  const frase =
+                    e.conclusao === "normal"
+                      ? tr(lang, { en: "Normal rhythm", pt: "Ritmo normal" })
+                      : grave
+                        ? tr(lang, { en: "Atrial fibrillation detected", pt: "Fibrilação atrial detectada" })
+                        : e.conclusao === "sem_sinal"
+                          ? tr(lang, { en: "No usable signal", pt: "Sem sinal utilizável" })
+                          : tr(lang, { en: "Inconclusive", pt: "Inconclusivo" });
+                  return (
+                    <View key={d.id} style={{ gap: 2 }}>
+                      <Text variant="body" color={grave ? t.colors.bad : t.colors.text} style={{ fontWeight: grave ? "700" : "400" }}>
+                        {frase}
+                      </Text>
+                      <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
+                        {(e.recordedAt ?? d.dataDate).slice(0, 10)}
+                        {e.heartRate != null ? ` · ${Math.round(e.heartRate)} bpm` : ""}
+                      </Text>
+                    </View>
+                  );
+                })}
+                {/* Dito na tela, e não só nos termos: o aparelho conclui, nós
+                    guardamos, e quem lê um ECG é um profissional. */}
+                <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11 }}>
+                  {tr(lang, {
+                    en: "This is what the watch concluded. Talk to your therapist about it — we do not read the trace.",
+                    pt: "É o que o relógio concluiu. Fale com o seu terapeuta sobre isso — nós não lemos o traçado.",
+                  })}
+                </Text>
+              </View>
             )}
 
             <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", marginTop: 8 }}>
