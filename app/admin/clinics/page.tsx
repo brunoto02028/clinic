@@ -13,7 +13,9 @@ import {
     ExternalLink,
     ShieldCheck,
     AlertCircle,
-    Mail
+    Mail,
+    Eye,
+    EyeOff
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -34,12 +36,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import EmailPreview, { type EmailPreviewData } from "@/components/admin/email-preview";
+import { TIPOS_DE_INQUILINO, isProfissionalExterno, registroExigido, tipoDoInquilino } from "@/lib/tenant-type";
 
 interface Clinic {
     id: string;
     name: string;
     slug: string;
     type: string;
+    visibleInApp?: boolean;
+    professionalRegistry?: string | null;
     email: string;
     isActive: boolean;
     city: string;
@@ -63,7 +68,34 @@ export default function ClinicsPage() {
     const [search, setSearch] = useState("");
 
     // Create-tenant dialog (SUPERADMIN provisions a clinic or a personal studio).
-    const emptyForm = { name: "", slug: "", type: "CLINIC", email: "", ownerFirst: "", ownerLast: "", ownerEmail: "", ownerLocale: "en" };
+    /**
+     * Ligar ou desligar o profissional no catálogo do aplicativo.
+     *
+     * O Bruno: *"a gente que dá essas permissões"*. Ele nasce desligado, e
+     * esta é a única porta que o liga — não há nada automático em lugar
+     * nenhum.
+     */
+    const alternarVisibilidade = async (clinic: any) => {
+        const res = await fetch(`/api/admin/clinics/${clinic.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ visibleInApp: !clinic.visibleInApp }),
+        });
+        if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            toast({ title: "Could not change it", description: d.error || `HTTP ${res.status}`, variant: "destructive" });
+            return;
+        }
+        toast({
+            title: clinic.visibleInApp ? "Hidden from the app" : "Now showing in the app",
+            description: clinic.visibleInApp
+                ? "Patients can no longer book with them. Existing appointments are untouched."
+                : "Patients can now find and book with them.",
+        });
+        fetchClinics();
+    };
+
+    const emptyForm = { name: "", slug: "", type: "CLINIC", professionalRegistry: "", email: "", ownerFirst: "", ownerLast: "", ownerEmail: "", ownerLocale: "en" };
     const [createOpen, setCreateOpen] = useState(false);
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState(emptyForm);
@@ -84,7 +116,7 @@ export default function ClinicsPage() {
             const res = await fetch("/api/admin/clinics", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: form.name.trim(), slug: form.slug.trim(), type: form.type, email: form.email.trim() || undefined }),
+                body: JSON.stringify({ name: form.name.trim(), slug: form.slug.trim(), type: form.type, professionalRegistry: form.professionalRegistry.trim() || undefined, email: form.email.trim() || undefined }),
             });
             const clinic = await res.json();
             if (!res.ok) throw new Error(clinic?.error || "Failed to create");
@@ -443,6 +475,22 @@ export default function ClinicsPage() {
                                                             <ExternalLink className="mr-2 h-4 w-4" />
                                                             Manage this Clinic
                                                         </DropdownMenuItem>
+                                                        {/* Ligar e desligar a visibilidade no app.
+                                                            Sem isto o profissional nasce invisivel e
+                                                            **fica** — que e a falha de "existe e
+                                                            ninguem chega" com outro nome. */}
+                                                        {isProfissionalExterno(clinic.type) && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => alternarVisibilidade(clinic)}>
+                                                                    {clinic.visibleInApp ? (
+                                                                        <><EyeOff className="mr-2 h-4 w-4" /> Hide from the patient app</>
+                                                                    ) : (
+                                                                        <><Eye className="mr-2 h-4 w-4" /> Show in the patient app</>
+                                                                    )}
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
                                                         {clinic.type === "PERSONAL_TRAINER" && (
                                                             <>
                                                                 <DropdownMenuSeparator />
@@ -502,14 +550,48 @@ export default function ClinicsPage() {
                     <div className="space-y-4 py-1">
                         <div className="space-y-2">
                             <Label>Type</Label>
+                            {/* Os seis tipos vêm de `lib/tenant-type.ts`, com a
+                                frase que diz o que cada um muda. Uma lista
+                                escrita aqui divergiria do mapa no dia em que o
+                                sétimo tipo nascer. */}
                             <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="CLINIC">Clinic</SelectItem>
-                                    <SelectItem value="PERSONAL_TRAINER">Personal Studio</SelectItem>
+                                    {TIPOS_DE_INQUILINO.map((t) => (
+                                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground">{tipoDoInquilino(form.type).hint}</p>
                         </div>
+
+                        {/* O registro profissional, quando o conselho exige.
+                            Sem ele o profissional é cadastrado e **nunca
+                            aparece** no app — e o erro só apareceria semanas
+                            depois, como "por que ele não aparece?". */}
+                        {registroExigido(form.type) && registroExigido(form.type) !== "OUTRO" && (
+                            <div className="space-y-2">
+                                <Label htmlFor="treg">{registroExigido(form.type)} number</Label>
+                                <Input
+                                    id="treg"
+                                    value={form.professionalRegistry}
+                                    onChange={(e) => setForm((f) => ({ ...f, professionalRegistry: e.target.value }))}
+                                    placeholder={`e.g. ${registroExigido(form.type)} 123456`}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Shown to the patient. Required by law for consultations at a distance.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Cadastrar não é pôr à venda: quem liga a visibilidade
+                            é uma pessoa, depois, na lista. */}
+                        {isProfissionalExterno(form.type) && (
+                            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+                                This professional will <strong>not</strong> appear in the patient app
+                                until you switch them on here. Registering is not publishing.
+                            </p>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="tname">{isStudio ? "Studio name" : "Clinic name"}</Label>

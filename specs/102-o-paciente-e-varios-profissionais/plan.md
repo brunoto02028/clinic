@@ -1,7 +1,7 @@
 # 102 — O mesmo paciente, vários profissionais
 
 **Aberta em:** 28/09/2026
-**Estado:** 🔵 planejada — **aguardando aprovação**. Nada implementado.
+**Estado:** 🟡 **aprovada em 28/09/2026** — implementação em andamento.
 
 ## O pedido
 
@@ -42,6 +42,29 @@ Quase toda a máquina está no lugar. Procurei antes de propor.
 só, e o dia inteiro de 28/09 foi gasto **fechando** furos onde um inquilino
 alcançava o paciente de outro. Esta atividade pede o contrário — e é por isso
 que ela precisa de um desenho explícito, e não de um `clinicId` a menos.
+
+## Quem é o usuário do app, e o que ele vê
+
+Confirmado pelo Bruno em 28/09, e muda duas coisas no desenho:
+
+> *"O paciente já vai fazer o cadastro assim que baixar o aplicativo. Paciente
+> ou não, ele vai ter o cadastro dele. Se ele quiser fisioterapia, reabilitação
+> é uma coisa; se ele quiser médicos, outras modalidades é outra coisa."*
+
+**Quem baixa o app se cadastra, e é usuário antes de ser paciente de alguém.**
+Isso já existe: `/api/mobile/register` cria a conta no inquilino padrão. O que
+muda é a leitura — essa pessoa **não é**, por isso, paciente da reabilitação.
+Ela vira paciente de uma modalidade quando escolhe e paga uma.
+
+E as duas portas são independentes: alguém pode querer só o nutricionista e
+nunca pisar na fisioterapia.
+
+> *"Uma vez que eu cadastrei os médicos, as modalidades de cada um vai aparecer
+> para o paciente… ou não. A gente que dá essas permissões."*
+
+**Cadastrar um profissional não o põe à venda.** Aparecer no app é uma
+permissão que a BPR dá, por profissional, e ela nasce **desligada**. É a mesma
+regra da partilha, um andar acima: nada automático.
 
 ## A decisão que decide tudo: como o paciente é compartilhado
 

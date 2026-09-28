@@ -438,8 +438,31 @@ model Clinic {
   // consentTextsJson/consentTextsJsonPt (act.51, Terms & Conditions).
   reminderTemplatesJson Json?
 
-  // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
+  // Clinic by default; a personal-trainer studio gets its own vocabulary and
+  // modules, and a doctor/psychologist/nutritionist is a professional the
+  // platform intermediates. `lib/tenant-type.ts` is what reads this — never a
+  // `type === "..."` spread across screens.
   type TenantType @default(CLINIC)
+
+  /// O registro profissional e o conselho que o emite — CRM, CRP, CRN.
+  /// Em consulta a distancia no Brasil, mostrar o numero de quem atende e
+  /// obrigacao de quem atende **e** da plataforma que o apresenta. Sem ele, o
+  /// profissional nao aparece no catalogo (`podeAparecerNoApp`).
+  professionalRegistry String?
+  registryKind         String?
+
+  /// Aparece no catalogo do aplicativo?
+  ///
+  /// **Nasce falso, de proposito.** O Bruno: *"uma vez que eu cadastrei os
+  /// medicos, as modalidades de cada um vai aparecer para o paciente... ou
+  /// nao. A gente que da essas permissoes."* Cadastrar um profissional nao o
+  /// poe a venda; ligar isto e uma decisao de alguem.
+  visibleInApp Boolean @default(false)
+
+  /// O percentual que fica com a plataforma neste profissional.
+  /// Por profissional, e nao por consulta: um numero por consulta viraria
+  /// negociacao a cada marcacao.
+  platformFeePercent Float?
 
   /// Em que línguas este profissional atende — `["en-GB"]`, `["pt-BR"]`, ou
   /// as duas (083).
