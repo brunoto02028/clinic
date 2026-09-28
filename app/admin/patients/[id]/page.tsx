@@ -33,6 +33,7 @@ import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admi
 import { BloodPressureTab } from "@/components/admin/blood-pressure-tab";
 import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
+import { PatientMonitoringTab } from "@/components/admin/patient-monitoring-tab";
 import PatientWellbeingChart from "@/components/admin/patient-wellbeing-chart";
 import AutomationRuns from "@/components/patients/automation-runs";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
@@ -1079,6 +1080,9 @@ export default function PatientProfilePage() {
                 {!isPersonal && (
                   <TabsTrigger value="pressao" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Blood Pressure</TabsTrigger>
                 )}
+                {/* 099 T-3: as séries lado a lado, na mesma janela de tempo. Sono
+                    caindo enquanto a dor sobe não aparece olhando uma aba por vez. */}
+                <TabsTrigger value="monitoramento" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Monitoring</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documents</TabsTrigger>
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
                   <MessageSquare className="h-3 w-3" />Messages
@@ -2357,6 +2361,11 @@ export default function PatientProfilePage() {
             <BloodPressureTab patientId={patientId} />
           </TabsContent>
         )}
+
+        {/* ── Tab: Monitoramento (099 T-3) ── */}
+        <TabsContent value="monitoramento" className="mt-4">
+          <PatientMonitoringTab patientId={patientId} />
+        </TabsContent>
 
         {/* ── Tab: Evidência ── */}
         <TabsContent value="evidencia" className="mt-4">

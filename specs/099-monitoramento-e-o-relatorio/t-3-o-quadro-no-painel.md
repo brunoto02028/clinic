@@ -1,6 +1,6 @@
 # T-3: O quadro do paciente no painel, ao longo do tempo
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo
