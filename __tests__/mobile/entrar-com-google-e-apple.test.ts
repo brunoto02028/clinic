@@ -400,6 +400,28 @@ describe("o aplicativo", () => {
     expect(login).toMatch(/ligarGoogle\(pendente\.idToken\)/);
   });
 
+  it("**a folha do provedor abre uma vez só**", () => {
+    /**
+     * A credencial nasce fora do `try` e é reaproveitada no 409. Pedi-la de
+     * novo ali abriria a folha do Google uma segunda vez **em cima da
+     * mensagem de erro** — ou, na Apple, pediria o Face ID outra vez. A pessoa
+     * acabou de escolher a conta; perguntar de novo parece que deu errado
+     * nela.
+     */
+    expect(login).toMatch(/let credencial: Pendente = null;/);
+    expect(login).toMatch(/setPendente\(credencial\);/);
+    // Uma chamada a cada um, e só dentro do `try` do começo.
+    expect(login.match(/tokenDoGoogle\(\)/g) ?? []).toHaveLength(1);
+    expect(login.match(/credencialDaApple\(\)/g) ?? []).toHaveLength(1);
+  });
+
+  it("e a loja deixou de falar com o SDK nativo", () => {
+    // Quem fala com o provedor é a tela: a loja recebe a credencial pronta.
+    const loja = lerCodigo("mobile", "src", "store", "auth.ts");
+    expect(loja).toMatch(/loginComGoogle: async \(idToken\)/);
+    expect(loja).not.toMatch(/await tokenDoGoogle\(\)|await credencialDaApple\(\)/);
+  });
+
   it("dá para desligar o provedor, e a tela impede o desligamento que tranca", () => {
     const contas = lerCodigo("mobile", "app", "(app)", "connected-accounts.tsx");
     expect(contas).toMatch(/const soRestaEste = ligado && semSenha;/);

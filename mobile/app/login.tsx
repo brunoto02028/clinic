@@ -18,6 +18,12 @@ import {
 import { useTheme } from "@/theme/useTheme";
 import { deviceLang, t as tr, type Lang } from "@/lib/i18n";
 
+/** A credencial de um provedor, enquanto ela ainda não virou sessão. */
+type Pendente =
+  | null
+  | { tipo: "google"; idToken: string }
+  | ({ tipo: "apple" } & CredencialApple);
+
 export default function Login() {
   const t = useTheme();
   const login = useAuth((s) => s.login);
@@ -43,9 +49,7 @@ export default function Login() {
    * Só em memória, e só nesta tela. Sair daqui a descarta, que é o certo: ela
    * é de uma tentativa, não da pessoa.
    */
-  const [pendente, setPendente] = useState<
-    null | { tipo: "google"; idToken: string } | ({ tipo: "apple" } & CredencialApple)
-  >(null);
+  const [pendente, setPendente] = useState<Pendente>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -118,29 +122,34 @@ export default function Login() {
   const entrarSocial = async (tipo: "google" | "apple") => {
     setError(null);
     setSocial(tipo);
+    /**
+     * A credencial é obtida **uma vez**, e fica aqui fora do `try`.
+     *
+     * É o que permite reaproveitá-la quando o servidor responde 409: pedi-la de
+     * novo abriria a folha do Google uma segunda vez **em cima da mensagem de
+     * erro** — ou, na Apple, pediria o Face ID outra vez. A pessoa acabou de
+     * escolher a conta; perguntar de novo parece que algo deu errado nela.
+     */
+    let credencial: Pendente = null;
     try {
-      if (tipo === "google") {
-        await loginComGoogle();
+      credencial =
+        tipo === "google"
+          ? { tipo: "google", idToken: await tokenDoGoogle() }
+          : { tipo: "apple", ...(await credencialDaApple()) };
+
+      if (credencial.tipo === "google") {
+        await loginComGoogle(credencial.idToken);
       } else {
-        await loginComApple();
+        await loginComApple(credencial);
       }
       router.replace("/(app)/module-select");
     } catch (e) {
       if (e instanceof SocialCancelado) return;
 
       if (e instanceof AuthError && e.status === 409 && e.data?.code === "account_exists") {
-        // Guardar a credencial antes de mostrar a frase: ela é o que faz o
-        // vínculo acontecer sozinho depois da senha.
-        try {
-          if (tipo === "google") {
-            setPendente({ tipo: "google", idToken: await tokenDoGoogle() });
-          } else {
-            setPendente({ tipo: "apple", ...(await credencialDaApple()) });
-          }
-        } catch {
-          // Sem a credencial guardada o vínculo não é automático, e a pessoa
-          // liga o provedor depois. A frase abaixo continua valendo.
-        }
+        // Guardada para o login por senha logo abaixo: é ela que faz o vínculo
+        // acontecer sozinho, sem uma segunda viagem ao provedor.
+        setPendente(credencial);
         setError(
           e.data?.hasPassword === false
             ? tr(lang, {
