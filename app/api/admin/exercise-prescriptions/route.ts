@@ -262,8 +262,11 @@ export async function POST(req: NextRequest) {
             reps: ex.reps ?? padrao.get(ex.exerciseId)?.defaultReps ?? null,
             holdSeconds: ex.holdSeconds ?? padrao.get(ex.exerciseId)?.defaultHoldSec ?? null,
             restSeconds: ex.restSeconds ?? padrao.get(ex.exerciseId)?.defaultRestSec ?? null,
-            frequency: ex.frequency || frequency || null,
-            notes: ex.notes || notes || null,
+            // `frequency` and `notes` were written twice in this same object —
+            // a merge that kept both sides. The two copies were identical, so
+            // nothing behaved differently, but `tsc` refused it (TS1117) and
+            // `tsc` is the only gate that does not lie here. The surviving
+            // pair is the one below, next to the comment that explains it.
             // Per exercise, falling back to one given for the whole request:
             // prescribing a set under a single group is the common case, and
             // requiring it to be repeated on every entry invites drift.

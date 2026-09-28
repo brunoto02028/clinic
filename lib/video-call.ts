@@ -67,7 +67,28 @@ function chave(): string {
   return k;
 }
 
-async function daily<T>(caminho: string, init: RequestInit): Promise<T> {
+/**
+ * Uma recusa **esperada** da Daily, que o chamador já sabe tratar.
+ *
+ * Entrar numa consulta duas vezes é o caminho normal, e na segunda a Daily
+ * responde `400 a room named … already exists` — o código busca a sala
+ * existente logo depois. O log, porém, registrava isso como erro a cada
+ * entrada, e um `console.error` no caminho feliz ensina a ignorar log: quando
+ * um 400 de verdade aparecer, ele vai estar no meio dos falsos.
+ *
+ * Silenciar o 400 inteiro esconderia o de verdade junto, então o que se diz é
+ * **qual** mensagem é esperada, e só essa desce para `debug`.
+ */
+function recusaEsperada(corpo: string, esperado?: RegExp): boolean {
+  return !!esperado && esperado.test(corpo);
+}
+
+async function daily<T>(
+  caminho: string,
+  init: RequestInit,
+  /** Um padrão que, se casar com o corpo da recusa, tira o alarme do log. */
+  esperado?: RegExp
+): Promise<T> {
   const res = await fetch(`${DAILY_API}${caminho}`, {
     ...init,
     headers: {
@@ -80,7 +101,9 @@ async function daily<T>(caminho: string, init: RequestInit): Promise<T> {
     const corpo = await res.text().catch(() => "");
     // A mensagem do provedor vai para o log, não para a resposta: ela pode
     // conter nome de sala e detalhe de conta.
-    console.error(`[video-call] Daily ${caminho} ${res.status}: ${corpo.slice(0, 300)}`);
+    const linha = `[video-call] Daily ${caminho} ${res.status}: ${corpo.slice(0, 300)}`;
+    if (recusaEsperada(corpo, esperado)) console.debug(linha);
+    else console.error(linha);
     throw new VideoCallError("The video service refused the request.", 502, "provider_error");
   }
   return (await res.json()) as T;
@@ -161,10 +184,16 @@ export async function criarSalaDaConsulta(opts: {
   const { fim } = janelaDaConsulta(opts.dateTime, opts.duracaoMin);
 
   try {
-    return await daily<SalaCriada>("/rooms", {
-      method: "POST",
-      body: JSON.stringify({ name, privacy: "private", properties: propriedadesDaSala(fim) }),
-    });
+    return await daily<SalaCriada>(
+      "/rooms",
+      {
+        method: "POST",
+        body: JSON.stringify({ name, privacy: "private", properties: propriedadesDaSala(fim) }),
+      },
+      // Sala que já existe é o caminho normal da segunda entrada — o `catch`
+      // abaixo busca a existente. Qualquer outro 400 continua sendo erro.
+      /already exists/i
+    );
   } catch (e) {
     // Sala que já existe volta 400 da Daily. Buscar é o caminho idempotente.
     if (!(e instanceof VideoCallError) || e.code !== "provider_error") throw e;

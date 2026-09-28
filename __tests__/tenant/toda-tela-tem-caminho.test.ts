@@ -66,16 +66,20 @@ function arquivosVivos(dir: string): string[] {
  * partir de alguma tela, ou apagar.
  */
 const SEM_CAMINHO_CONHECIDAS: Record<string, string> = {
-  // Sub-telas do paciente. Nao podem virar entrada de menu — nao existe menu
-  // sem um paciente escolhido —, entao o caminho delas e um link na ficha
-  // dele. Ainda nao existe.
-  "/admin/patients/[id]/documents": "a ficha do paciente nao leva ate ela",
-  "/admin/patients/[id]/permissions": "a ficha do paciente nao leva ate ela",
-  "/admin/patients/[id]/report": "a ficha abre a API do relatorio, nao esta tela",
+  /**
+   * **Tres sairam daqui em 28/09/2026, e nenhuma foi consertada.**
+   *
+   * `/admin/patients/[id]/documents`, `/permissions` e `/report` estavam
+   * listadas como orfas e **tinham botao na ficha do paciente o tempo todo** —
+   * `documents` tem tres links. Quem inventou as orfas fui eu: a busca por
+   * link usava um `indexOf` sozinho, entao examinava so a **primeira**
+   * ocorrencia de `/admin/patients/${...}` em cada arquivo, e na ficha a
+   * primeira e uma chamada de API 300 linhas acima dos `<Link>`.
+   *
+   * Uma varredura que inventa orfa e pior que uma que nao roda: manda
+   * consertar o que nao esta quebrado, e some no meio da lista o que esta.
+   */
 
-  // Sub-tela de `/admin/scans`, alcancada a partir dela quando aquela tela
-  // ganhar o link. Entrou no menu como parte de "Scans".
-  "/admin/scans/report-preview": "previa alcancada a partir de /admin/scans",
 };
 
 describe("toda tela do painel tem caminho", () => {
@@ -139,10 +143,32 @@ describe("toda tela do painel tem caminho", () => {
     const sufixo = partes.slice(i + 1).join("/");
     return conteudo.some(([f, c]) => {
       if (f.startsWith(propria)) return false;
-      const idx = c.indexOf(`${prefixo}\${`);
-      if (idx === -1) return false;
-      if (!sufixo) return true;
-      return c.slice(idx, idx + 400).includes(`}/${sufixo}`);
+      /**
+       * **Todas as ocorrências, não só a primeira** (28/09/2026).
+       *
+       * Isto era um `indexOf` sozinho: achava o primeiro `/admin/patients/${`
+       * do arquivo e examinava 400 caracteres a partir dele. Na ficha do
+       * paciente o primeiro é uma chamada de API
+       * (`/api/admin/patients/${id}/documents/generate`, linha 527), e os
+       * `<Link>` de verdade estão 300 linhas abaixo — então a varredura dizia
+       * que `/report` e `/permissions` não tinham caminho **tendo botão na
+       * tela**.
+       *
+       * Uma varredura que inventa órfã é pior que uma que não roda: ela manda
+       * consertar o que não está quebrado, e some no meio da lista o que está.
+       */
+      let idx = c.indexOf(`${prefixo}\${`);
+      while (idx !== -1) {
+        // `/api/admin/patients/${id}/documents` **não é um link**: é uma
+        // chamada de dados. Sem isto, toda tela cuja API tem o mesmo nome
+        // ganhava um caminho que ninguém pode clicar.
+        if (c.slice(Math.max(0, idx - 4), idx) !== "/api") {
+          if (!sufixo) return true;
+          if (c.slice(idx, idx + 400).includes(`}/${sufixo}`)) return true;
+        }
+        idx = c.indexOf(`${prefixo}\${`, idx + 1);
+      }
+      return false;
     });
   }
 

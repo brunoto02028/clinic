@@ -79,7 +79,18 @@ function CreateContentForm() {
    *
    * Nada sai sem alguém ver a prévia, e um número faz parte dela.
    */
-  const [sendMode, setSendMode] = useState<"all" | "condition" | "specific" | null>(null);
+  const [sendMode, setSendMode] = useState<"all" | "condition" | null>(null);
+  /**
+   * **`"specific"` saiu** (28/09/2026).
+   *
+   * Ele estava no tipo, o servidor o aceitava, e a tela **nunca o**
+   * **oferecia nem mandava `patientIds`** — escolher essa opção daria
+   * sempre "nenhum paciente encontrado". Era caminho morto nas duas pontas.
+   *
+   * E não faltava: quem quer escolher paciente por paciente usa
+   * `/admin/education/assignments`, que é feita para isso e mostra a
+   * prévia do que vai mandar.
+   */
   const [sendTags, setSendTags] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
