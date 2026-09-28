@@ -193,6 +193,52 @@ e isso é item de revisão da loja.
 4. **Fechar a conta deixava o `Account` do provedor para trás**, amarrando o
    `sub` daquela pessoa a uma conta morta. Corrigido.
 
+---
+
+## QA online (produção, depois do deploy)
+
+**Deploy conferido pela lista do Coolify**, não pelo `buildDate`: commit
+`ab191eadd` — `finished` às 07:50 UTC. E o schema entrou: o log do contêiner diz
+*"Your database is now in sync with your Prisma schema"*, que é o que falta
+quando o `db push` engole a falha.
+
+| # | cenário, em `https://bpr.clinic` | resultado |
+|---|---|---|
+| 5.1 | `/api/auth/providers` | **só `credentials`** — o botão do Google não aparece enquanto o segredo não estiver no Coolify, que é o certo |
+| 1.x | `POST /api/mobile/auth/google {}` | **400** `Sign-in token is required` |
+| 1.x | `POST /api/mobile/auth/google` com token qualquer | **503** `Sign-in is not available right now` |
+| 4.5 | `POST /api/mobile/auth/apple` com token qualquer | **503**, idem |
+| 2.x | `GET /api/mobile/auth/providers` sem bearer | **401** |
+| — | `/api/health` | **200** |
+
+**O 503 em produção é o comportamento correto, e é informativo:** sem
+`GOOGLE_CLIENT_ID` no Coolify não há `aud` para comparar, e aceitar qualquer um
+deixaria outro aplicativo entrar como se fosse o nosso. A rota recusa **antes**
+de olhar o token — e por isso o 400 do corpo vazio continua vindo primeiro.
+Assim que a variável entrar, estes dois viram 401.
+
+**O que não deu para conferir em produção:** a frase do `?error=` na tela de
+login. O navegador daqui carrega uma sessão viva de `bpr.clinic`, então
+`/login` redireciona para o painel — e derrubar a sessão de alguém para tirar
+uma captura não é meu. O Cloudflare também bloqueia buscar a página fora do
+navegador (403). Fica conferido **localmente**, no mesmo commit que está no ar.
+
+---
+
+## O build do aplicativo, e onde ele parou
+
+| tentativa | o que aconteceu |
+|---|---|
+| 1ª | **errou em 12 s** — o pacote subiu com **80 bytes**. Causa: `!/mobile/`, com barra, faz o varredor podar a pasta inteira antes de entrar nela |
+| 2ª | cancelada por mim, para não gastar um build com a folha do provedor abrindo duas vezes |
+| 3ª | **compilou** (pacote de 14,8 MB) e **parou na assinatura**: o provisioning profile de 24/09 não conhece o *Sign in with Apple* |
+
+A terceira é a nota antiga acontecendo de novo: **capability nova invalida o
+provisioning**. O menu que regenera o perfil é interativo — os passos estão em
+`specs/094-o-que-depende-do-bruno/plan.md`, seção G-5, e levam dois minutos.
+
+---
+
 ## Veredito
 
 **Aprovado no que dá para executar daqui.** T-1, T-2, T-5 (5.1) e T-6 (menos o
