@@ -42,6 +42,10 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "Assessment screening", pt: "Avaliação" }, icon: "shield-outline", href: "/(app)/(clinica)/screening", module: "mod_screening" },
   { title: { en: "My progress", pt: "Meu progresso" }, icon: "trending-up-outline", href: "/(app)/(clinica)/assessment-progress", module: "mod_screening" },
   { title: { en: "Outcome measures", pt: "Medidas de evolução" }, icon: "stats-chart-outline", href: "/(app)/(clinica)/outcome-measures", module: "mod_records" },
+  // Os relatórios de acompanhamento (099 T-5). Ficam ao lado das medidas de
+  // evolução porque são a mesma pergunta — como eu estou indo — respondida de
+  // outra forma.
+  { title: { en: "My reports", pt: "Meus relatórios" }, icon: "document-text-outline", href: "/(app)/(clinica)/reports", module: "mod_records" },
   { title: { en: "Daily check-in", pt: "Check-in diário" }, icon: "calendar-number-outline", href: "/(app)/(clinica)/daily-checkin", module: "mod_journey" },
   // The server, the web and a reminder cron all handled blood pressure; the
   // app had no screen for it, so a patient who uses the phone could not record

@@ -29,6 +29,7 @@ const AMBIENT_TRANSCRIPTION_INTERVAL_MS = 30 * 1000; // every 30 seconds
 // admin sitting on the Rehab Agent tab actively waiting on one click.
 const ATLAS_TREATMENT_PLAN_INTERVAL_MS = 15 * 1000; // every 15 seconds
 const OUTBOX_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes (activity 072, T-4)
+const PATIENT_REPORTS_INTERVAL_MS = 60 * 60 * 1000; // every hour (099 T-5)
 
 async function refreshExpiringTokens() {
   try {
@@ -275,6 +276,28 @@ async function deliverApprovedOutbox() {
   }
 }
 
+/**
+ * Os relatórios de acompanhamento vencidos (099 T-5).
+ *
+ * De hora em hora, e não uma vez por dia: um contêner que reinicia à
+ * meia-noite perderia a janela inteira, e a chave única por período faz uma
+ * segunda passagem custar uma consulta e nada mais.
+ *
+ * **Não envia nada**, e não faz nada enquanto `Clinic.autoReportsEnabled`
+ * estiver desligada.
+ */
+async function generateDuePatientReports() {
+  try {
+    const { gerarRelatoriosVencidos } = await import('@/lib/patient-report-schedule');
+    const r = await gerarRelatoriosVencidos();
+    if (r.gerados > 0 || r.falhas > 0) {
+      console.log(`[background-jobs] Patient reports: generated ${r.gerados}, already existed ${r.jaExistiam}, failed ${r.falhas}`);
+    }
+  } catch (err: any) {
+    console.error('[background-jobs] Patient reports failed:', err.message);
+  }
+}
+
 export function startBackgroundJobs() {
   if (global.__bprBackgroundJobsStarted) return;
   global.__bprBackgroundJobsStarted = true;
@@ -289,6 +312,7 @@ export function startBackgroundJobs() {
   setInterval(ambientTranscriptionsJob, AMBIENT_TRANSCRIPTION_INTERVAL_MS);
   setInterval(generatePendingAtlasTreatmentPlans, ATLAS_TREATMENT_PLAN_INTERVAL_MS);
   setInterval(deliverApprovedOutbox, OUTBOX_INTERVAL_MS);
+  setInterval(generateDuePatientReports, PATIENT_REPORTS_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
@@ -298,4 +322,5 @@ export function startBackgroundJobs() {
   setTimeout(generatePendingEvidenceReports, 25_000);
   setTimeout(ambientTranscriptionsJob, 20_000);
   setTimeout(generatePendingAtlasTreatmentPlans, 10_000);
+  setTimeout(generateDuePatientReports, 90_000);
 }

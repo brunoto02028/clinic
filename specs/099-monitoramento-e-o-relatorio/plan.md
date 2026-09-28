@@ -70,11 +70,21 @@ sozinho, semana após semana, na caixa de entrada de gente que confia nele. Se
 você quiser leitura clínica no relatório, ela entra como **um trecho que o
 terapeuta escreve** e que fica com o nome dele — e aí eu implemento com gosto.
 
-### E o plano decide a cadência
+### A cadência é da clínica, não do plano — por ora
 
-Diário, semanal ou nenhum vira propriedade do plano, ao lado do que já existe
-em `mod_plans` e nos pacotes. Quem não assinou não recebe e **não vê a
-promessa** — o mesmo critério que mantém o botão do Google fora do Android.
+O Bruno: *"libera a automação completamente, depois eu vejo (…) se alguém
+quiser apenas esse tipo de serviço, eu vou ver de cobrar à parte, mas eu quero
+que esteja tudo funcionando automaticamente primeiro"*.
+
+Então a cadência não foi amarrada a plano nenhum: ela é uma propriedade da
+clínica (`defaultReportCadence`), com exceção por paciente quando precisar.
+Amarrar a plano vira uma linha no dia em que a cobrança existir — e amarrar
+agora seria construir a cobrança antes do produto.
+
+**A chave mestra (`autoReportsEnabled`) nasce desligada**, e isso é a outra
+metade da mesma frase dele: *"eu, Bruno, sou o paciente teste, quero ver tudo
+funcionando antes"*. Ligar é o instante em que a clínica inteira passa a
+receber — a tela diz quantas pessoas isso alcança antes de perguntar.
 
 ## O que eu vi no ScanWatch, e que afeta o seu teste
 
@@ -107,7 +117,7 @@ ScanWatch 2 não mede pressão.
 | T-2 | A tela de monitoramento do paciente: tendência, não só ontem | T-1 | pendente |
 | T-3 | O quadro do paciente no painel, ao longo do tempo | T-1 | **concluído** |
 | T-4 | O relatório passa a incluir o histórico inteiro | — | **concluído** |
-| T-5 | A automação: cadência pelo plano, e o aviso que é escolha | T-4 | pendente |
+| T-5 | A automação: cadência da clínica, e o aviso que é escolha | T-4 | **concluído** |
 | T-6 | O desvio que a clínica precisa ver | T-1 | **concluído** |
 
 **Ordem:** T-1 e T-4 primeiro — são servidor e painel, sobem sem build e você vê

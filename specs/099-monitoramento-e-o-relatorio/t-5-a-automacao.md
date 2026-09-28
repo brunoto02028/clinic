@@ -1,6 +1,6 @@
 # T-5: A automação — cadência pelo plano, e o aviso que é escolha
 
-**Status:** pendente — **espera a sua confirmação da tabela do plano**
+**Status:** concluído (28/09/2026) — automação completa; a chave da clínica nasce desligada e espera o Bruno
 **Depende de:** T-4
 
 ## Objetivo
