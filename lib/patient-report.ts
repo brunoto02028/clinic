@@ -3,9 +3,11 @@
 // Used by /api/admin/patients/[id]/report (view/download as PDF via browser print, or email to patient).
 
 import { prisma } from "@/lib/db";
+import { getMonitoringData, type DadosDeMonitoramento, type ResumoDaMetrica } from "@/lib/patient-monitoring";
+import { TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
 
-export async function getPatientReportData(patientId: string) {
-  const [patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChat] = await Promise.all([
+export async function getPatientReportData(patientId: string, opts: { days?: number } = {}) {
+  const [patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChat, monitoring] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
       select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true } as any,
@@ -30,9 +32,17 @@ export async function getPatientReportData(patientId: string) {
       include: { therapist: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]),
     (prisma as any).atlasChatMessage.count({ where: { patientId } }).catch(() => 0),
+    /**
+     * O acompanhamento do período (099 T-4).
+     *
+     * O relatório falava do **plano** e não do **mês**: nada de relógio,
+     * pressão, dor por data ou exercício feito entrava nele. Isto é o que o
+     * paciente viveu, com datas.
+     */
+    getMonitoringData(patientId, { days: opts.days ?? 30 }).catch(() => null),
   ]);
 
-  return { patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChatCount: atlasChat };
+  return { patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChatCount: atlasChat, monitoring };
 }
 
 const esc = (s: any) =>
@@ -61,8 +71,97 @@ function parseJson(v: any): any[] {
   try { const p = typeof v === "string" ? JSON.parse(v) : v; return Array.isArray(p) ? p : []; } catch { return []; }
 }
 
+/**
+ * Uma linha de sinal: o valor, a variação e **quantos dias têm dado** (099 T-4).
+ *
+ * Os dias entram porque uma média de trinta noites e uma média de duas não
+ * são a mesma frase, e quem lê precisa saber qual das duas está vendo.
+ *
+ * A variação é dita sem juízo: "4 menor" e não "melhorou". Quem diz se
+ * melhorou é um terapeuta, e aí assina embaixo.
+ */
+function linhaDeSinal(rotulo: string, m: ResumoDaMetrica, unidade: string): string {
+  if (!m || m.dias === 0) return "";
+  const valor = m.atual !== null ? `${m.atual}${unidade}` : "—";
+  const mudanca =
+    m.variacao === null || m.variacao === 0
+      ? ""
+      : `${Math.abs(m.variacao)}${unidade} ${m.variacao < 0 ? "lower" : "higher"} than the first half of the period`;
+  return `<tr><td class="lbl">${esc(rotulo)}</td><td>${esc(valor)}${mudanca ? ` — ${esc(mudanca)}` : ""}<span class="meta"> · ${m.dias} day${m.dias === 1 ? "" : "s"} with data</span></td></tr>`;
+}
+
+function renderMonitoringHTML(mon: DadosDeMonitoramento | null): string {
+  if (!mon) return "";
+  const partes: string[] = [];
+
+  if (mon.temSinais) {
+    const linhas = [
+      linhaDeSinal("Sleep", mon.sinais.sono, " min"),
+      linhaDeSinal("Resting heart rate", mon.sinais.fcRepouso, " bpm"),
+      linhaDeSinal("HRV", mon.sinais.hrv, " ms"),
+      linhaDeSinal("SpO2", mon.sinais.spo2, "%"),
+      linhaDeSinal("Steps", mon.sinais.passos, ""),
+    ].join("");
+    partes.push(`<div class="section"><h2>Signs — last ${mon.periodo.dias} days</h2><table>${linhas}</table></div>`);
+  }
+
+  if (mon.pressao.leituras > 0) {
+    partes.push(`<div class="section"><h2>Blood pressure</h2><table>
+      ${linhaDeSinal("Systolic", mon.pressao.sistolica, " mmHg")}
+      ${linhaDeSinal("Diastolic", mon.pressao.diastolica, " mmHg")}
+      ${mon.pressao.ultima ? row("Most recent", `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg on ${fmtDate(mon.pressao.ultima.measuredAt)}`) : ""}
+      ${row("Readings in period", String(mon.pressao.leituras))}
+    </table></div>`);
+  }
+
+  if (mon.ecg.length > 0) {
+    /**
+     * O ECG entra como **fato**, com a conclusão do aparelho — nunca o
+     * traçado, e nunca uma leitura nossa dele.
+     */
+    const itens = mon.ecg
+      .map(
+        (e) =>
+          `<li>${esc(String(e.recordedAt ?? "").slice(0, 10))} — ${esc(TEXTO_DA_CONCLUSAO[e.conclusao].en)}${e.heartRate != null ? ` (${Math.round(e.heartRate)} bpm)` : ""}</li>`
+      )
+      .join("");
+    partes.push(`<div class="section"><h2>ECG</h2><ul>${itens}</ul>
+      <p class="meta">These are the watch's own conclusions. The trace is not stored and is not interpreted here.</p></div>`);
+  }
+
+  if (mon.exercicio.registros > 0) {
+    partes.push(`<div class="section"><h2>Exercise</h2><table>
+      ${row("Days with exercise done", String(mon.exercicio.diasComExercicio))}
+      ${row("Exercises logged", String(mon.exercicio.registros))}
+    </table></div>`);
+  }
+
+  if (mon.comoSeSentiu.registros > 0) {
+    const ultimos = mon.comoSeSentiu.ultimos
+      .map((c) => `<li>${esc(c.dia)} — pain ${c.dor}/10, mood ${c.humor}/5</li>`)
+      .join("");
+    partes.push(`<div class="section"><h2>How you felt</h2><table>
+      ${linhaDeSinal("Pain", mon.comoSeSentiu.dor, "/10")}
+      ${linhaDeSinal("Mood", mon.comoSeSentiu.humor, "/5")}
+      ${row("Check-ins in period", String(mon.comoSeSentiu.registros))}
+    </table><h3>Most recent</h3><ul>${ultimos}</ul></div>`);
+  }
+
+  if (mon.consultas.length > 0) {
+    const itens = mon.consultas
+      .map(
+        (a) =>
+          `<li>${esc(fmtDate(a.dateTime))} — ${esc(a.treatmentType)} (${esc(a.status.toLowerCase())}${a.mode && a.mode !== "IN_PERSON" ? `, ${esc(a.mode === "VIDEO" ? "by video" : "at home")}` : ""})</li>`
+      )
+      .join("");
+    partes.push(`<div class="section"><h2>Appointments in the period</h2><ul>${itens}</ul></div>`);
+  }
+
+  return partes.join("");
+}
+
 export function renderPatientReportHTML(data: Awaited<ReturnType<typeof getPatientReportData>>, opts?: { forEmail?: boolean }): string {
-  const { patient, screening: ms, bodyAssessment: ba, diagnosis: dx, protocols, soapNotes } = data as any;
+  const { patient, screening: ms, bodyAssessment: ba, diagnosis: dx, protocols, soapNotes, monitoring } = data as any;
   if (!patient) return "<html><body>Patient not found</body></html>";
 
   const age = patient.dateOfBirth ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear() : null;
@@ -239,6 +338,8 @@ ${dx ? `
   ${parseJson(dx.findings).length ? `<h3>Key Findings</h3><ul>${parseJson(dx.findings).map((f: any) => `<li><strong>${esc(f.area || "")}</strong>: ${esc(f.finding || f.description || "")}</li>`).join("")}</ul>` : ""}
   ${dx.therapistComments ? `<p class="comment"><strong>Clinician comments:</strong> ${esc(dx.therapistComments)}</p>` : ""}
 </div>` : ""}
+
+${renderMonitoringHTML(monitoring)}
 
 ${protocolsHtml}
 
