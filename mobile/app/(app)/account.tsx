@@ -128,6 +128,13 @@ export default function Account() {
             title={tr(lang, { en: "Change password", pt: "Alterar senha" })}
             icon={<Ionicons name="lock-closed-outline" size={18} color={t.colors.text} />}
             onPress={() => router.push("/change-password")}
+          />
+          {/* Contas conectadas (097 T-2): é aqui que se desfaz o vínculo com o
+              Google ou a Apple — e a T-2 exige que dê para desfazer. */}
+          <ListItem
+            title={tr(lang, { en: "Connected accounts", pt: "Contas conectadas" })}
+            icon={<Ionicons name="link-outline" size={18} color={t.colors.text} />}
+            onPress={() => router.push("/connected-accounts")}
             last={!bio || !bio.hasHardware}
           />
           {/* Num aparelho sem sensor a linha não existe, e aí quem fecha a

@@ -2,20 +2,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getEffectiveUser } from '@/lib/get-effective-user';
 
 export const dynamic = 'force-dynamic';
 
 // Patient updates their progress on a content item
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    /**
+     * `getEffectiveUser`, e não `getServerSession` (096 T-3).
+     *
+     * A sessão de cookie é a da web. O app manda **bearer**, e
+     * `getServerSession` devolve nulo para ele — então *marcar como lido* pelo
+     * aplicativo respondia **401**, em silêncio, desde sempre. A tela do
+     * paciente tem o botão e ele nunca funcionou no telefone.
+     */
+    const effective = await getEffectiveUser();
+    if (!effective) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const user = session.user as any;
+    const user = { id: effective.userId };
     const body = await req.json();
     const { contentId, status, timeSpent, rating, feedback, difficulty } = body;
 
     if (!contentId) return NextResponse.json({ error: 'contentId required' }, { status: 400 });
+
+    /**
+     * **Só se a pessoa pode ver este material** (096 T-3).
+     *
+     * Antes, qualquer pessoa autenticada podia gravar progresso em **qualquer**
+     * `contentId` — inclusive de outra clínica, e inclusive de um material
+     * restrito atribuído a outro paciente. E a rota ainda incrementava o
+     * `viewCount` daquele material, o que confirma a existência dele a quem
+     * não deveria nem saber que ele existe.
+     *
+     * Pode ver quem tem **atribuição**, ou o que está **publicado na clínica
+     * dela**. É a mesma conta que a listagem faz; aqui ela é o portão.
+     *
+     * 404 e não 403: dizer "existe, mas não é seu" conta a um estranho que
+     * aquele material existe.
+     */
+    const quem = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { clinicId: true },
+    });
+    const podeVer = await prisma.educationContent.findFirst({
+      where: {
+        id: contentId,
+        OR: [
+          { assignments: { some: { patientId: user.id } } },
+          { isPublished: true, clinicId: quem?.clinicId ?? "" },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!podeVer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const progress = await prisma.educationProgress.upsert({
       where: { userId_contentId: { userId: user.id, contentId } },

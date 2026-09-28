@@ -31,8 +31,25 @@ export const authOptions: NextAuthOptions = {
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            // Allow linking Google to existing accounts (same email)
-            // Safe here because Google only returns verified emails
+            /**
+             * A bandeira fica **true**, e a regra da 097 T-2 vale assim mesmo.
+             *
+             * A spec pedia `false`. Não dá, e o motivo é estrutural: o
+             * `PrismaAdapter` cria o usuário com `{ name, image }`, e este
+             * `User` não tem essas colunas — tem `firstName`, `lastName` e
+             * `profileImageUrl`, todas obrigatórias. Então **quem cria o
+             * usuário é o `signIn` abaixo**, e logo depois o adapter procura
+             * por e-mail o usuário que acabou de nascer para pendurar o
+             * `Account` nele. Com `false`, esse passo estoura
+             * `OAuthAccountNotLinked` e **nenhum cadastro novo pelo Google
+             * funciona**.
+             *
+             * A proteção que a spec queria está no `signIn`: conta que já
+             * existe e **não** tem Google ligado é recusada ali, antes de
+             * chegar aqui. Ou seja, o único vínculo por e-mail que esta
+             * bandeira chega a fazer é com o usuário que o próprio `signIn`
+             * criou uma linha antes.
+             */
             allowDangerousEmailAccountLinking: true,
           }),
         ]
@@ -92,6 +109,29 @@ export const authOptions: NextAuthOptions = {
             // User exists — allow sign-in if active
             if (!existingUser.isActive) {
               return "/login?error=AccountDeactivated";
+            }
+
+            /**
+             * **O e-mail não é prova de que é a mesma pessoa** (097 T-2).
+             *
+             * Até aqui, bastava o Google devolver um e-mail verificado para
+             * cair dentro de uma conta que já existia. Parece seguro — e
+             * quase sempre é — mas o e-mail do cadastro pode ser um endereço
+             * que a clínica digitou errado, ou que um dia foi de outra
+             * pessoa. Num prontuário clínico, entrar na conta errada é o pior
+             * erro possível.
+             *
+             * O Bruno pediu o caminho mais seguro, e é o que o aplicativo faz
+             * (`/api/mobile/auth/google` responde 409): entre com a senha uma
+             * vez, e o Google fica ligado para as próximas. Aqui a porta é a
+             * mesma — a tela de login explica o 'OAuthAccountNotLinked'.
+             */
+            const jaLigado = await prisma.account.findFirst({
+              where: { userId: existingUser.id, provider: "google" },
+              select: { id: true },
+            });
+            if (!jaLigado) {
+              return "/login?error=OAuthAccountNotLinked";
             }
             // Update profile image from Google if not set
             if (!existingUser.profileImageUrl && (profile as any).picture) {
