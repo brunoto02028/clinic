@@ -8,6 +8,7 @@ import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { useAreaSwitch } from "@/lib/areas";
+import { fetchAccess } from "@/api/access";
 import Constants from "expo-constants";
 import { runningVersion } from "@/lib/app-updates";
 
@@ -17,6 +18,20 @@ export interface ProfileSection {
   title: { en: string; pt: string };
   icon: keyof typeof Ionicons.glyphMap;
   href: string;
+  /**
+   * O módulo que esta entrada abre, quando ela depende de um.
+   *
+   * **Sem isto, desligar um módulo para um paciente não tirava nada da tela
+   * dele.** O servidor recusava (`patientGate`) e o `PlanGate` mostrava um
+   * cadeado — mas a linha continuava no menu, e a pessoa tocava nela para
+   * descobrir que não podia. É o mesmo erro dos botões de Google e Apple que
+   * ficaram meses na tela de entrar sem provedor atrás: um caminho prometido
+   * que não existe é pior que a ausência dele.
+   *
+   * Sem `module`, a entrada aparece sempre — é o caso da conta, dos termos e
+   * do "como funciona", que não são módulo de ninguém.
+   */
+  module?: string;
 }
 
 /**
@@ -44,6 +59,18 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
     queryKey: ["profile"],
     queryFn: fetchProfile,
   });
+
+  /**
+   * A mesma chave que o `PlanGate` lê — uma resposta só, lida por dois.
+   *
+   * Sem resposta o menu mostra tudo, de propósito: uma falha de rede não é
+   * uma revogação, e esconder metade do aplicativo no primeiro soluço de
+   * conexão seria pior que a linha extra.
+   */
+  const { data: acesso } = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
+  const visiveis = (sections ?? []).filter(
+    (s) => !s.module || !acesso || acesso.modules.includes(s.module)
+  );
 
   const initials = profile
     ? `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase()
@@ -83,16 +110,16 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
           />
         </Card>
 
-        {sections && sections.length > 0 && (
+        {visiveis.length > 0 && (
           <Card>
-            {sections.map((s, i) => (
+            {visiveis.map((s, i) => (
               <ListItem
                 key={s.href}
                 title={tr(lang, s.title)}
                 icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
                 right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
                 onPress={() => router.push(s.href as any)}
-                last={i === sections.length - 1}
+                last={i === visiveis.length - 1}
               />
             ))}
           </Card>

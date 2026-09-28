@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchDependentes, type Dependente } from "@/api/dependents";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
-import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes, type DetailedSlot, type ClinicTreatmentType } from "@/api/booking";
+import { bookAppointment, fetchAvailability, fetchSchedule, fetchBookingOptions, startAppointmentCheckout, fetchTreatmentTypes, type DetailedSlot, type ClinicTreatmentType, type FormatoDaConsulta } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
@@ -24,6 +24,11 @@ function BookAppointmentScreen() {
   const t = useTheme();
   const qc = useQueryClient();
   const [type, setType] = useState<string | null>(null);
+  /**
+   * O formato pedido (098 T-2). `IN_PERSON` é o padrão e não é pedido nenhum
+   * — é o que acontece quando ninguém pede nada.
+   */
+  const [formato, setFormato] = useState<FormatoDaConsulta>("IN_PERSON");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -41,6 +46,10 @@ function BookAppointmentScreen() {
   // Os tratamentos desta clínica (082): a lista de "Tipo de consulta" deixou
   // de ser escrita no código e passou a ser o que a clínica cadastrou.
   const tipos = useQuery({ queryKey: ["treatment-types"], queryFn: fetchTreatmentTypes });
+
+  /** O tratamento escolhido — e quem decide quais formatos existem (098). */
+  const tipoEscolhido =
+    (tipos.data ?? []).find((tt: ClinicTreatmentType) => tt.name === type) ?? null;
 
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   // Which days the clinic opens is not something to guess at. When the schedule
@@ -110,6 +119,7 @@ function BookAppointmentScreen() {
         // the seven months the UK is on BST.
         dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
         treatmentType: type,
+        ...(formato !== "IN_PERSON" ? { requestedMode: formato } : {}),
         notes: notes || undefined,
         // Ausente = para mim. Quem valida o vínculo é o servidor.
         dependentId: paraQuem ?? undefined,
@@ -383,13 +393,82 @@ ${tr(lang, {
               {(tipos.data ?? []).map((tt: ClinicTreatmentType) => {
                 const rotulo = lang === "pt" ? tt.namePt || tt.name : tt.name;
                 return (
-                  <Pressable key={tt.id} onPress={() => setType(tt.name)} testID={`appointment-type-${tt.id}`}
+                  <Pressable key={tt.id} onPress={() => { setType(tt.name); setFormato("IN_PERSON"); }} testID={`appointment-type-${tt.id}`}
                     style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === tt.name ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === tt.name ? t.colors.health : t.colors.borderSubtle }}>
                     <Text variant="caption" color={type === tt.name ? t.colors.health : t.colors.textSecondary}>{rotulo}</Text>
                   </Pressable>
                 );
               })}
             </View>
+          </Card>
+        )}
+
+        {/* O formato — e só o que pode acontecer (098 T-2).
+            Opção bloqueada **não aparece**, em vez de aparecer cinza: um botão
+            que promete um caminho inexistente é pior que a ausência dele. */}
+        {tipoEscolhido && (tipoEscolhido.formats ?? ["IN_PERSON"]).length > 1 && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>
+              {tr(lang, { en: "Where", pt: "Onde" })}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {(tipoEscolhido.formats ?? ["IN_PERSON"]).map((f) => {
+                const ativo = formato === f;
+                const rotulo =
+                  f === "VIDEO"
+                    ? tr(lang, { en: "By video", pt: "Por vídeo" })
+                    : f === "HOME_VISIT"
+                      ? tr(lang, { en: "At my home", pt: "Na minha casa" })
+                      : tr(lang, { en: "At the clinic", pt: "Na clínica" });
+                return (
+                  <Pressable
+                    key={f}
+                    onPress={() => setFormato(f)}
+                    testID={`appointment-format-${f}`}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 18,
+                      backgroundColor: ativo ? t.colors.healthSoft : t.colors.surfaceMuted,
+                      borderWidth: 1,
+                      borderColor: ativo ? t.colors.health : t.colors.borderSubtle,
+                    }}
+                  >
+                    <Text variant="caption" color={ativo ? t.colors.health : t.colors.textSecondary}>
+                      {rotulo}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Dito **antes** de confirmar, e não depois: a pessoa precisa saber
+                que está pedindo, não escolhendo. */}
+            {formato !== "IN_PERSON" && (
+              <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 10 }}>
+                {tr(lang, {
+                  en: "The clinic confirms the format. Until then, the appointment is booked at the clinic.",
+                  pt: "A clínica confirma o formato. Até lá, a consulta fica marcada na clínica.",
+                })}
+              </Text>
+            )}
+
+            {/* Faltar endereço é diferente de o tratamento não sair da clínica:
+                a primeira a pessoa resolve em trinta segundos. */}
+            {tipoEscolhido.homeVisitBlockedBy === "endereco" && (
+              <Pressable
+                onPress={() => router.push("/profile-edit")}
+                style={{ marginTop: 10 }}
+                testID="book-complete-address"
+              >
+                <Text variant="caption" color={t.colors.health}>
+                  {tr(lang, {
+                    en: "Complete your address in your profile to ask for a home visit.",
+                    pt: "Complete o seu endereço no perfil para pedir atendimento em casa.",
+                  })}
+                </Text>
+              </Pressable>
+            )}
           </Card>
         )}
 

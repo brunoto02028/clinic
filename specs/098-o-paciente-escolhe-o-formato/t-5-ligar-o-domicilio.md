@@ -1,6 +1,6 @@
 # T-5: Ligar o domicílio por tipo de tratamento
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo

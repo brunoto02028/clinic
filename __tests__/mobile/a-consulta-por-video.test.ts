@@ -275,7 +275,12 @@ describe("**a consulta à distância se anuncia antes de a pessoa abrir a tela**
   it("o ícone da lista conta o formato", () => {
     // O Bruno: "se agendamento for uma consulta à distância, eu quero que já
     // apareça para o paciente essa opção". A lista é o que ele vê primeiro.
-    expect(lista).toMatch(/name=\{item\.mode === "VIDEO" \? "videocam-outline" : "medical-outline"\}/);
+    // Tres formatos desde a 098 (video, clinica, casa), entao a asercao olha
+    // para o que importa — o icone muda com o formato — e nao para a grafia
+    // exata do ternario, que ja mudou uma vez.
+    expect(lista).toMatch(/item\.mode === "VIDEO"[\s\S]{0,120}videocam-outline/);
+    expect(lista).toMatch(/item\.mode === "HOME_VISIT"[\s\S]{0,80}home-outline/);
+    expect(lista).toMatch(/medical-outline/);
   });
 
   it("e o botão de entrar está na própria lista", () => {

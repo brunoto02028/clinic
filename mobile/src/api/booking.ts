@@ -14,6 +14,14 @@ export interface BookingRequest {
    * 404 — dizer "existe, mas não é seu" contaria a um estranho que ela existe.
    */
   dependentId?: string;
+  /**
+   * O formato **pedido** — nunca o formato efetivo (098 T-2).
+   *
+   * A consulta nasce na clínica de qualquer jeito; isto é um pedido que a
+   * clínica aprova ou recusa. O servidor ignora um `mode` mandado daqui: se
+   * o corpo pudesse gravar o formato, a aprovação seria enfeite.
+   */
+  requestedMode?: "VIDEO" | "HOME_VISIT";
 }
 
 export async function bookAppointment(data: BookingRequest) {
@@ -125,12 +133,23 @@ export async function fetchSchedule(): Promise<ScheduleDay[]> {
  * Lista vazia é resposta legítima: a clínica ainda não cadastrou nenhum. A
  * tela some em vez de inventar opções.
  */
+export type FormatoDaConsulta = "IN_PERSON" | "VIDEO" | "HOME_VISIT";
+
 export interface ClinicTreatmentType {
   id: string;
   name: string;
   namePt: string | null;
   duration: number;
   price: number;
+  /**
+   * Os formatos que **este paciente** pode pedir para **este tratamento**
+   * (098). Vem calculado do servidor: a regra mora num lugar só, e é a mesma
+   * que a rota de agendar usa para recusar.
+   */
+  formats?: FormatoDaConsulta[];
+  /** Por que o domicílio não está na lista — a tela separa "este tratamento
+   *  não sai da clínica" de "falta o seu endereço". */
+  homeVisitBlockedBy?: "tratamento" | "endereco" | null;
 }
 
 export async function fetchTreatmentTypes(): Promise<ClinicTreatmentType[]> {

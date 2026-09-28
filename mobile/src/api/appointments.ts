@@ -10,7 +10,16 @@ export interface Appointment {
    * chegam — e o app simplesmente não o declarava. Sem isto a tela da consulta
    * não tinha como saber que havia uma chamada para entrar.
    */
-  mode?: "IN_PERSON" | "VIDEO";
+  mode?: "IN_PERSON" | "VIDEO" | "HOME_VISIT";
+  /**
+   * O formato que esta pessoa pediu, e o que a clinica fez com o pedido (098).
+   *
+   * Sao tres estados na tela: pendente (pediu, ninguem decidiu), aprovado (o
+   * `mode` ja mudou) e recusado (continua na clinica, com o motivo).
+   */
+  requestedMode?: "VIDEO" | "HOME_VISIT" | null;
+  modeApprovedAt?: string | null;
+  modeRefusedReason?: string | null;
   treatmentType: string;
   status: string;
   duration: number;

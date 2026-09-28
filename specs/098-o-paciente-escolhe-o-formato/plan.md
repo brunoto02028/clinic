@@ -58,11 +58,16 @@ mesmo critério que tirou o botão do Google do Android.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | O banco e a regra de quem pode pedir o quê | — | pendente |
-| T-2 | O paciente escolhe, no app | T-1 | pendente |
-| T-3 | A clínica decide: a fila e o aprovar/recusar | T-1 | pendente |
-| T-4 | O que o paciente vê depois da decisão | T-3 | pendente |
-| T-5 | Ligar o domicílio por tipo de tratamento | T-1 | pendente |
+| T-1 | O banco e a regra de quem pode pedir o quê | — | **concluído** |
+| T-2 | O paciente escolhe, no app | T-1 | **concluído** (espera build) |
+| T-3 | A clínica decide: a fila e o aprovar/recusar | T-1 | **concluído** |
+| T-4 | O que o paciente vê depois da decisão | T-3 | **concluído** (espera build) |
+| T-5 | Ligar o domicílio por tipo de tratamento | T-1 | **concluído** |
+
+**Implementado em 28/09**, com as seis suposições aprovadas pelo Bruno. Fica de
+fora, para um passo seguinte: o botão **"Avisar o paciente"** no painel (T-4
+passo 3) — a decisão já aparece no app, e nada sai sozinho, que é a parte que
+importava.
 
 **Ordem:** T-1 primeiro (é schema). T-3 e T-5 são web e sobem sem build. T-2 e
 T-4 são app e **esperam um build**.

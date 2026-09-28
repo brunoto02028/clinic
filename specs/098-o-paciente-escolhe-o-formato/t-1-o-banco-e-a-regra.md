@@ -1,6 +1,6 @@
 # T-1: O banco e a regra de quem pode pedir o quê
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** nenhuma
 
 ## Objetivo

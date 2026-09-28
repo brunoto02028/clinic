@@ -1,6 +1,6 @@
 # T-4: O que o paciente vê depois da decisão
 
-**Status:** pendente
+**Status:** concluído (28/09/2026) — a lista do app; o botão de avisar fica para o próximo passo
 **Depende de:** T-3
 
 ## Objetivo

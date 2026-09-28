@@ -1,6 +1,6 @@
 # T-3: A clínica decide — a fila e o aprovar/recusar
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo
