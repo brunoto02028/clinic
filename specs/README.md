@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **096**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **098**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > **Recuperado em 27/09/2026.** O índice estava 21 atividades atrasado — faltavam 065–069,
 > 070-fatura, 071-alerta, as duas 072, 073, 075–080 e 087–092 — e ainda mandava usar o 076, quando
@@ -90,6 +90,8 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [093](093-a-fatura-do-paciente/) | A fatura do paciente (ver, PDF e pagar no app) | 🟢 T-1..T-6 feitas (27/09); QA reprovou 3 defeitos e os 3 foram corrigidos. **Não chega ao telefone sem build** — módulo nativo do Stripe. T-7 (Apple Pay) espera o merchant id |
 | [094](094-o-que-depende-do-bruno/) | O que depende do Bruno (registro de bloqueios) | 🟠 9 itens abertos: chave live do Stripe, webhook, logo no painel, build, Apple Pay, DPA da Daily, a 2ª cópia dos termos, sandbox LML, Connect |
 | [095](095-ajustes-para-publicar/) | Os ajustes para publicar (9 pedidos do Bruno, 27/09) | 🟢 **T-1..T-9 concluídas** (28/09). QA reprovou 6 cenários; todos corrigidos. Pendente: tela de gerido no painel, e universal link do aviso |
+| [096](096-o-artigo-vira-material-do-paciente/) | O artigo vira material do paciente (educação no app) | 🔵 planejada, **aguardando aprovação**. A máquina existe e nunca foi usada: 35 artigos, 0 conteúdos |
+| [097](097-entrar-com-google-e-apple/) | Entrar com Google e com Apple | 🔵 planejada, **aguardando aprovação**. O Google já está no código e desligado em produção |
 
 > **A 091 está no ar com um furo conhecido.** O QA (`qa/report-091.md`) reprovou 4 cenários; três
 > foram consertados no mesmo dia — o portão do paciente passou a olhar o aceite de **quem responde**

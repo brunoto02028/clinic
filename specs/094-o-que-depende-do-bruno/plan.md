@@ -25,6 +25,7 @@ diferença importa na hora de decidir o que publicar.
 | B-7 | **Decisão: a segunda cópia dos termos** | o `ConsentLog` dizer a verdade sobre o que a pessoa leu | decisão sua, execução minha |
 | B-8 | **Sandbox da LML** | comprar exame de laboratório (081 T-5..T-9) | LML, comercial |
 | B-9 | **Stripe Connect do personal** | o aluno pagar o treinador (028) | Stripe Connect |
+| G-1..G-7 | **O login com Google e Apple** — clientes Android e iOS, os três SHA-1, publicar a tela de consentimento, capability da Apple, domínio do relay, variáveis no Coolify | a [[097-entrar-com-google-e-apple]] inteira | Google Cloud Console, Apple Developer, Coolify |
 
 ---
 
@@ -145,3 +146,29 @@ e rodar um QA em modo de teste.
 Quando um item sair, me diga qual — eu faço a metade que é código (variável no
 Coolify, teste em produção, QA online) e marco aqui. Nada nesta lista se resolve
 sozinho com o tempo.
+
+---
+
+## G — O login com Google e com Apple (28/09)
+
+Detalhado em [097-entrar-com-google-e-apple](../097-entrar-com-google-e-apple/plan.md).
+O Google Cloud Console já tem a tela de consentimento e o **cliente Web**, feitos
+por você em 27/09. Falta:
+
+| # | o que falta | por que trava |
+|---|---|---|
+| **G-1** | Client ID **Android** (`com.bpr.clinic` + SHA-1) | sem ele, não há login no Android |
+| **G-2** | Client ID **iOS** (`com.bpr.clinic`) | idem no iPhone |
+| **G-3** | Os **três SHA-1**: debug, upload key e **App signing key do Play** | sem o terceiro, funciona no teste e **quebra na loja** (`DEVELOPER_ERROR`) |
+| **G-4** | **Publicar a tela de consentimento** (sair de "Testing") | só usuários de teste conseguem entrar |
+| **G-5** | Capability **Sign in with Apple** no App ID | e ela **invalida o provisioning**: menu interativo, precisa de você |
+| **G-6** | Domínio `bpr.clinic` em *Sign in with Apple for Email Communication* | e-mail da clínica não chega a quem esconder o endereço |
+| **G-7** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_IOS_CLIENT_ID` no Coolify | nada funciona em produção |
+
+**Uma pendência da sua spec já está resolvida:** *"package name e Bundle ID
+definitivos"* — são `com.bpr.clinic` nos dois, e o app já está no TestFlight com
+eles. Pode riscar.
+
+**E uma decisão sua, que não é configuração:** vincular ou não vincular
+automaticamente uma conta Google a um paciente que já existe com o mesmo e-mail.
+A sua spec diz **não**; o código em produção diz **sim**. Está na T-2 da 097.
