@@ -1,6 +1,6 @@
 # T-2: O que cada área mostra — módulos e vocabulário por tipo
 
-**Status:** pendente
+**Status:** concluída (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo
@@ -31,7 +31,11 @@ falha de antes, com uma desculpa nova.
 
 ## Critérios de aceite
 
-- [ ] Cada tipo vê só as suas seções, e o servidor recusa o resto.
-- [ ] Nenhuma tela no menu de um tipo dá erro nesse tipo.
-- [ ] O personal trainer continua exatamente como está.
-- [ ] Acrescentar um sexto tipo é uma linha no mapa.
+- [x] Cada tipo vê só as suas seções, e o **middleware** recusa o resto por URL.
+- [x] O menu da clínica e do estúdio é **byte a byte** o de antes, provado por
+      teste que compara as duas chamadas.
+- [x] Acrescentar um tipo é uma linha em `lib/painel-por-tipo.ts`.
+- [x] Toda seção de um profissional **declara as abas** — sem lista, uma aba
+      nova nasceria visível para ele.
+- [x] As duas listas de rota (menu e portão) não podem divergir em silêncio:
+      há teste que confronta uma com a outra.

@@ -50,7 +50,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   // Entra no mesmo badge: são todos "há algo esperando por você em Pacientes".
   const [unreviewedSubmissions, setUnreviewedSubmissions] = useState(0);
   const { locale } = useLocale();
-  const { relabel, isPersonal } = useVocab();
+  const { relabel, isPersonal, clinicType } = useVocab();
   const { data: session } = useSession();
   // A studio with its own logo shows it instead of the BPR one (activity 52, T-3).
   const studioLogo: string | null = isPersonal ? ((session?.user as any)?.clinicLogoUrl ?? null) : null;
@@ -153,7 +153,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const showLabels = expanded || mobileOpen;
   const hasLogoImage = !!(studioLogo || logoUrl || darkLogoUrl);
 
-  const sections = visibleAdminSections(isPersonal, user.role);
+  // O tipo decide o painel de um profissional externo; a clínica e o
+  // estúdio seguem pelos booleanos de sempre.
+  const sections = visibleAdminSections(isPersonal, user.role, clinicType);
   const mainSections = sections.filter((s) => s.key !== "settings");
   const settingsSection = sections.find((s) => s.key === "settings");
 
