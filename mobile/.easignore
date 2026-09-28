@@ -1,0 +1,26 @@
+# O que não precisa subir para a EAS construir o app.
+#
+# Sem este arquivo, o envio levava **52 MB de `dist/`** — a saída do export
+# web, que um build nativo não lê — em todo build. Não quebrava nada; só fazia
+# cada tentativa começar mandando cinquenta megabytes pela rede.
+#
+# Regra para mexer aqui: só entra o que o build nativo **não lê**. Na dúvida,
+# deixe subir. Um arquivo a mais custa segundos; um arquivo a menos que o
+# prebuild precisava custa um build inteiro, e o erro aparece longe da causa.
+
+# Saída do `expo export` — web, não nativo.
+dist/
+
+# Cache local da CLI.
+.expo/
+.expo-shared/
+
+# Coisas de máquina, nunca de build.
+.claude/
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# O QA e os artefatos dele.
+test-results/
+playwright-report/
