@@ -2933,6 +2933,18 @@ model EducationContent {
   description   String?  @db.Text
   contentType   String   @default("article") // "article", "video", "exercise", "infographic"
   body          String?  @db.Text
+
+  /// A versão em português (096 T-1).
+  ///
+  /// `Article` sempre teve as duas línguas; `EducationContent` tinha uma só, e
+  /// importar um artigo como estava jogava fora metade do que já tinha sido
+  /// escrito — com a Ana lendo em inglês e outro paciente em português.
+  ///
+  /// Anuláveis de propósito: material só em inglês é um estado legítimo, e a
+  /// tela mostra o que existe em vez de um espaço vazio.
+  titlePt       String?
+  descriptionPt String?  @db.Text
+  bodyPt        String?  @db.Text
   videoUrl      String?
   videoProvider String?
   thumbnailUrl  String?

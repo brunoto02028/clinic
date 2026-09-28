@@ -2,6 +2,7 @@ import { patientGate } from "@/lib/patient-gate";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
+import { naLingua } from '@/lib/education-language';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,16 +17,37 @@ export async function GET(req: NextRequest) {
     if (!effectiveUser) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
     const effectiveId = effectiveUser.userId;
-    const clinicUser = await prisma.user.findUnique({ where: { id: effectiveId }, select: { clinicId: true } });
+    const clinicUser = await prisma.user.findUnique({
+      where: { id: effectiveId },
+      // A língua sai do próprio paciente, e não de um cabeçalho do aparelho:
+      // é a mesma que decide o e-mail e o push dele.
+      select: { clinicId: true, preferredLocale: true },
+    });
     const clinicId = clinicUser?.clinicId;
+    const locale = clinicUser?.preferredLocale;
 
     // Get assigned content
     const assignments = await prisma.educationAssignment.findMany({
       where: { patientId: effectiveId },
       include: {
         content: {
+          /**
+           * O **corpo** vem junto (096 T-1).
+           *
+           * A tela de detalhe do app lê `item.body` da lista que já está em
+           * memória — e a lista nunca mandava corpo nenhum. Quer dizer: mesmo
+           * depois de importar um artigo, o paciente veria título e resumo e
+           * **nada do texto**.
+           *
+           * Mandar o corpo na lista engorda a resposta. Com a biblioteca desta
+           * clínica (dezenas de textos) isso é aceitável, e tem a vantagem de
+           * funcionar no aplicativo que já está instalado, sem build. Quando a
+           * biblioteca passar de umas centenas, a resposta certa é uma rota de
+           * detalhe — e aí a tela do app muda junto.
+           */
           select: {
             id: true, title: true, description: true, contentType: true,
+            body: true, titlePt: true, descriptionPt: true, bodyPt: true,
             thumbnailUrl: true, videoUrl: true, duration: true, difficulty: true,
             bodyParts: true, tags: true,
             category: { select: { id: true, name: true, color: true } },
@@ -46,7 +68,8 @@ export async function GET(req: NextRequest) {
       where: clinicId ? { clinicId, isPublished: true } : { isPublished: true },
       select: {
         id: true, title: true, description: true, contentType: true,
-        thumbnailUrl: true, duration: true, difficulty: true, isFeatured: true,
+        body: true, titlePt: true, descriptionPt: true, bodyPt: true,
+        thumbnailUrl: true, videoUrl: true, duration: true, difficulty: true, isFeatured: true,
         bodyParts: true, tags: true, viewCount: true,
         category: { select: { id: true, name: true, color: true } },
       },
@@ -60,10 +83,18 @@ export async function GET(req: NextRequest) {
       orderBy: { sortOrder: 'asc' },
     });
 
+    /**
+     * A língua é escolhida **aqui**, e não na tela.
+     *
+     * É o mesmo desenho dos termos: a rota devolve o texto pronto, e nenhuma
+     * tela decide língua por conta própria — senão um dia uma delas decide
+     * diferente das outras. Os campos `*Pt` não saem daqui: a tela não os usa,
+     * e mandá-los dobraria a resposta com texto que ninguém vai mostrar.
+     */
     return NextResponse.json({
-      assignments,
+      assignments: assignments.map((a: any) => ({ ...a, content: a.content ? naLingua(a.content, locale) : a.content })),
       progress: progress.reduce((acc: any, p: any) => { acc[p.contentId] = p; return acc; }, {}),
-      published,
+      published: published.map((c: any) => naLingua(c, locale)),
       categories,
     });
   } catch (error: any) {

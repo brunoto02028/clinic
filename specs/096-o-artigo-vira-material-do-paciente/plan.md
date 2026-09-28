@@ -66,7 +66,7 @@ atribuições para a mesma leitura.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | O conteúdo educacional fala as duas línguas | — | pendente |
+| T-1 | O conteúdo educacional fala as duas línguas | — | **feita** (28/09) — em QA |
 | T-2 | A ponte: o artigo vira material, e lembra de onde veio | T-1 | pendente |
 | T-3 | Liberado para quem você escolher — e só | T-2 | pendente |
 | T-4 | A tela de escolher quais artigos atravessam | T-2 | pendente |

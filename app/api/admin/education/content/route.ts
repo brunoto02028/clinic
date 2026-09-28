@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       title, description, contentType, categoryId, body: contentBody,
+      // A versão em português (096 T-1). Anulável: material só em inglês é um
+      // estado legítimo, e a tela do paciente mostra o que existe.
+      titlePt, descriptionPt, bodyPt,
       videoUrl, videoProvider, thumbnailUrl, imageUrls,
       duration, difficulty, equipment, bodyParts, instructions,
       repetitions, precautions, tags, isPublished, isFeatured,
@@ -69,6 +72,9 @@ export async function POST(req: NextRequest) {
         title,
         slug,
         description: description || null,
+        titlePt: titlePt || null,
+        descriptionPt: descriptionPt || null,
+        bodyPt: bodyPt || null,
         contentType: contentType || 'article',
         body: contentBody || null,
         videoUrl: videoUrl || null,

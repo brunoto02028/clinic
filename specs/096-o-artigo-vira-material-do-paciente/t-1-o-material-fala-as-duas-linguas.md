@@ -1,6 +1,6 @@
 # T-1: O conteúdo educacional fala as duas línguas
 
-**Status:** pendente
+**Status:** feita (28/09) — em QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -46,3 +46,26 @@ torto** e teria de ser reimportado.
 - [ ] Um material só com inglês aparece em inglês para todo mundo
 - [ ] O editor mostra e salva as duas
 - [ ] Nada do que existe hoje mudou de lugar
+
+---
+
+## Como ficou, e um furo que apareceu no caminho
+
+Três colunas anuláveis (`titlePt`, `descriptionPt`, `bodyPt`) e um resolvedor em
+`lib/education-language.ts`, que a rota usa — **a escolha da língua acontece no
+servidor**, como nos termos, e nenhuma tela decide por conta.
+
+A queda é assimétrica de propósito: **mostra o que existe**. Material só em
+inglês aparece em inglês para quem lê português, em vez do espaço vazio que uma
+queda "correta" para nulo produziria. Um texto na língua errada é lido com
+esforço; um card sem título não é lido.
+
+**O furo:** a tela de detalhe do app lê `item.body` da lista que já está em
+memória — e a lista **nunca mandava corpo nenhum**. Quer dizer: mesmo depois de
+importar um artigo, o paciente veria título e resumo e **nada do texto**. O
+corpo passa a vir na lista.
+
+Isso engorda a resposta, e é uma troca consciente: com dezenas de textos é
+aceitável, e tem a vantagem de **funcionar no aplicativo que já está
+instalado**, sem build. Quando a biblioteca passar de umas centenas, a resposta
+certa é uma rota de detalhe — e aí a tela do app muda junto.
