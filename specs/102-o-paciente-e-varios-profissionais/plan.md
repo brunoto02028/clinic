@@ -135,7 +135,7 @@ não se apaga, porque é registro clínico.
 | T-1 | [O tipo do profissional, e criar a área dele](t-1-o-tipo-do-profissional.md) | 🟢 concluída |
 | T-2 | [O que cada área mostra — módulos e vocabulário por tipo](t-2-o-que-cada-area-mostra.md) | 🟢 concluída |
 | T-3 | [O vínculo de cuidado: o paciente atravessa a parede, com consentimento](t-3-o-vinculo-de-cuidado.md) | 🟢 concluída |
-| T-4 | [A agenda de cada profissional](t-4-a-agenda-de-cada-um.md) | pendente |
+| T-4 | [A agenda de cada profissional](t-4-a-agenda-de-cada-um.md) | 🟢 concluída |
 | T-5 | [O paciente escolhe o profissional, no app](t-5-o-paciente-escolhe.md) | pendente |
 | T-6 | [O paciente paga, a BPR repassa](t-6-pagar-e-repassar.md) | pendente |
 | T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | pendente |

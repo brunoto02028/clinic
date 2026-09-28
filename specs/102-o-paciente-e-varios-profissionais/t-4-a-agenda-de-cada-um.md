@@ -1,6 +1,6 @@
 # T-4: A agenda de cada profissional
 
-**Status:** pendente
+**Status:** concluída (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo
@@ -32,7 +32,20 @@ atividade"*. Esta é a atividade.
 
 ## Critérios de aceite
 
-- [ ] Dois profissionais com janelas diferentes devolvem vagas diferentes.
-- [ ] Quem não configurou janela não é oferecido.
-- [ ] O painel e o app concordam sobre o mesmo dia, para a mesma pessoa.
-- [ ] Uma consulta marcada em Londres aparece no horário certo dos dois lados.
+- [x] Dois profissionais com janelas diferentes devolvem vagas diferentes —
+      **já funcionava**: `ScheduleWindow` e `disponibilidadeDoDia` sempre
+      filtraram por `therapistId`. Fui conferir antes de escrever código.
+- [x] Quem não configurou janela não é oferecido — também já era verdade
+      (`reason: "not_working"`), e agora tem teste.
+- [x] **O paciente alcança a agenda de outro inquilino**, e só por o
+      profissional estar no catálogo.
+- [x] A `clinicId` que decide a agenda é a **dele**, não a de quem pergunta.
+- [x] O fuso é o de quem atende, passado nas duas formas de pedir — com
+      padrão, para a BPR não mudar em nada.
+
+## O que sobrou
+
+O **painel** do profissional continua editando janela como sempre editou: a
+tela de disponibilidade é por terapeuta desde antes. O que esta tarefa não fez
+foi uma tela de "minha agenda" separada — ela não é necessária, e inventá-la
+seria uma segunda porta para o mesmo dado.

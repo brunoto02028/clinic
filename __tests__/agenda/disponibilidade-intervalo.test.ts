@@ -168,13 +168,32 @@ describe("o tenant e a sessão continuam mandando", () => {
     expect(rota).toMatch(/if \(!effectiveUser\) \{[\s\S]{0,120}status: 401/);
   });
 
-  it("o terapeuta é procurado dentro da clínica de quem chama", () => {
-    // Um terapeuta de outro tenant tem de responder como um que não existe.
-    expect(rota).toMatch(/findTherapist\(actor\.clinicId, therapistId, actor\.role === "PATIENT"\)/);
+  it("o terapeuta é procurado dentro da clínica de quem chama **primeiro**", () => {
+    /**
+     * Um terapeuta de outro tenant tem de responder como um que não existe —
+     * **e continua tendo**, com uma exceção nomeada: a 102 T-4 permite o
+     * paciente alcançar um profissional que está no catálogo.
+     *
+     * Esta asserção fixava a grafia da chamada (`findTherapist(actor.clinicId,
+     * …)`) e quebrou quando ela passou a ser o **primeiro passo** de
+     * `resolverProfissional`. A regra não mudou; o lugar dela, sim. Congelar
+     * grafia faz o teste reprovar quem melhora o código.
+     */
+    const acesso = ler("lib", "appointment-access.ts");
+    expect(rota).toMatch(/resolverProfissional\(/);
+    expect(acesso).toMatch(/const daCasa = await findTherapist\(actor\.clinicId, professionalUserId, bookableOnly\)/);
   });
 
   it("e sem clínica não se procura ninguém", () => {
-    expect(rota).toMatch(/actor\?\.clinicId\s*\?[\s\S]{0,120}: null;/);
+    const acesso = ler("lib", "appointment-access.ts");
+    expect(acesso).toMatch(/if \(!actor\?\.clinicId\) return null;/);
+  });
+
+  it("**e quem sai de casa precisa do catálogo e de ser paciente**", () => {
+    // A exceção que a 102 abriu, com as duas condições escritas.
+    const acesso = ler("lib", "appointment-access.ts");
+    expect(acesso).toMatch(/actor\.role !== "PATIENT"\) return null/);
+    expect(acesso).toMatch(/!podeAparecerNoApp\(pessoa\.clinic\)/);
   });
 
   it("pedir sem data nenhuma é recusado antes de qualquer consulta", () => {

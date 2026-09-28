@@ -171,15 +171,23 @@ export async function slotsForDate(
   clinicId: string,
   therapistId: string,
   dateStr: string,
-  opts: { kind?: WindowKind; nowMinutes?: number | null } = {}
+  /**
+   * `timeZone` entra com padrao (102 T-4).
+   *
+   * Sem ele nada muda: `zonedTimeToUtc` e `getZonedMinutesOfDay` ja caem em
+   * `CLINIC_TIMEZONE`, que e o que a BPR sempre usou. Ele existe porque um
+   * medico no Brasil escreve "09:00" querendo dizer nove da manha **dele** — e
+   * ler isso como nove de Londres poe a consulta quatro horas fora do lugar.
+   */
+  opts: { kind?: WindowKind; nowMinutes?: number | null; timeZone?: string } = {}
 ): Promise<Slot[]> {
   const janelas = await windowsForDate(clinicId, therapistId, dateStr);
   if (janelas.length === 0) return [];
 
   // As bordas do dia **da clínica**, convertidas para instante. `setHours` em
   // cima de um `Date` daria a meia-noite do servidor.
-  const diaInicio = zonedTimeToUtc(dateStr, "00:00");
-  const diaFim = zonedTimeToUtc(dateStr, "23:59");
+  const diaInicio = zonedTimeToUtc(dateStr, "00:00", opts.timeZone);
+  const diaFim = zonedTimeToUtc(dateStr, "23:59", opts.timeZone);
 
   // Quem está esperando pagar segura o horário — mas não para sempre. Um
   // Checkout abandonado deixava a vaga presa indefinidamente, e o plano diz o
@@ -203,7 +211,7 @@ export async function slotsForDate(
   const ocupacao = (inicio: number, fim: number) =>
     marcadas.filter((a) => {
       // Minutos no fuso da clínica, como a rota antiga já fazia.
-      const aInicio = getZonedMinutesOfDay(a.dateTime);
+      const aInicio = getZonedMinutesOfDay(a.dateTime, opts.timeZone);
       const aFim = aInicio + (a.duration || 60);
       return inicio < aFim && aInicio < fim;
     }).length;

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor } from "@/lib/tenant-access";
-import { findTherapist } from "@/lib/appointment-access";
+import { resolverProfissional } from "@/lib/appointment-access";
 import {
   disponibilidadeDoDia,
   disponibilidadeDoIntervalo,
@@ -56,19 +56,37 @@ export async function GET(request: NextRequest) {
     // Só o tenant de quem chama: um terapeuta de outro tenant responde como um
     // que não existe.
     const actor = await getActor(request);
-    const therapist = actor?.clinicId
-      ? await findTherapist(actor.clinicId, therapistId, actor.role === "PATIENT")
-      : null;
-    if (!therapist) {
+    /**
+     * O profissional **pode ser de outro inquilino** (102 T-4).
+     *
+     * `findTherapist` responde só dentro de casa, e continua sendo o caminho
+     * de sempre. O que `resolverProfissional` acrescenta é o caso da 102: um
+     * paciente da BPR pedindo a agenda de um médico que é outro inquilino —
+     * permitido porque ele está no catálogo, e por nenhum outro motivo.
+     *
+     * A `clinicId` que sai daqui é a **dele**, não a de quem pediu: a agenda,
+     * o feriado e o expediente que valem são os do profissional.
+     */
+    const alvo = await resolverProfissional(
+      actor,
+      therapistId,
+      actor?.role === "PATIENT"
+    );
+    if (!alvo) {
       return NextResponse.json(
         { error: "No therapist available" },
         { status: therapistId ? 404 : 400 }
       );
     }
-    const clinicId = actor!.clinicId!;
+    const therapist = { id: alvo.therapistId };
+    const clinicId = alvo.clinicId;
 
     if (dateStr) {
-      const dia = await disponibilidadeDoDia(clinicId, therapist.id, dateStr, { kind, duration });
+      const dia = await disponibilidadeDoDia(clinicId, therapist.id, dateStr, {
+        kind,
+        duration,
+        timeZone: alvo.timeZone,
+      });
       return NextResponse.json(dia);
     }
 
@@ -88,6 +106,7 @@ export async function GET(request: NextRequest) {
     const resposta = await disponibilidadeDoIntervalo(clinicId, therapist.id, dias, {
       kind,
       duration,
+      timeZone: alvo.timeZone,
     });
     return NextResponse.json({ dias: resposta, therapistId: therapist.id });
   } catch (error) {
