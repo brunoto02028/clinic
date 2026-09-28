@@ -198,6 +198,43 @@ não existe SHA-1 para registrar. Por isso o botão do Google **não aparece no
 Android** nesta versão — um botão que só pode falhar é pior que nenhum botão. É
 uma linha de código e um build para ligar, no dia em que o Android for sair.
 
+### G-5 — o que o build já tentou, e onde parou (28/09, 08:47)
+
+**Isto é a única coisa entre você e o app novo no TestFlight.** Tudo o mais
+está pronto: o build subiu, compilou, e morreu na assinatura com
+
+```
+Provisioning profile "*[expo] com.bpr.clinic AppStore 2026-09-24T08:24:50.705Z"
+doesn't include the Sign In with Apple capability.
+doesn't include the com.apple.developer.applesignin entitlement.
+```
+
+É exatamente o que a nota antiga previa: **capability nova invalida o
+provisioning**. O perfil que a EAS guarda é de 24/09 e não conhece o *Sign in
+with Apple*, que passou a existir agora.
+
+**O que resolve, e leva dois minutos seus** — o menu é interativo, e por isso
+não dá para eu rodar:
+
+```
+cd <repo>/mobile
+npx eas-cli credentials -p ios
+```
+
+1. escolher o perfil **production**
+2. **Build Credentials: Manage everything needed to build your project**
+3. **Provisioning Profile: Set up a new provisioning profile**
+
+A EAS já tem a chave da App Store Connect guardada, então ela liga a capability
+no App ID e gera o perfil sozinha — não deve pedir senha da Apple. Depois:
+
+```
+npx eas-cli build --platform ios --profile production
+```
+
+Se preferir, me chame que eu conduzo — só preciso de você na frente do terminal
+para o menu.
+
 **G-8 — a chave `.p8` da Apple, que apareceu agora.** A Apple exige que todo
 app que oferece *Sign in with Apple* **e** exclusão de conta **revogue o token
 do lado dela** quando a pessoa apaga a conta. Isso é uma chamada à API da Apple
