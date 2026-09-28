@@ -325,6 +325,24 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       },
       {
         /**
+         * O acompanhamento contínuo, no menu (099).
+         *
+         * `/admin/biohacking` existia e **nenhuma seção o citava** — o Bruno
+         * teve de digitar o endereço à mão, e errou uma barra. É a mesma falta
+         * de caminho que escondeu o material do paciente.
+         *
+         * Aqui moram a chave da automação dos relatórios e a fila de desvios —
+         * as duas coisas que fazem o relógio e o medidor valerem alguma coisa.
+         */
+        key: "biohacking",
+        label: "Monitoring",
+        labelPt: "Monitoramento",
+        href: "/admin/biohacking",
+        matchRoutes: ["/admin/biohacking", "/admin/measurements"],
+        clinicalOnly: true,
+      },
+      {
+        /**
          * **O passo que vincula, visível.**
          *
          * `/admin/education/assignments` existia e **nenhum menu apontava para
@@ -472,7 +490,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/email",
       "/admin/email-templates",
       "/admin/email-marketing",
-      "/admin/education",
       "/admin/sales",
     ],
   },
