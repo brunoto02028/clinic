@@ -9,6 +9,7 @@ import {
   BellRing,
   Trophy,
   Apple,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -351,14 +352,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
        * descreve o que a pessoa quer fazer.
        */
       {
-        key: "education",
-        label: "Patient education",
-        labelPt: "Material do paciente",
-        href: "/admin/education",
-        matchRoutes: ["/admin/education", "/admin/education/create", "/admin/education/categories"],
-        clinicalOnly: true,
-      },
-      {
         /**
          * O acompanhamento contínuo, no menu (099).
          *
@@ -438,22 +431,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         clinicalOnly: true,
       },
       {
-        /**
-         * **O passo que vincula, visível.**
-         *
-         * `/admin/education/assignments` existia e **nenhum menu apontava para
-         * ele** — nem o antigo. Quem trouxesse os artigos ficava com eles na
-         * clínica e sem caminho até um paciente, que é justamente o passo que
-         * faz o material chegar a alguém.
-         */
-        key: "education-assignments",
-        label: "Assign material",
-        labelPt: "Atribuir material",
-        href: "/admin/education/assignments",
-        matchRoutes: ["/admin/education/assignments"],
-        clinicalOnly: true,
-      },
-      {
         key: "programs",
         label: "Programs",
         labelPt: "Programas",
@@ -497,6 +474,61 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       // Sem isto, /admin/labs caía na seção Schedule (QA da T-2, 081).
       "/admin/labs",
     ],
+  },
+  {
+    /**
+     * Material do paciente tem espaco proprio (28/09/2026).
+     *
+     * O Bruno: *"esta indo la em Schedule (...) Schedule e a agenda. Nao pode
+     * misturar. Tem que criar um outro espaco para isso"*.
+     *
+     * Ele tem razao por um motivo que vai alem do engano do menu: os artigos
+     * que viram material clinico sao um assunto inteiro — trazer do site,
+     * organizar, atribuir a alguem, acompanhar quem leu. Pendurar isso numa
+     * aba de outra coisa foi o que o fez procurar em tres lugares.
+     */
+    key: "education",
+    label: "Patient education",
+    labelPt: "Material do paciente",
+    icon: GraduationCap,
+    clinicalOnly: true,
+    tabs: [
+      {
+        key: "education-library",
+        label: "Material",
+        labelPt: "Material",
+        href: "/admin/education",
+        matchRoutes: ["/admin/education"],
+      },
+      {
+        /**
+         * O passo que faz o material chegar a alguem.
+         *
+         * Trazer para a clinica e mandar para um paciente sao duas decisoes
+         * (096), e a segunda nao tinha porta nenhuma no menu.
+         */
+        key: "education-assignments",
+        label: "Assign material",
+        labelPt: "Atribuir material",
+        href: "/admin/education/assignments",
+        matchRoutes: ["/admin/education/assignments"],
+      },
+      {
+        key: "education-categories",
+        label: "Categories",
+        labelPt: "Categorias",
+        href: "/admin/education/categories",
+        matchRoutes: ["/admin/education/categories"],
+      },
+      {
+        key: "education-create",
+        label: "Write material",
+        labelPt: "Escrever material",
+        href: "/admin/education/create",
+        matchRoutes: ["/admin/education/create"],
+      },
+    ],
+    matchRoutes: ["/admin/education"],
   },
   {
     key: "marketing",
@@ -906,7 +938,23 @@ export function getActiveAdminNav(pathname: string): {
     // Skip agenda (fallback) on first pass
     if (section.key === "agenda" && clean !== "/admin") continue;
 
-    const sectionMatch = section.matchRoutes?.some((r) => routeMatches(clean, r));
+    /**
+     * A secao casa pelas **proprias abas** tambem (28/09/2026).
+     *
+     * Antes ela dependia so de `matchRoutes`, e isso quebrou assim que uma aba
+     * mudou de secao: `/admin/education` saiu de Marketing, entrou em Clinico
+     * como aba — e ninguem lembrou de mexer no `matchRoutes` da secao. Nenhuma
+     * casou, caiu no fallback, e o menu passou a acender **Agenda** para a tela
+     * de material do paciente.
+     *
+     * Uma aba com `href` e, por definicao, um caminho daquela secao. Ler isso
+     * daqui mata a classe inteira do erro: acrescentar uma aba passa a bastar.
+     */
+    const sectionMatch =
+      section.matchRoutes?.some((r) => routeMatches(clean, r)) ||
+      section.tabs.some((t) =>
+        [t.href, ...(t.matchRoutes || [])].some((r) => routeMatches(clean, r))
+      );
     if (!sectionMatch) continue;
 
     let matchedTab: AdminTab | null = null;

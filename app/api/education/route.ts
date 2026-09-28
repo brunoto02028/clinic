@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { naLingua } from '@/lib/education-language';
+import { emBlocos } from '@/lib/rich-text-blocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,10 +92,27 @@ export async function GET(req: NextRequest) {
      * diferente das outras. Os campos `*Pt` não saem daqui: a tela não os usa,
      * e mandá-los dobraria a resposta com texto que ninguém vai mostrar.
      */
+    /**
+     * O corpo vai **em blocos**, nao em HTML (28/09/2026).
+     *
+     * O material que vem dos artigos do site tem corpo em HTML, e a tela do
+     * telefone o entregava a um `<Text>` — que desenha o que recebe. O
+     * paciente lia `<h2><span style="background-color: transparent...` e
+     * dezenas de `&nbsp;`.
+     *
+     * Traduzido aqui, num lugar so: o aplicativo desenha com a fonte da casa,
+     * e a web continua podendo usar o HTML como sempre usou.
+     */
+    const comBlocos = (c: any) =>
+      c ? { ...c, blocks: emBlocos(c.body || c.content) } : c;
+
     return NextResponse.json({
-      assignments: assignments.map((a: any) => ({ ...a, content: a.content ? naLingua(a.content, locale) : a.content })),
+      assignments: assignments.map((a: any) => ({
+        ...a,
+        content: a.content ? comBlocos(naLingua(a.content, locale)) : a.content,
+      })),
       progress: progress.reduce((acc: any, p: any) => { acc[p.contentId] = p; return acc; }, {}),
-      published: published.map((c: any) => naLingua(c, locale)),
+      published: published.map((c: any) => comBlocos(naLingua(c, locale))),
       categories,
     });
   } catch (error: any) {

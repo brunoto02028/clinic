@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { View, Pressable, Linking } from "react-native";
+import { View, Pressable, Linking, Image } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchEducation, educationList } from "@/api/education";
+import { ArtigoEmBlocos } from "@/components/ArtigoEmBlocos";
 import { updateEducationProgress } from "@/api/education-progress";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
@@ -47,6 +48,16 @@ export default function EducationDetail() {
         <Card><Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text></Card>
       ) : (
         <View style={{ gap: 16 }}>
+          {/* A capa do artigo. Ela sempre veio na resposta e nenhuma tela a
+              mostrava — o Bruno abriu o material e nao viu imagem nenhuma. */}
+          {item.thumbnailUrl ? (
+            <Image
+              source={{ uri: item.thumbnailUrl }}
+              style={{ width: "100%", height: 180, borderRadius: t.radius.lg, backgroundColor: t.colors.surfaceMuted }}
+              resizeMode="cover"
+            />
+          ) : null}
+
           <View>
             <Text variant="title">{item.title}</Text>
             <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
@@ -73,11 +84,16 @@ export default function EducationDetail() {
             </Card>
           )}
 
-          {(item.body || item.content) && (
-            <Card>
-              <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>{item.body || item.content}</Text>
-            </Card>
-          )}
+          {/* O corpo, desenhado com a tipografia da casa.
+              Sem `Card`: um artigo longo dentro de uma caixa cinza fica com
+              cara de aviso, e o que se quer aqui e leitura. */}
+          {item.blocks?.length ? (
+            <ArtigoEmBlocos blocos={item.blocks} />
+          ) : (item.body || item.content) ? (
+            <Text variant="body" style={{ lineHeight: 25, fontSize: 15.5 }}>
+              {item.body || item.content}
+            </Text>
+          ) : null}
 
           {item.videoUrl && (
             <Pressable onPress={() => Linking.openURL(item.videoUrl!)}
