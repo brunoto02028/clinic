@@ -163,9 +163,11 @@ async function handleUpdate(
      * formato do próprio atendimento é decisão de quem atende.
      */
     if (body?.mode !== undefined) {
-      if (body.mode !== "IN_PERSON" && body.mode !== "VIDEO") {
+      // `HOME_VISIT` entrou na 098: sao tres formatos, e a clinica escolhe os
+      // tres direto — o paciente so pode **pedir**.
+      if (!["IN_PERSON", "VIDEO", "HOME_VISIT"].includes(body.mode)) {
         return NextResponse.json(
-          { error: "mode must be IN_PERSON or VIDEO" },
+          { error: "mode must be IN_PERSON, VIDEO or HOME_VISIT" },
           { status: 400 }
         );
       }

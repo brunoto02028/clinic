@@ -92,6 +92,35 @@ function itensDaLista(html: string): string[] {
  * Texto solto entre tags vira parágrafo: um artigo escrito sem `<p>` — e
  * existem — não pode sumir da tela.
  */
+/**
+ * Uma imagem de artigo, alcancavel de dentro do aplicativo.
+ *
+ * O editor grava `/uploads/x.png` — caminho relativo, que no navegador resolve
+ * contra o dominio e **no telefone nao resolve contra nada**. A imagem some
+ * sem erro nenhum: o app pede um endereco que nao existe.
+ *
+ * O Bruno: *"quando eu puxo um artigo, venha com as imagens juntas. Quando eu
+ * envio esse artigo para o aplicativo, tambem va com as imagens juntas"*. Isto
+ * e a segunda metade disso.
+ */
+export function urlAbsoluta(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const limpa = url.trim();
+  if (!limpa) return null;
+  // Ja absoluta, ou embutida na propria pagina.
+  if (/^(https?:|data:)/i.test(limpa)) return limpa;
+  const base = (process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  /**
+   * Sem base configurada, devolve o caminho como esta.
+   *
+   * Descartar seria a pior saida: uma imagem ausente e invisivel — ninguem
+   * sabe que faltou —, enquanto um endereco relativo que nao carrega pelo
+   * menos aparece como falha e alguem investiga.
+   */
+  if (!base) return limpa;
+  return limpa.startsWith("/") ? `${base}${limpa}` : `${base}/${limpa}`;
+}
+
 export function emBlocos(html: string | null | undefined): Bloco[] {
   if (!html || typeof html !== "string") return [];
 
@@ -130,7 +159,7 @@ export function emBlocos(html: string | null | undefined): Bloco[] {
     }
 
     if (tag === "img") {
-      const src = /src\s*=\s*["']([^"']+)["']/i.exec(atributos)?.[1];
+      const src = urlAbsoluta(/src\s*=\s*["']([^"']+)["']/i.exec(atributos)?.[1]);
       const alt = /alt\s*=\s*["']([^"']*)["']/i.exec(atributos)?.[1];
       if (src) blocos.push({ tipo: "imagem", url: src, legenda: alt ? decodificar(alt) : undefined });
       continue;
@@ -161,7 +190,7 @@ export function emBlocos(html: string | null | undefined): Bloco[] {
     // Um `<figure>` com imagem e legenda é o caso comum do editor.
     const imgDentro = /<img\b([^>]*)>/i.exec(dentro);
     if (imgDentro) {
-      const src = /src\s*=\s*["']([^"']+)["']/i.exec(imgDentro[1])?.[1];
+      const src = urlAbsoluta(/src\s*=\s*["']([^"']+)["']/i.exec(imgDentro[1])?.[1]);
       if (src) {
         const legenda = textoDe(dentro.replace(/<img\b[^>]*>/i, ""));
         blocos.push({ tipo: "imagem", url: src, legenda: legenda || undefined });

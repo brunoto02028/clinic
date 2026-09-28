@@ -1,7 +1,7 @@
 jest.mock("@/lib/db", () => ({ prisma: {} }));
 
 import { lerCodigo } from "../helpers/codigo";
-import { decodificar, emBlocos, emTextoSimples } from "@/lib/rich-text-blocks";
+import { decodificar, emBlocos, emTextoSimples, urlAbsoluta } from "@/lib/rich-text-blocks";
 
 /**
  * O artigo que dava para ler (28/09/2026).
@@ -62,12 +62,14 @@ describe("as outras coisas que um artigo tem", () => {
 
   it("**imagem, que era o que mais faltava**", () => {
     const b = emBlocos('<p>antes</p><img src="/img/a.png" alt="Uma foto"><p>depois</p>');
-    expect(b[1]).toEqual({ tipo: "imagem", url: "/img/a.png", legenda: "Uma foto" });
+    expect(b[1]).toMatchObject({ tipo: "imagem", legenda: "Uma foto" });
+    // Absoluta: ver o bloco de endereços abaixo.
+    expect((b[1] as any).url).toMatch(/\/img\/a\.png$/);
   });
 
   it("figura com legenda", () => {
     const b = emBlocos('<figure><img src="/x.png"><figcaption>A legenda</figcaption></figure>');
-    expect(b[0]).toEqual({ tipo: "imagem", url: "/x.png", legenda: "A legenda" });
+    expect(b[0]).toMatchObject({ tipo: "imagem", legenda: "A legenda" });
   });
 
   it("citação e separador", () => {
@@ -78,6 +80,35 @@ describe("as outras coisas que um artigo tem", () => {
 
   it("`<br>` quebra linha em vez de colar as palavras", () => {
     expect(emBlocos("<p>um<br>dois</p>")[0]).toEqual({ tipo: "paragrafo", texto: "um\ndois" });
+  });
+});
+
+describe("o endereço da imagem", () => {
+  /**
+   * O Bruno: *"quando eu puxo um artigo, venha com as imagens juntas. Quando
+   * eu envio esse artigo para o aplicativo, também vá com as imagens
+   * juntas"*.
+   *
+   * O editor grava `/uploads/x.png` — relativo. No navegador resolve contra o
+   * domínio; **no telefone não resolve contra nada**, e a imagem some sem erro
+   * nenhum.
+   */
+  it("**relativo vira absoluto, senão o telefone não acha**", () => {
+    expect(urlAbsoluta("/uploads/a.png")).toBe(`${process.env.NEXTAUTH_URL}/uploads/a.png`);
+  });
+
+  it("o que já é absoluto fica como está", () => {
+    expect(urlAbsoluta("https://cdn.exemplo.com/a.png")).toBe("https://cdn.exemplo.com/a.png");
+    expect(urlAbsoluta("data:image/png;base64,AAA")).toBe("data:image/png;base64,AAA");
+  });
+
+  it("e sem base configurada a imagem **não é descartada**", () => {
+    // Uma imagem ausente é invisível — ninguém sabe que faltou. Um endereço
+    // que não carrega pelo menos aparece como falha.
+    const antes = process.env.NEXTAUTH_URL;
+    delete process.env.NEXTAUTH_URL;
+    expect(urlAbsoluta("/uploads/a.png")).toBe("/uploads/a.png");
+    process.env.NEXTAUTH_URL = antes;
   });
 });
 
