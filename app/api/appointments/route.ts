@@ -15,6 +15,7 @@ import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
 import { markAsClinicPatient } from "@/lib/lab-review-mode";
+import { pedidoAceitavel } from "@/lib/appointment-format";
 import { pessoaGeridaMinha } from "@/lib/managed-patients";
 import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
 import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
@@ -315,12 +316,36 @@ export async function POST(request: NextRequest) {
 
     // O que o paciente escolheu em "Tipo de consulta", quando é um tratamento
     // que esta clínica oferece de verdade. Qualquer outra coisa é ignorada.
-    const tipoEscolhido = isPatient && typeof treatmentType === "string"
-      ? (await prisma.treatmentType.findFirst({
+    const tratamentoEscolhido = isPatient && typeof treatmentType === "string"
+      ? await prisma.treatmentType.findFirst({
           where: { clinicId: actor.clinicId, isActive: true, name: treatmentType },
-          select: { name: true },
-        }))?.name ?? null
+          select: { name: true, requiresInPerson: true, allowsHomeVisit: true },
+        })
       : null;
+    const tipoEscolhido = tratamentoEscolhido?.name ?? null;
+
+    /**
+     * O formato que o paciente pediu (098 T-2).
+     *
+     * **A tela não é a tranca.** Ela só oferece o que pode acontecer, mas
+     * quem monta o corpo da requisição escolhe o que quiser — e sem esta
+     * checagem um `requestedMode: "HOME_VISIT"` entraria para uma
+     * eletroterapia, e alguém teria de recusar à mão.
+     *
+     * E o `mode` **nunca** vem do corpo: a consulta nasce presencial e só
+     * muda quando a clínica aprova. Se o corpo pudesse gravar `mode`, a
+     * aprovação seria enfeite.
+     */
+    let formatoPedido: "VIDEO" | "HOME_VISIT" | null = null;
+    if (isPatient && body?.requestedMode) {
+      const enderecoDoPaciente = await prisma.user.findUnique({
+        where: { id: patientId },
+        select: { address: true, city: true, postcode: true },
+      });
+      const r = pedidoAceitavel(body.requestedMode, tratamentoEscolhido, enderecoDoPaciente);
+      if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 });
+      formatoPedido = (r.formato as "VIDEO" | "HOME_VISIT" | null) ?? null;
+    }
 
     // A clínica pode marcar sem preço configurado: ela cobra fora do app e é
     // ela quem abre exceção. O paciente não chega aqui sem preço — a recusa
@@ -388,6 +413,9 @@ export async function POST(request: NextRequest) {
          * dizendo que `appointment.patient` não existe, quando existe.
          */
         kind: opcao?.kind ?? "CLINIC_BOOKED",
+        // O horário é do paciente agora; o formato é um pedido. A consulta
+        // nasce na clínica e guarda o pedido ao lado (098).
+        requestedMode: formatoPedido,
         // O vínculo é o que permite devolver a sessão no cancelamento. Um
         // contador solto não sabe qual consulta gastou qual sessão.
         patientPackageId: opcao?.kind === "PACKAGE_SESSION" ? opcao.patientPackageId : null,

@@ -59,6 +59,7 @@ import {
   Video,
   BellRing,
   Users,
+  Home,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -86,7 +87,16 @@ interface Appointment {
    * interface não o declarava, e a agenda principal era o único lugar que criava
    * uma consulta por vídeo sem depois mostrar que ela era por vídeo.
    */
-  mode?: "IN_PERSON" | "VIDEO" | null;
+  mode?: "IN_PERSON" | "VIDEO" | "HOME_VISIT" | null;
+  /**
+   * O formato que o **paciente pediu**, e o que se fez com o pedido (098).
+   *
+   * O horário é dele na hora em que marca; o formato é um pedido. A consulta
+   * nasce na clínica e o pedido fica aqui até alguém decidir.
+   */
+  requestedMode?: "VIDEO" | "HOME_VISIT" | null;
+  modeApprovedAt?: string | null;
+  modeRefusedReason?: string | null;
   patient: {
     id: string;
     firstName: string;
@@ -121,6 +131,10 @@ export default function AdminAppointmentsPage() {
    * pergunta oposta, que é a mais comum: "tenho alguma hoje?".
    */
   const [soVideo, setSoVideo] = useState(false);
+  /** Só as que esperam uma decisão de formato (098 T-3). */
+  const [soPedidos, setSoPedidos] = useState(false);
+  const [decidindo, setDecidindo] = useState<string | null>(null);
+  const [motivoRecusa, setMotivoRecusa] = useState<Record<string, string>>({});
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -548,8 +562,51 @@ export default function AdminAppointmentsPage() {
       a.treatmentType.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
     const matchesModo = !soVideo || a.mode === "VIDEO";
-    return matchesSearch && matchesStatus && matchesModo;
+    const matchesPedido = !soPedidos || pedidoPendente(a);
+    return matchesSearch && matchesStatus && matchesModo && matchesPedido;
   });
+
+  /** Pediu alguma coisa e ninguém decidiu ainda. */
+  const pedidoPendente = (a: Appointment) =>
+    !!a.requestedMode && !a.modeApprovedAt && !a.modeRefusedReason;
+
+  const nomeDoFormato = (m?: string | null) =>
+    m === "VIDEO"
+      ? isPt ? "por vídeo" : "by video"
+      : m === "HOME_VISIT"
+        ? isPt ? "em casa" : "at home"
+        : isPt ? "na clínica" : "at the clinic";
+
+  /**
+   * Aprovar ou recusar o formato pedido (098 T-3).
+   *
+   * **Recusar não cancela**: a consulta continua de pé, presencial, no mesmo
+   * horário. E recusar exige motivo — um "não" sem frase manda a pessoa ligar
+   * para a clínica para perguntar por quê.
+   */
+  const decidirFormato = async (a: Appointment, decision: "approve" | "refuse") => {
+    const reason = (motivoRecusa[a.id] || "").trim();
+    if (decision === "refuse" && !reason) {
+      alert(isPt ? "Diga o motivo ao paciente." : "Tell the patient why.");
+      return;
+    }
+    setDecidindo(a.id);
+    try {
+      const res = await fetch(`/api/appointments/${a.id}/format`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, reason: reason || undefined }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.error || String(res.status));
+      setMotivoRecusa((m) => ({ ...m, [a.id]: "" }));
+      await fetchAppointments();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setDecidindo(null);
+    }
+  };
 
   /**
    * Entrar na sala e chamar o paciente, aqui na agenda.
@@ -944,6 +1001,22 @@ export default function AdminAppointmentsPage() {
               ({appointments.filter((a) => a.mode === "VIDEO").length})
             </span>
           </Button>
+          {/* 098 T-3: os pedidos ficavam invisíveis até alguém abrir consulta
+              por consulta. Este botão é a fila. */}
+          {appointments.some(pedidoPendente) && (
+            <Button
+              variant={soPedidos ? "default" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setSoPedidos((v) => !v)}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              {isPt ? "Pedido de formato" : "Format requests"}
+              <span className="ml-1 text-xs opacity-70">
+                ({appointments.filter(pedidoPendente).length})
+              </span>
+            </Button>
+          )}
           {Object.entries(statusCounts).map(([status, count]) => (
             <Button
               key={status}
@@ -1019,6 +1092,25 @@ export default function AdminAppointmentsPage() {
                             {isPt ? "Por vídeo" : "Video"}
                           </span>
                         )}
+                        {appointment.mode === "HOME_VISIT" && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600">
+                            <Home className="h-3 w-3" />
+                            {isPt ? "Em casa" : "At home"}
+                          </span>
+                        )}
+                        {pedidoPendente(appointment) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-500/15 text-orange-600">
+                            <Clock className="h-3 w-3" />
+                            {isPt
+                              ? `Pediu: ${nomeDoFormato(appointment.requestedMode)}`
+                              : `Asked: ${nomeDoFormato(appointment.requestedMode)}`}
+                          </span>
+                        )}
+                        {appointment.modeRefusedReason && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-500">
+                            {isPt ? "Formato recusado" : "Format refused"}
+                          </span>
+                        )}
                         {appointment.paymentMethod === "IN_PERSON" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600">
                             {isPt ? "Pagar no local" : "Pay in person"}
@@ -1028,6 +1120,55 @@ export default function AdminAppointmentsPage() {
                       <p className="text-sm text-muted-foreground">
                         {appointment.treatmentType}
                       </p>
+
+                      {/* A decisão do formato, na própria linha (098 T-3).
+                          Recusar **não cancela**: a consulta continua de pé,
+                          presencial, no mesmo horário — só o lugar volta a ser
+                          a clínica. */}
+                      {pedidoPendente(appointment) && (
+                        <div className="mt-2 rounded-lg border border-orange-500/30 bg-orange-500/5 p-2 space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            {isPt
+                              ? `O paciente pediu esta consulta ${nomeDoFormato(appointment.requestedMode)}. Recusar não cancela — ela continua na clínica, no mesmo horário.`
+                              : `The patient asked for this appointment ${nomeDoFormato(appointment.requestedMode)}. Refusing does not cancel it — it stays at the clinic, same time.`}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              disabled={decidindo === appointment.id}
+                              onClick={() => decidirFormato(appointment, "approve")}
+                            >
+                              <CheckCircle className="h-3 w-3" />
+                              {isPt ? "Aprovar" : "Approve"}
+                            </Button>
+                            <Input
+                              value={motivoRecusa[appointment.id] || ""}
+                              onChange={(e) =>
+                                setMotivoRecusa((m) => ({ ...m, [appointment.id]: e.target.value }))
+                              }
+                              placeholder={isPt ? "Motivo da recusa…" : "Why not…"}
+                              className="h-7 text-xs flex-1 min-w-[160px]"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1"
+                              disabled={decidindo === appointment.id}
+                              onClick={() => decidirFormato(appointment, "refuse")}
+                            >
+                              <XCircle className="h-3 w-3" />
+                              {isPt ? "Recusar" : "Refuse"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {appointment.modeRefusedReason && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {isPt ? "Motivo: " : "Reason: "}
+                          {appointment.modeRefusedReason}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />

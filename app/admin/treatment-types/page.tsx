@@ -33,6 +33,7 @@ interface TreatmentType {
   description: string | null;
   category: string;
   requiresInPerson: boolean;
+  allowsHomeVisit: boolean;
   duration: number;
   price: number;
   discountPercent: number;
@@ -52,7 +53,7 @@ const CATEGORIES = [
 
 const emptyForm = {
   name: "", namePt: "", description: "", category: "OTHER",
-  requiresInPerson: true, duration: 60, price: 60, discountPercent: 0, sortOrder: 0,
+  requiresInPerson: true, allowsHomeVisit: false, duration: 60, price: 60, discountPercent: 0, sortOrder: 0,
 };
 
 export default function TreatmentTypesPage() {
@@ -85,7 +86,7 @@ export default function TreatmentTypesPage() {
     setEditing(t);
     setForm({
       name: t.name, namePt: t.namePt || "", description: t.description || "",
-      category: t.category, requiresInPerson: t.requiresInPerson,
+      category: t.category, requiresInPerson: t.requiresInPerson, allowsHomeVisit: !!t.allowsHomeVisit,
       duration: t.duration, price: t.price, discountPercent: t.discountPercent,
       sortOrder: t.sortOrder,
     });
@@ -240,6 +241,11 @@ export default function TreatmentTypesPage() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {t.duration} min</span>
                     <span>{t.requiresInPerson ? (isPt ? "Presencial" : "In-Person") : (isPt ? "Online/Presencial" : "Online/In-Person")}</span>
+                    {/* 098 T-5: sem esta chave ligada, o domicílio nunca aparece
+                        como opção para paciente nenhum. */}
+                    {t.allowsHomeVisit && (
+                      <span className="text-emerald-600">{isPt ? "Pode ser em casa" : "Home visit"}</span>
+                    )}
                   </div>
                   {t.description && <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>}
                   {/* Actions */}
@@ -331,6 +337,28 @@ export default function TreatmentTypesPage() {
                     <SelectItem value="false">{isPt ? "Não - Online também" : "No - Online too"}</SelectItem>
                   </SelectContent>
                 </Select>
+                {/* A tela nunca disse o efeito desta chave, e ela é quem decide
+                    se o paciente pode pedir vídeo (098 T-5). */}
+                <p className="text-[10px] text-muted-foreground">
+                  {isPt
+                    ? "“Online também” faz o paciente poder pedir por vídeo ao marcar."
+                    : "“Online too” lets the patient ask for a video consultation when booking."}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>{isPt ? "Pode ser em casa?" : "Home visit?"}</Label>
+                <Select value={form.allowsHomeVisit ? "true" : "false"} onValueChange={v => setForm(f => ({ ...f, allowsHomeVisit: v === "true" }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">{isPt ? "Não - só na clínica" : "No - clinic only"}</SelectItem>
+                    <SelectItem value="true">{isPt ? "Sim - pode ir até o paciente" : "Yes - can go to the patient"}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  {isPt
+                    ? "Aparece como opção ao marcar, para quem tiver endereço completo no cadastro."
+                    : "Offered when booking, to patients whose address is complete."}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>{isPt ? "Ordem" : "Sort Order"}</Label>

@@ -1,6 +1,6 @@
 # T-2: O paciente escolhe, no app
 
-**Status:** pendente
+**Status:** concluído (28/09/2026) — chega ao aparelho no próximo build
 **Depende de:** T-1
 
 ## Objetivo

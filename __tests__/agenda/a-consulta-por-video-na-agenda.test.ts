@@ -36,7 +36,9 @@ function bloco(src: string, abertura: string, fim?: string): string {
 describe("a agenda diz que a consulta é por vídeo", () => {
   it("o campo existe na interface — o dado sempre veio, faltava declarar", () => {
     const iface = bloco(agenda, "interface Appointment {");
-    expect(iface).toMatch(/mode\?: "IN_PERSON" \| "VIDEO" \| null;/);
+    // `HOME_VISIT` entrou na 098; o que este teste protege e o campo existir
+    // declarado, nao a lista de valores estar congelada.
+    expect(iface).toMatch(/mode\?: "IN_PERSON" \| "VIDEO"/);
   });
 
   it("a lista mostra um selo, e o mês mostra o ícone", () => {

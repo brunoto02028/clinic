@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, namePt, description, duration, price, discountPercent, isActive, sortOrder, category, requiresInPerson, equipmentNeeded, contraindications, indications, parameters } = body;
+    const { name, namePt, description, duration, price, discountPercent, isActive, sortOrder, category, requiresInPerson, allowsHomeVisit, equipmentNeeded, contraindications, indications, parameters } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
         description: description || null,
         category: category || "OTHER",
         requiresInPerson: requiresInPerson !== undefined ? requiresInPerson : true,
+        // 098 T-5: nasce `false` — ate alguem dizer que sim, a opcao nao
+        // aparece para ninguem.
+        allowsHomeVisit: allowsHomeVisit === true,
         duration: duration || 60,
         price: price || 60.0,
         discountPercent: discountPercent || 0,

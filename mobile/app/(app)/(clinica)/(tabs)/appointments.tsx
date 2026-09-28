@@ -83,7 +83,13 @@ function AppointmentsScreen() {
                           paciente só descobria que a consulta era por vídeo
                           abrindo a tela dela. */}
                       <Ionicons
-                        name={item.mode === "VIDEO" ? "videocam-outline" : "medical-outline"}
+                        name={
+                          item.mode === "VIDEO"
+                            ? "videocam-outline"
+                            : item.mode === "HOME_VISIT"
+                              ? "home-outline"
+                              : "medical-outline"
+                        }
                         size={22}
                         color={t.colors.health}
                       />
@@ -161,6 +167,38 @@ function AppointmentsScreen() {
                           </Text>
                         </View>
                       )}
+                    </View>
+                  )}
+
+                  {/* O que aconteceu com o formato pedido (098 T-4).
+                      Nada disto é enviado ao paciente: ele lê aqui quando abre,
+                      e quem avisa é a clínica, num botão. */}
+                  {item.requestedMode && !item.modeApprovedAt && !item.modeRefusedReason && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
+                      <Ionicons name="time-outline" size={14} color={t.colors.textMuted} />
+                      <Text variant="caption" muted style={{ flex: 1 }}>
+                        {item.requestedMode === "VIDEO"
+                          ? tr(lang, {
+                              en: "Video consultation requested — waiting for the clinic",
+                              pt: "Consulta por vídeo pedida — aguardando a clínica",
+                            })
+                          : tr(lang, {
+                              en: "Home visit requested — waiting for the clinic",
+                              pt: "Atendimento em casa pedido — aguardando a clínica",
+                            })}
+                      </Text>
+                    </View>
+                  )}
+                  {item.modeRefusedReason && (
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 10 }}>
+                      <Ionicons name="information-circle-outline" size={14} color={t.colors.textMuted} />
+                      <Text variant="caption" muted style={{ flex: 1 }}>
+                        {tr(lang, {
+                          en: "The clinic kept this one at the clinic: ",
+                          pt: "A clínica manteve esta na clínica: ",
+                        })}
+                        {item.modeRefusedReason}
+                      </Text>
                     </View>
                   )}
                 </Card>

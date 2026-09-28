@@ -254,6 +254,9 @@ enum OrderStatus {
 enum AppointmentMode {
   IN_PERSON
   VIDEO
+  /// Na casa do paciente (098, 28/09/2026). Continua sendo presencial — o que
+  /// muda é o endereço, e por isso ele não cabia em `IN_PERSON`.
+  HOME_VISIT
 }
 
 enum PaymentMethod {
@@ -977,21 +980,21 @@ model User {
   /// A tela coleta, a validacao aceita, e ate o review de 27/09/2026 o valor
   /// era **descartado em silencio**: a tabela `Dependent` tinha a coluna, o
   /// `User` nao, e a unificacao esqueceu de trazer.
-  managedRelationship String?
+  managedRelationship        String?
   // A descrição de "outro" — só preenchida quando `managedRelationship` é
   // `OTHER`, e obrigatória nesse caso (095 T-3). Coluna separada, e não um
   // "OTHER: texto" encaixado na de cima, porque valor codificado dentro de
   // valor é o tipo de coisa que alguém um dia lê inteiro como se fosse o
   // parentesco.
-  managedRelationshipOther String?
-  managedById         String?
-  guardian            User?      @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
+  managedRelationshipOther   String?
+  managedById                String?
+  guardian                   User?                @relation("ManagedPatients", fields: [managedById], references: [id], onDelete: SetNull)
   /// SetNull e nao Cascade de proposito: apagar um responsavel nunca pode
   /// destruir o prontuario de quem ele cuidava. O registro fica, sem dono, e a
   /// clinica reatribui.
-  managedPatients     User[]     @relation("ManagedPatients")
+  managedPatients            User[]               @relation("ManagedPatients")
   exerciseSubmissionArchives ExerciseSubmission[] @relation("ExerciseSubmissionArchives")
-  labOrdersAsSubject  LabOrder[] @relation("LabOrderSubject")
+  labOrdersAsSubject         LabOrder[]           @relation("LabOrderSubject")
 
   // BA One — Entitlements
   entitlements Entitlement[] @relation("UserEntitlements")
@@ -1295,30 +1298,48 @@ model Appointment {
   therapistId String
   therapist   User   @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
 
-  dateTime         DateTime
-  duration         Int               @default(60) // Duration in minutes
-  treatmentType    String
+  dateTime          DateTime
+  duration          Int               @default(60) // Duration in minutes
+  treatmentType     String
   /**
    * Que tipo de marcacao isto e — decidido pelo servidor, nunca pelo cliente.
    * Sem isto, primeira consulta, sessao de pacote e sessao extra eram a mesma
    * linha, e a clinica so distinguia pelo preco que alguem digitou.
    */
-  kind             AppointmentKind   @default(CLINIC_BOOKED)
+  kind              AppointmentKind   @default(CLINIC_BOOKED)
   /**
    * O pacote que pagou por esta consulta, quando foi um.
    */
-  patientPackageId String?
-  patientPackage   PatientPackage?   @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
-  status           AppointmentStatus @default(PENDING)
-  mode             AppointmentMode   @default(IN_PERSON)
-  paymentMethod    PaymentMethod     @default(ONLINE)
-  videoRoomId      String? // For video consultations
-  videoRoomUrl     String? // Join URL for video call
-  notes            String?
-  price            Float             @default(60.00)
-  treatmentPlanId  String?
-  treatmentPlan    TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
-  protocolId       String? // Links appointment to a TreatmentProtocol (soft reference)
+  patientPackageId  String?
+  patientPackage    PatientPackage?   @relation(fields: [patientPackageId], references: [id], onDelete: SetNull)
+  status            AppointmentStatus @default(PENDING)
+  /// O formato **efetivo** — o que vai acontecer de fato. Continua sendo isto.
+  mode              AppointmentMode   @default(IN_PERSON)
+  /**
+   * O formato que o paciente **pediu**, quando pediu (098).
+   * O horário é dele na hora em que marca; o formato é um pedido. A consulta
+   * nasce na clínica e guarda o pedido aqui — assim, um pedido feito no
+   * sábado não deixa ninguém sem consulta até segunda.
+   * Nulo quando ninguém pediu nada, que é o caso de toda consulta marcada
+   * pela clínica.
+   */
+  requestedMode     AppointmentMode?
+  modeApprovedAt    DateTime?
+  /// Recusar **não cancela**: a consulta continua de pé, presencial, e a
+  /// pessoa lê o motivo. Cancelar por causa do formato faria a clínica perder
+  /// a consulta junto com o pedido.
+  modeRefusedReason String?
+  /// Quem decidiu. String solta, sem relação: o `User` já carrega 45 relações
+  /// e o registro completo de quem fez o quê mora no log de auditoria.
+  modeDecidedById   String?
+  paymentMethod     PaymentMethod     @default(ONLINE)
+  videoRoomId       String? // For video consultations
+  videoRoomUrl      String? // Join URL for video call
+  notes             String?
+  price             Float             @default(60.00)
+  treatmentPlanId   String?
+  treatmentPlan     TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+  protocolId        String? // Links appointment to a TreatmentProtocol (soft reference)
 
   // Reminders
   reminderSent Boolean @default(false)
@@ -1534,14 +1555,14 @@ model Article {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Os materiais educativos que nasceram deste artigo (096 T-2).
+  asEducation EducationContent[] @relation("ArticleAsEducation")
+
   @@index([clinicId])
   @@index([slug])
   @@index([published])
   @@index([authorId])
   @@index([published, createdAt(sort: Desc)])
-
-  /// Os materiais educativos que nasceram deste artigo (096 T-2).
-  asEducation       EducationContent[] @relation("ArticleAsEducation")
 }
 
 // ============================================
@@ -2523,6 +2544,12 @@ model TreatmentType {
   description      String?           @db.Text
   category         TreatmentCategory @default(OTHER)
   requiresInPerson Boolean           @default(true) // true for electrotherapy, can be false for consultations
+  /// Este tratamento pode ser feito na casa do paciente? (098)
+  ///
+  /// Nasce `false` de propósito: até alguém dizer que sim, a opção não
+  /// aparece para ninguém. É diferente de `requiresInPerson`, que decide o
+  /// vídeo — domicílio **é** presencial, só que noutro endereço.
+  allowsHomeVisit  Boolean           @default(false)
   duration         Int               @default(60) // Minutes
   price            Float             @default(60.00)
   discountPercent  Float             @default(0) // 0-100, e.g. 10 = 10% off
@@ -2931,11 +2958,11 @@ model EducationContent {
   createdById String?
   createdBy   User?   @relation("EduContentCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
-  title         String
-  slug          String?
-  description   String?  @db.Text
-  contentType   String   @default("article") // "article", "video", "exercise", "infographic"
-  body          String?  @db.Text
+  title       String
+  slug        String?
+  description String? @db.Text
+  contentType String  @default("article") // "article", "video", "exercise", "infographic"
+  body        String? @db.Text
 
   /// A versão em português (096 T-1).
   ///
