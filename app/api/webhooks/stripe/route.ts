@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { criarVinculoPorPagamento } from "@/lib/care-link";
 import { prisma } from "@/lib/db";
 import { pagarFaturaComStripe } from "@/lib/patient-invoices";
 import Stripe from "stripe";
@@ -93,6 +94,42 @@ export async function POST(req: NextRequest) {
           console.log(
             `[stripe-webhook] Appointment ${appointmentId}: ${r.count === 1 ? "confirmed" : "already handled"}`
           );
+
+          /**
+           * **O pagamento cria o vínculo** (102 T-6).
+           *
+           * Esta é a única forma de um profissional de outro inquilino
+           * alcançar este paciente. Não existe rota que o crie à mão — ele
+           * nasce aqui, depois de o dinheiro entrar, e por nenhum outro
+           * caminho.
+           *
+           * Fora do `if (r.count === 1)` de propósito: um evento reenviado não
+           * confirma de novo, mas **precisa** garantir o vínculo, senão um
+           * primeiro evento que confirmou e falhou logo depois deixaria a
+           * consulta paga e o médico sem acesso. `criarVinculoPorPagamento` é
+           * idempotente.
+           *
+           * O inquilino sai da **consulta**, relida agora, e não do metadata:
+           * o metadata é o que nós escrevemos, e reler é o que impede um
+           * evento antigo de criar vínculo com uma clínica que mudou.
+           */
+          const dona = await prisma.appointment.findUnique({
+            where: { id: appointmentId },
+            select: { clinicId: true, patientId: true },
+          });
+          if (dona?.clinicId) {
+            await criarVinculoPorPagamento({
+              patientId: dona.patientId,
+              professionalClinicId: dona.clinicId,
+              appointmentId,
+            }).catch((e) =>
+              // Vínculo que não nasceu é acesso que falta, não dinheiro
+              // perdido: o pagamento já entrou e a consulta já confirmou.
+              // Barulho no log, e não um 500 que faria a Stripe reenviar
+              // tudo de novo.
+              console.error("[stripe-webhook] care link failed:", e?.message)
+            );
+          }
           break;
         }
 

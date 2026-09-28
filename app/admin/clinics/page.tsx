@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import EmailPreview, { type EmailPreviewData } from "@/components/admin/email-preview";
 import { TIPOS_DE_INQUILINO, isProfissionalExterno, registroExigido, tipoDoInquilino } from "@/lib/tenant-type";
+import { PERCENTUAL_PADRAO } from "@/lib/repasse";
 
 interface Clinic {
     id: string;
@@ -44,6 +45,7 @@ interface Clinic {
     slug: string;
     type: string;
     visibleInApp?: boolean;
+    platformFeePercent?: number | null;
     professionalRegistry?: string | null;
     email: string;
     isActive: boolean;
@@ -308,6 +310,13 @@ export default function ClinicsPage() {
     const [settingsDailyReminders, setSettingsDailyReminders] = useState(false);
     // Empty string = no limit (shown as a blank field, not a 0 the admin has to notice and clear).
     const [settingsMaxTherapists, setSettingsMaxTherapists] = useState("");
+    /**
+     * O percentual que fica com a BPR neste profissional (102 T-6).
+     *
+     * Por profissional, e não por consulta: um número por consulta viraria
+     * negociação a cada marcação. Vazio = o padrão da plataforma.
+     */
+    const [settingsFeePercent, setSettingsFeePercent] = useState("");
     const [settingsMaxPatients, setSettingsMaxPatients] = useState("");
     const [savingSettings, setSavingSettings] = useState(false);
 
@@ -317,6 +326,7 @@ export default function ClinicsPage() {
         setSettingsDailyReminders(clinic.dailyRemindersEnabled);
         setSettingsMaxTherapists(clinic.subscription?.maxTherapists ? String(clinic.subscription.maxTherapists) : "");
         setSettingsMaxPatients(clinic.subscription?.maxPatients ? String(clinic.subscription.maxPatients) : "");
+        setSettingsFeePercent(clinic.platformFeePercent != null ? String(clinic.platformFeePercent) : "");
     };
 
     const saveSettings = async () => {
@@ -325,10 +335,14 @@ export default function ClinicsPage() {
         try {
             const maxTherapists = settingsMaxTherapists.trim() === "" ? 0 : parseInt(settingsMaxTherapists, 10) || 0;
             const maxPatients = settingsMaxPatients.trim() === "" ? 0 : parseInt(settingsMaxPatients, 10) || 0;
+            // Vazio volta a `null`, que é "usa o padrão da plataforma" — e não
+            // zero, que seria "a BPR não fica com nada".
+            const platformFeePercent =
+                settingsFeePercent.trim() === "" ? null : Math.max(0, Math.min(100, Number(settingsFeePercent) || 0));
             const res = await fetch(`/api/admin/clinics/${settingsClinic.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, dailyRemindersEnabled: settingsDailyReminders, maxTherapists, maxPatients }),
+                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, dailyRemindersEnabled: settingsDailyReminders, maxTherapists, maxPatients, ...(isProfissionalExterno(settingsClinic.type) ? { platformFeePercent } : {}) }),
             });
             if (!res.ok) throw new Error("Failed to save");
             toast({ title: "Success", description: "Clinic settings saved", variant: "success" });
@@ -708,6 +722,29 @@ export default function ClinicsPage() {
                                     Leave a field blank for no limit. Lowering a limit never removes anyone already registered — it only blocks new sign-ups once the limit is reached.
                                 </p>
                             </div>
+                            {/* O repasse: quanto fica com a BPR neste profissional.
+                                Só aparece para quem a plataforma intermedia — a
+                                reabilitação e o estúdio não têm repasse. */}
+                            {settingsClinic && isProfissionalExterno(settingsClinic.type) && (
+                                <div className="space-y-1">
+                                    <Label htmlFor="fee-percent" className="text-xs text-muted-foreground">
+                                        Platform share (%)
+                                    </Label>
+                                    <Input
+                                        id="fee-percent"
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        placeholder={`Default ${PERCENTUAL_PADRAO}%`}
+                                        value={settingsFeePercent}
+                                        onChange={(e) => setSettingsFeePercent(e.target.value)}
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">
+                                        BPR charges the patient and keeps this share; the rest is transferred
+                                        to them. Leave blank for the platform default.
+                                    </p>
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
                                     <Label htmlFor="max-therapists" className="text-xs text-muted-foreground">Max staff</Label>

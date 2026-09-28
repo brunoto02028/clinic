@@ -125,6 +125,19 @@ export async function POST(req: NextRequest) {
               payment_intent: paymentIntentId,
               amount: Math.round(actualRefundAmount * 100), // pence
               reason: 'requested_by_customer',
+              /**
+               * O reembolso desfaz os **três** (102 T-6).
+               *
+               * Numa consulta com profissional do catálogo, a cobrança nasceu
+               * na BPR com destino e taxa. Reembolsar só o paciente deixaria a
+               * BPR com a taxa de uma consulta que não houve, e o profissional
+               * devendo um repasse já liquidado.
+               *
+               * Os dois sinalizadores são inofensivos numa cobrança comum: sem
+               * taxa e sem transferência, não há o que desfazer.
+               */
+              refund_application_fee: true,
+              reverse_transfer: true,
               metadata: {
                 cancellationRequestId: requestId,
                 adminId,

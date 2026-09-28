@@ -22,7 +22,9 @@ describe("quem entra no catálogo", () => {
   it("**só quem pode aparecer no app**", () => {
     // Profissional intermediado, ligado por alguém, e com registro — a regra
     // mora em `podeAparecerNoApp` e não numa cláusula de `where` pela metade.
-    expect(catalogo).toMatch(/visiveis = clinicas\.filter\(\(c\) => podeAparecerNoApp\(c\)\)/);
+    // Ganhou `podeReceber` na T-6: quem não pode receber o repasse também não
+    // aparece, senão o dinheiro entra na BPR e fica lá.
+    expect(catalogo).toMatch(/visiveis = clinicas\.filter\(\(c\) => podeAparecerNoApp\(c\)/);
   });
 
   it("**e a clínica de reabilitação nunca entra**", () => {

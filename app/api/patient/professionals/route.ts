@@ -4,6 +4,7 @@ import { patientGate } from "@/lib/patient-gate";
 import { patientBookingPrice } from "@/lib/service-price";
 import { podeAparecerNoApp, tipoDoInquilino } from "@/lib/tenant-type";
 import { findTherapist } from "@/lib/appointment-access";
+import { podeReceber } from "@/lib/repasse";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +52,26 @@ export async function GET(req: NextRequest) {
       registryKind: true,
       languages: true,
       currency: true,
+      // Para decidir se ele pode receber o repasse — ver o filtro abaixo.
+      stripeAccountId: true,
+      stripeOnboarded: true,
       timezone: true,
       logoUrl: true,
     },
     orderBy: { name: "asc" },
   });
 
-  const visiveis = clinicas.filter((c) => podeAparecerNoApp(c));
+  /**
+   * Aparecer exige **poder receber** (102 T-6).
+   *
+   * Um profissional sem conta conectada pronta faz o dinheiro entrar na BPR e
+   * ficar lá, sem ninguém para repassar — e quem descobre é ele, no fim do
+   * mês. Melhor não ser oferecido do que ser pago e não receber.
+   *
+   * É a mesma regra do registro na T-1: o que impede de atender de verdade
+   * esconde, em vez de deixar marcar e falhar depois.
+   */
+  const visiveis = clinicas.filter((c) => podeAparecerNoApp(c) && podeReceber(c));
 
   const comIdioma = idioma
     ? visiveis.filter((c) =>
