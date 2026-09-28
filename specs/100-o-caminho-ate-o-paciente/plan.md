@@ -81,7 +81,21 @@ biblioteca"**.
 | T-1 | O menu leva a tudo o que existe | **concluído** |
 | T-2 | A tela de atribuir explica os dois passos | **concluído** |
 | T-3 | Barra dobrada não vira tela de erro | **concluído** |
-| T-4 | Uma varredura: que outra tela não tem caminho? | pendente |
+| T-4 | Uma varredura: que outra tela não tem caminho? | **concluído** |
+
+## O que a varredura encontrou
+
+**113 telas** no painel. **16 sem caminho nenhum** — nem menu, nem link de
+tela viva. Nove delas só eram citadas pelo `admin-sidebar.old.tsx`, o menu que
+não é mais usado.
+
+A lista, com o motivo de cada uma, está em `qa/report-t-4.md`. Elas **não**
+foram postas no menu: pôr dezesseis de uma vez encheria o painel de telas cuja
+utilidade eu não sei julgar. Cada linha é uma decisão do Bruno — pôr no menu,
+ligar a partir de alguma tela, ou apagar.
+
+O teste foi verificado por sabotagem: tirei `/admin/biohacking` do menu e ele
+falhou; devolvi e passou.
 
 ## Suposições
 

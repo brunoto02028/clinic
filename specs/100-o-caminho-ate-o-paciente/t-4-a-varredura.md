@@ -1,6 +1,6 @@
 # T-4: Uma varredura — que outra tela não tem caminho?
 
-**Status:** pendente
+**Status:** concluído (28/09/2026) — 16 telas sem caminho, listadas no QA; a decisão sobre elas é do Bruno
 **Depende de:** T-1
 
 ## Objetivo
