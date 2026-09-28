@@ -19,7 +19,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bpr.clinic",
-      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "BPR uses the camera so you can photograph a document or record a short video of an exercise for your therapist to review.",
@@ -98,8 +97,7 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.48914887762-6k58gs99rmivdvv9uevk5t1sv5qjerhj"
         }
-      ],
-      "expo-apple-authentication"
+      ]
     ],
     "extra": {
       "router": {},
