@@ -29,6 +29,7 @@ import {
   Mail,
   Send,
   Users,
+  GraduationCap,
 } from "lucide-react";
 import {
   Dialog,
@@ -490,6 +491,17 @@ export default function AdminArticlesPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* A ponte entre o artigo do site e o material do paciente.
+              O Bruno olhou os artigos aqui e perguntou por onde se vincula um
+              deles ao app de alguém — e a resposta estava noutra seção, sem
+              nada apontando para ela a partir daqui. */}
+          <Link href="/admin/education">
+            <Button variant="outline" title="Trazer artigos para o material do paciente">
+              <GraduationCap className="h-4 w-4 mr-2" />
+              Send to patients
+            </Button>
+          </Link>
 
           <Link href="/admin/articles/new">
             <Button>

@@ -6,6 +6,7 @@ import {
   GraduationCap, Plus, Loader2, Search, Filter, PlayCircle,
   FileText, Image as ImageIcon, Dumbbell, Eye, Users, Trash2,
   PenSquare, CheckCircle, Clock, Star, BarChart3,
+  ClipboardCheck,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -138,6 +139,15 @@ export default function EducationPage() {
           <Button variant="outline" className="gap-2" onClick={() => setImportarAberto(true)}>
             <FileText className="h-4 w-4" /> Trazer artigos
           </Button>
+          {/* O passo que faz o material chegar a alguém, visível nesta tela.
+              Trazer para a clínica e mandar para um paciente são duas decisões
+              (096) — mas a segunda não tinha porta: `assignments` existia e
+              nenhum menu apontava para ele. */}
+          <Link href="/admin/education/assignments">
+            <Button variant="outline" className="gap-2">
+              <ClipboardCheck className="h-4 w-4" /> Atribuir a um paciente
+            </Button>
+          </Link>
           <Link href="/admin/education/create">
             <Button className="gap-2"><Plus className="h-4 w-4" /> Create Content</Button>
           </Link>
