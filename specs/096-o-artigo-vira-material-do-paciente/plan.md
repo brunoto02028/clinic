@@ -67,10 +67,10 @@ atribuições para a mesma leitura.
 | T-N | nome | depende de | status |
 |---|---|---|---|
 | T-1 | O conteúdo educacional fala as duas línguas | — | **feita** (28/09) — em QA |
-| T-2 | A ponte: o artigo vira material, e lembra de onde veio | T-1 | pendente |
-| T-3 | Liberado para quem você escolher — e só | T-2 | pendente |
-| T-4 | A tela de escolher quais artigos atravessam | T-2 | pendente |
-| T-5 | O app mostra o que é dele, e o que é da clínica | T-3 | pendente |
+| T-2 | A ponte: o artigo vira material, e lembra de onde veio | T-1 | **feita** (28/09) |
+| T-3 | Liberado para quem você escolher — e só | T-2 | **feita** (28/09) |
+| T-4 | A tela de escolher quais artigos atravessam | T-2 | **feita** (28/09) |
+| T-5 | O app mostra o que é dele, e o que é da clínica | T-3 | **feita** (28/09) — **precisa de build** |
 
 **Ordem:** T-1 primeiro porque tudo que for importado antes dela nasce torto e
 teria de ser reimportado.
@@ -91,3 +91,29 @@ teria de ser reimportado.
   do paciente mostra o que existe em vez de um espaço vazio.
 - Não manda nada ao paciente automaticamente. Atribuir é um botão, como tudo
   que chega a paciente aqui ([[feedback_no-automatic-patient-sends]]).
+
+---
+
+## Três defeitos que apareceram implementando (28/09)
+
+Nenhum deles estava no plano, e os três já estavam de pé antes desta atividade:
+
+1. **A rota nunca mandava o corpo do artigo.** A tela de detalhe do app lê
+   `item.body` da lista em memória, e a lista não mandava corpo. Importar um
+   artigo mostraria ao paciente título e resumo e **nada do texto**.
+2. **"Marcar como lido" no app respondia 401 — sempre.** A rota de progresso
+   lia só sessão de cookie, e o app manda bearer. O botão existe na tela do
+   paciente e nunca funcionou no telefone.
+3. **Qualquer pessoa autenticada gravava progresso em qualquer material** — de
+   outra clínica, ou de um restrito atribuído a outro paciente — e a rota ainda
+   incrementava o `viewCount`, confirmando a existência a quem não devia nem
+   saber dela.
+
+## O que chega sem build, e o que não
+
+**Sem build:** importar, restringir, atribuir, e o paciente ler no app. O
+aplicativo instalado já ordena os atribuídos primeiro, e agora recebe o corpo do
+texto e a língua certa.
+
+**Com build:** a separação "Para você" × "Da clínica", a observação do
+terapeuta, o prazo e o selo de obrigatório — é código do app (T-5).

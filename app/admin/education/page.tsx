@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImportArticlesDialog } from "@/components/admin/import-articles-dialog";
 
 interface EduContent {
   id: string;
@@ -58,6 +59,7 @@ export default function EducationPage() {
    * a diferença precisa ser de um clique — senão ninguém a usa.
    */
   const [trocando, setTrocando] = useState<string | null>(null);
+  const [importarAberto, setImportarAberto] = useState(false);
 
   const trocarAcesso = async (item: EduContent) => {
     setTrocando(item.id);
@@ -130,9 +132,16 @@ export default function EducationPage() {
             Educational content for patient home treatment
           </p>
         </div>
-        <Link href="/admin/education/create">
-          <Button className="gap-2"><Plus className="h-4 w-4" /> Create Content</Button>
-        </Link>
+        <div className="flex gap-2">
+          {/* Trazer do site vem antes de criar do zero: são 35 artigos já
+              escritos de um lado e nenhum material do outro (096 T-4). */}
+          <Button variant="outline" className="gap-2" onClick={() => setImportarAberto(true)}>
+            <FileText className="h-4 w-4" /> Trazer artigos
+          </Button>
+          <Link href="/admin/education/create">
+            <Button className="gap-2"><Plus className="h-4 w-4" /> Create Content</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -300,6 +309,12 @@ export default function EducationPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <ImportArticlesDialog
+        open={importarAberto}
+        onOpenChange={setImportarAberto}
+        onImported={fetchContent}
+      />
     </div>
   );
 }

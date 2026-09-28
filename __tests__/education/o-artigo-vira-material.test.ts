@@ -202,3 +202,53 @@ describe("liberado para quem você escolher (T-3)", () => {
     expect(painel).toMatch(/isPublished: !item\.isPublished/);
   });
 });
+
+describe("a tela de escolher, e a do app (T-4 e T-5)", () => {
+  const dialogo = lerCodigo("components", "admin", "import-articles-dialog.tsx");
+  const painel = lerCodigo("app", "admin", "education", "page.tsx");
+  const appTela = lerCodigo("mobile", "app", "(app)", "(clinica)", "education.tsx");
+  const appApi = lerCodigo("mobile", "src", "api", "education.ts");
+
+  it("o diálogo deixa escolher, em vez de importar os 35", () => {
+    // Importar tudo repetiria o erro da pasta de exercícios: a lista do
+    // paciente encheria de textos que ninguém escolheu para ele.
+    expect(dialogo).toMatch(/escolhidos/);
+    expect(dialogo).toMatch(/articleIds: \[\.\.\.escolhidos\]/);
+  });
+
+  it("e avisa o que vai acontecer antes de acontecer", () => {
+    expect(dialogo).toMatch(/nasce <strong>restrito<\/strong>|só chega a/);
+    expect(dialogo).toMatch(/só em inglês/);
+    expect(dialogo).toMatch(/o artigo mudou depois/);
+  });
+
+  it("criados e atualizados são contados separados", () => {
+    // "7 importados" com cinco já existentes faria procurar doze novos numa
+    // lista que ganhou dois.
+    expect(dialogo).toMatch(/d\.created/);
+    expect(dialogo).toMatch(/d\.updated/);
+  });
+
+  it("e o botão de trazer artigos vem antes do de criar do zero", () => {
+    expect(painel.indexOf("Trazer artigos")).toBeLessThan(painel.indexOf("Create Content"));
+  });
+
+  it("o app separa o que é seu do que é da clínica", () => {
+    expect(appTela).toMatch(/For you|Para você/);
+    expect(appTela).toMatch(/From the clinic|Da clínica/);
+    expect(appTela).toMatch(/<SectionList/);
+  });
+
+  it("e mostra a observação, o prazo e o obrigatório", () => {
+    // A rota sempre mandou os quatro; o app declarava só `id` e `content`.
+    expect(appApi).toMatch(/isRequired\?: boolean/);
+    expect(appTela).toMatch(/atribuicao\?\.note/);
+    expect(appTela).toMatch(/atribuicao\?\.dueDate/);
+    expect(appTela).toMatch(/Required|Obrigatório/);
+  });
+
+  it("e o cabeçalho de seção só aparece quando há duas", () => {
+    // Com uma seção sozinha, ele é enfeite sobre uma lista que já é óbvia.
+    expect(appTela).toMatch(/secoes\.length > 1/);
+  });
+});
