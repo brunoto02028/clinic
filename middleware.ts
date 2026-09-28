@@ -215,6 +215,25 @@ function matchesRoute(path: string, routes: string[]): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  /**
+   * Barra dobrada no comeco do caminho vira tela de erro (28/09/2026).
+   *
+   * `bpr.clinic//admin/biohacking` — um `/` a mais ao colar ou digitar — e
+   * servido normalmente, e entao o router do Next tenta reescrever a barra de
+   * enderecos com `//admin/biohacking`. O navegador le isso como endereco
+   * **protocol-relative**: um dominio chamado `admin`. Origem diferente,
+   * `replaceState` lanca, e a pessoa recebe "Something went wrong" com um
+   * texto sobre `History` que nao ajuda ninguem.
+   *
+   * Nada disso e culpa de quem digitou. Colapsar as barras aqui, antes de
+   * qualquer rota existir, resolve a classe inteira — inclusive `///`.
+   */
+  if (pathname.startsWith('//')) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/+/, '/');
+    return NextResponse.redirect(url, 308);
+  }
+
   // Permanent redirect from the retired bpr.rehab domain to bpr.clinic —
   // .rehab reads as an addiction-recovery clinic, which isn't this practice.
   // One hop straight to https://bpr.clinic regardless of the old domain's

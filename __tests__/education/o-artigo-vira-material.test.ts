@@ -264,6 +264,36 @@ describe("a tela de escolher, e a do app (T-4 e T-5)", () => {
     expect(marketing).not.toMatch(/href: "\/admin\/education"/);
   });
 
+  it("**o monitoramento tambem entrou no menu**", () => {
+    // `/admin/biohacking` existia e nenhuma secao o citava — o Bruno teve de
+    // digitar o endereco a mao, e errou uma barra.
+    const nav = lerCodigo("lib", "admin-sections.ts");
+    expect(nav).toMatch(/href: "\/admin\/biohacking"/);
+  });
+
+  it("e Marketing parou de reivindicar a rota da educacao", () => {
+    // Era por isso que o menu acendia Marketing ao abrir a tela de atribuir,
+    // mesmo tendo sido aberta por Clinico.
+    const nav = lerCodigo("lib", "admin-sections.ts");
+    const marketing = nav.slice(nav.indexOf('key: "marketing"'));
+    const matches = marketing.slice(marketing.lastIndexOf("matchRoutes"));
+    expect(matches).not.toMatch(/"\/admin\/education"/);
+  });
+
+  it("**a tela de atribuir explica os dois passos, e oferece o primeiro**", () => {
+    /**
+     * O Bruno: *"nao entendi como vou criar os Assignments"*. E nao havia como
+     * entender: a tela so oferecia "Assign Content", e o seletor de material
+     * abria vazio enquanto ninguem tivesse importado nada noutra tela.
+     */
+    const atribuir = lerCodigo("app", "admin", "education", "assignments", "page.tsx");
+    expect(atribuir).toMatch(/Dois passos/);
+    expect(atribuir).toMatch(/ImportArticlesDialog/);
+    // E a tela vazia sabe qual dos dois falta.
+    expect(atribuir).toMatch(/contentList\.length === 0 \?/);
+    expect(atribuir).toMatch(/Nenhum material na clínica ainda/);
+  });
+
   it("e o artigo aponta para onde ele vira material do paciente", () => {
     // O Bruno estava olhando os artigos quando perguntou. A ponte fica ali.
     const artigos = lerCodigo("app", "admin", "articles", "page.tsx");

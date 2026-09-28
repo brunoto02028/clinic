@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Loader2, CheckCircle, Clock,
-  AlertCircle, User, GraduationCap, X,
+  AlertCircle, User, GraduationCap, X, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { ImportArticlesDialog } from "@/components/admin/import-articles-dialog";
 
 interface Assignment {
   id: string;
@@ -42,6 +43,17 @@ export default function AssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  /**
+   * Trazer os artigos **daqui** (28/09/2026).
+   *
+   * O Bruno: *"eu quero vincular os artigos do site, pois já estão prontos…
+   * não entendi como vou criar os Assignments"*. E não havia como entender:
+   * esta tela só oferecia "Assign Content", e o seletor de material abria
+   * **vazio** enquanto ninguém tivesse importado nada noutra tela.
+   *
+   * O passo que falta é o primeiro, então ele passa a caber aqui.
+   */
+  const [importarAberto, setImportarAberto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -119,8 +131,16 @@ export default function AssignmentsPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ClipboardCheck className="h-6 w-6 text-primary" /> Assignments
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Assign educational content to patients</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Dois passos: <strong>1)</strong> trazer o artigo do site para a clínica;{" "}
+            <strong>2)</strong> atribuir a um paciente. Só o segundo faz o material aparecer no
+            aplicativo dele.
+          </p>
         </div>
+        <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" className="gap-2" onClick={() => setImportarAberto(true)}>
+          <FileText className="h-4 w-4" /> Trazer artigos do site
+        </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> Assign Content</Button>
@@ -191,7 +211,16 @@ export default function AssignmentsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* O mesmo dialogo da tela de material, aqui: o passo que falta e o
+          primeiro, entao ele precisa caber onde a pessoa esta. */}
+      <ImportArticlesDialog
+        open={importarAberto}
+        onOpenChange={setImportarAberto}
+        onImported={fetchAll}
+      />
 
       {success && (
         <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-800 text-sm">
@@ -205,11 +234,32 @@ export default function AssignmentsPage() {
         <Card>
           <CardContent className="py-16 text-center space-y-3">
             <ClipboardCheck className="h-12 w-12 text-muted-foreground/30 mx-auto" />
-            <p className="font-medium">No assignments yet</p>
-            <p className="text-sm text-muted-foreground">Assign educational content to help patients with home treatment</p>
-            <Button className="gap-2" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4" /> Create First Assignment
-            </Button>
+            {/* A tela vazia agora sabe **qual** dos dois passos falta. Antes ela
+                oferecia "Create First Assignment", e o seletor de material abria
+                vazio — um botão que leva a um beco. */}
+            {contentList.length === 0 ? (
+              <>
+                <p className="font-medium">Nenhum material na clínica ainda</p>
+                <p className="text-sm text-muted-foreground">
+                  Os artigos do site já estão escritos. Traga os que servirem como material
+                  clínico — depois você escolhe para quem cada um vai.
+                </p>
+                <Button className="gap-2" onClick={() => setImportarAberto(true)}>
+                  <FileText className="h-4 w-4" /> Trazer artigos do site
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">Nenhuma atribuição ainda</p>
+                <p className="text-sm text-muted-foreground">
+                  Você tem {contentList.length} material(is) na clínica. Escolha um e diga para
+                  quem ele vai — é isso que o faz aparecer no aplicativo do paciente.
+                </p>
+                <Button className="gap-2" onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4" /> Atribuir a um paciente
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
