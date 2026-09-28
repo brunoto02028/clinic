@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -224,6 +225,17 @@ export default function VideoConsultationsPage() {
    */
   const [chamando, setChamando] = useState<string | null>(null);
 
+  /**
+   * Quem está olhando a tela.
+   *
+   * A lista traz as consultas por vídeo da **clínica inteira**, e entrar numa
+   * sala não é permissão administrativa: são duas pessoas na consulta, e quem é
+   * atendido tem direito de saber quem entrou. Quem decide isso é o servidor;
+   * aqui só se evita oferecer um botão que ele vai recusar.
+   */
+  const { data: sessao } = useSession();
+  const meuId = (sessao?.user as any)?.id as string | undefined;
+
   const chamarPaciente = async (appointment: VideoAppointment) => {
     setChamando(appointment.id);
     try {
@@ -308,7 +320,16 @@ export default function VideoConsultationsPage() {
   const upcoming = appointments.filter(
     (a) => ["PENDING", "CONFIRMED"].includes(a.status) && aindaPorVir(a)
   );
-  const past = appointments.filter((a) => ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(a.status));
+  /**
+   * "Passadas" é **tudo o que não está por vir** — e não uma lista de status.
+   *
+   * Era `["COMPLETED", "CANCELLED", "NO_SHOW"]`, e uma consulta `CONFIRMED` de
+   * ontem não cai em nenhum dos dois: sumia da tela inteira. Só o contador
+   * "Total" sabia dela, então os números não fechavam com o que se via, e a
+   * consulta que não aconteceu — a que mais precisa ser olhada — era justamente
+   * a invisível.
+   */
+  const past = appointments.filter((a) => !upcoming.includes(a));
 
   return (
     <div className="space-y-6">
@@ -396,24 +417,44 @@ export default function VideoConsultationsPage() {
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{new Date(apt.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
                     <span>{apt.duration} min</span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="gap-1 flex-1" onClick={() => startCall(apt)}>
-                      <Phone className="h-3.5 w-3.5" /> Join Video Call
-                    </Button>
-                    {/* Chamar vem ao lado de entrar, e não no lugar: são duas
-                        coisas, e o terapeuta costuma fazer as duas — entra, vê
-                        que está sozinho, chama. */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1"
-                      disabled={chamando === apt.id}
-                      onClick={() => chamarPaciente(apt)}
-                    >
-                      <BellRing className="h-3.5 w-3.5" />
-                      {chamando === apt.id ? relabel("Calling...") : relabel("Call patient")}
-                    </Button>
-                  </div>
+                  {/* Os dois botões só para quem atende — e, para quem não
+                      atende, o nome de quem atende no lugar deles.
+
+                      A agenda já fazia isto (achado 5 do QA da 089 T-8); esta
+                      tela ficou para trás, e é a tela cujo nome é "consultas por
+                      vídeo": os botões apareciam em todas as consultas da
+                      clínica, e o servidor recusava com 404 — "esta consulta não
+                      está disponível" — para uma consulta visível ali na frente.
+                      Parece defeito, e é permissão. */}
+                  {apt.therapist?.id === meuId ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" className="gap-1 flex-1" onClick={() => startCall(apt)}>
+                        <Phone className="h-3.5 w-3.5" /> Join Video Call
+                      </Button>
+                      {/* Chamar vem ao lado de entrar, e não no lugar: são duas
+                          coisas, e o terapeuta costuma fazer as duas — entra, vê
+                          que está sozinho, chama. */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        disabled={chamando === apt.id}
+                        onClick={() => chamarPaciente(apt)}
+                      >
+                        <BellRing className="h-3.5 w-3.5" />
+                        {chamando === apt.id ? relabel("Calling...") : relabel("Call patient")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      {relabel(
+                        `${apt.therapist?.firstName ?? ""} ${apt.therapist?.lastName ?? ""}`.trim()
+                          ? `${apt.therapist.firstName} ${apt.therapist.lastName} is seeing this patient — only they can join.`
+                          : "Another therapist is seeing this patient — only they can join."
+                      )}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             ))}

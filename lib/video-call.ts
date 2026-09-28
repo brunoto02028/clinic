@@ -197,7 +197,20 @@ export async function criarSalaDaConsulta(opts: {
 export function exigirJanelaAberta(dateTime: Date, duracaoMin: number, agora = new Date()): void {
   const { inicio, fim } = janelaDaConsulta(dateTime, duracaoMin);
   const t = Math.floor(agora.getTime() / 1000);
-  if (t < inicio) throw new VideoCallError("This consultation has not opened yet.", 409, "too_early");
+  /**
+   * O inglês diz **a partir de quando**, como o português já dizia.
+   *
+   * "This consultation has not opened yet." deixa a pessoa sem saber se espera
+   * um minuto ou uma hora — e o inglês é a língua primária da casa, então era a
+   * versão pior que a maioria lia. A frase do app (`mobile/.../consulta-video`)
+   * já vinha completa; esta é a mesma.
+   */
+  if (t < inicio)
+    throw new VideoCallError(
+      `This consultation has not opened yet. You can join from ${FOLGA_ANTES_MIN} minutes before.`,
+      409,
+      "too_early"
+    );
   if (t > fim) throw new VideoCallError("This consultation has ended.", 409, "too_late");
 }
 

@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
         id: true,
         dateTime: true,
         duration: true,
+        // Sem `mode`, a web do paciente nunca soube dizer que uma consulta era
+        // por vídeo: o campo chegava `undefined` e o formato virava presencial
+        // por omissão. O app lê `/api/appointments`, que devolve a linha
+        // inteira — por isso só o navegador errava.
+        mode: true,
         treatmentType: true,
         status: true,
         notes: true,
