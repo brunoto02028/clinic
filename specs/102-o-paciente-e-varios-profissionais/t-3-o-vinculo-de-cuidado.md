@@ -1,6 +1,6 @@
 # T-3: O vínculo de cuidado — o paciente atravessa a parede, com consentimento
 
-**Status:** pendente
+**Status:** concluída (28/09/2026) — falta a criação pelo pagamento, que é a T-6
 **Depende de:** T-1
 
 ## Objetivo
@@ -35,11 +35,15 @@ a única porta, e toda consulta que atravessa passa por um helper só.
 
 ## Critérios de aceite
 
-- [ ] Sem vínculo, o profissional recebe **404** — nunca 403, que confirma que
-      o paciente existe.
-- [ ] Vínculo encerrado não dá mais acesso, e o histórico continua.
-- [ ] Nenhuma rota consulta paciente de outro inquilino sem passar pelo helper.
-- [ ] Um teste que percorre **todas** as rotas de paciente e falha se alguma
-      aceitar `patientId` sem checar tenant nem vínculo.
-- [ ] A reabilitação existente não muda: o paciente dela continua alcançado
-      por tenant, sem vínculo nenhum.
+- [x] Sem vínculo, o profissional recebe **404** — nunca 403.
+- [x] Vínculo encerrado não dá mais acesso, e o histórico continua.
+- [x] A porta é **uma só**: o vínculo entra dentro de `assertPatientAccess`, e
+      nenhuma rota consulta `careLink` por conta própria (teste prova).
+- [x] Varredura de **todas** as rotas de paciente, seguindo a cadeia de
+      helpers: zero sem guarda, lista de exceções vazia.
+- [x] A reabilitação não muda: paciente do próprio inquilino nem chega a
+      consultar vínculo.
+- [x] A consulta do vínculo **falha fechado** — erro de banco responde "não".
+- [x] Toda leitura atravessada vai para a auditoria, sem atrasar o atendimento.
+- [x] O paciente vê quem tem acesso e encerra, no app — com caminho no perfil.
+- [ ] **O vínculo nascer do pagamento é a T-6**, que depende do Stripe.

@@ -598,6 +598,9 @@ model Clinic {
   coupons                Coupon[]
   appSessions            AppSession[]
 
+  /// Os pacientes que escolheram este profissional (102 T-3).
+  careLinks CareLink[] @relation("ClinicCareLinks")
+
   @@index([slug])
   @@index([isActive])
 }
@@ -1052,6 +1055,9 @@ model User {
   automationRuns            AutomationRun[]      @relation("PatientAutomationRuns")
   exerciseSubmissions       ExerciseSubmission[] @relation("ExerciseSubmissions")
   exerciseSubmissionReviews ExerciseSubmission[] @relation("ExerciseSubmissionReviews")
+
+  /// Os profissionais que podem agir sobre este paciente (102 T-3).
+  careLinks CareLink[] @relation("PatientCareLinks")
 
   @@index([clinicId])
   @@index([email])
@@ -8540,4 +8546,55 @@ model AutomationRun {
   @@index([patientId, createdAt])
   @@index([ruleCode])
   @@map("automation_runs")
+}
+
+/// O vinculo de cuidado: este profissional pode agir sobre este paciente (102 T-3).
+///
+/// ## Por que existe
+///
+/// `User.clinicId` e a parede: um paciente pertence a um inquilino, e o dia
+/// 28/09/2026 inteiro foi gasto **fechando** furos onde um inquilino alcancava
+/// o paciente de outro. A 102 pede o contrario — e esta tabela e a unica porta.
+///
+/// A diferenca entre vazamento e funcionalidade e **uma linha dizendo que o
+/// paciente concordou**. Por isso ela e explicita, tem dono, tem data, e some
+/// do futuro quando alguem a encerra.
+///
+/// ## Como nasce
+///
+/// **Pelo pagamento** (T-6), e por nenhum outro caminho. Nao existe rota que a
+/// crie a mao: profissional nao ganha paciente por estar na plataforma.
+///
+/// ## O que ela **nao** e
+///
+/// Nao e acesso ao prontuario. Ter vinculo responde "posso agir sobre esta
+/// pessoa?"; o que se ve dela e decidido item a item na partilha (T-9).
+model CareLink {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User   @relation("PatientCareLinks", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// O inquilino do profissional — nunca o da reabilitacao, que alcanca o
+  /// paciente por `clinicId` e nao precisa de vinculo.
+  professionalClinicId String
+  professionalClinic   Clinic @relation("ClinicCareLinks", fields: [professionalClinicId], references: [id], onDelete: Cascade)
+
+  acceptedAt DateTime  @default(now())
+  /// Encerrado corta o acesso **dali para frente**. O que ja aconteceu fica:
+  /// consulta e receita sao registro clinico e nao se apagam.
+  endedAt    DateTime?
+  endedById  String?
+
+  /// A consulta cujo pagamento criou o vinculo. E a prova de como ele nasceu.
+  createdByAppointmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Um vinculo por par. Pagar de novo reativa o mesmo, em vez de empilhar
+  /// vinculos e deixar um encerrado ao lado de um vivo.
+  @@unique([patientId, professionalClinicId])
+  @@index([professionalClinicId])
+  @@index([patientId])
 }

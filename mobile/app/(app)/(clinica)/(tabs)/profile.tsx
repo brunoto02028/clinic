@@ -65,6 +65,18 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   // nothing opens. It returns with the quiz screen (T-4 family).
   { title: { en: "How it works", pt: "Como funciona" }, icon: "book-outline", href: "/(app)/(clinica)/guide", module: "mod_guide" },
   { title: { en: "Terms & consent", pt: "Termos & consentimento" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
+  /**
+   * Quem tem acesso aos meus dados (102 T-3).
+   *
+   * **Sem `module`, de proposito.** Saber quem le o seu prontuario nao e
+   * funcionalidade de plano — e a lista de quem tem a chave da sua casa. Poe-la
+   * atras de um modulo faria o portao decidir se a pessoa pode saber quem a
+   * acessa.
+   *
+   * Ao lado de "Termos & consentimento" porque e a mesma pergunta: o que eu
+   * autorizei, e para quem.
+   */
+  { title: { en: "Who has access", pt: "Quem tem acesso" }, icon: "people-outline", href: "/(app)/(clinica)/quem-tem-acesso" },
 ];
 
 export default function Profile() {
