@@ -9,7 +9,7 @@ import {
   googleSignInRequest,
   appleSignInRequest,
 } from "@/api/auth";
-import { tokenDoGoogle, credencialDaApple } from "@/lib/social-signin";
+import type { CredencialApple } from "@/lib/social-signin";
 import { registrarParaPush, desregistrarPush } from "@/lib/push";
 import type { AuthUser } from "@/api/types";
 import { clearSessionCache } from "@/lib/query-client";
@@ -33,10 +33,18 @@ interface AuthState {
   /** Volta a trancar sem derrubar a sessão (app ficou tempo demais em segundo plano). */
   relock: () => void;
   login: (email: string, password: string) => Promise<void>;
-  /** Entrar com Google (097 T-3). Lança `SocialCancelado` se a pessoa desistiu. */
-  loginComGoogle: () => Promise<void>;
-  /** Entrar com Apple (097 T-4). Lança `SocialCancelado` se a pessoa desistiu. */
-  loginComApple: () => Promise<void>;
+  /**
+   * Entrar com uma credencial que a **tela** já obteve (097 T-3/T-4).
+   *
+   * Quem fala com o SDK é a tela, não a loja. Parece detalhe e não é: quando o
+   * servidor responde 409 (*já existe conta com esse e-mail*), a tela precisa
+   * **guardar aquela mesma credencial** para ligar o provedor depois da senha.
+   * Se a loja a obtivesse por dentro, o token morreria aqui e a tela teria de
+   * abrir a folha do Google uma segunda vez, em cima da mensagem de erro — ou,
+   * na Apple, pedir o Face ID de novo.
+   */
+  loginComGoogle: (idToken: string) => Promise<void>;
+  loginComApple: (cred: CredencialApple) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -141,16 +149,15 @@ export const useAuth = create<AuthState>((set) => ({
     void registrarParaPush();
   },
 
-  loginComGoogle: async () => {
-    const res = await googleSignInRequest(await tokenDoGoogle());
+  loginComGoogle: async (idToken) => {
+    const res = await googleSignInRequest(idToken);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     await clearSessionCache();
     set({ status: "authenticated", user: res.user });
     void registrarParaPush();
   },
 
-  loginComApple: async () => {
-    const cred = await credencialDaApple();
+  loginComApple: async (cred) => {
     const res = await appleSignInRequest(cred);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     await clearSessionCache();

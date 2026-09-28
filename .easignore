@@ -26,8 +26,20 @@
 # na raiz que o prebuild lia. Reabra aquele caminho com `!`, não apague este
 # arquivo.
 
+# ## A barra final que esvaziou o pacote (28/09/2026)
+#
+# Isto aqui já foi `!/mobile/`, com barra. Parece igual e não é: com a barra,
+# `ignores("mobile")` responde **verdadeiro**, e quem varre a árvore testa o
+# nome da pasta antes de entrar nela. Resultado: a pasta inteira era podada, o
+# pacote subiu com **80 bytes** e o build morreu em doze segundos.
+#
+# Sem a barra a pasta passa; a segunda linha reabre o conteúdo para quem testa
+# arquivo por arquivo em vez de pasta por pasta. As duas juntas cobrem os dois
+# jeitos de varrer.
+
 # Tudo que está na raiz…
 /*
 
 # …menos o aplicativo.
-!/mobile/
+!/mobile
+!/mobile/**
