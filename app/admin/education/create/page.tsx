@@ -8,6 +8,7 @@ import {
   CheckCircle, X, Eye, EyeOff, Star, Upload, Mic, MicOff,
   Sparkles, Send, Users, User, Filter, MessageSquare,
 } from "lucide-react";
+import { PreviaDoMaterial } from "@/components/admin/previa-do-material";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,10 +70,22 @@ function CreateContentForm() {
 
   // Send to patients
   const [showSendDialog, setShowSendDialog] = useState(false);
-  const [sendMode, setSendMode] = useState<"all" | "condition" | "specific">("all");
+  /**
+   * **Nada pré-selecionado** (101 T-2, 28/09/2026).
+   *
+   * O padrão era `"all"`, e a caixa abria sozinha ao publicar. Dois cliques —
+   * publicar, "Send Now" — escreviam uma atribuição e um aviso para **todo
+   * paciente ativo da clínica**, sem ninguém saber quantos eram.
+   *
+   * Nada sai sem alguém ver a prévia, e um número faz parte dela.
+   */
+  const [sendMode, setSendMode] = useState<"all" | "condition" | "specific" | null>(null);
   const [sendTags, setSendTags] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
+  /** Quem receberia, contado pelo servidor **antes** de qualquer escrita. */
+  const [conferido, setConferido] = useState<any>(null);
+  const [conferindo, setConferindo] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -297,32 +310,66 @@ function CreateContentForm() {
         const contentId = data.content?.id || editId;
         setSavedContentId(contentId);
         setSuccess(publish ? "Content published!" : "Content saved as draft!");
-        if (publish && contentId) {
-          setSendTags(tags);
-          setShowSendDialog(true);
-        } else {
-          setTimeout(() => router.push("/admin/education"), 1500);
-        }
+        /**
+         * Publicar **não** abre mais a caixa de envio sozinha.
+         *
+         * Publicar é pôr na biblioteca da clínica; mandar para pacientes é
+         * outra decisão. Abrir a caixa logo depois fazia a segunda parecer o
+         * passo seguinte da primeira — e o modo padrão era "todos".
+         */
+        setSendTags(tags);
+        setTimeout(() => router.push("/admin/education"), 1500);
       }
     } catch { setError("Failed to save"); }
     finally { setSaving(false); }
   };
 
   // ─── Send to Patients ───
-  const handleSend = async () => {
-    if (!savedContentId) return;
-    setSending(true);
-    setSendResult(null);
-    try {
-      const payload: any = { contentId: savedContentId, sendTo: sendMode };
-      if (sendMode === "condition") {
-        payload.conditionTags = sendTags.split(",").map(s => s.trim()).filter(Boolean);
-      }
+  const corpoDoEnvio = () => {
+    const payload: any = { contentId: savedContentId, sendTo: sendMode };
+    if (sendMode === "condition") {
+      payload.conditionTags = sendTags.split(",").map(s => s.trim()).filter(Boolean);
+    }
+    return payload;
+  };
 
+  /**
+   * Primeiro **quem**, depois enviar.
+   *
+   * A mesma conta do envio, sem escrever nada: o servidor responde quantas
+   * pessoas o critério alcança e quantas já têm o material. Só depois disso
+   * existe um botão que envia — e ele diz o número.
+   */
+  const conferirDestino = async () => {
+    if (!savedContentId || !sendMode) return;
+    setConferindo(true);
+    setSendResult(null);
+    setConferido(null);
+    try {
       const res = await fetch("/api/admin/education/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...corpoDoEnvio(), dryRun: true }),
+      });
+      const data = await res.json();
+      if (data.error) setSendResult(data);
+      else setConferido(data);
+    } catch (err: any) {
+      setSendResult({ error: err.message });
+    } finally {
+      setConferindo(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!savedContentId || !conferido) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await fetch("/api/admin/education/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoDoEnvio()),
       });
       const data = await res.json();
       setSendResult(data);
@@ -699,13 +746,16 @@ function CreateContentForm() {
 
       {/* Send to Patients Dialog */}
       <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-primary" /> Send to Patients
             </DialogTitle>
           </DialogHeader>
 
+          {/* A prévia ao lado das escolhas: quem manda para a clínica inteira
+              tem de estar olhando o que está mandando. */}
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Choose who should receive this content:
@@ -719,7 +769,9 @@ function CreateContentForm() {
               ].map(opt => (
                 <button
                   key={opt.mode}
-                  onClick={() => setSendMode(opt.mode)}
+                  // Trocar de critério invalida a conferência: o número na tela
+                  // passaria a ser de outro grupo de pessoas.
+                  onClick={() => { setSendMode(opt.mode); setConferido(null); }}
                   className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
                     sendMode === opt.mode
                       ? "bg-primary/5 border-primary/40"
@@ -742,10 +794,36 @@ function CreateContentForm() {
                 <Input
                   placeholder="e.g. shoulder, knee, lower back"
                   value={sendTags}
-                  onChange={e => setSendTags(e.target.value)}
+                  onChange={e => { setSendTags(e.target.value); setConferido(null); }}
                 />
                 <p className="text-xs text-muted-foreground">
                   Patients with diagnoses or protocols matching these tags will receive this content.
+                </p>
+              </div>
+            )}
+
+            {/* Quem vai receber — contado pelo servidor, antes de escrever. */}
+            {conferido && !sendResult?.success && (
+              <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                <p className="font-medium">
+                  This goes to {conferido.wouldSend} patient
+                  {conferido.wouldSend !== 1 ? "s" : ""}.
+                </p>
+                {conferido.alreadyAssigned > 0 && (
+                  <p className="mt-0.5 text-xs">
+                    {conferido.alreadyAssigned} of the {conferido.totalPatients} matched already
+                    have it, and will not be sent again.
+                  </p>
+                )}
+                {/* Os nomes, e não só o número: reconhecer alguém que não devia
+                    estar na lista é o que faz a conferência valer. */}
+                <p className="mt-1.5 text-xs leading-relaxed">
+                  {conferido.patients
+                    .filter((p: any) => !p.already)
+                    .slice(0, 12)
+                    .map((p: any) => p.name)
+                    .join(" · ")}
+                  {conferido.wouldSend > 12 ? ` · +${conferido.wouldSend - 12} more` : ""}
                 </p>
               </div>
             )}
@@ -776,14 +854,41 @@ function CreateContentForm() {
             )}
           </div>
 
+          <div className="md:border-l md:pl-6">
+            <PreviaDoMaterial
+              material={{
+                title,
+                description,
+                body,
+                thumbnailUrl: thumbnailUrl || null,
+                contentType,
+              }}
+            />
+          </div>
+          </div>
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setShowSendDialog(false); router.push("/admin/education"); }}>
               {sendResult?.success ? "Done" : "Skip"}
             </Button>
-            {!sendResult?.success && (
-              <Button className="gap-1.5" onClick={handleSend} disabled={sending || (sendMode === "condition" && !sendTags.trim())}>
+            {/* Dois passos, e o segundo diz o número.
+                "Send Now" ao lado de "All Patients" pré-selecionado era um
+                clique entre uma tela de edição e a caixa de entrada de toda a
+                clínica. */}
+            {!sendResult?.success && !conferido && (
+              <Button
+                className="gap-1.5"
+                onClick={conferirDestino}
+                disabled={conferindo || !sendMode || (sendMode === "condition" && !sendTags.trim())}
+              >
+                {conferindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                Check who receives it
+              </Button>
+            )}
+            {!sendResult?.success && conferido && (
+              <Button className="gap-1.5" onClick={handleSend} disabled={sending || conferido.wouldSend === 0}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send Now
+                Send to {conferido.wouldSend}
               </Button>
             )}
           </DialogFooter>

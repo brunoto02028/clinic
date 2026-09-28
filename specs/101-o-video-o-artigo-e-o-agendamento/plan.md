@@ -50,7 +50,7 @@ tela não oferece o botão — e diz por quê, em vez de calar. Esconder sem exp
 | | tarefa | status |
 |---|---|---|
 | T-1 | [A consulta por vídeo, de ponta a ponta](t-1-o-video-de-ponta-a-ponta.md) | 🟢 concluída |
-| T-2 | [O artigo, da clínica até a tela do paciente](t-2-o-artigo-de-ponta-a-ponta.md) | pendente |
+| T-2 | [O artigo, da clínica até a tela do paciente](t-2-o-artigo-de-ponta-a-ponta.md) | 🟢 concluída |
 | T-3 | [A clínica marca, o paciente vê, paga e está confirmado](t-3-a-clinica-marca-o-paciente-paga.md) | pendente |
 
 ## Suposições
