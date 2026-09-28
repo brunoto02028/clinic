@@ -157,7 +157,7 @@ export default function AdminAppointmentsPage() {
      * separada, `/admin/video-consultations`, então na prática o cenário "marquei
      * uma consulta à distância" não acontecia no fluxo de quem marca consulta.
      */
-    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO",
+    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO" | "HOME_VISIT",
     // Off by default: nothing reaches the patient without a previewed e-mail (activity 68)
     sendConfirmation: false,
     // O caso fora da curva, que numa clínica pequena é semanal. Os dois ficam
@@ -170,7 +170,7 @@ export default function AdminAppointmentsPage() {
   const [editForm, setEditForm] = useState({
     // Presencial ou por vídeo, **também na edição** (095 T-2): antes só dava
     // para escolher ao criar, e transformar uma consulta exigia apagá-la.
-    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO",
+    mode: "IN_PERSON" as "IN_PERSON" | "VIDEO" | "HOME_VISIT",
     dateTime: "",
     duration: 0,
     treatmentType: "",
@@ -476,7 +476,12 @@ export default function AdminAppointmentsPage() {
       price: appointment.price,
       notes: appointment.notes || "",
       // Consulta antiga não tem `mode` gravado; ela é presencial.
-      mode: appointment.mode === "VIDEO" ? "VIDEO" : "IN_PERSON",
+      mode:
+        appointment.mode === "VIDEO"
+          ? "VIDEO"
+          : appointment.mode === "HOME_VISIT"
+            ? "HOME_VISIT"
+            : "IN_PERSON",
     });
     setShowEditDialog(true);
   };
@@ -952,7 +957,7 @@ export default function AdminAppointmentsPage() {
                         {dayAppts.map((a) => (
                           <button
                             key={a.id}
-                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : "IN_PERSON" }); }}
+                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
                             className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
                           >
                             <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
@@ -1466,7 +1471,9 @@ export default function AdminAppointmentsPage() {
                 formato muda o que a pessoa faz no dia, e o pagamento nao. */}
             <div className="space-y-2">
               <Label>{isPt ? "Formato" : "Format"}</Label>
-              <div className="grid grid-cols-2 gap-2">
+              {/* Três, desde a 098: a clínica marca direto o que o paciente
+                  só pode **pedir**. Quem marca aqui é quem decide. */}
+              <div className="grid grid-cols-3 gap-2">
                 <button type="button"
                   onClick={() => setCreateForm(f => ({ ...f, mode: "IN_PERSON" }))}
                   className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
@@ -1495,6 +1502,19 @@ export default function AdminAppointmentsPage() {
                   <div className="text-left">
                     <p className="font-medium">{isPt ? "À distância" : "Remote"}</p>
                     <p className="text-[10px] opacity-70">{isPt ? "Por videochamada, no app" : "By video call, in the app"}</p>
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => setCreateForm(f => ({ ...f, mode: "HOME_VISIT" }))}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    createForm.mode === "HOME_VISIT"
+                      ? "border-amber-500/40 bg-amber-500/15 text-amber-500"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}>
+                  <Home className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="font-medium">{isPt ? "Em casa" : "At home"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "O terapeuta vai até o paciente" : "The therapist travels"}</p>
                   </div>
                 </button>
               </div>
@@ -1694,7 +1714,7 @@ export default function AdminAppointmentsPage() {
                 por onde transformar uma sem apagá-la e perder o horário. */}
             <div className="space-y-2">
               <label className="text-sm font-medium">{isPt ? "Formato" : "Format"}</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setEditForm({ ...editForm, mode: "IN_PERSON" })}
@@ -1719,7 +1739,26 @@ export default function AdminAppointmentsPage() {
                   <Video className="h-4 w-4" />
                   {isPt ? "À distância" : "Remote"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, mode: "HOME_VISIT" })}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    editForm.mode === "HOME_VISIT"
+                      ? "border-amber-500/40 bg-amber-500/15 text-amber-500"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <Home className="h-4 w-4" />
+                  {isPt ? "Em casa" : "At home"}
+                </button>
               </div>
+              {editForm.mode === "HOME_VISIT" && (
+                <p className="text-[11px] text-muted-foreground">
+                  {isPt
+                    ? "O terapeuta vai até o endereço do cadastro do paciente. Confira se ele está completo."
+                    : "The therapist travels to the address on the patient's record. Check it is complete."}
+                </p>
+              )}
               {editForm.mode === "VIDEO" && (
                 <p className="text-[11px] text-muted-foreground">
                   {isPt

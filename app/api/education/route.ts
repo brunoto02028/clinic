@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { naLingua } from '@/lib/education-language';
-import { emBlocos } from '@/lib/rich-text-blocks';
+import { emBlocos, urlAbsoluta } from '@/lib/rich-text-blocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,7 +104,15 @@ export async function GET(req: NextRequest) {
      * e a web continua podendo usar o HTML como sempre usou.
      */
     const comBlocos = (c: any) =>
-      c ? { ...c, blocks: emBlocos(c.body || c.content) } : c;
+      c
+        ? {
+            ...c,
+            blocks: emBlocos(c.body || c.content),
+            // A capa tambem: `/uploads/x.png` nao resolve contra nada dentro
+            // do telefone, e a imagem some sem erro nenhum.
+            thumbnailUrl: urlAbsoluta(c.thumbnailUrl),
+          }
+        : c;
 
     return NextResponse.json({
       assignments: assignments.map((a: any) => ({

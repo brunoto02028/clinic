@@ -26,9 +26,11 @@ describe("virar uma consulta já marcada para vídeo", () => {
     expect(rota).toMatch(/updateData\.mode = body\.mode/);
   });
 
-  it("e recusa qualquer valor que não seja um dos dois", () => {
-    expect(rota).toMatch(/body\.mode !== "IN_PERSON" && body\.mode !== "VIDEO"/);
-    expect(rota).toMatch(/mode must be IN_PERSON or VIDEO/);
+  it("e recusa qualquer valor que não seja um dos **três**", () => {
+    // `HOME_VISIT` entrou na 098. O que este teste protege é a rota recusar o
+    // que não está na lista, não a lista ter dois itens para sempre.
+    expect(rota).toMatch(/\["IN_PERSON", "VIDEO", "HOME_VISIT"\]\.includes\(body\.mode\)/);
+    expect(rota).toMatch(/mode must be IN_PERSON, VIDEO or HOME_VISIT/);
   });
 
   it("o paciente continua só podendo cancelar", () => {
@@ -46,8 +48,11 @@ describe("virar uma consulta já marcada para vídeo", () => {
 
   it("e abrir o diálogo traz o modo da consulta, não um palpite", () => {
     // Consulta antiga não tem `mode` gravado: ela é presencial.
-    const vezes = (agenda.match(/mode: appointment\.mode === "VIDEO"|mode: a\.mode === "VIDEO"/g) || []).length;
-    expect(vezes).toBe(2); // o botão Edit e a célula do calendário
+    // Os dois lugares que montam o formulário a partir da consulta: o botão
+    // Edit e a célula do calendário. Com três formatos, o do Edit virou um
+    // ternário encadeado, então a busca olha o começo dele.
+    const vezes = (agenda.match(/mode:\s*appointment\.mode === "VIDEO"|mode: a\.mode === "VIDEO"/g) || []).length;
+    expect(vezes).toBe(2);
   });
 
   it("o que foi editado chega ao servidor", () => {
