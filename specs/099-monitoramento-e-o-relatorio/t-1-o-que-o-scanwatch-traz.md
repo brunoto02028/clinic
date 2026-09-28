@@ -1,6 +1,6 @@
 # T-1: O que o ScanWatch traz e ninguém mostra
 
-**Status:** concluído em parte (28/09/2026) — o ECG aparece; a fila do painel e o aviso de conta duplicada vão na T-6
+**Status:** concluído (28/09/2026) — o aviso de conta Withings duplicada ficou de fora; ver o plano
 **Depende de:** nenhuma
 
 ## Objetivo

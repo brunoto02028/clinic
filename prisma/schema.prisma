@@ -752,6 +752,7 @@ model User {
   isClinicPatient Boolean @default(false)
 
   outcomeMeasures        PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  monitoringAcks         MonitoringAlertAck[]    @relation("PatientMonitoringAcks")
   servicePriceExceptions PatientServicePrice[]   @relation("PatientServicePrices")
   couponsTargeted        Coupon[]                @relation("CouponTarget")
   couponRedemptions      CouponRedemption[]      @relation("CouponRedemptions")
@@ -7360,6 +7361,32 @@ model UnassignedMeasurement {
 
   @@unique([connectionId, withingsMeasureId])
   @@index([clinicId, assignedAt, discardedAt])
+}
+
+/**
+ * "Eu vi este achado" — e só isso (099 T-6).
+ * O desvio **não** é guardado: ele é recalculado a partir dos pontos, porque
+ * copiar o número criaria duas verdades sobre a mesma medição e a cópia
+ * envelheceria sozinha. O que precisa persistir é o reconhecimento: alguém da
+ * clínica olhou, e quando.
+ * `alertKey` é o que identifica o achado — `restingHr:2026-09-27`,
+ * `ecg_afib:2026-09-20`. Como ele carrega a data, um desvio novo no dia
+ * seguinte é outro achado, e volta para a fila.
+ */
+model MonitoringAlertAck {
+  id        String @id @default(cuid())
+  clinicId  String
+  patientId String
+  patient   User   @relation("PatientMonitoringAcks", fields: [patientId], references: [id], onDelete: Cascade)
+
+  alertKey String
+
+  seenAt   DateTime @default(now())
+  seenById String
+
+  @@unique([patientId, alertKey])
+  @@index([clinicId])
+  @@index([patientId])
 }
 
 model WearableDataPoint {

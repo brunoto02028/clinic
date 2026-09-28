@@ -1,6 +1,6 @@
 # T-6: O desvio que a clínica precisa ver
 
-**Status:** pendente
+**Status:** concluído (28/09/2026)
 **Depende de:** T-1
 
 ## Objetivo

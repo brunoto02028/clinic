@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Brain, Plus, Users, AlertTriangle, CheckCircle2, TrendingUp,
   Activity, Moon, Zap, Heart, Flame, Wind, Dna, Pencil, Trash2,
@@ -335,6 +336,43 @@ export default function AdminBiohackingPage() {
   const [creating, setCreating] = useState(false);
   const [filterAlerts, setFilterAlerts] = useState(false);
 
+  /**
+   * A fila de desvios da clínica (099 T-6).
+   *
+   * Monitorar sem ninguém olhar é guardar dado. O caso que torna isto urgente
+   * já estava acontecendo: o relógio conclui fibrilação atrial, nós
+   * guardamos, e **ninguém era avisado**.
+   *
+   * Nada daqui chega ao paciente. A clínica vê, a clínica decide se fala com
+   * ele — e fala como gente, não como alerta automático.
+   */
+  const [desvios, setDesvios] = useState<any[]>([]);
+  const [marcando, setMarcando] = useState<string | null>(null);
+
+  const carregarDesvios = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/monitoring/deviations");
+      const d = await r.json();
+      setDesvios(d.deviations || []);
+    } catch {
+      setDesvios([]);
+    }
+  }, []);
+
+  const marcarVisto = async (d: any) => {
+    setMarcando(d.chave + d.patientId);
+    try {
+      await fetch("/api/admin/monitoring/deviations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: d.patientId, alertKey: d.chave }),
+      });
+      await carregarDesvios();
+    } finally {
+      setMarcando(null);
+    }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     const [pRes, prRes] = await Promise.all([
@@ -346,7 +384,8 @@ export default function AdminBiohackingPage() {
     setPatients(pData.patients || []);
     setProtocols(prData.protocols || []);
     setLoading(false);
-  }, []);
+    void carregarDesvios();
+  }, [carregarDesvios]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -395,6 +434,55 @@ export default function AdminBiohackingPage() {
           </div>
         </div>
       </div>
+
+      {/* A fila de desvios (099 T-6). Só aparece quando há o que olhar — uma
+          caixa vazia dizendo "nenhum alerta" ocupa a tela todo dia por nada. */}
+      {desvios.filter((d) => !d.seenAt).length > 0 && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Worth a look — {desvios.filter((d) => !d.seenAt).length}
+            </p>
+            {desvios
+              .filter((d) => !d.seenAt)
+              .map((d) => (
+                <div key={d.patientId + d.chave} className="flex items-start justify-between gap-3 text-xs border-t border-amber-500/20 pt-2">
+                  <div>
+                    <Link href={`/admin/patients/${d.patientId}`} className="font-semibold hover:underline">
+                      {d.patientName}
+                    </Link>
+                    <p className="text-muted-foreground">
+                      {d.tipo === "ecg" ? (
+                        <strong className="text-amber-600">
+                          Atrial fibrillation detected by the watch on {d.dia}
+                        </strong>
+                      ) : (
+                        <>
+                          {d.metrica} {d.valor} on {d.dia} — their own average was {d.base}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[11px] shrink-0"
+                    disabled={marcando === d.chave + d.patientId}
+                    onClick={() => marcarVisto(d)}
+                  >
+                    Mark as seen
+                  </Button>
+                </div>
+              ))}
+            {/* Dito na tela, para ninguém supor o contrário: o paciente não
+                recebeu nada disto. */}
+            <p className="text-[10px] text-muted-foreground pt-1">
+              Compared against each patient&apos;s own history. Nothing here was sent to them.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-3">

@@ -24,7 +24,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const data = await getPatientReportData(params.id);
+  // O periodo vem da aba de monitoramento, que ja tem a janela escolhida (099
+  // T-3). Sem ele, trinta dias — o mesmo padrao das telas.
+  const days = Math.min(
+    Math.max(parseInt(req.nextUrl.searchParams.get("days") || "30", 10) || 30, 7),
+    365
+  );
+  const data = await getPatientReportData(params.id, { days });
   if (!data.patient) {
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
