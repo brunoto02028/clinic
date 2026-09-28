@@ -197,6 +197,21 @@ describe("liberado para quem você escolher (T-3)", () => {
     expect(painel).toMatch(/Na biblioteca/);
   });
 
+  it("**e o material restrito aparece na tela de atribuir**", () => {
+    /**
+     * A tela de atribuir pedia `?published=true`, então **justamente o que
+     * nasce restrito** — todo artigo importado — não aparecia na lista. E
+     * atribuir é a única forma de ele chegar a alguém: a 096 inteira parava
+     * a um clique do fim.
+     */
+    const atribuir = lerCodigo("app", "admin", "education", "assignments", "page.tsx");
+    expect(atribuir).not.toMatch(/education\/content\?published=true/);
+    expect(atribuir).toMatch(/fetch\("\/api\/admin\/education\/content"\)/);
+    // E a lista diz qual é qual, senão os dois estados viram um só.
+    expect(atribuir).toMatch(/na biblioteca/);
+    expect(atribuir).toMatch(/só atribuído/);
+  });
+
   it("e dá para trocar entre os dois de um clique", () => {
     expect(painel).toContain("const trocarAcesso = async");
     expect(painel).toMatch(/isPublished: !item\.isPublished/);
