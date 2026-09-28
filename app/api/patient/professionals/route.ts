@@ -48,6 +48,16 @@ export async function GET(req: NextRequest) {
       id: true,
       name: true,
       type: true,
+      /**
+       * **`visibleInApp` no `select`, e não só no `where`** (achado da medição).
+       *
+       * O `where` já filtra por ele, então toda linha que chega tem `true` —
+       * mas `podeAparecerNoApp` **lê o campo**, e sem ele no `select` lia
+       * `undefined` e respondia "não". O catálogo vinha vazio com todos os
+       * dados certos no banco, e nenhum teste de leitura de código pegaria:
+       * o filtro estava escrito certo, faltava o dado.
+       */
+      visibleInApp: true,
       professionalRegistry: true,
       registryKind: true,
       languages: true,

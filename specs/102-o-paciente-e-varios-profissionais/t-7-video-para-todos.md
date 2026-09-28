@@ -1,6 +1,6 @@
 # T-7: Consulta por vídeo para todos os tipos
 
-**Status:** pendente
+**Status:** concluída (28/09/2026)
 **Depende de:** T-1, T-3
 
 ## Objetivo
@@ -31,6 +31,30 @@ O que muda é pouco, e é justamente por isso que esta tarefa existe: para
 
 ## Critérios de aceite
 
-- [ ] A matriz de recusas medida contra a Daily real, com profissional externo.
-- [ ] Admin da BPR **não** entra na sala de uma consulta que não é dele.
-- [ ] O paciente entra pelo app, e o profissional pelo painel dele.
+- [x] Matriz medida contra a Daily real, com profissional de **outro
+      inquilino**:
+
+      | quem | resultado |
+      |---|---|
+      | paciente da BPR | **200**, `ehTerapeuta: false` |
+      | o médico (outro inquilino) | **200**, `nome: "Ana Medica (CRM 123456)"` |
+      | terapeuta da BPR, estranho à consulta | **404** |
+      | sem autenticação | **401** |
+      | o médico chama o paciente | **200** |
+      | a BPR tenta chamar | **404** |
+
+- [x] **A BPR não entra na sala de uma consulta que não é dela** — ela é a
+      plataforma, não participante.
+- [x] O nome na sala leva o registro, e só para profissional intermediado.
+- [x] A agenda do médico sem janela configurada responde `not_working` — ele
+      não é oferecido, como manda a T-4.
+
+## O que a medição achou, e nenhum teste de código acharia
+
+O catálogo vinha **vazio** com todos os dados certos no banco. O `where`
+filtrava por `visibleInApp`, então toda linha que chegava tinha `true` — mas o
+`select` não trazia o campo, e `podeAparecerNoApp` **lê o campo**. Ele via
+`undefined` e respondia "não".
+
+O filtro estava escrito certo; faltava o dado. Só rodar pegou — e agora há um
+teste que confronta o `select` com todo campo que os dois filtros leem.

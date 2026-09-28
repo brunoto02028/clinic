@@ -138,7 +138,7 @@ não se apaga, porque é registro clínico.
 | T-4 | [A agenda de cada profissional](t-4-a-agenda-de-cada-um.md) | 🟢 concluída |
 | T-5 | [O paciente escolhe o profissional, no app](t-5-o-paciente-escolhe.md) | 🟢 concluída |
 | T-6 | [O paciente paga, a BPR repassa](t-6-pagar-e-repassar.md) | 🟡 construída e medida em test mode; **produção espera o Stripe** |
-| T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | pendente |
+| T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | 🟢 concluída |
 | T-8 | [O que o médico devolve: receita e documento](t-8-o-que-o-profissional-devolve.md) | pendente |
 | T-9 | [A equipe: compartilhar item a item, nos dois sentidos](t-9-a-equipe-compartilha-item-a-item.md) | pendente |
 | T-10 | [A parede clínica: quem vê o quê](t-10-quem-ve-o-que.md) | pendente |

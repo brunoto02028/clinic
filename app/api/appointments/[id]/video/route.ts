@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRequestSession } from "@/lib/dual-auth";
 import { porContaDeNoBearer } from "@/lib/sessao-emprestada";
+import { isProfissionalExterno } from "@/lib/tenant-type";
 import {
   VideoCallError,
   criarSalaDaConsulta,
@@ -70,7 +71,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       clinicId: true,
       videoRoomUrl: true,
       patient: { select: { firstName: true, lastName: true } },
-      therapist: { select: { firstName: true, lastName: true } },
+      therapist: {
+        select: {
+          firstName: true,
+          lastName: true,
+          /**
+           * O registro do profissional (102 T-7).
+           *
+           * Em consulta a distancia no Brasil, saber quem atende **faz parte
+           * do atendimento** — e o nome sozinho nao diz. Quando quem atende e
+           * um profissional que a BPR intermedia, o numero entra no nome que
+           * aparece na sala.
+           */
+          clinic: {
+            select: { type: true, professionalRegistry: true, registryKind: true },
+          },
+        },
+      },
     },
   });
 
@@ -152,7 +169,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const pessoa = ehTerapeuta ? consulta.therapist : consulta.patient;
-  const nomeDaPessoa = [pessoa?.firstName, pessoa?.lastName].filter(Boolean).join(" ") || "Participant";
+  const nomeSimples = [pessoa?.firstName, pessoa?.lastName].filter(Boolean).join(" ") || "Participant";
+
+  /**
+   * O nome de quem atende leva o registro junto (102 T-7).
+   *
+   * So para profissional intermediado pela BPR: o terapeuta da reabilitacao
+   * aparece como sempre apareceu, e acrescentar um numero vazio ao nome dele
+   * seria pior que nao ter nenhum.
+   */
+  const registroDoTerapeuta =
+    ehTerapeuta && isProfissionalExterno(consulta.therapist?.clinic?.type)
+      ? [consulta.therapist?.clinic?.registryKind, consulta.therapist?.clinic?.professionalRegistry]
+          .filter(Boolean)
+          .join(" ")
+      : "";
+  const nomeDaPessoa = registroDoTerapeuta ? `${nomeSimples} (${registroDoTerapeuta})` : nomeSimples;
 
   /**
    * Quem está de fato na sala, e não só de quem é a consulta.
