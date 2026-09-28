@@ -32,7 +32,7 @@ interface Assignment {
   assignedBy: { firstName: string; lastName: string } | null;
 }
 
-interface ContentItem { id: string; title: string; contentType: string; }
+interface ContentItem { id: string; title: string; contentType: string; isPublished: boolean; }
 interface PatientItem { id: string; firstName: string; lastName: string; email: string; }
 
 export default function AssignmentsPage() {
@@ -59,14 +59,25 @@ export default function AssignmentsPage() {
     try {
       const [assRes, contRes, patRes] = await Promise.all([
         fetch("/api/admin/education/assignments"),
-        fetch("/api/admin/education/content?published=true"),
+        /**
+         * **Sem `?published=true`** (096, corrigido em 28/09/2026).
+         *
+         * O material que vem dos artigos do site nasce **restrito** — de
+         * propósito: trazer para a clínica e mandar para um paciente são duas
+         * decisões. Mas o filtro daqui só listava o publicado, então
+         * **justamente o restrito era o que não dava para atribuir** — e
+         * atribuir é a única forma de ele chegar a alguém.
+         *
+         * A lista agora traz tudo, e o item diz qual é qual.
+         */
+        fetch("/api/admin/education/content"),
         fetch("/api/patients"),
       ]);
       const assData = await assRes.json();
       const contData = await contRes.json();
       const patData = await patRes.json();
       setAssignments(assData.assignments || []);
-      setContentList((contData.content || []).map((c: any) => ({ id: c.id, title: c.title, contentType: c.contentType })));
+      setContentList((contData.content || []).map((c: any) => ({ id: c.id, title: c.title, contentType: c.contentType, isPublished: !!c.isPublished })));
       setPatients((patData.patients || []).map((p: any) => ({ id: p.id, firstName: p.firstName, lastName: p.lastName, email: p.email })));
     } catch { setError("Failed to load data"); }
     finally { setLoading(false); }
@@ -123,7 +134,16 @@ export default function AssignmentsPage() {
                   <SelectTrigger><SelectValue placeholder="Select content" /></SelectTrigger>
                   <SelectContent>
                     {contentList.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.title}
+                        {/* Quem atribui precisa saber se aquele material já está
+                            na biblioteca de todos ou se só chega por atribuição —
+                            é a diferença entre lembrar alguém de algo público e
+                            liberar algo para ele. */}
+                        <span className="text-muted-foreground text-xs ml-2">
+                          {c.isPublished ? "· na biblioteca" : "· só atribuído"}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
