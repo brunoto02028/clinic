@@ -493,6 +493,29 @@ export default function AdminBiohackingPage() {
                 Reports appear in each patient&apos;s app. Nothing is pushed to them unless they
                 turned notifications on.
               </p>
+
+              {/* De quem não veio nada — pedido do Bruno: "se não tiver nenhum
+                  tipo de informação, eu vou ser avisado". Com o nome, porque
+                  "3 sem dados" não diz a quem perguntar. O paciente não recebe
+                  esses: um relatório semanal dizendo "nada" é pior que nenhum. */}
+              {auto.noData?.length > 0 && (
+                <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                  <p className="text-[11px] font-semibold text-amber-700">
+                    Nothing to report for {auto.noData.length} period(s) — no measurements, no
+                    check-ins, no appointments
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {auto.noData
+                      .slice(0, 6)
+                      .map((n: any) => `${n.patientName} (${String(n.periodStart).slice(0, 10)})`)
+                      .join(" · ")}
+                    {auto.noData.length > 6 ? " …" : ""}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    These were not shown to the patient.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <select
