@@ -43,6 +43,41 @@ export const GOOGLE_IOS_CLIENT_ID =
  */
 export const GOOGLE_DISPONIVEL = Platform.OS === "ios";
 
+/**
+ * **O botão da Apple está desligado neste build — e o motivo é a Apple.**
+ *
+ * O código está todo pronto: a rota `/api/mobile/auth/apple`, o vínculo, a tela
+ * de contas conectadas. O que falta é a **capability `Sign in with Apple` no
+ * App ID**, e ligar isso invalida o provisioning profile: o build de 28/09
+ * compilou inteiro e morreu na assinatura com
+ * *"doesn't include the com.apple.developer.applesignin entitlement"*.
+ *
+ * Regenerá-lo exige autenticação no portal da Apple, que exige a senha do
+ * Bruno **e o código de dois fatores do aparelho dele**. A sessão guardada nesta
+ * máquina expirou, e não há chave de API local — ou seja, não existe caminho
+ * daqui que não passe por ele. Ver 094 G-5.
+ *
+ * Por isso este build sai **sem** o botão, em vez de sair com um botão que só
+ * pode falhar — o mesmo critério que mantém o Google fora do Android.
+ *
+ * **Para religar, são três coisas** — e a terceira não é óbvia:
+ *
+ * 1. esta linha vira `Platform.OS === "ios"`;
+ * 2. `usesAppleSignIn: true` e o plugin `expo-apple-authentication` voltam ao
+ *    `app.json`;
+ * 3. **tirar `expo-apple-authentication` de `expo.autolinking.exclude` no
+ *    `package.json`.** Sem isso nada acontece: o Expo aplica o config plugin de
+ *    todo pacote instalado, mesmo quando ele não está listado em `plugins` —
+ *    tirar da lista não tira o entitlement, e só o `exclude` tira.
+ *
+ * E depois o menu do `eas credentials` regenera o perfil.
+ *
+ * **Atenção:** um build com Google e **sem** Apple não passa na revisão da
+ * loja (diretriz 4.8). Este serve para TestFlight interno; a submissão espera o
+ * próximo.
+ */
+export const APPLE_DISPONIVEL = false;
+
 export class SocialCancelado extends Error {
   constructor() {
     super("cancelled");
@@ -149,7 +184,7 @@ export async function tokenDoGoogle(): Promise<string> {
 }
 
 export async function appleDisponivel(): Promise<boolean> {
-  if (Platform.OS !== "ios") return false;
+  if (!APPLE_DISPONIVEL || Platform.OS !== "ios") return false;
   try {
     return await AppleAuthentication.isAvailableAsync();
   } catch {

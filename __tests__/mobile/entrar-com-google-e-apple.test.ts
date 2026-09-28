@@ -370,6 +370,37 @@ describe("o aplicativo", () => {
     expect(login).toMatch(/temApple/);
   });
 
+  it("**e está desligado neste build, pelos três lugares ao mesmo tempo**", () => {
+    /**
+     * O botão da Apple só pode existir num binário cujo provisioning profile
+     * tenha a capability — e ligá-la exige a senha do Bruno **e o código de
+     * dois fatores do aparelho dele**. Enquanto isso não acontecer, um botão
+     * ali só pode falhar.
+     *
+     * Os três lugares precisam concordar: a constante esconde o botão, o
+     * `app.json` não pede o entitlement, e o `exclude` impede o Expo de aplicar
+     * o config plugin do pacote instalado — que é o passo que engana, porque
+     * tirar o plugin da lista **não** tira o entitlement.
+     */
+    expect(lib).toMatch(/APPLE_DISPONIVEL = false/);
+    expect(lib).toMatch(/if \(!APPLE_DISPONIVEL \|\| Platform\.OS !== "ios"\) return false/);
+
+    const appJson = JSON.parse(ler("mobile", "app.json"));
+    expect(appJson.expo.ios.usesAppleSignIn).toBeUndefined();
+    expect(appJson.expo.plugins).not.toContain("expo-apple-authentication");
+
+    const pkg = JSON.parse(ler("mobile", "package.json"));
+    expect(pkg.expo?.autolinking?.exclude).toContain("expo-apple-authentication");
+  });
+
+  it("mas o servidor continua pronto para a Apple", () => {
+    // Nada foi removido do backend: quando o entitlement existir, basta o
+    // build. A rota e o vínculo já estão no ar.
+    expect(lerCodigo("app", "api", "mobile", "auth", "apple", "route.ts")).toMatch(
+      /verificarIdTokenDaApple/
+    );
+  });
+
   it("o SDK do Google é carregado sob demanda", () => {
     // Importar no topo derruba o bundle da web e o Expo Go, onde o módulo
     // nativo não existe — e a tela de login é a primeira que abre.
