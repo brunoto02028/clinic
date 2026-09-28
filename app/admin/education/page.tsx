@@ -47,6 +47,37 @@ export default function EducationPage() {
   const { relabel } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const [content, setContent] = useState<EduContent[]>([]);
+
+  /**
+   * Trocar entre "só para quem eu atribuir" e "na biblioteca de todos"
+   * (096 T-3).
+   *
+   * Pedido do Bruno: *"liberar determinados artigos para determinados
+   * pacientes"*. Material restrito só chega a quem tem atribuição; o da
+   * biblioteca aparece para toda a clínica navegar. As duas coisas convivem, e
+   * a diferença precisa ser de um clique — senão ninguém a usa.
+   */
+  const [trocando, setTrocando] = useState<string | null>(null);
+
+  const trocarAcesso = async (item: EduContent) => {
+    setTrocando(item.id);
+    try {
+      const res = await fetch(`/api/admin/education/content/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished: !item.isPublished }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setContent((c) =>
+        c.map((x) => (x.id === item.id ? { ...x, isPublished: !item.isPublished } : x))
+      );
+    } catch {
+      // Sem toast aqui: a lista recarrega no próximo acesso e o estado real
+      // aparece. Inventar um erro que some não ajuda ninguém.
+    } finally {
+      setTrocando(null);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
@@ -192,9 +223,19 @@ export default function EducationPage() {
                               <Badge className="text-[10px] bg-amber-100 text-amber-700"><Star className="h-2.5 w-2.5 mr-0.5" /> Featured</Badge>
                             )}
                           </div>
-                          {!item.isPublished && (
-                            <Badge className="absolute top-2 right-2 text-[10px] bg-slate-200 text-slate-600">Draft</Badge>
-                          )}
+                          {/* "Draft" passou a mentir (096 T-3).
+                              Material não publicado **chega ao paciente** — por
+                              atribuição. Chamá-lo de rascunho faria alguém achar
+                              que ninguém o está lendo. */}
+                          <Badge
+                            className={`absolute top-2 right-2 text-[10px] ${
+                              item.isPublished
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-violet-100 text-violet-700"
+                            }`}
+                          >
+                            {item.isPublished ? "Na biblioteca" : "Só atribuído"}
+                          </Badge>
                         </div>
 
                         {/* Content */}
@@ -222,6 +263,23 @@ export default function EducationPage() {
                               <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" />{item._count.assignments}</span>
                             </div>
                             <div className="flex gap-1">
+                              {/* Trocar entre restrito e biblioteca, de um
+                                  clique — a diferença que a 096 T-3 criou só
+                                  serve se for fácil de usar. */}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[10px]"
+                                disabled={trocando === item.id}
+                                onClick={() => trocarAcesso(item)}
+                                title={
+                                  item.isPublished
+                                    ? "Tirar da biblioteca: passa a chegar só a quem você atribuir"
+                                    : "Pôr na biblioteca: toda a clínica passa a poder ler"
+                                }
+                              >
+                                {item.isPublished ? "Restringir" : "Publicar"}
+                              </Button>
                               <Link href={`/admin/education/create?edit=${item.id}`}>
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
                                   <PenSquare className="h-3 w-3" />
