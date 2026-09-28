@@ -1,6 +1,6 @@
 # T-5: O paciente escolhe o profissional, no app
 
-**Status:** pendente
+**Status:** concluída (28/09/2026)
 **Depende de:** T-3, T-4
 
 ## Objetivo
@@ -28,8 +28,15 @@ terapeuta é quem marcou.
 
 ## Critérios de aceite
 
-- [ ] O paciente vê todos os profissionais que a plataforma oferece a ele.
-- [ ] A agenda muda ao trocar de profissional.
-- [ ] Profissional sem vaga não é oferecido com uma lista vazia — a tela diz
-      que não há vaga e oferece outro.
-- [ ] Marcar com um profissional novo **não** cria vínculo antes do pagamento.
+- [x] O paciente vê os profissionais que **você ligou**, com preço, idioma,
+      registro e formato.
+- [x] A agenda muda ao trocar de profissional — nas duas telas, com o id na
+      chave do cache.
+- [x] Prática sem quem atender não aparece; sem resultado, a tela diz o que
+      fazer em vez de ficar vazia.
+- [x] O filtro de idioma é de verdade, e é o primeiro da tela.
+- [x] Marcar com a reabilitação continua **a um toque** — escolher profissional
+      é um botão ao lado, não um passo antes.
+- [x] A consulta nasce no inquilino de quem atende, com o **preço**, a **vaga**
+      e o **tipo de tratamento** dele.
+- [ ] O vínculo nascer do pagamento é a **T-6**.

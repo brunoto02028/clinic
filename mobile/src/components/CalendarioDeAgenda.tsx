@@ -33,6 +33,8 @@ export interface CalendarioProps {
   onEscolher: (data: string) => void;
   /** Filtra a janela: primeira consulta não vê horário de tratamento. */
   kind?: string;
+  /** Com quem (102 T-5). Ausente = a agenda da clinica, como sempre. */
+  professionalId?: string | null;
   /** Dias da semana em que a clínica não abre — 0 é domingo. */
   diasFechados?: number[];
   /**
@@ -80,7 +82,7 @@ function nomeDoMes(d: Date, lang: Lang): string {
   });
 }
 
-export function CalendarioDeAgenda({ selecionada, onEscolher, kind, meusDias }: CalendarioProps) {
+export function CalendarioDeAgenda({ selecionada, onEscolher, kind, meusDias, professionalId }: CalendarioProps) {
   const t = useTheme();
   const lang = useLang();
 
@@ -119,8 +121,8 @@ export function CalendarioDeAgenda({ selecionada, onEscolher, kind, meusDias }: 
   }, [modo, ancora]);
 
   const agenda = useQuery({
-    queryKey: ["agenda-intervalo", comoTexto(inicio), comoTexto(fim), kind ?? null],
-    queryFn: () => fetchAgendaDoIntervalo(comoTexto(inicio), comoTexto(fim), kind),
+    queryKey: ["agenda-intervalo", comoTexto(inicio), comoTexto(fim), kind ?? null, professionalId ?? null],
+    queryFn: () => fetchAgendaDoIntervalo(comoTexto(inicio), comoTexto(fim), kind, professionalId),
   });
 
   const porData = useMemo(() => {
