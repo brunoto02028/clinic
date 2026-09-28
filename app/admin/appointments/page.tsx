@@ -350,13 +350,26 @@ export default function AdminAppointmentsPage() {
           courtesySession: createForm.courtesySession || undefined,
           waiveCharge: createForm.waiveCharge || undefined,
           overrideReason: createForm.overrideReason || undefined,
-          sendConfirmation: createForm.paymentMode === "online" ? true : createForm.sendConfirmation,
+          /**
+           * O e-mail **nao e mais obrigatorio** no pagamento online (101 T-3).
+           *
+           * Ele era forcado porque o link da Stripe so chegava por ali. Agora a
+           * consulta aparece no aplicativo do paciente dizendo que espera
+           * pagamento, com o botao que paga e confirma — entao o e-mail volta a
+           * ser uma escolha, com previa, como manda a regra da casa.
+           */
+          sendConfirmation: createForm.sendConfirmation,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
-        const emailed = createForm.paymentMode === "online" || createForm.sendConfirmation;
+        const checkoutMsg =
+          createForm.paymentMode === "online" && Number(createForm.price) > 0
+            ? isPt
+              ? " O paciente paga pelo aplicativo, e o pagamento confirma a consulta."
+              : " The patient pays in the app, and the payment confirms the appointment."
+            : "";
+        const emailed = createForm.sendConfirmation;
         toast({
           title: relabel(isPt ? "Consulta criada" : "Appointment created"),
           description: relabel(emailed
@@ -1195,6 +1208,23 @@ export default function AdminAppointmentsPage() {
                           )}
                         </span>
                         <span>£{appointment.price}</span>
+                        {/* **Esperando o paciente pagar** (101 T-3).
+
+                            O Bruno: *"no pagamento já é a confirmação"*. Uma
+                            consulta marcada pela clínica nasce `PENDING` e só
+                            vira `CONFIRMED` quando o dinheiro entra — e a
+                            agenda mostrava só a tarja "PENDING", que também é
+                            a de quem pediu horário e espera aprovação. São
+                            duas esperas diferentes, e quem liga para o
+                            paciente precisa saber qual delas é. */}
+                        {appointment.status === "PENDING" &&
+                          appointment.price > 0 &&
+                          appointment.paymentMethod !== "IN_PERSON" && (
+                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                              <CreditCard className="h-3 w-3" />
+                              {isPt ? "Esperando o pagamento" : "Waiting for payment"}
+                            </span>
+                          )}
                       </div>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
@@ -1546,15 +1576,15 @@ export default function AdminAppointmentsPage() {
                   <CreditCard className="h-4 w-4" />
                   <div className="text-left">
                     <p className="font-medium">{isPt ? "Pagamento Online" : "Pay Online"}</p>
-                    <p className="text-[10px] opacity-70">{isPt ? "Link de pagamento por email" : "Payment link via email"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "O paciente paga pelo app" : "The patient pays in the app"}</p>
                   </div>
                 </button>
               </div>
               {createForm.paymentMode === "online" && createForm.price > 0 && (
                 <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
                   {relabel(isPt
-                    ? `Um link de pagamento de £${createForm.price.toFixed(2)} será gerado e enviado ao paciente por email.`
-                    : `A payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient via email.`)}
+                    ? `A consulta aparece no aplicativo do paciente esperando £${createForm.price.toFixed(2)}. O pagamento é o que a confirma.`
+                    : `The appointment appears in the patient's app waiting for £${createForm.price.toFixed(2)}. Paying is what confirms it.`)}
                 </p>
               )}
             </div>
@@ -1563,16 +1593,13 @@ export default function AdminAppointmentsPage() {
               <input
                 type="checkbox"
                 className="mt-0.5"
-                checked={createForm.paymentMode === "online" ? true : createForm.sendConfirmation}
-                disabled={createForm.paymentMode === "online"}
+                checked={createForm.sendConfirmation}
                 onChange={(e) => setCreateForm(f => ({ ...f, sendConfirmation: e.target.checked }))}
               />
               <span>
                 <span className="font-medium">{isPt ? "Enviar e-mail de confirmação agora (sem prévia)" : "Send the confirmation email now (no preview)"}</span>
                 <span className="block text-muted-foreground">
-                  {createForm.paymentMode === "online"
-                    ? (isPt ? "Necessário no pagamento online: o e-mail leva o link de pagamento." : "Required for online payment: the email carries the payment link.")
-                    : (isPt ? "Deixe desmarcado para escrever e ver a prévia depois, em \"Confirmar por email\"." : "Leave unchecked to write and preview it afterwards with \"Email confirmation\".")}
+                  {isPt ? "Deixe desmarcado para escrever e ver a prévia depois, em \"Confirmar por email\"." : "Leave unchecked to write and preview it afterwards with \"Email confirmation\"."}
                 </span>
               </span>
             </label>

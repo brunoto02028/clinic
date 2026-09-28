@@ -95,7 +95,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [098](098-o-paciente-escolhe-o-formato/) | O paciente escolhe o formato (presencial, vídeo, ou em casa) | 🟢 no ar. O pedido é do paciente e a **aprovação é da clínica** |
 | [099](099-monitoramento-e-o-relatorio/) | Monitoramento contínuo e o relatório automático | 🟡 no ar, **desligado**: falta o Bruno ligar em `/admin/biohacking` |
 | [100](100-o-caminho-ate-o-paciente/) | O caminho até o paciente (toda tela tem porta) | 🟢 T-1..T-4. A varredura roda na suíte; **4 telas seguem sem caminho**, com motivo escrito |
-| [101](101-o-video-o-artigo-e-o-agendamento/) | O vídeo, o artigo e o agendamento feito pela clínica | 🟡 **T-1 e T-2 concluídas** (vídeo, 6 correções; artigo, 5 + 2 furos de inquilino). T-3 (clínica marca, paciente paga) pendente |
+| [101](101-o-video-o-artigo-e-o-agendamento/) | O vídeo, o artigo e o agendamento feito pela clínica | 🟢 **T-1..T-3 concluídas** (vídeo 6 correções; artigo 5 + 2 furos de inquilino; agendamento 4). Telas do app esperam build |
 
 > **A 091 está no ar com um furo conhecido.** O QA (`qa/report-091.md`) reprovou 4 cenários; três
 > foram consertados no mesmo dia — o portão do paciente passou a olhar o aceite de **quem responde**

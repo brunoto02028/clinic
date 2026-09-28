@@ -1,6 +1,6 @@
 # T-3: A clínica marca, o paciente vê, paga — e está confirmado
 
-**Status:** pendente
+**Status:** concluída (28/09/2026)
 **Depende de:** nenhuma (independente da T-1 e da T-2)
 
 ## Objetivo
@@ -48,13 +48,27 @@ ao lado.
 
 ## Arquivos afetados
 
-*(a preencher)*
+- `app/api/admin/appointments/route.ts` — `paymentMethod` gravado, cortesia
+  nasce confirmada, e nenhuma sessão da Stripe na marcação.
+- `app/api/patient/appointments/[id]/checkout/route.ts` — quem se paga na
+  clínica não abre cartão.
+- `mobile/src/lib/pagamento-da-consulta.ts` — novo: a regra, num lugar só.
+- `mobile/app/(app)/(clinica)/appointment/[id].tsx` — o bloco de pagamento e o
+  botão que paga e confirma.
+- `mobile/app/(app)/(clinica)/(tabs)/appointments.tsx` — o aviso na lista.
+- `app/admin/appointments/page.tsx` — "esperando o pagamento" na agenda, e a
+  tela de marcar dizendo o que o paciente vai ver.
+- `__tests__/agenda/a-clinica-marca-o-paciente-paga.test.ts` — novo.
 
 ## Critérios de aceite
 
-- [ ] A clínica marca para um paciente escolhido, com formato e horário.
-- [ ] A consulta aparece no app **dizendo que espera pagamento**.
-- [ ] Pagou ⇒ confirmada, sem um segundo botão de confirmar.
-- [ ] Cortesia nasce confirmada.
-- [ ] Nada sai para o paciente sem alguém apertar um botão.
-- [ ] Cancelar antes de pagar não deixa cobrança órfã.
+- [x] A clínica marca para um paciente escolhido, com formato e horário.
+- [x] A consulta aparece no app **dizendo que espera pagamento**, e a agenda
+      separa essa espera da de quem pediu horário.
+- [x] Pagou ⇒ confirmada, sem um segundo botão de confirmar.
+- [x] Cortesia nasce confirmada.
+- [x] Nada sai para o paciente sem alguém apertar um botão — o e-mail deixou de
+      ser obrigatório e voltou a ter prévia.
+- [x] Uma porta de cobrança de cada vez: a sessão da Stripe nasce sob demanda,
+      então não existem duas cobráveis para a mesma consulta.
+- [ ] **Falta ver as duas telas do app rodando** — exige build.

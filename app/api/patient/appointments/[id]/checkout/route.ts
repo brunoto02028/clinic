@@ -42,6 +42,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       id: true,
       price: true,
       status: true,
+      // Quem se paga na clinica nao abre cartao por aqui — ver a guarda abaixo.
+      paymentMethod: true,
       dateTime: true,
       treatmentType: true,
       kind: true,
@@ -66,6 +68,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!appointment.price || appointment.price <= 0) {
     return NextResponse.json(
       { error: "Nothing to pay.", errorPt: "Nada a pagar.", code: "nothing_to_pay" },
+      { status: 409 }
+    );
+  }
+
+  /**
+   * Consulta para pagar **na clínica** não abre cartão (101 T-3).
+   *
+   * A tela esconde o botão nesse caso, e esconder botão não é fechar porta:
+   * quem decide é o servidor. Sem isto, uma consulta que a clínica marcou como
+   * "paga na clínica" ainda podia ser cobrada por aqui — e o dinheiro entrava
+   * contrariando a escolha de quem marcou.
+   *
+   * `IN_PERSON` também é o que a sessão de pacote usa, justamente porque ela
+   * já foi paga: cobrar de novo seria cobrar duas vezes pela mesma sessão.
+   */
+  if (appointment.paymentMethod === "IN_PERSON") {
+    return NextResponse.json(
+      {
+        error: "This one is paid at the clinic.",
+        errorPt: "Esta é paga na clínica.",
+        code: "paid_in_person",
+      },
       { status: 409 }
     );
   }

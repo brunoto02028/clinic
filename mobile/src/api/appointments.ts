@@ -24,6 +24,17 @@ export interface Appointment {
   status: string;
   duration: number;
   price: number;
+  /**
+   * Como esta consulta se paga (101 T-3).
+   *
+   * Uma consulta marcada pela clinica nasce `PENDING` e so vira `CONFIRMED`
+   * quando o dinheiro entra. A tela precisa saber se oferece o cartao ou se
+   * diz "pague na clinica" — sao a mesma consulta pendente e duas frases
+   * opostas.
+   */
+  paymentMethod?: "ONLINE" | "IN_PERSON";
+  /** O pagamento, quando ja houve um. `status: "COMPLETED"` e o que quitou. */
+  payment?: { id: string; status: string; amount: number } | null;
   therapist: { firstName: string; lastName: string } | null;
 }
 
