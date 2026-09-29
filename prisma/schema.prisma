@@ -630,6 +630,7 @@ model Clinic {
   /// Os pacientes que escolheram este profissional (102 T-3).
   careLinks CareLink[] @relation("ClinicCareLinks")
   sharedCare CareShare[] @relation("ClinicSharedCare")
+  videoJoins VideoJoin[] @relation("ClinicVideoJoins")
 
   /// Documentos emitidos por este profissional (102 T-8).
   professionalDocuments ProfessionalDocument[] @relation("ClinicProfessionalDocuments")
@@ -1091,6 +1092,7 @@ model User {
 
   /// Os profissionais que podem agir sobre este paciente (102 T-3).
   careLinks CareLink[] @relation("PatientCareLinks")
+  videoJoins     VideoJoin[] @relation("VideoJoins")
   careShares     CareShare[] @relation("PatientCareShares")
   sharedByMe     CareShare[] @relation("SharedByCareShares")
   sharedWithMe   CareShare[] @relation("ReceivedCareShares")
@@ -1445,6 +1447,8 @@ model Appointment {
   updatedAt DateTime @updatedAt
 
   // Relations
+  /// Quem entrou na sala, e quando (103 T-1).
+  videoJoins VideoJoin[]
   payment             Payment?
   soapNote            SOAPNote?
   order               Order?
@@ -8803,4 +8807,52 @@ model CareShare {
   @@index([toUserId, revokedAt])
   @@index([patientId])
   @@index([fromClinicId])
+}
+
+/// Quem entrou numa consulta por vídeo, e quando (103 T-1).
+///
+/// ## Por que isto existe
+///
+/// O Bruno: *"quando uma consulta não acontece, é cancelada, isso precisa ficar
+/// registrado"*. Para presencial e domicílio ninguém sabe pelo sistema — só quem
+/// estava lá. **O vídeo é o único formato em que dá para saber**, porque a sala
+/// é criada por pessoa, com token próprio.
+///
+/// Isso transforma um palpite numa sugestão com fundamento: *ninguém entrou*,
+/// *só o paciente entrou*, *os dois entraram*. E a segunda dessas frases é a que
+/// mais importa: **falta do paciente e falta da clínica têm consequências
+/// opostas**, e sem registro as duas viram a mesma coisa.
+///
+/// ## O que **não** é
+///
+/// Não é gravação, não é presença contínua, e não vem da API da Daily. É uma
+/// linha escrita no momento em que o token é emitido: quem recebeu o token abriu
+/// a sala. Se a entrada foi recusada, não há linha — entrada recusada não é
+/// entrada.
+model VideoJoin {
+  id String @id @default(cuid())
+
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("VideoJoins", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// De que lado a pessoa entrou. Guardado no momento, e nao deduzido depois:
+  /// quem atende pode mudar, e o que aconteceu nao muda.
+  role VideoJoinRole
+
+  /// O inquilino **da consulta**, e nao o de quem pediu.
+  clinicId String
+  clinic   Clinic @relation("ClinicVideoJoins", fields: [clinicId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([clinicId])
+}
+
+enum VideoJoinRole {
+  THERAPIST
+  PATIENT
 }

@@ -152,7 +152,9 @@ describe("a janela da sala não é mais uma constante", () => {
     // Se quem atende já abriu, quem está do outro lado não pode ouvir "ainda
     // não abriu" — é o caso do profissional que começa adiantado.
     expect(rotaDetalhe).toMatch(/videoRoomReady: !!appointment\.videoRoomUrl/);
-    expect(telaConsulta).toMatch(/const podeEntrar = !!data\?\.videoRoomReady \|\| dentroDaJanela;/);
+    // A sala aberta dispensa **o começo** da janela, não o fim — ver o bloco
+    // "a consulta que não vai mais acontecer" abaixo, que é onde isso é medido.
+    expect(telaConsulta).toMatch(/data\?\.videoRoomReady \|\| dentroDaJanela/);
   });
 
   it("**e a espera diz a hora, não 'dez minutos antes'**", () => {
@@ -197,5 +199,42 @@ describe("quem atende não fica preso à janela do paciente", () => {
     const rota = lerCodigo("app", "api", "appointments", "[id]", "video", "route.ts");
     expect(rota).toMatch(/const jaAberta = !!consulta\.videoRoomUrl;/);
     expect(rota).toMatch(/if \(!\(ehPaciente && jaAberta\)\)/);
+  });
+});
+
+describe("a consulta que não vai mais acontecer não oferece chamada", () => {
+  /**
+   * O Bruno, 29/09/2026: *"se aquele meeting não acontecer por algum motivo,
+   * bloquear para não ter chamada disponível para fazer"*.
+   *
+   * O servidor já recusava — fora da janela, cancelada, faltou, concluída. O
+   * que ficava de pé era o **botão**, e botão que promete porta inexistente é
+   * pior que a ausência dele: a pessoa clica, leva um erro, e conclui que está
+   * quebrado.
+   */
+  const tela = lerCodigo("mobile", "app", "(app)", "(clinica)", "appointment", "[id].tsx");
+  const painel = lerCodigo("app", "admin", "video-consultations", "page.tsx");
+
+  it("**a sala aberta adianta a entrada, e não a eterniza**", () => {
+    /**
+     * Defeito meu, introduzido hoje: `videoRoomReady` sozinho deixava o botão
+     * de pé para sempre, porque a sala existe desde que alguém entrou uma vez.
+     * Uma consulta de três semanas atrás continuaria oferecendo "Entrar".
+     */
+    expect(tela).toMatch(/const aindaNaoFechou = fecha === null \|\| agora <= fecha;/);
+    expect(tela).toMatch(
+      /const podeEntrar = aindaNaoFechou && \(!!data\?\.videoRoomReady \|\| dentroDaJanela\);/
+    );
+  });
+
+  it("**cancelada, faltou e concluída não oferecem entrar**", () => {
+    // `COMPLETED` faltava: a rota recusava desde a 101 e a tela oferecia.
+    for (const st of ["CANCELLED", "NO_SHOW", "COMPLETED"]) {
+      expect(tela).toContain(`data.status !== "${st}"`);
+    }
+  });
+
+  it("**e o painel só oferece chamada para o que está por vir**", () => {
+    expect(painel).toMatch(/\["PENDING", "CONFIRMED"\]\.includes\(a\.status\) && aindaPorVir\(a\)/);
   });
 });

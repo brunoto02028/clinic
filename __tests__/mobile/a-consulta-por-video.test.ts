@@ -312,7 +312,12 @@ describe("**a consulta à distância se anuncia antes de a pessoa abrir a tela**
     // Um botão verde ao lado da tarja vermelha "Cancelada" é a tela
     // contradizendo a si mesma. O servidor já recusava; faltava a tela.
     for (const tela of [lista, detalhe]) {
-      expect(tela).toMatch(/status !== "CANCELLED" && \w+\.status !== "NO_SHOW"/);
+      expect(tela).toMatch(/* Sem fixar a linha: a condição virou três em 29/09/2026, quando
+       `COMPLETED` entrou. O que importa é que os três desfechos fechados não
+       oferecem entrada. */
+      /status !== "CANCELLED"/);
+    expect(tela).toMatch(/status !== "NO_SHOW"/);
+    expect(tela).toMatch(/status !== "COMPLETED"/);
     }
   });
 
