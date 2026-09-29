@@ -230,3 +230,5 @@ código está inerte esperando:
 - **105** — [A pressão o dia inteiro: o bracelete da paciente](105-a-pressao-o-dia-inteiro/plan.md)
 - **106** — [O agendamento feito pela clínica](106-o-agendamento-pela-clinica/plan.md)
 - **107** — [A leitura no aplicativo](107-a-leitura-no-aplicativo/plan.md)
+- **108** — [A clínica decide como recebe](108-a-clinica-decide-como-recebe/plan.md)
+- **109** — [O tempo entre um paciente e outro](109-o-tempo-entre-um-e-outro/plan.md)

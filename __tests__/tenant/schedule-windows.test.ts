@@ -13,6 +13,8 @@ jest.mock("@/lib/db", () => ({
     scheduleWindow: { findMany: jest.fn(), count: jest.fn() },
     scheduleException: { findMany: jest.fn() },
     appointment: { findMany: jest.fn() },
+    // `slotsForDate` lê o intervalo entre pacientes da clínica (109 T-1).
+    clinic: { findUnique: jest.fn() },
   },
 }));
 
