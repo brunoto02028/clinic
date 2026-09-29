@@ -79,6 +79,7 @@ COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-sh
 COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-content.js
 COPY --from=builder /app/scripts/update-chapter-one-content.js ./scripts/update-chapter-one-content.js
 COPY --from=builder /app/scripts/seed-recovered-articles.js ./scripts/seed-recovered-articles.js
+COPY --from=builder /app/scripts/limpar-marcas-de-rascunho.js ./scripts/limpar-marcas-de-rascunho.js
 COPY --from=builder /app/scripts/seed-site-logo.js ./scripts/seed-site-logo.js
 COPY --from=builder /app/scripts/fix-generic-site-defaults.js ./scripts/fix-generic-site-defaults.js
 # These four were added to start.sh across activities 34/36/38 but never

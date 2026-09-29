@@ -228,3 +228,5 @@ código está inerte esperando:
 - **103** — [A consulta que já passou: desfecho, falta e cancelamento](103-a-consulta-que-ja-passou/plan.md)
 - **104** — [O paciente escolhe, e o profissional atende](104-o-paciente-escolhe-e-o-profissional-atende/plan.md)
 - **105** — [A pressão o dia inteiro: o bracelete da paciente](105-a-pressao-o-dia-inteiro/plan.md)
+- **106** — [O agendamento feito pela clínica](106-o-agendamento-pela-clinica/plan.md)
+- **107** — [A leitura no aplicativo](107-a-leitura-no-aplicativo/plan.md)
