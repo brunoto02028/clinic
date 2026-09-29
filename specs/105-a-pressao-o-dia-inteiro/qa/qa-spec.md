@@ -35,15 +35,20 @@ teste com leituras plantadas.
 | 3.4 | UI | paciente sem bracelete | tela vazia honesta, não quebrada |
 | 3.5 | API | ficha de outro inquilino | 404 |
 
-## T-4 — O que assusta
+## T-4 — O que assusta (redesenhada em 29/09/2026)
 
 | # | tipo | cenário | esperado |
 |---|---|---|---|
-| 4.1 | API | leitura alta às 3h | **nenhum** aviso sai ao paciente |
-| 4.2 | UI | a mesma | aparece na fila da clínica (103 T-2) |
-| 4.3 | UI | falar com a paciente | passa por prévia, com logo |
-| 4.4 | UI | o texto | não é um número solto |
-| 4.5 | código | cron que avise sozinho | **não existe**, provado por varredura |
+| 4.1 | API | média diurna 138/88, com 20 leituras | faixa **estágio 1** pelos limiares de fora do consultório |
+| 4.2 | API | a mesma média com 6 leituras | **dados insuficientes** — nenhum alerta (mínimo do NICE) |
+| 4.3 | API | média 142/92 avaliada com limiar de consultório | **falharia** como normal — o teste guarda que não usamos esses números |
+| 4.4 | UI | o aviso ao paciente | nunca um número solto; aponta **o médico dele**, não a clínica |
+| 4.5 | UI | o texto | não diagnostica nem sugere conduta |
+| 4.6 | UI | paciente marca "estou ciente" | o aviso para de repetir naquela faixa |
+| 4.7 | UI | paciente marca "em tratamento" | idem, e a clínica vê o contexto |
+| 4.8 | API | depois disso, a faixa **piora** | o aviso **reabre** |
+| 4.9 | UI | a clínica | vê o que o paciente respondeu, e quando |
+| 4.10 | UI | o material | diz que não é diagnóstico, aferição nem emergência |
 
 ## Ponta a ponta
 
