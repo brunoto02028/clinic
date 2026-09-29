@@ -162,6 +162,20 @@ describe("a tela do paciente", () => {
     expect(tela).toMatch(/item\.thumbnailUrl \?/);
   });
 
+  it("**e a lista também — o cartão mostrava um ícone genérico**", () => {
+    /**
+     * A tela de detalhe ganhou a capa e a **lista ficou para trás**: todo
+     * material aparecia com o mesmo ícone de documento, e um ícone igual para
+     * todos não diz qual material é qual antes de abrir. O Bruno abriu o app e
+     * viu "Education sem foto" (29/09/2026).
+     */
+    const lista = lerCodigo("mobile", "app", "(app)", "(clinica)", "education.tsx");
+    expect(lista).toMatch(/item\.thumbnailUrl \?/);
+    expect(lista).toMatch(/source=\{\{ uri: item\.thumbnailUrl \}\}/);
+    // E o ícone continua, para o material que não tem capa.
+    expect(lista).toMatch(/<Ionicons name=\{typeInfo\.icon as any\}/);
+  });
+
   it("o corpo cru continua como queda, se os blocos faltarem", () => {
     // Um material escrito à mão, sem HTML, não pode sumir por causa disto.
     expect(tela).toMatch(/item\.body \|\| item\.content/);
