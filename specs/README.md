@@ -226,3 +226,4 @@ código está inerte esperando:
 | `LML_API_KEY` + `LAB_ORDERING_ENABLED` | **081 T-5..T-9**, os exames de laboratório |
 | ~~`DAILY_API_KEY` + `VIDEO_CALLS_ENABLED`~~ | **resolvido em 27/09**: as duas estão no Coolify, e a videochamada responde em produção |
 - **103** — [A consulta que já passou: desfecho, falta e cancelamento](103-a-consulta-que-ja-passou/plan.md)
+- **104** — [O paciente escolhe, e o profissional atende](104-o-paciente-escolhe-e-o-profissional-atende/plan.md)
