@@ -1,6 +1,6 @@
 # T-1: O tipo do profissional, e criar a área dele
 
-**Status:** pendente
+**Status:** concluída (28/09/2026) — o plano já a marcava; o cabeçalho ficou para trás
 **Depende de:** nenhuma
 
 ## Objetivo
