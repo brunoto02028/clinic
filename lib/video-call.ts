@@ -301,3 +301,37 @@ export async function tokenParaEntrar(opts: {
 
   return r.token;
 }
+
+/**
+ * De quantos minutos antes **esta pessoa** pode abrir a sala.
+ *
+ * Quem atende não fica preso à janela do paciente: a consulta é dele, e estar
+ * pronto quarenta minutos antes é normal. O Bruno, em 29/09/2026: *"clico em
+ * Join Video Call... diz que eu não posso entrar antes de 10 minutos"*.
+ *
+ * Para o terapeuta, a sala abre **no começo do dia da consulta**. Não é
+ * ilimitado de propósito: abrir a de semana que vem criaria uma sala com `exp`
+ * no passado e a Daily recusaria — foi o defeito que a 089 consertou. O dia é o
+ * limite natural, e é o que uma agenda significa.
+ *
+ * Para o paciente vale o minuto da clínica. Se quem atende já abriu, ele entra
+ * de qualquer jeito: a sala existindo é o sinal de que a consulta começou.
+ */
+export function minutosAntesPara(
+  ehTerapeuta: boolean,
+  dateTime: Date,
+  minutosDaClinica: number = FOLGA_ANTES_MIN
+): number {
+  const daClinica =
+    Number.isFinite(minutosDaClinica) && minutosDaClinica >= 0
+      ? minutosDaClinica
+      : FOLGA_ANTES_MIN;
+  if (!ehTerapeuta) return daClinica;
+
+  // Do começo do dia da consulta — no fuso do servidor, que é onde a agenda
+  // vive. Nunca menos que o minuto da clínica.
+  const inicioDoDia = new Date(dateTime);
+  inicioDoDia.setHours(0, 0, 0, 0);
+  const desdeOComecoDoDia = Math.ceil((dateTime.getTime() - inicioDoDia.getTime()) / 60000);
+  return Math.max(daClinica, desdeOComecoDoDia);
+}

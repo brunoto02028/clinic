@@ -169,3 +169,33 @@ describe("a janela da sala não é mais uma constante", () => {
     }
   });
 });
+
+describe("quem atende não fica preso à janela do paciente", () => {
+  it("**o terapeuta abre desde o começo do dia da consulta**", () => {
+    const { minutosAntesPara } = require("@/lib/video-call");
+    const dezEMeia = new Date("2026-09-29T10:30:00");
+    // 10:30 são 630 minutos depois da meia-noite: é isso que ele ganha.
+    expect(minutosAntesPara(true, dezEMeia, 10)).toBe(630);
+  });
+
+  it("**e o paciente continua com o minuto da clínica**", () => {
+    const { minutosAntesPara } = require("@/lib/video-call");
+    const dezEMeia = new Date("2026-09-29T10:30:00");
+    expect(minutosAntesPara(false, dezEMeia, 10)).toBe(10);
+    expect(minutosAntesPara(false, dezEMeia, 60)).toBe(60);
+  });
+
+  it("**e nunca menos que o da clínica** — uma consulta de madrugada não encolhe a janela", () => {
+    // Às 00:05, o começo do dia dá 5 minutos. Se isso valesse, quem atende
+    // teria *menos* janela que o paciente.
+    const cedo = new Date("2026-09-29T00:05:00");
+    const { minutosAntesPara } = require("@/lib/video-call");
+    expect(minutosAntesPara(true, cedo, 30)).toBe(30);
+  });
+
+  it("**e a sala já aberta dispensa a janela do paciente**", () => {
+    const rota = lerCodigo("app", "api", "appointments", "[id]", "video", "route.ts");
+    expect(rota).toMatch(/const jaAberta = !!consulta\.videoRoomUrl;/);
+    expect(rota).toMatch(/if \(!\(ehPaciente && jaAberta\)\)/);
+  });
+});

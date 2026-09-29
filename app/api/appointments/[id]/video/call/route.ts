@@ -4,7 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRequestSession } from "@/lib/dual-auth";
 import { pushChamadaComecou } from "@/lib/push-notify";
-import { VideoCallError, exigirJanelaAberta, videoCallsEnabled } from "@/lib/video-call";
+import {
+  VideoCallError,
+  exigirJanelaAberta,
+  minutosAntesPara,
+  videoCallsEnabled,
+} from "@/lib/video-call";
 
 /**
  * O terapeuta **chama** o paciente para a consulta por vídeo (089).
@@ -138,7 +143,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       consulta.dateTime,
       consulta.duration,
       new Date(),
-      (consulta as any).clinic?.videoEarlyMinutes
+      // Quem chama é sempre quem atende — a checagem acima garante isso.
+      minutosAntesPara(true, consulta.dateTime, (consulta as any).clinic?.videoEarlyMinutes)
     );
   } catch (e) {
     if (e instanceof VideoCallError) {

@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { janelaDaConsulta } from "@/lib/video-call";
+import { janelaDaConsulta, minutosAntesPara } from "@/lib/video-call";
 import { notifyPatient } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
 import { syncSessionsUsed } from "@/lib/package-sessions";
@@ -102,10 +102,14 @@ export async function GET(
     const { videoOpensAt, videoClosesAt } =
       appointment.mode === "VIDEO"
         ? (() => {
+            /**
+             * A hora que o **paciente** vê. Quem atende abre desde o começo do
+             * dia, mas dizer isso ao paciente o faria esperar numa sala vazia.
+             */
             const { inicio, fim } = janelaDaConsulta(
               appointment.dateTime,
               appointment.duration,
-              (appointment as any).clinic?.videoEarlyMinutes
+              minutosAntesPara(false, appointment.dateTime, (appointment as any).clinic?.videoEarlyMinutes)
             );
             return {
               videoOpensAt: new Date(inicio * 1000).toISOString(),
