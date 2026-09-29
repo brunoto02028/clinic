@@ -9,6 +9,7 @@ import { pushConsulta } from "@/lib/push-notify";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
+import { localDaConsulta } from "@/lib/appointment-location";
 import {
   getActor,
   getSessionStaffActor,
@@ -291,24 +292,23 @@ async function handleUpdate(
         ? `Sua consulta em ${dateStr} às ${timeStr} foi cancelada.`
         : `Sua consulta foi atualizada: ${appointment.treatmentType} em ${dateStr} às ${timeStr}.`;
 
-      // Location: the confirmation email used to have no way to say "the
-      // therapist is coming to you" — a home-visit note (see the appointment
-      // Notes field) got no reflection in what the patient actually reads,
-      // and "arrive 5 minutes early" was flatly wrong for that case. Detected
-      // from the notes text rather than a new field, since there's nowhere
-      // else this is recorded today.
-      const isHomeVisit = /domicil|home[\s-]?visit|casa da paciente|patient'?s home/i.test(appointment.notes || '');
-      let location = '';
-      if (isHomeVisit) {
-        location = 'Home visit / Visita domiciliar';
-      } else {
-        const clinic = await prisma.clinic.findUnique({
-          where: { id: (appointment as any).clinicId },
-          select: { name: true, address: true, city: true },
-        });
-        const addr = [clinic?.address, clinic?.city].filter(Boolean).join(', ');
-        location = clinic?.name ? `${clinic.name}${addr ? ' — ' + addr : ''}` : 'BPR Physical Rehabilitation';
-      }
+      /**
+       * O **campo** `mode`, e não uma expressão regular nas notas.
+       *
+       * Isto farejava "domicílio" no texto livre das anotações — de quando não
+       * havia onde registar o formato. O campo existe desde a atividade 089, e
+       * uma visita domiciliar marcada corretamente com as notas vazias recebia
+       * no e-mail o endereço **da clínica**: a pessoa era mandada para a rua
+       * enquanto o terapeuta ia à casa dela.
+       *
+       * O mesmo helper que o `POST` e a remarcação usam, para as três frases
+       * não voltarem a divergir.
+       */
+      const location = await localDaConsulta(
+        (appointment as any).clinicId,
+        (appointment as any).mode,
+        appointment.patient.id
+      );
 
       // Surfaces any admin-written note (e.g. the home-visit detail above)
       // directly in the email instead of leaving it invisible to the patient.

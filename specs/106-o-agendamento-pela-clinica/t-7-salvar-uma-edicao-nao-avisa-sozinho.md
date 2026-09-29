@@ -106,11 +106,8 @@ Suíte completa depois: **2799 testes, 187 suítes, tudo verde.** `npx tsc
   confirmação, então o texto continua a dizer *"has been successfully booked"*
   mesmo quando o que houve foi uma remarcação. Quem marcar a caixa vai mandar
   uma frase errada — de propósito, agora, mas errada.
-- **O domicílio nesta rota ainda é farejado por regex nas notas**
-  (`/domicil|home[\s-]?visit|…/`), embora o campo `mode` exista. Uma visita
-  domiciliar marcada corretamente, com as notas vazias, recebe no e-mail o
-  endereço **da clínica**. É a mesma classe do defeito que a T-5 corrigiu no
-  `POST` no mesmo dia, uma rota ao lado.
+- ~~O domicílio nesta rota é farejado por regex nas notas~~ — **corrigido na
+  T-9**, junto com a extração do helper. Uma visita domiciliar com as notas
+  vazias recebia o endereço da clínica.
 
-Os dois foram deixados de fora porque estão além do que o Bruno escolheu, e
-ficam registados aqui para a próxima leva.
+O primeiro fica registado para a próxima leva.

@@ -3,35 +3,6 @@ import { prisma } from "@/lib/db";
 import { disponibilidadeDoDia } from "@/lib/availability-day";
 import { getZonedDateString, getZonedDateTimeLocalString, dataEHoraDaClinica } from "@/lib/clinic-timezone";
 
-/**
- * Onde a consulta acontece, na frase que o paciente lê.
- *
- * Domicílio é o endereço **dele**; o resto é o da clínica. Escrever "compareça
- * à clínica" para quem vai ser atendido em casa é o tipo de erro que só se
- * descobre com alguém batendo na porta errada.
- */
-async function localDaConsulta(
-  clinicId: string,
-  mode: string | null | undefined,
-  patientId: string
-): Promise<string> {
-  if (mode === "VIDEO") return "Video consultation — a link opens in your app";
-  if (mode === "HOME_VISIT") {
-    const p = await prisma.user.findUnique({
-      where: { id: patientId },
-      select: { address: true, city: true, postcode: true },
-    });
-    const dele = [p?.address, p?.city, p?.postcode].filter(Boolean).join(", ");
-    return dele ? `At your address — ${dele}` : "At your address";
-  }
-  const c = await prisma.clinic.findUnique({
-    where: { id: clinicId },
-    select: { name: true, address: true, city: true },
-  });
-  const endereco = [c?.address, c?.city].filter(Boolean).join(", ");
-  return c?.name ? `${c.name}${endereco ? " — " + endereco : ""}` : "BPR Physical Rehabilitation";
-}
-
 /** A observação da consulta, no bloco que o modelo espera — ou vazio. */
 function blocoDeNota(notes: string | null | undefined, lang: "en" | "pt"): string {
   const texto = String(notes ?? "").trim();
@@ -69,6 +40,7 @@ import { pushConsulta } from "@/lib/push-notify";
 import { sendEmail } from "@/lib/email";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { isPersonalTenant } from "@/lib/tenant-type";
+import { localDaConsulta } from "@/lib/appointment-location";
 
 export const dynamic = 'force-dynamic';
 
