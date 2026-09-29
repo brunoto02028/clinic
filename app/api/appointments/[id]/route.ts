@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dataEHoraDaClinica } from "@/lib/clinic-timezone";
 import { prisma } from "@/lib/db";
 import { janelaDaConsulta, minutosAntesPara } from "@/lib/video-call";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, pediramEnviarAoPaciente } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
@@ -247,9 +247,29 @@ async function handleUpdate(
       await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
     }
 
-    // Idem: o cancelamento feito pelo próprio paciente não vira notificação
-    // para ele. `userRole` é o mesmo que decide, acima, o que ele pode mudar.
-    if (userRole !== "PATIENT") {
+    /**
+     * **Nada sai para o paciente sem alguém pedir** (regra da casa, 17/09/2026).
+     *
+     * Isto avisava por e-mail **e** push a cada `PUT` de staff, sem condição
+     * nenhuma. O QA de 29/09 abriu o diálogo de edição, **não mudou nada**,
+     * salvou — e o paciente recebeu *"Appointment Confirmed … has been
+     * successfully booked"* sobre uma consulta antiga.
+     *
+     * Pior que a edição: marcar a consulta como **atendida** ou **faltou**
+     * passa por aqui igual, e como o assunto só troca no cancelamento, quem
+     * fechava o atendimento de ontem mandava ao paciente uma confirmação de
+     * marcação nova.
+     *
+     * A criação já resolvia isto com uma caixa; a edição ficou de fora. Agora é
+     * o mesmo predicado, e o mesmo padrão: o campo **ausente** não envia.
+     *
+     * A exceção é o paciente que cancela a própria consulta — o recibo do
+     * próprio ato continua saindo, e o push para ele já não saía.
+     */
+    const ePaciente = userRole === "PATIENT";
+    const avisarOPaciente = ePaciente || pediramEnviarAoPaciente(body?.notifyPatient);
+
+    if (!ePaciente && avisarOPaciente) {
       await pushConsulta(
         appointment.patient.id,
         body?.status === "CANCELLED" ? "cancelada" : "remarcada"
@@ -299,7 +319,7 @@ async function handleUpdate(
         ? `<p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 16px;background:#F5F4F1;border-radius:8px;padding:10px 14px;"><strong>Nota:</strong> ${escapeHtml(appointment.notes)}</p>`
         : '';
 
-      await notifyPatient({
+      if (avisarOPaciente) await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: slug,
         emailVars: {

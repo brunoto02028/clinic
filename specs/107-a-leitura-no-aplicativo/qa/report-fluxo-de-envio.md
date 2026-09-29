@@ -106,3 +106,104 @@ Fica como pergunta, não como achado.
 
 **Evidências:** `screenshots/envio-01-lado-do-paciente-prod.png`,
 `screenshots/envio-02-biblioteca-paciente-prod.png`.
+
+---
+
+## Complemento — o fluxo inteiro, ao vivo, com sessão de staff
+
+**Autorizado pelo Bruno**, textualmente: *"pode sim chamar o agente novamente e
+fabrica a sessão de administrador para testar tudo."*
+
+A sessão SUPERADMIN foi fabricada e escopada à BPR. O `NEXTAUTH_SECRET` ficou
+**só em memória** — nunca em arquivo, nunca neste relatório. Os testes rodaram
+num navegador **isolado**; a sessão do Bruno não foi tocada.
+
+### Resultado: ✅ o fluxo funciona e é seguro ao vivo
+
+| # | cenário | resultado |
+|---|---|---|
+| C1 | Criar material | ✅ só `title` é obrigatório; nasce **rascunho** (`isPublished: false`) |
+| C2 | Atribuir com observação, obrigatório, prazo e frequência | ✅ os quatro gravam |
+| C3 | Prévia (`dryRun`) | ✅ lista **só** o paciente de teste; mostra "o que o paciente vê", EN e PT |
+| C4 | Envio real ao paciente de teste | ✅ 200, `notified: 1` |
+| C5 | Segundo aviso | ✅ **409** `nobody_to_notify`; a tela some com o botão |
+| C6 | `notifiedAt` depois do envio | ✅ marcado |
+| C7–C9 | Parede de inquilino | ✅ **404** nos três, inclusive contra um **ADMIN real da Manu Training** |
+| C10 | Avisar sem escolher material | ✅ 400 |
+| C11 | Pacientes sem clínica na BPR | ✅ **0 de 8** |
+
+O C9 é o que mais vale: a parede foi exercitada contra o id de um administrador
+de **outro inquilino de verdade**, não contra um id inventado. Respondeu 404, e
+não 403.
+
+### F-3 confirmado ao vivo
+
+O envio real ao paciente de teste — que **não tem aparelho** — respondeu
+`{ notified: 1, delivered: 1 }`. Nenhum push saiu, e a contagem disse que um
+chegou. A tela diria *"Their phones were told there is new material"*.
+
+Já corrigido no worktree, ainda não deployado.
+
+### Uma ressalva de método que o próprio QA levantou
+
+A contagem de pacientes sem clínica foi medida **pela BPR**, e um SUPERADMIN sem
+clínica selecionada cai no inquilino padrão — que é a BPR. Um paciente órfão de
+verdade, sem inquilino nenhum, não apareceria por esse caminho.
+
+O número **0 de 8 na BPR está confirmado**; a contagem de órfãos na plataforma
+inteira não é alcançável por ali. Ela foi medida por outro caminho, direto no
+banco de produção: **0**.
+
+### O achado lateral era do medidor, não do medido
+
+`/api/admin/patients` devolveu **0** para a BPR, na mesma sessão em que
+`/api/patients` devolveu **9**. Mesmo cookie, mesmo `selected-clinic-id`, nenhum
+`?clinicId=` — a diferença parecia real.
+
+Não era. As duas rotas devolvem **formas diferentes** para o mesmo dado:
+
+| rota | resposta |
+|---|---|
+| `GET /api/patients` | `{ patients: [...] }` |
+| `GET /api/admin/patients` | `[...]` — array cru |
+
+O script do QA lia `(resposta.patients) || []` nas duas. Na segunda, `.patients`
+é `undefined`, vira `[]`, e a contagem sai **0**. A rota estava certa; a régua,
+não.
+
+Confirmado por dois caminhos: as duas rotas filtram por `clinicId` com o mesmo
+`resolveActorTenant`, e os **dois SUPERADMIN de produção têm a BPR como clínica
+própria** — nenhum dos dois cairia noutro inquilino. E as telas que consomem a
+rota escrevem `Array.isArray(data) ? data : data.patients || []`: a defesa
+contra as duas formas já está no código, o que diz que alguém tropeçou nisto
+antes.
+
+Fica então uma **aspereza de desenho**, não um defeito: duas rotas irmãs, o
+mesmo dado, formas diferentes — e cada chamador novo tem de adivinhar qual. Não
+mexo nisso aqui; está fora do escopo da 107.
+
+### Órfãos na plataforma: 0, agora medido direto
+
+A ressalva acima ficou respondida por consulta direta ao banco de produção:
+**0 pacientes com `clinicId` nulo** na plataforma inteira, nas três clínicas
+(`bruno-physical-rehab` 8, `bruno` 0, `manu-training` 0). O F-1 era um vazamento
+**latente**, sem nenhum caso hoje.
+
+### Limpeza
+
+Apagado o material de teste; a atribuição caiu por cascata.
+
+Sobrou um paciente de teste (`QA107 EnvioTeste`), porque **não existe rota para
+apagar paciente nem para desativá-lo pelo PATCH** — o que é, por si, um achado:
+uma clínica que cria um cadastro por engano não tem como desfazê-lo pela
+interface. Apagado depois, direto no banco de produção, com guarda dupla
+(id **e** o e-mail `@example.test` tinham de casar — um id solto apagaria
+qualquer pessoa). Junto foi o único registro pendurado nele: 1 `EmailMessage`,
+o de boas-vindas que não tinha para onde ir. A contagem de pacientes da BPR
+voltou de 9 para **8**, o número de antes do QA.
+
+Um e-mail de boas-vindas foi tentado para um endereço `@example.test` — TLD
+reservado, sem MX, impossível de entregar. Nenhuma caixa real foi alcançada.
+
+**Nenhum paciente real recebeu nada. Nenhum push saiu para telefone real.
+"Publicar" não foi clicado em material nenhum.**
