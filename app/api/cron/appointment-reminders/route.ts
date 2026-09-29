@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 // POST /api/cron/appointment-reminders — Send reminders 24h before appointments
 // Call via cron: curl -X POST https://bpr.clinic/api/cron/appointment-reminders?key=SECRET
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
     for (const appt of appointments as any[]) {
       try {
         const apptDate = new Date(appt.dateTime);
-        const dateStr = apptDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        const timeStr = apptDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        const dateStr = apptDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const timeStr = apptDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
         const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
         await notifyPatient({

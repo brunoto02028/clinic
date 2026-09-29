@@ -10,6 +10,7 @@ import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
 import { getActor, canAccessRecord } from "@/lib/tenant-access";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,8 +82,8 @@ export async function POST(request: NextRequest) {
     }
 
     const apptDate = new Date(appointment.dateTime);
-    const apptDateStr = apptDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const apptTimeStr = apptDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const apptDateStr = apptDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const apptTimeStr = apptDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
     const hoursUntil = (apptDate.getTime() - Date.now()) / (1000 * 60 * 60);
     const cancellationNote = hoursUntil >= 24
       ? "Free cancellation up to 24 hours before your appointment."

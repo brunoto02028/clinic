@@ -7,6 +7,7 @@ import { getActor, canAccessRecord } from "@/lib/tenant-access";
 import { stripe } from "@/lib/stripe";
 import { notifyPatient } from "@/lib/notify-patient";
 import { isPersonalTenant } from "@/lib/tenant-type";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 const FREE_RESCHEDULES = 2;
 const RESCHEDULE_FEE_PERCENT = 0.25; // 25% of appointment price after free reschedules
@@ -133,10 +134,10 @@ export async function POST(
 
     // Notify patient
     const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
-    const newDateStr = newDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const newTimeStr = newDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    const oldDateStr = oldDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const oldTimeStr = oldDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const newDateStr = newDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const newTimeStr = newDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
+    const oldDateStr = oldDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const oldTimeStr = oldDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
 
     notifyPatient({
       patientId: appointment.patientId,
