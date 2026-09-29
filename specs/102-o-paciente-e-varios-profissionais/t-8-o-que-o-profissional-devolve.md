@@ -1,6 +1,6 @@
 # T-8: O que o médico devolve — receita e documento
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-3
 
 ## Objetivo

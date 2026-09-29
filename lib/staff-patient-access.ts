@@ -10,8 +10,33 @@ import {
 } from "@/lib/tenant-access";
 
 type Guarded =
-  | { actor: Actor; response?: never }
-  | { actor?: never; response: NextResponse };
+  | { actor: Actor; porVinculo?: boolean; response?: never }
+  | { actor?: never; porVinculo?: never; response: NextResponse };
+
+/**
+ * Atravessar a parede é **pedido**, nunca herdado (102 T-9).
+ *
+ * O vínculo de cuidado da T-3 responde uma pergunta — *este profissional pode
+ * agir sobre este paciente?* — e esta guarda estava tratando o "sim" como
+ * acesso ao registro inteiro. Das 43 rotas sob `/api/admin/patients/[id]/`, 22
+ * não filtram por inquilino nenhum: um médico com vínculo lia `rehab-plan`,
+ * `report`, `wellbeing`, `questions` e o perfil completo do paciente — e o
+ * Bruno foi explícito duas vezes: *"não pode ser automaticamente liberado para
+ * todo mundo, só com permissões."*
+ *
+ * Então a guarda **recusa** quando o acesso vem só do vínculo, e responde 404
+ * como faz com qualquer registro de outro inquilino. A rota que legitimamente
+ * serve um profissional intermediado pede `{ porVinculo: true }` e recebe a
+ * marca de volta, para filtrar pelo que foi partilhado.
+ *
+ * É a escolha que falha fechada: as 43 rotas param de vazar sem que nenhuma
+ * seja tocada, e a 44ª — que alguém escreve no mês que vem — nasce fechada
+ * também. Marcar 22 rotas uma a uma deixaria a 23ª aberta por omissão.
+ */
+export interface OpcoesDeAlcance {
+  /** Esta rota sabe servir quem chega por vínculo, e filtra pela partilha. */
+  porVinculo?: boolean;
+}
 
 const unauthorized = (): Guarded => ({
   response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -31,35 +56,40 @@ const notFoundAs = (message: string): Guarded => ({
 export async function staffPatientAccess(
   request: NextRequest,
   patientId: string,
-  notFound = "Patient not found"
+  notFound = "Patient not found",
+  opcoes?: OpcoesDeAlcance
 ): Promise<Guarded> {
   const actor = await getActor(request);
   if (!actor) return unauthorized();
   if (!isStaff(actor)) return forbidden();
   try {
-    await assertPatientAccess(actor, patientId);
+    const alcance = await assertPatientAccess(actor, patientId);
+    if (alcance.porVinculo && !opcoes?.porVinculo) return notFoundAs(notFound);
+    return { actor, porVinculo: !!alcance.porVinculo };
   } catch (err) {
     if (err instanceof AccessError) return notFoundAs(notFound);
     throw err;
   }
-  return { actor };
 }
 
 /** For routes a patient uses on their own record and staff use on their tenant's. */
 export async function patientRecordAccess(
   request: NextRequest,
   patientId: string,
-  notFound = "Patient not found"
+  notFound = "Patient not found",
+  opcoes?: OpcoesDeAlcance
 ): Promise<Guarded> {
   const actor = await getActor(request);
   if (!actor) return unauthorized();
   try {
-    await assertPatientAccess(actor, patientId);
+    const alcance = await assertPatientAccess(actor, patientId);
+    // Mesma regra da guarda acima, e pela mesma razão.
+    if (alcance.porVinculo && !opcoes?.porVinculo) return notFoundAs(notFound);
+    return { actor, porVinculo: !!alcance.porVinculo };
   } catch (err) {
     if (err instanceof AccessError) return notFoundAs(notFound);
     throw err;
   }
-  return { actor };
 }
 
 /** The note's own patient, or staff of its tenant. Notes written before

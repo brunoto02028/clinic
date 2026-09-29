@@ -601,6 +601,9 @@ model Clinic {
   /// Os pacientes que escolheram este profissional (102 T-3).
   careLinks CareLink[] @relation("ClinicCareLinks")
 
+  /// Documentos emitidos por este profissional (102 T-8).
+  professionalDocuments ProfessionalDocument[] @relation("ClinicProfessionalDocuments")
+
   @@index([slug])
   @@index([isActive])
 }
@@ -1058,6 +1061,11 @@ model User {
 
   /// Os profissionais que podem agir sobre este paciente (102 T-3).
   careLinks CareLink[] @relation("PatientCareLinks")
+
+  /// Documentos que este paciente recebeu de profissionais (102 T-8).
+  professionalDocuments ProfessionalDocument[] @relation("PatientProfessionalDocuments")
+  /// E os que ele emitiu, quando e profissional.
+  issuedDocuments       ProfessionalDocument[] @relation("IssuedProfessionalDocuments")
 
   @@index([clinicId])
   @@index([email])
@@ -8597,4 +8605,69 @@ model CareLink {
   @@unique([patientId, professionalClinicId])
   @@index([professionalClinicId])
   @@index([patientId])
+}
+
+enum ProfessionalDocumentKind {
+  PRESCRIPTION /// Receita
+  REPORT /// Laudo
+  GUIDANCE /// Orientacao
+  EXAM_REQUEST /// Pedido de exame
+}
+
+/// O que o profissional **devolve** ao paciente (102 T-8).
+///
+/// ## Por que nao e um `PatientDocument`
+///
+/// Aquele e um arquivo que alguem enviou: nome, tipo MIME, bytes. Isto e um
+/// texto que alguem **escreveu e assinou** — e a assinatura e o que o torna um
+/// documento clinico. Enfiar os dois no mesmo modelo faria a receita depender
+/// de um arquivo que ela nao tem.
+///
+/// ## A assinatura e uma fotografia
+///
+/// `signerName`, `registryKind` e `registryNumber` sao copiados no momento de
+/// emitir, e nao lidos por relacao. O registro de um profissional pode mudar;
+/// o que ele assinou, nao. Uma receita que "atualiza" o CRM sozinha deixa de
+/// ser prova do que foi prescrito.
+model ProfessionalDocument {
+  id String @id @default(cuid())
+
+  /// O inquilino de quem emitiu — a clinica do profissional, nunca a do paciente.
+  clinicId String
+  clinic   Clinic @relation("ClinicProfessionalDocuments", fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("PatientProfessionalDocuments", fields: [patientId], references: [id], onDelete: Cascade)
+
+  issuedById String
+  issuedBy   User   @relation("IssuedProfessionalDocuments", fields: [issuedById], references: [id])
+
+  kind  ProfessionalDocumentKind @default(GUIDANCE)
+  title String
+  body  String                   @db.Text
+
+  /// A assinatura, congelada no momento da emissao.
+  signerName     String
+  registryKind   String?
+  registryNumber String?
+
+  /// A consulta de onde saiu, quando saiu de uma.
+  appointmentId String?
+
+  createdAt DateTime  @default(now())
+  /// Enviado ao paciente. **Nulo = rascunho**: nada chega a ninguem sem alguem
+  /// apertar um botao, e a previa vem antes do botao.
+  sentAt    DateTime?
+
+  /// Encerrado, e **nunca apagado**. Receita e registro clinico: sumir com ela
+  /// e sumir com a prova de uma prescricao. O paciente continua vendo, com a
+  /// tarja de encerrada e o motivo.
+  revokedAt     DateTime?
+  revokedReason String?
+
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([sentAt])
 }
