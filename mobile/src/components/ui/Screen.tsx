@@ -15,6 +15,22 @@ export interface ScreenProps {
    */
   refreshable?: boolean;
   padded?: boolean;
+  /**
+   * A tela já tem cabeçalho de navegação, então o topo não precisa de recuo.
+   *
+   * O `SafeAreaView` desce o conteúdo abaixo do notch. Quando existe um
+   * cabeçalho de navegação, **ele já fez isso** — e o recuo acontece duas
+   * vezes, deixando uma faixa morta entre o cabeçalho e o primeiro conteúdo.
+   *
+   * O Bruno viu na lista de artigos: do cabeçalho até o primeiro título havia
+   * ~85pt, dos quais o recuo desta tela explica 32. A diferença é do tamanho
+   * de um inset de topo de iPhone.
+   *
+   * Fica opcional, e não ligado por padrão, porque as telas **sem** cabeçalho —
+   * entrar e cadastrar — dependem desse recuo para não nascer embaixo do
+   * relógio.
+   */
+  semRecuoNoTopo?: boolean;
   style?: ViewStyle;
   testID?: string;
 }
@@ -34,7 +50,7 @@ export interface ScreenProps {
  */
 const MAX_CONTENT_WIDTH = 560;
 
-export function Screen({ children, scroll, padded = true, style, testID, refreshable = true }: ScreenProps) {
+export function Screen({ children, scroll, padded = true, semRecuoNoTopo, style, testID, refreshable = true }: ScreenProps) {
   const t = useTheme();
   const { controle } = usePullToRefresh();
   const inner: ViewStyle = {
@@ -50,6 +66,7 @@ export function Screen({ children, scroll, padded = true, style, testID, refresh
 
   return (
     <SafeAreaView
+      edges={semRecuoNoTopo ? ["left", "right", "bottom"] : undefined}
       style={[styles.safe, { backgroundColor: t.colors.background }]}
       testID={testID}
     >

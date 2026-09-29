@@ -1,6 +1,6 @@
 # T-6: A clínica marca como pago
 
-**Status:** pendente — espera o Bruno decidir o item 1
+**Status:** 🟢 concluída (29/09) — aguardando QA
 **Depende de:** T-3 (feita)
 
 ## Objetivo
@@ -42,19 +42,42 @@ Stripe — a ausência deles já distingue "não veio do cartão". Mas isso guar
 **que** entrou, não **como**, e numa conciliação bancária é o "como" que
 importa.
 
-## A pergunta para o Bruno
+## A resposta do Bruno, 29/09/2026
 
-1. **O "como" precisa ficar registrado?**
-   - **(a)** Sim: `Payment` ganha `method` (`STRIPE`, `TRANSFER`, `CASH`,
-     `CARD_MACHINE`, `OTHER`) e um campo de observação livre. É migração de
-     schema, e é o que serve para conciliar com o extrato.
-   - **(b)** Não por enquanto: basta um `Payment` marcado como recebido, com
-     quem marcou e quando. Sem migração.
+> *"O pagamento precisa ser via transferência, o via app (que vai pelo Stripe);
+> não teremos maquininha presencialmente. Dinheiro pessoalmente também
+> aceitaremos."*
 
-A **(a)** é a que eu faria — o dado que não se guarda hoje é o que falta no dia
-em que alguém confere o extrato.
+Três canais, e **só três**: `STRIPE`, `TRANSFER`, `CASH`. Maquininha ficou de
+fora porque a clínica não tem uma, e um valor que ninguém escolhe só confunde
+quem lê o relatório depois.
 
-## Passos (depois da resposta)
+Fica também um `note` livre — não para inventar uma quarta categoria, mas para o
+caso fora da curva não exigir migração de schema. É o "sem limitações" sem
+inventar taxonomia.
+
+`STRIPE` é o padrão porque **é o que todo pagamento existente é**: os outros dois
+não tinham como ser registrados até agora.
+
+## O que foi feito
+
+- `Payment` ganhou `channel`, `note`, `recordedById` e `recordedAt`.
+- `POST /api/admin/appointments/[id]/payment` **registra e libera no mesmo
+  ato** — dois botões em sequência viram um esquecido, e o esquecido aqui é o
+  que põe o dinheiro nos livros.
+- `upsert`, e não `create`: uma consulta pode ter um `Payment` pendente da
+  Stripe que nunca completou, e dois registros para a mesma consulta seriam
+  pior que nenhum.
+- O valor é **o da consulta**, nunca o que o cliente mandar no corpo.
+- Preço zero recusa: registrar £0,00 como recebido põe linha falsa no
+  faturamento.
+- `DELETE` desfaz — o pagamento vira `FAILED` em vez de sumir, porque apagar a
+  linha apagaria também quem a criou. Pagamento de cartão **não** se desfaz por
+  aqui: isso é reembolso, tem dinheiro do outro lado.
+- Só ADMIN e SUPERADMIN. Terapeuta marca presença, conclui e cancela; dizer que
+  um valor entrou na conta é outra coisa.
+
+## Passos
 
 1. Botão *"Marcar como pago"* na linha da consulta, para `PENDING` com preço.
 2. Cria o `Payment` com o valor da consulta e **confirma** a consulta no mesmo
@@ -73,10 +96,11 @@ em que alguém confere o extrato.
 - `__tests__/agenda/a-clinica-marca-como-pago.test.ts`
 
 ## Critérios de aceite
-- [ ] O Bruno escolheu (a) ou (b).
-- [ ] Marcar como pago cria o pagamento **e** libera a consulta.
-- [ ] Fica registrado quem marcou e quando.
-- [ ] Dá para desfazer.
-- [ ] A consulta para de dizer que espera pagamento.
-- [ ] Só quem administra marca — receber dinheiro não é ação de terapeuta.
-- [ ] A parede da clínica vale aqui como em tudo.
+- [x] O Bruno escolheu: os três canais, sem maquininha.
+- [x] Marcar como pago cria o pagamento **e** libera a consulta.
+- [x] Fica registrado quem marcou e quando.
+- [x] Dá para desfazer — e cartão não se desfaz por aqui.
+- [x] A consulta para de dizer que espera pagamento (vira `CONFIRMED`).
+- [x] Só quem administra marca.
+- [x] A parede da clínica vale aqui como em tudo, com 404 para o que não é seu.
+- [ ] QA: marcar, conferir a fatura, e desfazer.

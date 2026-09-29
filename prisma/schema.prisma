@@ -62,6 +62,25 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+/**
+ * Por onde o dinheiro entrou (106 T-6).
+ *
+ * O Bruno, 29/09/2026: *"o pagamento precisa ser via transferência, o via app
+ * (que vai pelo Stripe); não teremos maquininha presencialmente. Dinheiro
+ * pessoalmente também aceitaremos."*
+ *
+ * Três, e só três: maquininha ficou de fora porque a clínica não tem uma, e um
+ * valor que ninguém escolhe só confunde quem lê o relatório depois.
+ *
+ * `STRIPE` é o padrão porque é o que todo pagamento existente é — os outros
+ * dois nem tinham como ser registrados até agora.
+ */
+enum PaymentChannel {
+  STRIPE
+  TRANSFER
+  CASH
+}
+
 enum PaymentStatus {
   PENDING
   SUCCEEDED
@@ -867,6 +886,8 @@ model User {
   soapNotesCreated      SOAPNote[]              @relation("TherapistNotes")
   soapNotesFor          SOAPNote[]              @relation("PatientNotes")
   payments              Payment[]
+  /** Pagamentos que **esta pessoa registrou** — transferência ou dinheiro. */
+  paymentsRecorded      Payment[]               @relation("PaymentsRecorded")
   therapistAvailability TherapistAvailability[]
   scheduleWindows       ScheduleWindow[]        @relation("TherapistScheduleWindows")
   scheduleExceptions    ScheduleException[]     @relation("TherapistScheduleExceptions")
@@ -1597,6 +1618,22 @@ model Payment {
   stripeSessionId String?       @unique
   receiptUrl      String?
 
+  /**
+   * Por onde entrou, quem registrou e quando (106 T-6).
+   *
+   * Dinheiro anotado à mão sem autor é discussão daqui a três meses. E sem o
+   * canal, a conciliação com o extrato não fecha: saber **que** entrou não diz
+   * onde procurar.
+   *
+   * `note` existe para o caso fora dos três — a clínica no comando, sem ter de
+   * inventar categoria nova no schema para uma exceção que acontece uma vez.
+   */
+  channel      PaymentChannel @default(STRIPE)
+  note         String?
+  recordedById String?
+  recordedBy   User?          @relation("PaymentsRecorded", fields: [recordedById], references: [id])
+  recordedAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1604,6 +1641,7 @@ model Payment {
   @@index([userId])
   @@index([appointmentId])
   @@index([stripePaymentId])
+  @@index([recordedById])
 }
 
 // ============================================

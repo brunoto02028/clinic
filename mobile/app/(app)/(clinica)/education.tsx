@@ -59,7 +59,10 @@ function EducationScreen() {
   ];
 
   return (
-    <Screen testID="education-screen">
+    // `semRecuoNoTopo`: esta tela tem cabeçalho de navegação, e ele já desceu
+    // o conteúdo abaixo do notch. Sem isto o recuo acontecia duas vezes e
+    // sobrava uma faixa morta acima de "FOR YOU".
+    <Screen testID="education-screen" semRecuoNoTopo>
       <Stack.Screen
         options={{
           headerShown: true,

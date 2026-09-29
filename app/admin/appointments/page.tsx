@@ -380,6 +380,41 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  const marcarComoPago = async (id: string, canal: "TRANSFER" | "CASH") => {
+    setPagandoManual(id);
+    try {
+      const res = await fetch(`/api/admin/appointments/${id}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: canal }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: isPt ? "Não deu" : "Could not do it",
+          description: data.error || (isPt ? "Tente de novo." : "Try again."),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: isPt ? "Pago e liberado" : "Paid and released",
+        description: isPt
+          ? `£${Number(data.amount).toFixed(2)} por ${canal === "TRANSFER" ? "transferência" : "dinheiro"}. A consulta está confirmada.`
+          : `£${Number(data.amount).toFixed(2)} by ${canal === "TRANSFER" ? "bank transfer" : "cash"}. The appointment is confirmed.`,
+      });
+      fetchAppointments();
+    } catch {
+      toast({
+        title: isPt ? "Não deu" : "Could not do it",
+        description: isPt ? "Tente de novo." : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPagandoManual(null);
+    }
+  };
+
   const handleCreateAppointment = async () => {
     if (!createForm.patientId || !createForm.appointmentDate || !createForm.appointmentTime) {
       toast({ title: "Error", description: isPt ? "Paciente, data e hora são obrigatórios" : "Patient, date and time are required", variant: "destructive" });
@@ -988,6 +1023,15 @@ export default function AdminAppointmentsPage() {
    * `null` enquanto não há data escolhida ou a resposta não chegou: a diferença
    * entre "ainda não sei" e "não há vaga" muda o que a tela deve dizer.
    */
+  /**
+   * Marcar que o dinheiro entrou por fora (106 T-6).
+   *
+   * O Bruno: *"ele paga com transferência na conta, a clini coloca como pago e
+   * libera a consulta."* Confirmar e receber eram duas coisas e só uma tinha
+   * botão — a consulta ficava confirmada sem nada nos livros.
+   */
+  const [pagandoManual, setPagandoManual] = useState<string | null>(null);
+
   const [horariosDoDia, setHorariosDoDia] = useState<string[] | null>(null);
   const [buscandoHorarios, setBuscandoHorarios] = useState(false);
 
@@ -1572,6 +1616,38 @@ export default function AdminAppointmentsPage() {
                             </Button>
                           </>
                         )}
+                      {/* Recebeu por fora: registra **e** libera, num ato só.
+                          Dois botões em sequência viram um esquecido — e o
+                          esquecido aqui é o que põe o dinheiro nos livros
+                          (106 T-6). Só aparece onde há o que receber. */}
+                      {appointment.status === "PENDING" && appointment.price > 0 && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs px-2"
+                            disabled={pagandoManual === appointment.id}
+                            title={isPt ? "Recebido por transferência" : "Received by bank transfer"}
+                            onClick={() => marcarComoPago(appointment.id, "TRANSFER")}
+                          >
+                            <Banknote className="h-3.5 w-3.5 sm:mr-1" />
+                            <span className="hidden sm:inline">
+                              {isPt ? "Transferência" : "Transfer"}
+                            </span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs px-2"
+                            disabled={pagandoManual === appointment.id}
+                            title={isPt ? "Recebido em dinheiro" : "Received in cash"}
+                            onClick={() => marcarComoPago(appointment.id, "CASH")}
+                          >
+                            <Banknote className="h-3.5 w-3.5 sm:mr-1" />
+                            <span className="hidden sm:inline">{isPt ? "Dinheiro" : "Cash"}</span>
+                          </Button>
+                        </>
+                      )}
                       {appointment.status === "PENDING" && (
                         <>
                           <Button
