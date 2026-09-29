@@ -7,6 +7,7 @@ import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 import { getExpectedToday } from "@/lib/patient-daily-adherence";
 import { computePatientAccess, PATIENT_ACCESS_SELECT } from "@/lib/patient-access";
 import { patientGate } from "@/lib/patient-gate";
+import { CLINIC_TIMEZONE, getZonedDateString } from "@/lib/clinic-timezone";
 
 export async function GET(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
@@ -40,10 +41,22 @@ export async function GET(request: NextRequest) {
 
     for (const appt of upcomingAppts) {
       const apptDate = new Date(appt.dateTime);
-      const isToday = apptDate.toDateString() === now.toDateString();
-      const isTomorrow = apptDate.toDateString() === new Date(now.getTime() + 86400000).toDateString();
-      const dateStr = apptDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-      const timeStr = apptDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      /**
+       * "Hoje" e "amanhã" pelo relógio **da clínica**, não pelo do contêiner.
+       *
+       * `toDateString()` lê o fuso do processo, que em produção é UTC. Uma
+       * consulta das 00:30 de terça em Londres cai às 23:30 de segunda em UTC,
+       * e o app dizia "Consulta Hoje" na segunda — ou deixava de dizer na
+       * terça. É o mesmo defeito do horário exibido, um nível acima: ali a
+       * hora saía errada, aqui o **dia**.
+       */
+      const hojeNaClinica = getZonedDateString(now);
+      const amanhaNaClinica = getZonedDateString(new Date(now.getTime() + 86400000));
+      const diaDaConsulta = getZonedDateString(apptDate);
+      const isToday = diaDaConsulta === hojeNaClinica;
+      const isTomorrow = diaDaConsulta === amanhaNaClinica;
+      const dateStr = apptDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "short", day: "numeric", month: "short" });
+      const timeStr = apptDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
       const therapistName = appt.therapist ? `${appt.therapist.firstName}` : "";
 
       const dayLabel = isToday ? "today" : isTomorrow ? "tomorrow" : dateStr;

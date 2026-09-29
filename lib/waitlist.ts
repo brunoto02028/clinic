@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { pushVagaNaFila } from "@/lib/push-notify";
 import { seedDefaultTemplates } from "@/lib/email-templates";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 const MAX_NOTIFIED_PER_SLOT = 5;
@@ -38,16 +40,36 @@ export async function notifyWaitlistForCancelledAppointment(appointment: {
 
     await seedDefaultTemplates().catch(() => {});
 
+    // O fuso da clínica, e não o do contêiner (que é UTC): sem ele a vaga das
+    // 10:00 era anunciada como 09:00 durante os sete meses de horário de verão.
     const dateStr = appointment.dateTime.toLocaleDateString("en-GB", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      timeZone: CLINIC_TIMEZONE,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
-    const timeStr = appointment.dateTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = appointment.dateTime.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
 
     let notified = 0;
     for (const entry of candidates) {
       try {
+        /**
+         * **No app e por e-mail, sempre** (decisão do Bruno, 29/09/2026).
+         *
+         * `notifyPatient` escolhe **um** canal pela preferência da pessoa — e
+         * quem tem WhatsApp ou SMS marcado nunca recebia o e-mail. Para uma
+         * vaga perecível isso é o pior dos mundos: o canal preferido pode
+         * falhar em silêncio e ninguém fica sabendo.
+         *
+         * `forceChannel: "EMAIL"` garante a carta; o push garante o telefone.
+         * O push vem primeiro porque é o que chega em segundos.
+         */
+        await pushVagaNaFila(entry.patientId);
+
         await notifyPatient({
           patientId: entry.patientId,
+          forceChannel: "EMAIL",
           emailTemplateSlug: "WAITLIST_SLOT_AVAILABLE",
           emailVars: {
             treatmentType: appointment.treatmentType,

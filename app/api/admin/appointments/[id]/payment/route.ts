@@ -164,7 +164,7 @@ export async function DELETE(
 
   const consulta = await prisma.appointment.findFirst({
     where: { id: params.id, clinicId: actor.clinicId },
-    select: { id: true, payment: { select: { id: true, channel: true } } },
+    select: { id: true, status: true, payment: { select: { id: true, channel: true } } },
   });
   if (!consulta?.payment) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
@@ -183,16 +183,36 @@ export async function DELETE(
     );
   }
 
+  /**
+   * Desfazer o dinheiro **não** desfaz o atendimento (achado da revisão).
+   *
+   * Isto punha a consulta em `PENDING` sem olhar o status atual. Uma consulta
+   * paga em dinheiro, atendida e marcada `COMPLETED` voltava para pendente ao
+   * corrigir a forma de pagamento — perdia o `COMPLETED` em silêncio e
+   * reaparecia na fila do que venceu.
+   *
+   * Só volta a esperar pagamento quem ainda não teve desfecho. O que já
+   * aconteceu continua tendo acontecido.
+   */
+  const aindaEsperaDesfecho = consulta.status === "CONFIRMED" || consulta.status === "PENDING";
+
   await prisma.$transaction([
     (prisma as any).payment.update({
       where: { id: consulta.payment.id },
       data: { status: "FAILED", recordedById: actor.userId, recordedAt: new Date() },
     }),
-    prisma.appointment.update({
-      where: { id: consulta.id },
-      data: { status: "PENDING" },
-    }),
+    ...(aindaEsperaDesfecho
+      ? [
+          prisma.appointment.update({
+            where: { id: consulta.id },
+            data: { status: "PENDING" },
+          }),
+        ]
+      : []),
   ]);
 
-  return NextResponse.json({ paid: false, status: "PENDING" });
+  return NextResponse.json({
+    paid: false,
+    status: aindaEsperaDesfecho ? "PENDING" : consulta.status,
+  });
 }

@@ -1433,6 +1433,20 @@ model Appointment {
   duration          Int               @default(60) // Duration in minutes
   treatmentType     String
   /**
+   * Minutos de viagem **de cada lado**, no atendimento em domicílio (109 T-3).
+   *
+   * O Bruno: *"como ela é longe que vou no home visit, levo 2h pra ir e 2h pra
+   * voltar… pelo menos os slots não podem estar disponíveis naquele dia."*
+   *
+   * Fica na consulta, e não na clínica nem no paciente, porque é da **viagem**:
+   * o mesmo paciente numa terça de manhã e num sábado à tarde não custa o mesmo
+   * tempo, e quem sabe disso é quem vai dirigir.
+   *
+   * O postcode serve para **sugerir** o número; a última palavra é de quem
+   * marca.
+   */
+  travelMinutes     Int?
+  /**
    * Que tipo de marcacao isto e — decidido pelo servidor, nunca pelo cliente.
    * Sem isto, primeira consulta, sessao de pacote e sessao extra eram a mesma
    * linha, e a clinica so distinguia pelo preco que alguem digitou.

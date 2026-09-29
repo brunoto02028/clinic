@@ -66,7 +66,19 @@ export async function GET(req: NextRequest) {
 
     // Get published content for browsing
     const published = await prisma.educationContent.findMany({
-      where: clinicId ? { clinicId, isPublished: true } : { isPublished: true },
+      /**
+       * Sem clínica, **nada** — e não tudo (achado do QA, 29/09/2026).
+       *
+       * Era `clinicId ? { clinicId, isPublished } : { isPublished }`: um
+       * paciente sem `clinicId` recebia o material publicado de **todas** as
+       * clínicas da plataforma. O mesmo padrão de falhar aberto que a revisão
+       * achou hoje em `GET /api/admin/appointments`, e que já mordeu esta casa
+       * duas vezes em setembro.
+       *
+       * Uma lista vazia é um defeito visível; a biblioteca de outra clínica é
+       * um vazamento silencioso.
+       */
+      where: { clinicId: clinicId ?? "__sem_clinica__", isPublished: true },
       select: {
         id: true, title: true, description: true, contentType: true,
         body: true, titlePt: true, descriptionPt: true, bodyPt: true,
@@ -79,7 +91,7 @@ export async function GET(req: NextRequest) {
 
     // Get categories
     const categories = await prisma.educationCategory.findMany({
-      where: clinicId ? { clinicId, isActive: true } : { isActive: true },
+      where: { clinicId: clinicId ?? "__sem_clinica__", isActive: true },
       include: { _count: { select: { content: true } } },
       orderBy: { sortOrder: 'asc' },
     });

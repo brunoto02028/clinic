@@ -87,6 +87,28 @@ export function pushConsulta(patientId: string, tipo: "marcada" | "remarcada" | 
 }
 
 /**
+ * **Abriu uma vaga que você estava esperando** (fila de espera).
+ *
+ * Não inicia nada: alguém da clínica cancelou uma consulta, e a vaga é
+ * perecível. O Bruno decidiu em 29/09/2026 que aqui se avisa **sempre**, no app
+ * e por e-mail — uma fila que não avisa não é fila, e a vaga esfria enquanto
+ * ninguém olha a tela.
+ *
+ * Como todo texto deste arquivo, não diz que tratamento é: isso aparece na tela
+ * bloqueada, à vista de quem estiver por perto.
+ */
+export function pushVagaNaFila(patientId: string) {
+  return avisar(
+    patientId,
+    {
+      en: { title: "A slot opened up", body: "A time you were waiting for is free. First to book takes it." },
+      pt: { title: "Abriu uma vaga", body: "Um horário que você esperava ficou livre. Quem marcar primeiro fica com ele." },
+    },
+    "/(app)/(clinica)/(tabs)/appointments"
+  );
+}
+
+/**
  * **O terapeuta está esperando na consulta por vídeo** (089).
  *
  * Sem isto, a videochamada não acontece. O terapeuta conseguia entrar na sala e

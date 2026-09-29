@@ -190,7 +190,10 @@ export default function AdminAppointmentsPage() {
 
   /** Resolver tira da fila na hora — e não espera um recarregamento. */
   const resolverPendencia = async (id: string, status: string) => {
-    await updateStatus(id, status);
+    // Só sai da fila o que **deu certo**: remover incondicionalmente escondia a
+    // linha e o problema junto (achado da revisão).
+    const deu = await updateStatus(id, status);
+    if (!deu) return;
     setPendencias((prev) => prev.filter((p) => p.id !== id));
   };
   /**
@@ -247,6 +250,48 @@ export default function AdminAppointmentsPage() {
     price: 0,
     notes: "",
   });
+  /**
+   * Avisar o paciente **ao salvar uma edição** — e só se pedirem.
+   *
+   * Até 29/09/2026 o `PUT` avisava sempre: abrir o diálogo, não mudar nada e
+   * salvar mandava ao paciente *"Appointment Confirmed … successfully booked"*.
+   *
+   * `tocadaAMao` existe para a caixa poder sugerir sem mandar: ela marca-se
+   * sozinha quando a data, a hora ou o formato mudaram — que é quando o
+   * paciente precisa de saber — e para de se mexer no instante em que alguém
+   * a clica. Uma caixa que volta a marcar-se depois de desmarcada é uma caixa
+   * que ninguém controla.
+   */
+  const [avisarNaEdicao, setAvisarNaEdicao] = useState(false);
+  const [avisoTocadoAMao, setAvisoTocadoAMao] = useState(false);
+
+  /** O que o paciente **precisa** saber: onde e quando. Preço e nota, não. */
+  const mudouOQuePacientePrecisaSaber =
+    !!selectedAppointment &&
+    (editForm.mode !== (selectedAppointment.mode || "IN_PERSON") ||
+      (!!editForm.dateTime &&
+        editForm.dateTime !== getZonedDateTimeLocalString(new Date(selectedAppointment.dateTime))));
+
+  /**
+   * Cada edição decide de novo — e o reset vive na **abertura**, não no fechar.
+   *
+   * Posto no fechar, ele não corria: o `handleEditAppointment` fecha o diálogo
+   * com `setShowEditDialog(false)` direto, sem passar pelo `onOpenChange`.
+   * Quem marcasse a caixa e salvasse deixava-a marcada para a consulta
+   * seguinte — e a edição seguinte avisaria o paciente sem ninguém ter pedido,
+   * que é o defeito inteiro de volta, por outra porta.
+   */
+  useEffect(() => {
+    if (!showEditDialog) return;
+    setAvisarNaEdicao(false);
+    setAvisoTocadoAMao(false);
+  }, [showEditDialog, selectedAppointment?.id]);
+
+  useEffect(() => {
+    if (avisoTocadoAMao) return;
+    setAvisarNaEdicao(mudouOQuePacientePrecisaSaber);
+  }, [mudouOQuePacientePrecisaSaber, avisoTocadoAMao]);
+
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -482,6 +527,7 @@ export default function AdminAppointmentsPage() {
           notes: createForm.notes || null,
           // Sem isto o seletor de formato desenhava e nao chegava ao servidor.
           mode: createForm.mode,
+          travelMinutes: createForm.mode === "HOME_VISIT" ? Number(viagem) || 0 : 0,
           paymentMode: createForm.paymentMode,
           courtesySession: createForm.courtesySession || undefined,
           waiveCharge: createForm.waiveCharge || undefined,
@@ -513,15 +559,7 @@ export default function AdminAppointmentsPage() {
             : (isPt ? "Nenhum email foi enviado. Use \"Confirmar por email\" na consulta para ver a prévia e enviar." : "No email was sent. Use \"Email confirmation\" on the appointment to preview and send it.")) + checkoutMsg,
         });
         setShowCreateDialog(false);
-        // Os tres ultimos faltavam, e o `setState` os apagava do estado: depois de
-        // criar uma consulta, `createForm.courtesySession` virava `undefined` e os
-        // campos de cortesia/isencao ficavam sem valor na proxima.
-        setCreateForm({
-          patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "",
-          duration: 60, treatmentType: "", price: 0, notes: "",
-          paymentMode: "in_person", sendConfirmation: false, mode: "IN_PERSON",
-          courtesySession: false, waiveCharge: false, overrideReason: "",
-        });
+        limparFormularioDeCriacao();
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -532,6 +570,30 @@ export default function AdminAppointmentsPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /**
+   * O formulário volta ao zero — e **não só quando dá certo** (achado do QA).
+   *
+   * Isto vivia solto dentro do ramo de sucesso do `handleCreate`. Quem abria o
+   * diálogo, escolhia um tipo de £80, marcava a isenção e fechava com Esc
+   * encontrava tudo aquilo de volta no agendamento seguinte — e a consulta saía
+   * com um tipo pago a custo zero sem ninguém ter decidido isso nela.
+   *
+   * Os três últimos campos precisam de estar aqui: sem eles o `setState` os
+   * apagava do estado, `courtesySession` virava `undefined`, e os campos de
+   * cortesia e isenção ficavam sem valor na próxima consulta.
+   */
+  const limparFormularioDeCriacao = () => {
+    setCreateForm({
+      patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "",
+      duration: 60, treatmentType: "", price: 0, notes: "",
+      paymentMode: "in_person", sendConfirmation: false, mode: "IN_PERSON",
+      courtesySession: false, waiveCharge: false, overrideReason: "",
+    });
+    // A viagem mora fora do formulário e tem de ser limpa com ele.
+    setViagem("");
+    setSugestaoDeViagem(null);
   };
 
   const [invoiceSendingId, setInvoiceSendingId] = useState<string | null>(null);
@@ -591,7 +653,19 @@ export default function AdminAppointmentsPage() {
       const res = await fetch(`/api/appointments/${appointmentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        /**
+         * **Só o cancelamento avisa** (achado do QA, 29/09/2026).
+         *
+         * Antes isto não mandava pedido nenhum e a rota avisava sempre — e
+         * como o assunto do e-mail só troca no cancelamento, marcar a consulta
+         * de ontem como **atendida** mandava ao paciente *"Appointment
+         * Confirmed … has been successfully booked"*. Marcar **faltou**,
+         * idem.
+         *
+         * Cancelar é a única das três que o paciente precisa de saber, e
+         * clicar em *Cancel it* já é o pedido — não precisa de segunda caixa.
+         */
+        body: JSON.stringify({ status: newStatus, notifyPatient: newStatus === "CANCELLED" }),
       });
 
       if (res.ok) {
@@ -604,13 +678,30 @@ export default function AdminAppointmentsPage() {
           title: "Status updated",
           description: `Appointment has been marked as ${newStatus}.`,
         });
+        return true;
       }
+      /**
+       * **Dizer quando não deu** (achado da revisão, 29/09/2026).
+       *
+       * Não havia `else`: 401, 409 ou 500 não produziam nada na tela. A linha
+       * continuava como estava, e na fila do que venceu o cartão sumia como se
+       * tivesse sido resolvido — o pior dos dois, porque some a linha **e** o
+       * problema.
+       */
+      const erro = await res.json().catch(() => ({}));
+      toast({
+        title: "Error",
+        description: erro.error || "Failed to update appointment.",
+        variant: "destructive",
+      });
+      return false;
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update appointment.",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -650,6 +741,7 @@ export default function AdminAppointmentsPage() {
           price: Number(editForm.price),
           notes: editForm.notes,
           mode: editForm.mode,
+          notifyPatient: avisarNaEdicao,
         }),
       });
 
@@ -658,7 +750,11 @@ export default function AdminAppointmentsPage() {
         setShowEditDialog(false);
         toast({
           title: "Appointment updated",
-          description: "The appointment has been updated successfully.",
+          // Quem salvou tem de saber se saiu carta ou não — foi não saber que
+          // fez o paciente receber uma "confirmação" de uma consulta antiga.
+          description: avisarNaEdicao
+            ? "The patient has been told about the change."
+            : "Nothing was sent to the patient.",
         });
       } else {
         throw new Error("Failed to update appointment");
@@ -709,6 +805,19 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  /**
+   * Pediu alguma coisa e ninguém decidiu ainda.
+   *
+   * **Declarada antes do filtro, e isso importa.** Ela estava depois, e
+   * `const` não é içado: enquanto `soPedidos` era `false` o `!soPedidos`
+   * curto-circuitava e ninguém percebia. Bastava clicar no chip "Pedido de
+   * formato" — que só aparece quando **há** pedido pendente — para a tela
+   * quebrar com `ReferenceError`. Falhava exatamente no caso para o qual foi
+   * criada (achado da revisão, 29/09/2026).
+   */
+  const pedidoPendente = (a: Appointment) =>
+    !!a.requestedMode && !a.modeApprovedAt && !a.modeRefusedReason;
+
   const filteredAppointments = appointments.filter((a) => {
     const matchesSearch =
       a.patient.firstName.toLowerCase().includes(search.toLowerCase()) ||
@@ -719,10 +828,6 @@ export default function AdminAppointmentsPage() {
     const matchesPedido = !soPedidos || pedidoPendente(a);
     return matchesSearch && matchesStatus && matchesModo && matchesPedido;
   });
-
-  /** Pediu alguma coisa e ninguém decidiu ainda. */
-  const pedidoPendente = (a: Appointment) =>
-    !!a.requestedMode && !a.modeApprovedAt && !a.modeRefusedReason;
 
   const nomeDoFormato = (m?: string | null) =>
     m === "VIDEO"
@@ -1038,7 +1143,11 @@ export default function AdminAppointmentsPage() {
       );
     }
     return mapa;
-  }, [apptsByDay, minutoDaConsulta]);
+    // `HOURS` entra nas deps: sem ela, navegar de semana esticava a faixa e
+    // **não** recalculava o layout — a linha das 07:00 aparecia vazia, com a
+    // consulta que a justificava ainda invisível (achado da revisão). Uma
+    // faixa vazia provando que algo deveria estar ali é pior que a faixa fixa.
+  }, [apptsByDay, minutoDaConsulta, PRIMEIRA_HORA, ULTIMA_HORA, FIM_DA_GRADE_PX]);
 
   const STATUS_CAL: Record<string, string> = {
     CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
@@ -1088,6 +1197,61 @@ export default function AdminAppointmentsPage() {
    * botão — a consulta ficava confirmada sem nada nos livros.
    */
   const [pagandoManual, setPagandoManual] = useState<string | null>(null);
+
+  /**
+   * O tempo de viagem do domicílio (109 T-3).
+   *
+   * `sugestao` guarda de onde veio o número, para a tela poder dizer que é
+   * estimativa — e para quem marca saber que pode discordar dela.
+   */
+  const [viagem, setViagem] = useState<string>("");
+  const [sugestaoDeViagem, setSugestaoDeViagem] = useState<
+    { minutes: number | null; reason: string | null; patientPostcode: string | null } | null
+  >(null);
+
+  /**
+   * Busca a sugestão quando o domicílio entra em cena.
+   *
+   * Só então: perguntar o trajeto de quem vai ser atendido na clínica é uma
+   * viagem ao serviço externo para nada.
+   */
+  useEffect(() => {
+    /**
+     * **A viagem é de quem viaja** (achado do QA, D19).
+     *
+     * Isto limpava só a *sugestão* e deixava o **número** do paciente anterior
+     * no campo. Trocar de paciente com o diálogo aberto — o que faz quem clicou
+     * no nome errado e corrige — gravava a consulta de alguém em BR1 3CD com os
+     * 105 minutos estimados para IP1 3QJ. A agenda então bloqueava uma hora e
+     * quarenta e cinco de cada lado por uma viagem que ninguém estimou para
+     * aquela pessoa, e a frase "Suggested: …" nem estava mais na tela para
+     * desmentir o número.
+     *
+     * Trocar de paciente apaga o número. Ele é reposto pela estimativa **do
+     * novo**, se houver uma.
+     */
+    setViagem("");
+    setSugestaoDeViagem(null);
+
+    if (createForm.mode !== "HOME_VISIT" || !createForm.patientId) return;
+
+    let vivo = true;
+    fetch(`/api/admin/travel-estimate?patientId=${encodeURIComponent(createForm.patientId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d) return;
+        setSugestaoDeViagem(d);
+        // Forma funcional de propósito: lê o valor **vivo**, e não o da
+        // renderização em que o efeito correu — que aqui seria sempre o do
+        // paciente anterior, e faria a estimativa do novo nunca aparecer.
+        // Continua sem sobrescrever o que foi digitado à mão depois da troca.
+        if (d.minutes) setViagem((atual) => (atual ? atual : String(d.minutes)));
+      })
+      .catch(() => vivo && setSugestaoDeViagem({ minutes: null, reason: "lookup_failed", patientPostcode: null }));
+    return () => {
+      vivo = false;
+    };
+  }, [createForm.mode, createForm.patientId]);
 
   const [horariosDoDia, setHorariosDoDia] = useState<string[] | null>(null);
   const [buscandoHorarios, setBuscandoHorarios] = useState(false);
@@ -1284,7 +1448,19 @@ export default function AdminAppointmentsPage() {
                           return (
                             <button
                               key={a.id}
-                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
+                              /**
+                               * `getZonedDateTimeLocalString`, como a lista já
+                               * fazia — e não o ISO cru (achado da revisão).
+                               *
+                               * O ISO com segundos e `Z` é inválido para um
+                               * `datetime-local`: o campo abria **em branco**.
+                               * Quem mudasse só o preço e salvasse mandava um
+                               * valor cortado, lido como hora de Londres, e a
+                               * consulta das 10:00 ia para as 09:00 — uma hora
+                               * de diferença, em silêncio, durante os sete
+                               * meses de horário de verão.
+                               */
+                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: getZonedDateTimeLocalString(new Date(a.dateTime)), duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
                               title={`${a.patient.firstName} ${a.patient.lastName} · ${a.treatmentType} · ${a.duration || 60} min`}
                               style={{
                                 position: "absolute",
@@ -1621,7 +1797,7 @@ export default function AdminAppointmentsPage() {
                             { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE }
                           )}
                         </span>
-                        <span>£{appointment.price}</span>
+                        <span>£{appointment.price.toFixed(2)}</span>
                         {/* **Esperando o paciente pagar** (101 T-3).
 
                             O Bruno: *"no pagamento já é a confirmação"*. Uma
@@ -1691,7 +1867,14 @@ export default function AdminAppointmentsPage() {
                           Dois botões em sequência viram um esquecido — e o
                           esquecido aqui é o que põe o dinheiro nos livros
                           (106 T-6). Só aparece onde há o que receber. */}
-                      {appointment.status === "PENDING" && appointment.price > 0 && (
+                      {/* Também depois de confirmado (achado da revisão).
+                          Quem apertou *Confirm* antes de o dinheiro entrar
+                          ficava sem os botões e a consulta seguia confirmada
+                          **sem `Payment` nenhum** — que é exatamente o defeito
+                          que esta funcionalidade existe para evitar. */}
+                      {!canalPago(appointment) &&
+                        !["CANCELLED", "NO_SHOW"].includes(appointment.status) &&
+                        appointment.price > 0 && (
                         <>
                           <Button
                             size="sm"
@@ -1878,7 +2061,15 @@ export default function AdminAppointmentsPage() {
       </Dialog>
 
       {/* Create Appointment Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog
+        open={showCreateDialog}
+        onOpenChange={(aberto) => {
+          setShowCreateDialog(aberto);
+          // Fechar é desistir. O que ficou meio preenchido não pode reaparecer
+          // no próximo agendamento como se alguém o tivesse escolhido para ele.
+          if (!aberto) limparFormularioDeCriacao();
+        }}
+      >
         <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
@@ -2076,6 +2267,41 @@ export default function AdminAppointmentsPage() {
                 </button>
               </div>
             </div>
+            {/* O tempo de viagem, só no domicílio (109 T-3).
+
+                O Bruno: *"como ela é longe que vou no home visit, levo 2h pra
+                ir e 2h pra voltar… pelo menos os slots não podem estar
+                disponíveis naquele dia."* A agenda bloqueia esse tempo antes e
+                depois, e sem ele oferecia horário com o terapeuta na estrada. */}
+            {createForm.mode === "HOME_VISIT" && (
+              <div className="space-y-2">
+                <Label>{isPt ? "Deslocamento (min, de cada lado)" : "Travel (min, each way)"}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={viagem}
+                  placeholder={isPt ? "ex.: 120" : "e.g. 120"}
+                  onChange={(e) => setViagem(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {sugestaoDeViagem?.minutes
+                    ? relabel(isPt
+                        ? `Sugestão: ${sugestaoDeViagem.minutes} min por ${sugestaoDeViagem.patientPostcode}. É uma estimativa por distância — ajuste se souber melhor.`
+                        : `Suggested: ${sugestaoDeViagem.minutes} min from ${sugestaoDeViagem.patientPostcode}. It is a distance estimate — change it if you know better.`)
+                    : sugestaoDeViagem?.reason === "patient_postcode_missing"
+                      ? relabel(isPt
+                          ? "Sem postcode no cadastro do paciente, não dá para estimar. Escreva o tempo que você leva."
+                          : "No postcode on the patient's record, so no estimate. Type how long it takes you.")
+                      : sugestaoDeViagem?.reason === "clinic_postcode_missing"
+                        ? relabel(isPt
+                            ? "A clínica está sem postcode — preencha nos ajustes e a estimativa passa a funcionar."
+                            : "The clinic has no postcode — fill it in settings and the estimate starts working.")
+                        : relabel(isPt
+                            ? "A agenda bloqueia este tempo antes e depois da consulta."
+                            : "The diary blocks this time before and after the appointment.")}
+                </p>
+              </div>
+            )}
             {/* Modo de pagamento — só quando há o que pagar (106 T-3).
                 Oferecer "na clínica ou online" numa consulta de preço zero é a
                 mesma espécie de mentira que a T-1 tirou do cabeçalho: promete
@@ -2170,7 +2396,23 @@ export default function AdminAppointmentsPage() {
                   type="checkbox"
                   className="mt-0.5"
                   checked={createForm.waiveCharge}
-                  onChange={(e) => setCreateForm(f => ({ ...f, waiveCharge: e.target.checked }))}
+                  /**
+                   * Isentar **zera o preço na tela** (achado da revisão).
+                   *
+                   * Isto só marcava a caixa: o preço continuava £80 e a tela
+                   * dizia *"aparece no aplicativo esperando £80,00, e o
+                   * pagamento é o que confirma"* — enquanto o servidor gravava
+                   * zero e a consulta nascia confirmada. A tela prometia uma
+                   * cobrança que não ia existir.
+                   *
+                   * Desmarcar não devolve o preço: escolher o tipo de novo o
+                   * traz, e adivinhar qual era seria pior que pedir.
+                   */
+                  onChange={(e) => setCreateForm(f => ({
+                    ...f,
+                    waiveCharge: e.target.checked,
+                    ...(e.target.checked ? { price: 0 } : {}),
+                  }))}
                 />
                 <span>
                   <span className="font-medium">{isPt ? "Isentar a cobrança" : "Waive the charge"}</span>
@@ -2347,6 +2589,31 @@ export default function AdminAppointmentsPage() {
                 rows={3}
               />
             </div>
+            <label className="flex items-start gap-2 text-xs rounded-lg border border-border px-3 py-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={avisarNaEdicao}
+                onChange={(e) => {
+                  setAvisoTocadoAMao(true);
+                  setAvisarNaEdicao(e.target.checked);
+                }}
+              />
+              <span>
+                <span className="font-medium">
+                  {isPt ? "Avisar o paciente desta mudança" : "Tell the patient about this change"}
+                </span>
+                <span className="block text-muted-foreground">
+                  {mudouOQuePacientePrecisaSaber
+                    ? (isPt
+                        ? "A data, a hora ou o formato mudaram — o paciente ainda não sabe."
+                        : "The date, time or format changed — the patient does not know yet.")
+                    : (isPt
+                        ? "Desmarcada, nada sai: nem e-mail, nem notificação no telemóvel."
+                        : "Left unticked, nothing is sent: no email, no phone notification.")}
+                </span>
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button

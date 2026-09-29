@@ -7,6 +7,8 @@ import { getActor, canAccessRecord } from "@/lib/tenant-access";
 import { stripe } from "@/lib/stripe";
 import { notifyPatient } from "@/lib/notify-patient";
 import { isPersonalTenant } from "@/lib/tenant-type";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { localDaConsulta } from "@/lib/appointment-location";
 
 const FREE_RESCHEDULES = 2;
 const RESCHEDULE_FEE_PERCENT = 0.25; // 25% of appointment price after free reschedules
@@ -133,10 +135,10 @@ export async function POST(
 
     // Notify patient
     const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
-    const newDateStr = newDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const newTimeStr = newDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    const oldDateStr = oldDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const oldTimeStr = oldDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const newDateStr = newDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const newTimeStr = newDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
+    const oldDateStr = oldDate.toLocaleDateString("en-GB", { timeZone: CLINIC_TIMEZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const oldTimeStr = oldDate.toLocaleTimeString("en-GB", { timeZone: CLINIC_TIMEZONE, hour: "2-digit", minute: "2-digit" });
 
     notifyPatient({
       patientId: appointment.patientId,
@@ -145,6 +147,21 @@ export async function POST(
         patientName: `${appointment.patient?.firstName} ${appointment.patient?.lastName}`,
         appointmentDate: newDateStr,
         appointmentTime: newTimeStr,
+        /**
+         * Sem isto o e-mail saía com **o rótulo e nada depois** — achado do QA:
+         * `📍 Location 👨‍⚕️ Therapist …`.
+         *
+         * O filtro que passei a aplicar aos `{{…}}` não preenchidos faz a chave
+         * crua desaparecer em vez de vazar, que era o objetivo; mas aqui o que
+         * fica não é uma linha faltando, é um rótulo órfão. Quem remarca precisa
+         * de saber para onde ir — e se a consulta é em casa, que ninguém vai
+         * sair de casa.
+         */
+        location: await localDaConsulta(
+          (appointment as any).clinicId,
+          (appointment as any).mode,
+          appointment.patientId
+        ),
         therapistName: `${appointment.therapist?.firstName} ${appointment.therapist?.lastName}`,
         treatmentType: appointment.treatmentType || "",
         duration: String(appointment.duration || 60),

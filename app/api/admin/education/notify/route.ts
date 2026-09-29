@@ -128,7 +128,18 @@ export async function POST(req: NextRequest) {
     // Um push que falha não derruba os outros: quem não tem aparelho
     // registrado simplesmente não recebe, e isso não é erro.
     const r = await pushMaterialNovo(p.id).catch(() => null);
-    if (r) enviados++;
+    /**
+     * Conta quem **recebeu**, não quem foi tentado (achado do QA, 29/09/2026).
+     *
+     * Era `if (r)`. Para quem não tem o aparelho registrado, `sendPushToUser`
+     * devolve `{ sent: 0 }` — um objeto, portanto verdadeiro — e a pessoa
+     * entrava na conta. A tela então dizia *"Their phones were told there is
+     * new material"* quando nenhum telefone tinha sido tocado.
+     *
+     * `lib/push-send.ts` documenta exatamente este cuidado (*"sent: 0 porque
+     * nada saiu"*), e era aqui que ele se perdia.
+     */
+    enviados += r?.sent ?? 0;
   }
 
   return NextResponse.json({

@@ -153,12 +153,32 @@ export async function disponibilidadeDoDia(
       dateTime: { gte: dayStart, lte: dayEnd },
       status: { in: ["PENDING", "CONFIRMED"] },
     },
-    select: { dateTime: true, duration: true },
+    select: { dateTime: true, duration: true, travelMinutes: true },
   });
 
+  /**
+   * O intervalo e a viagem valem **aqui também** (109, achado da revisão).
+   *
+   * Eu tinha posto os dois só em `slotsForDate`, o ramo da agenda configurada —
+   * e produção não tem janela nenhuma configurada: são **zero** `ScheduleWindow`
+   * contra 7 `TherapistAvailability`. Ou seja, as duas funcionalidades do dia
+   * não faziam nada onde precisavam fazer.
+   *
+   * É o mesmo erro que a casa já cometeu com a exceção do dia, documentado
+   * quinze linhas acima: a regra nova entra no ramo novo, e o ramo que decide a
+   * agenda de verdade fica para trás. Uma regra que vale num modelo e não no
+   * outro não é uma regra; é uma coincidência.
+   */
+  const clinicaDoIntervalo = await prisma.clinic.findUnique({
+    where: { id: clinicId },
+    select: { bufferMinutes: true },
+  });
+  const intervalo = Math.max(0, clinicaDoIntervalo?.bufferMinutes ?? 0);
+
   const occupiedRanges = existingAppointments.map((a) => {
-    const apptStart = getZonedMinutesOfDay(a.dateTime, opts.timeZone);
-    const apptEnd = apptStart + (a.duration || 60);
+    const viagem = Math.max(0, a.travelMinutes ?? 0);
+    const apptStart = getZonedMinutesOfDay(a.dateTime, opts.timeZone) - intervalo - viagem;
+    const apptEnd = apptStart + viagem + intervalo + (a.duration || 60) + intervalo + viagem;
     return { start: apptStart, end: apptEnd };
   });
 

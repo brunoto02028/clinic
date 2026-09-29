@@ -51,10 +51,13 @@ coisa, e está nas perguntas abaixo.
 |---|---|---|
 | T-1 | [O texto que mente sobre o próprio sistema](t-1-o-texto-que-mente.md) | 🟢 concluída (29/09) |
 | T-2 | [A duração ocupa o horário](t-2-a-duracao-ocupa-o-horario.md) | 🟢 concluída (29/09) |
-| T-3 | [Tipo e pagamento, sem camisa de força](t-3-tipo-e-pagamento.md) | 🟢 concluída (29/09) — aguardando QA |
-| T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | 🟢 concluída (29/09) — aguardando QA |
-| T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | 🟢 concluída (29/09) — aguardando QA |
-| T-6 | [A clínica marca como pago](t-6-a-clinica-marca-como-pago.md) | 🟢 concluída (29/09) — aguardando QA |
+| T-3 | [Tipo e pagamento, sem camisa de força](t-3-tipo-e-pagamento.md) | 🟢 concluída (29/09) — QA aprovado |
+| T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | 🟢 concluída (29/09) — QA aprovado |
+| T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | 🟢 concluída (29/09) — QA aprovado |
+| T-6 | [A clínica marca como pago](t-6-a-clinica-marca-como-pago.md) | 🟢 concluída (29/09) — QA aprovado |
+| T-7 | [Salvar uma edição não avisa o paciente sozinho](t-7-salvar-uma-edicao-nao-avisa-sozinho.md) | 🟢 concluída (29/09) — QA aprovado (N1–N9) |
+| T-8 | [A hora que o paciente lê](t-8-a-hora-que-o-paciente-le.md) | 🟢 concluída (29/09) — QA aprovado (T1–T6) |
+| T-9 | [Onde a consulta acontece, dito uma vez só](t-9-onde-a-consulta-acontece.md) | 🟢 concluída (29/09) — QA aprovado |
 
 ## O que o QA das T-3 a T-6 encontrou, 29/09/2026
 

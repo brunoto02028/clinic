@@ -231,7 +231,21 @@ export function replaceVariables(template: string, vars: Record<string, string>)
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value || '');
   }
-  return result;
+  /**
+   * O que ninguém passou **não** vai para o paciente (achado da revisão).
+   *
+   * Isto trocava só as chaves recebidas e deixava as outras no texto. O
+   * `POST /api/admin/appointments` não passava `location` nem `notesBlock`, e a
+   * pessoa recebia um e-mail com `📍 Location {{location}}` e um
+   * `{{notesBlock}}` solto no meio.
+   *
+   * Passar as variáveis que faltavam conserta aquele e-mail; isto conserta a
+   * **classe** — o próximo modelo que ganhar uma variável não vai vazar chave
+   * crua enquanto o chamador não souber dela. Sumir é pior que aparecer errado
+   * em muitos lugares; aqui não: uma linha faltando o paciente não nota, e
+   * `{{location}}` ele nota e não entende.
+   */
+  return result.replace(/\{\{[a-zA-Z0-9_]+\}\}/g, '');
 }
 
 // ─── Default Templates (15 total) ───

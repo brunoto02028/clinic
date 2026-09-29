@@ -18,7 +18,7 @@ import { markAsClinicPatient } from "@/lib/lab-review-mode";
 import { pedidoAceitavel } from "@/lib/appointment-format";
 import { pessoaGeridaMinha } from "@/lib/managed-patients";
 import { slotsForDate, hasConfiguredSchedule, exceptionForDate } from "@/lib/schedule";
-import { getZonedDateString, getZonedMinutesOfDay } from "@/lib/clinic-timezone";
+import { getZonedDateString, getZonedMinutesOfDay, dataEHoraDaClinica } from "@/lib/clinic-timezone";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
@@ -539,8 +539,8 @@ export async function POST(request: NextRequest) {
     try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(dateTime);
-      const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      // O fuso da clínica, e não o do contêiner (que é UTC).
+      const { dateStr, timeStr } = dataEHoraDaClinica(apptDate);
       await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: 'APPOINTMENT_CONFIRMATION',

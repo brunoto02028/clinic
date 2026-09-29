@@ -64,6 +64,25 @@ export default function EducationPage() {
   const [importarAberto, setImportarAberto] = useState(false);
 
   const trocarAcesso = async (item: EduContent) => {
+    /**
+     * Publicar pergunta antes (achado do QA, 29/09/2026).
+     *
+     * Pôr na biblioteca alcança **todos** os pacientes da clínica de uma vez, e
+     * ia num clique — enquanto o botão de apagar, ao lado, confirmava. A ação
+     * destrutiva perguntava e a que alcança todo mundo não.
+     *
+     * Restringir não pergunta: tirar da biblioteca não alcança ninguém novo, e
+     * pedir confirmação para desfazer é o caminho de sempre para as pessoas
+     * pararem de ler as confirmações.
+     */
+    if (!item.isPublished) {
+      const ok = window.confirm(
+        `Pôr "${item.title}" na biblioteca?
+
+Todos os pacientes desta clínica passam a poder ler. Nenhum telefone toca — para avisar, use o botão de aviso, que tem prévia.`
+      );
+      if (!ok) return;
+    }
     setTrocando(item.id);
     try {
       const res = await fetch(`/api/admin/education/content/${item.id}`, {

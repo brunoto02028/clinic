@@ -1,13 +1,15 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { dataEHoraDaClinica } from "@/lib/clinic-timezone";
 import { prisma } from "@/lib/db";
 import { janelaDaConsulta, minutosAntesPara } from "@/lib/video-call";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, pediramEnviarAoPaciente } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
+import { localDaConsulta } from "@/lib/appointment-location";
 import {
   getActor,
   getSessionStaffActor,
@@ -187,7 +189,10 @@ async function handleUpdate(
     if (body?.treatmentType) updateData.treatmentType = body.treatmentType;
     if (body?.status) updateData.status = body.status;
     if (body?.notes !== undefined) updateData.notes = body.notes;
-    if (body?.price) updateData.price = body.price;
+    // `!= null`, e não a veracidade: editar o preço para **zero** era ignorado
+    // em silêncio, e a tela recarregava mostrando o valor antigo. Isentar uma
+    // consulta depois do fato não tinha caminho (achado da revisão).
+    if (body?.price != null) updateData.price = Number(body.price);
 
     /**
      * Virar uma consulta já marcada para vídeo, ou de volta para presencial.
@@ -243,9 +248,29 @@ async function handleUpdate(
       await syncSessionsUsed(appointment.patientPackageId).catch(() => {});
     }
 
-    // Idem: o cancelamento feito pelo próprio paciente não vira notificação
-    // para ele. `userRole` é o mesmo que decide, acima, o que ele pode mudar.
-    if (userRole !== "PATIENT") {
+    /**
+     * **Nada sai para o paciente sem alguém pedir** (regra da casa, 17/09/2026).
+     *
+     * Isto avisava por e-mail **e** push a cada `PUT` de staff, sem condição
+     * nenhuma. O QA de 29/09 abriu o diálogo de edição, **não mudou nada**,
+     * salvou — e o paciente recebeu *"Appointment Confirmed … has been
+     * successfully booked"* sobre uma consulta antiga.
+     *
+     * Pior que a edição: marcar a consulta como **atendida** ou **faltou**
+     * passa por aqui igual, e como o assunto só troca no cancelamento, quem
+     * fechava o atendimento de ontem mandava ao paciente uma confirmação de
+     * marcação nova.
+     *
+     * A criação já resolvia isto com uma caixa; a edição ficou de fora. Agora é
+     * o mesmo predicado, e o mesmo padrão: o campo **ausente** não envia.
+     *
+     * A exceção é o paciente que cancela a própria consulta — o recibo do
+     * próprio ato continua saindo, e o push para ele já não saía.
+     */
+    const ePaciente = userRole === "PATIENT";
+    const avisarOPaciente = ePaciente || pediramEnviarAoPaciente(body?.notifyPatient);
+
+    if (!ePaciente && avisarOPaciente) {
       await pushConsulta(
         appointment.patient.id,
         body?.status === "CANCELLED" ? "cancelada" : "remarcada"
@@ -256,8 +281,8 @@ async function handleUpdate(
     try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(appointment.dateTime);
-      const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      // O fuso da clínica, e não o do contêiner (que é UTC).
+      const { dateStr, timeStr } = dataEHoraDaClinica(apptDate);
       const isCancellation = body?.status === 'CANCELLED';
       const slug = isCancellation ? 'APPOINTMENT_CANCELLED' : 'APPOINTMENT_CONFIRMATION';
       const plainMsg = isCancellation
@@ -267,24 +292,23 @@ async function handleUpdate(
         ? `Sua consulta em ${dateStr} às ${timeStr} foi cancelada.`
         : `Sua consulta foi atualizada: ${appointment.treatmentType} em ${dateStr} às ${timeStr}.`;
 
-      // Location: the confirmation email used to have no way to say "the
-      // therapist is coming to you" — a home-visit note (see the appointment
-      // Notes field) got no reflection in what the patient actually reads,
-      // and "arrive 5 minutes early" was flatly wrong for that case. Detected
-      // from the notes text rather than a new field, since there's nowhere
-      // else this is recorded today.
-      const isHomeVisit = /domicil|home[\s-]?visit|casa da paciente|patient'?s home/i.test(appointment.notes || '');
-      let location = '';
-      if (isHomeVisit) {
-        location = 'Home visit / Visita domiciliar';
-      } else {
-        const clinic = await prisma.clinic.findUnique({
-          where: { id: (appointment as any).clinicId },
-          select: { name: true, address: true, city: true },
-        });
-        const addr = [clinic?.address, clinic?.city].filter(Boolean).join(', ');
-        location = clinic?.name ? `${clinic.name}${addr ? ' — ' + addr : ''}` : 'BPR Physical Rehabilitation';
-      }
+      /**
+       * O **campo** `mode`, e não uma expressão regular nas notas.
+       *
+       * Isto farejava "domicílio" no texto livre das anotações — de quando não
+       * havia onde registar o formato. O campo existe desde a atividade 089, e
+       * uma visita domiciliar marcada corretamente com as notas vazias recebia
+       * no e-mail o endereço **da clínica**: a pessoa era mandada para a rua
+       * enquanto o terapeuta ia à casa dela.
+       *
+       * O mesmo helper que o `POST` e a remarcação usam, para as três frases
+       * não voltarem a divergir.
+       */
+      const location = await localDaConsulta(
+        (appointment as any).clinicId,
+        (appointment as any).mode,
+        appointment.patient.id
+      );
 
       // Surfaces any admin-written note (e.g. the home-visit detail above)
       // directly in the email instead of leaving it invisible to the patient.
@@ -295,7 +319,7 @@ async function handleUpdate(
         ? `<p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 16px;background:#F5F4F1;border-radius:8px;padding:10px 14px;"><strong>Nota:</strong> ${escapeHtml(appointment.notes)}</p>`
         : '';
 
-      await notifyPatient({
+      if (avisarOPaciente) await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: slug,
         emailVars: {
