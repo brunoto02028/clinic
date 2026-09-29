@@ -131,3 +131,36 @@ describe("e a rota que chama o paciente", () => {
     expect(f).toMatch(/consulta-video\?id=\$\{appointmentId\}/);
   });
 });
+
+describe("chamar é entrar", () => {
+  /**
+   * O Bruno, 29/09/2026: *"o botão Call patient precisa chamar e já entrar na
+   * chamada do lado da clinic"*.
+   *
+   * E há um motivo além do clique a menos: tocar o telefone sem entrar deixava
+   * o paciente chegar primeiro e encontrar a sala vazia — que é um convite para
+   * desligar e achar que não funcionou.
+   */
+  const tela = lerCodigo("app", "admin", "video-consultations", "page.tsx");
+
+  it("**chamar abre a sala**", () => {
+    const iChamar = tela.indexOf("const chamarPaciente");
+    const iAbrir = tela.indexOf("startCall(appointment);", iChamar);
+    expect(iChamar).toBeGreaterThan(-1);
+    expect(iAbrir).toBeGreaterThan(iChamar);
+  });
+
+  it("**e abre antes do aviso na tela**", () => {
+    // O toast conta o que houve com a chamada; a sala é o que o gesto queria.
+    const iAbrir = tela.indexOf("startCall(appointment);");
+    const iToast = tela.indexOf("data.aparelhos > 0", iAbrir);
+    expect(iToast).toBeGreaterThan(iAbrir);
+  });
+
+  it("**e não abre quando a chamada foi recusada**", () => {
+    // O `return` do ramo de erro vem antes: chamada recusada não abre sala.
+    const iErro = tela.indexOf('title: relabel("Could not call")');
+    const iAbrir = tela.indexOf("startCall(appointment);");
+    expect(iErro).toBeLessThan(iAbrir);
+  });
+});

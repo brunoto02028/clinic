@@ -225,3 +225,4 @@ código está inerte esperando:
 | `STRIPE_SECRET_KEY` **live** e `STRIPE_WEBHOOK_SECRET` | **028** (cobrança do personal) e o pagamento de £1. Atualizado 27/09: o `.env` local tem chave `sk_test_` e ela **funciona** (produto e Checkout de £1 criados). Produção segue sem nenhuma `STRIPE_*`, de propósito — chave de teste lá confirmaria consulta de verdade com cartão de brinquedo. E a conta tem **zero webhooks**: sem o secret, pagamento entra e a consulta fica `PENDING` para sempre |
 | `LML_API_KEY` + `LAB_ORDERING_ENABLED` | **081 T-5..T-9**, os exames de laboratório |
 | ~~`DAILY_API_KEY` + `VIDEO_CALLS_ENABLED`~~ | **resolvido em 27/09**: as duas estão no Coolify, e a videochamada responde em produção |
+- **103** — [A consulta que já passou: desfecho, falta e cancelamento](103-a-consulta-que-ja-passou/plan.md)

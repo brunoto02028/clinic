@@ -236,6 +236,10 @@ export default function VideoConsultationsPage() {
   const { data: sessao } = useSession();
   const meuId = (sessao?.user as any)?.id as string | undefined;
 
+  const startCall = (appointment: VideoAppointment) => {
+    window.open(`/video-room/${appointment.id}`, "_blank");
+  };
+
   const chamarPaciente = async (appointment: VideoAppointment) => {
     setChamando(appointment.id);
     try {
@@ -249,6 +253,20 @@ export default function VideoConsultationsPage() {
         });
         return;
       }
+      /**
+       * Chamar **é** entrar (29/09/2026).
+       *
+       * O Bruno: *"o botão Call patient precisa chamar e já entrar na chamada
+       * do lado da clinic, para não precisar clicar mais uma vez"*. E há uma
+       * razão além do clique a menos: tocando o telefone sem entrar, o paciente
+       * podia chegar antes e encontrar a sala vazia — um convite para desligar.
+       *
+       * A sala abre **antes** do aviso na tela, porque é o que o gesto queria
+       * dizer. Se o navegador bloquear a aba, o toast abaixo ainda conta o que
+       * aconteceu com a chamada, e o botão de entrar continua ali.
+       */
+      startCall(appointment);
+
       toast(
         data.aparelhos > 0
           ? {
@@ -284,9 +302,6 @@ export default function VideoConsultationsPage() {
     }
   };
 
-  const startCall = (appointment: VideoAppointment) => {
-    window.open(`/video-room/${appointment.id}`, "_blank");
-  };
 
   if (loading) {
     return (
