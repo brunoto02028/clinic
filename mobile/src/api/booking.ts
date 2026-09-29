@@ -4,7 +4,12 @@ import { useAuth } from "@/store/auth";
 export interface BookingRequest {
   dateTime: string;
   duration?: number;
-  treatmentType: string;
+  /**
+   * Opcional: esta clínica não cadastra tipo de tratamento, e o servidor põe
+   * o rótulo. Era obrigatório aqui, e era o que fazia o botão de confirmar
+   * não ter ação nenhuma (29/09/2026).
+   */
+  treatmentType?: string;
   notes?: string;
   /**
    * Para quem é a consulta, quando não é para quem está marcando (089/091).
