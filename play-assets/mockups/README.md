@@ -8,9 +8,21 @@ Feitas em 29/09/2026, do app rodando **no navegador**, apontando para o
 
 | pasta | tamanho | para quê |
 |---|---|---|
-| `cru/` | 414×896 | o que saiu do navegador, sem tratamento |
-| `google-play-phone/` | 1080×1920 (9:16) | Play Console → Store listing → Phone screenshots |
-| `app-store-6.7/` | 1290×2796 | App Store Connect, iPhone 6.7" (15/16 Pro Max) |
+| `cru/` | 414×896 | telefone, direto do navegador |
+| `cru-tablet7/` | 800×1422 | tablet 7", direto do navegador |
+| `cru-tablet10/` | 1024×1820 | tablet 10", direto do navegador |
+| `google-play-phone/` | 1080×1920 | Play → Phone screenshots |
+| `google-play-tablet-7/` | 1080×1920 | Play → **7-inch tablet** (exigido) |
+| `google-play-tablet-10/` | 1440×2560 | Play → **10-inch tablet** (exigido) |
+| `app-store-6.7/` | 1290×2796 | App Store, iPhone 6.7" (15/16 Pro Max) |
+| `app-store-ipad-12.9/` | 2048×2732 | App Store, iPad Pro 12,9" |
+
+Os tablets foram capturados **já em 9:16**, para o conteúdo preencher o quadro
+em vez de ser completado com borda. A primeira tentativa foi em 4:3 e ficou com
+metade da imagem vazia — refeita.
+
+**Tudo em inglês**, que é a língua primária do produto. Não há versão em
+português: se a ficha for ter uma, são outras dez por tamanho.
 
 As tratadas são escaladas pela largura e **completadas** em cima e embaixo com a
 cor do próprio topo da tela. Sem esticar: interface esticada numa vitrine parece
@@ -67,9 +79,16 @@ cd mobile && EXPO_PUBLIC_API_URL=http://127.0.0.1:4020 npx expo start --web --po
 ```
 Entrar com `maria.final.email@example.com` / `MockUp2026!` (**só no banco local**).
 
-## O que ainda falta para a ficha
+## Uma coisa honesta sobre os tablets
 
-- **Tablet de 7" e de 10"** — o Play marca as duas como exigidas. Mesmo método,
-  outro viewport; faço quando você disser.
-- As capturas mostram a interface em **inglês**. Se a ficha for ter português,
-  são outras doze.
+**O app não tem layout de tablet.** Numa tela grande ele mantém a coluna do
+telefone centralizada, e sobra espaço embaixo nas telas curtas. As capturas
+mostram isso porque é o que existe — não dá para consertar numa vitrine.
+
+Quem resolveria é um layout próprio para tela grande: duas colunas, ou cartões
+lado a lado. É trabalho de produto, não de captura. Fica registrado como
+decisão sua: publicar assim, ou fazer o layout antes.
+
+As telas mais longas — marcar consulta, exercícios, documentos — preenchem bem.
+As curtas — quem tem acesso, notificações — é que mostram o vazio. Se for
+publicar assim, escolha as longas para a vitrine.
