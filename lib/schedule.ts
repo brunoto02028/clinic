@@ -242,7 +242,7 @@ export async function slotsForDate(
         { status: "PENDING", createdAt: { gte: limiteDeEspera } },
       ],
     },
-    select: { dateTime: true, duration: true },
+    select: { dateTime: true, duration: true, travelMinutes: true },
   });
 
   /**
@@ -260,9 +260,20 @@ export async function slotsForDate(
    */
   const ocupacao = (inicio: number, fim: number) =>
     marcadas.filter((a) => {
+      /**
+       * A viagem ocupa tanto quanto o atendimento (109 T-3).
+       *
+       * Num domicílio a duas horas de distância, as duas horas de ida e as duas
+       * de volta são tempo em que ninguém mais pode ser atendido. Sem contá-las,
+       * a agenda oferece um horário em que o terapeuta está na estrada.
+       *
+       * Some ao intervalo normal, em vez de substituí-lo: chegar em casa e
+       * atender o próximo no mesmo minuto é o mesmo problema de sempre.
+       */
+      const viagem = Math.max(0, a.travelMinutes ?? 0);
       // Minutos no fuso da clínica, como a rota antiga já fazia.
-      const aInicio = getZonedMinutesOfDay(a.dateTime, opts.timeZone) - intervalo;
-      const aFim = aInicio + intervalo + (a.duration || 60) + intervalo;
+      const aInicio = getZonedMinutesOfDay(a.dateTime, opts.timeZone) - intervalo - viagem;
+      const aFim = aInicio + viagem + intervalo + (a.duration || 60) + intervalo + viagem;
       return inicio < aFim && aInicio < fim;
     }).length;
 
@@ -272,14 +283,22 @@ export async function slotsForDate(
     if (opts.kind && j.kind !== opts.kind) continue;
 
     const passo = j.slotMinutes > 0 ? j.slotMinutes : 60;
-    for (let t = minutos(j.startTime); t + passo <= minutos(j.endTime); t += passo) {
+    /**
+     * A consulta tem de **caber na janela**, e não só começar dentro dela.
+     *
+     * O limite usava o passo da grade: numa janela que fecha às 13:00, com
+     * casas de 15 minutos, as 12:45 eram oferecidas para uma avaliação de duas
+     * horas que iria até as 14:45. Começar dentro do expediente não é o mesmo
+     * que caber nele — e quem descobre a diferença é quem fica esperando.
+     */
+    const precisaDe = Math.max(passo, opts.duracaoMin ?? 0);
+    for (let t = minutos(j.startTime); t + precisaDe <= minutos(j.endTime); t += passo) {
       // Horário que já começou não é oferta, é armadilha.
       if (opts.nowMinutes != null && t <= opts.nowMinutes) continue;
 
       // O candidato ocupa a duração pedida, e não a casa da grade: marcar 90
       // minutos numa grade de 60 precisa dos 90 livres.
-      const duracaoDoCandidato = Math.max(passo, opts.duracaoMin ?? 0);
-      const taken = ocupacao(t, t + duracaoDoCandidato);
+      const taken = ocupacao(t, t + precisaDe);
       const spacesLeft = j.capacity - taken;
       if (spacesLeft <= 0) continue;
 

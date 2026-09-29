@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
       courtesySession, waiveCharge, overrideReason,
       /** Marcar fora da grade de propósito — encaixe, combinado por telefone. */
       forceTime: forcarHorario,
+      /** Minutos de viagem de cada lado, no domicílio (109 T-3). */
+      travelMinutes: minutosDeViagem,
     } = body;
     /**
      * O e-mail sai quando alguem pede — **inclusive no pagamento online**.
@@ -261,6 +263,16 @@ export async function POST(request: NextRequest) {
         dateTime: new Date(dateTime),
         duration: duration || 60,
         treatmentType: treatmentType || SEM_TIPO_DEFINIDO,
+        /**
+         * A viagem só existe para quem viaja (109 T-3).
+         *
+         * Guardar minutos de deslocamento numa consulta na clínica bloquearia a
+         * agenda em volta de uma pessoa que não saiu do lugar.
+         */
+        travelMinutes:
+          mode === "HOME_VISIT" && Number(minutosDeViagem) > 0
+            ? Math.round(Number(minutosDeViagem))
+            : null,
         notes: notes || null,
         price: precoFinal,
         mode: mode || "IN_PERSON",

@@ -39,9 +39,10 @@ const janela = (over: any = {}) => ({
   ...over,
 });
 
-const consultaAs = (hora: string, duracao = 60) => ({
+const consultaAs = (hora: string, duracao = 60, viagem: number | null = null) => ({
   dateTime: zonedTimeToUtc(DIA, hora),
   duration: duracao,
+  travelMinutes: viagem,
 });
 
 const horarios = async (opts: any = {}) =>
@@ -133,6 +134,115 @@ describe("a duração pedida entra na conta", () => {
   it("e a de 60 continua cabendo no mesmo lugar", async () => {
     db.appointment.findMany.mockResolvedValue([consultaAs("12:00")]);
     expect(await horarios({ duracaoMin: 60 })).toContain("11:00");
+  });
+});
+
+describe("a consulta tem de caber na janela, não só começar nela", () => {
+  it("**uma avaliação de duas horas não é oferecida às 12:00**", async () => {
+    // A janela fecha às 13:00. Começar dentro do expediente não é o mesmo que
+    // caber nele — e quem descobre a diferença é quem fica esperando.
+    expect(await horarios({ duracaoMin: 120 })).toEqual(["09:00", "10:00", "11:00"]);
+  });
+
+  it("numa grade de 15 minutos, a de duas horas para às 11:00", async () => {
+    db.scheduleWindow.findMany.mockResolvedValue([janela({ slotMinutes: 15 })]);
+    const livres = await horarios({ duracaoMin: 120 });
+    expect(livres[livres.length - 1]).toBe("11:00");
+    expect(livres).not.toContain("12:45");
+  });
+
+  it("e a de 30 minutos continua chegando até as 12:30", async () => {
+    db.scheduleWindow.findMany.mockResolvedValue([janela({ slotMinutes: 15 })]);
+    const livres = await horarios({ duracaoMin: 30 });
+    expect(livres[livres.length - 1]).toBe("12:30");
+  });
+});
+
+describe("a grade que o Bruno vai usar", () => {
+  /**
+   * Casas de 15 minutos, intervalo de 10, avaliação de 120 e retorno de 30.
+   *
+   * O Bruno: *"eu não consigo fazer uma avaliação boa com menos de uma hora,
+   * uma hora e meia. Normalmente vou deixar sempre uma boa avaliação duas horas
+   * de slot. O retorno pode ser 30 minutos. O intervalo entre os pacientes, aí
+   * a gente pode seguir esse padrão normal."*
+   *
+   * A grade de 15 existe por causa do intervalo: com casas de 30, um retorno
+   * das 10:00 acabaria às 10:30 e a próxima vaga real seria 10:40 — que não
+   * existiria para ser oferecida.
+   */
+  beforeEach(() => {
+    db.scheduleWindow.findMany.mockResolvedValue([janela({ slotMinutes: 15 })]);
+    db.clinic.findUnique.mockResolvedValue({ bufferMinutes: 10 });
+  });
+
+  it("**o retorno das 10:00 libera as 10:45, e não as 10:30**", async () => {
+    db.appointment.findMany.mockResolvedValue([consultaAs("10:00", 30)]);
+    const livres = await horarios({ duracaoMin: 30 });
+    expect(livres).not.toContain("10:30");
+    expect(livres).toContain("10:45");
+    // E do outro lado: 09:30–10:00 encostaria sem folga.
+    expect(livres).not.toContain("09:30");
+    expect(livres).toContain("09:15");
+  });
+
+  it("a avaliação de duas horas das 09:00 libera as 11:15", async () => {
+    db.appointment.findMany.mockResolvedValue([consultaAs("09:00", 120)]);
+    const livres = await horarios({ duracaoMin: 30 });
+    expect(livres).not.toContain("11:00");
+    expect(livres).toContain("11:15");
+  });
+});
+
+describe("o domicílio ocupa a ida e a volta", () => {
+  /**
+   * O Bruno: *"como ela é longe que vou no home visit, levo 2h pra ir e 2h pra
+   * voltar… pelo menos os slots não podem estar disponíveis naquele dia por
+   * conta da ida e da volta."*
+   *
+   * Sem contar a viagem, a agenda oferecia horário com o terapeuta na estrada.
+   */
+  it("**duas horas de cada lado fecham o dia em volta da visita**", async () => {
+    db.scheduleWindow.findMany.mockResolvedValue([
+      janela({ startTime: "08:00", endTime: "20:00" }),
+    ]);
+    // Visita de uma hora às 13:00, com 120 minutos de viagem: ocupa 11:00–16:00.
+    db.appointment.findMany.mockResolvedValue([consultaAs("13:00", 60, 120)]);
+    const livres = await horarios();
+    expect(livres).toContain("10:00");
+    expect(livres).not.toContain("11:00");
+    expect(livres).not.toContain("15:00");
+    expect(livres).toContain("16:00");
+  });
+
+  it("sem viagem, a mesma consulta ocupa só a própria hora", async () => {
+    db.scheduleWindow.findMany.mockResolvedValue([
+      janela({ startTime: "08:00", endTime: "20:00" }),
+    ]);
+    db.appointment.findMany.mockResolvedValue([consultaAs("13:00", 60, null)]);
+    const livres = await horarios();
+    expect(livres).toContain("12:00");
+    expect(livres).not.toContain("13:00");
+    expect(livres).toContain("14:00");
+  });
+
+  it("a viagem **soma** ao intervalo, em vez de substituí-lo", async () => {
+    // Chegar em casa e atender o próximo no mesmo minuto é o mesmo problema de
+    // sempre, só que depois de quatro horas de estrada.
+    db.clinic.findUnique.mockResolvedValue({ bufferMinutes: 30 });
+    db.scheduleWindow.findMany.mockResolvedValue([
+      janela({ startTime: "08:00", endTime: "20:00" }),
+    ]);
+    db.appointment.findMany.mockResolvedValue([consultaAs("13:00", 60, 120)]);
+    const livres = await horarios();
+    // 11:00 menos 30 de intervalo: as 10:00 (10:00–11:00) encostam em 10:30.
+    expect(livres).not.toContain("10:00");
+    expect(livres).toContain("09:00");
+  });
+
+  it("viagem negativa é tratada como zero", async () => {
+    db.appointment.findMany.mockResolvedValue([consultaAs("10:00", 60, -60)]);
+    expect(await horarios()).toEqual(["09:00", "11:00", "12:00"]);
   });
 });
 

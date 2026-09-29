@@ -64,7 +64,7 @@ diferentes. Nenhum dado de distância entra na conta hoje.
 |---|---|---|
 | T-1 | [O intervalo entre um e outro](t-1-o-intervalo.md) | implementada — aguardando QA |
 | T-2 | [Cada formato tem a sua geometria](t-2-geometria-por-formato.md) | pendente |
-| T-3 | [O domicílio ocupa a ida e a volta](t-3-o-domicilio-ocupa-a-viagem.md) | pendente — espera o Bruno |
+| T-3 | [O domicílio ocupa a ida e a volta](t-3-o-domicilio-ocupa-a-viagem.md) | implementada — aguardando QA |
 | T-4 | [A agenda mostra o intervalo](t-4-a-agenda-mostra-o-intervalo.md) | pendente |
 
 **T-1 primeiro, e sozinha resolve a dor principal.** A T-2 refina; a T-3

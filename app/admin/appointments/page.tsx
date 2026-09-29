@@ -482,6 +482,7 @@ export default function AdminAppointmentsPage() {
           notes: createForm.notes || null,
           // Sem isto o seletor de formato desenhava e nao chegava ao servidor.
           mode: createForm.mode,
+          travelMinutes: createForm.mode === "HOME_VISIT" ? Number(viagem) || 0 : 0,
           paymentMode: createForm.paymentMode,
           courtesySession: createForm.courtesySession || undefined,
           waiveCharge: createForm.waiveCharge || undefined,
@@ -1088,6 +1089,46 @@ export default function AdminAppointmentsPage() {
    * botão — a consulta ficava confirmada sem nada nos livros.
    */
   const [pagandoManual, setPagandoManual] = useState<string | null>(null);
+
+  /**
+   * O tempo de viagem do domicílio (109 T-3).
+   *
+   * `sugestao` guarda de onde veio o número, para a tela poder dizer que é
+   * estimativa — e para quem marca saber que pode discordar dela.
+   */
+  const [viagem, setViagem] = useState<string>("");
+  const [sugestaoDeViagem, setSugestaoDeViagem] = useState<
+    { minutes: number | null; reason: string | null; patientPostcode: string | null } | null
+  >(null);
+
+  /**
+   * Busca a sugestão quando o domicílio entra em cena.
+   *
+   * Só então: perguntar o trajeto de quem vai ser atendido na clínica é uma
+   * viagem ao serviço externo para nada.
+   */
+  useEffect(() => {
+    if (createForm.mode !== "HOME_VISIT" || !createForm.patientId) {
+      setSugestaoDeViagem(null);
+      return;
+    }
+    let vivo = true;
+    fetch(`/api/admin/travel-estimate?patientId=${encodeURIComponent(createForm.patientId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo || !d) return;
+        setSugestaoDeViagem(d);
+        // Só preenche o que está vazio: um número escrito à mão não é
+        // sobrescrito por uma estimativa.
+        if (d.minutes && !viagem) setViagem(String(d.minutes));
+      })
+      .catch(() => vivo && setSugestaoDeViagem({ minutes: null, reason: "lookup_failed", patientPostcode: null }));
+    return () => {
+      vivo = false;
+    };
+    // `viagem` de propósito fora: incluí-la refaria a busca a cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createForm.mode, createForm.patientId]);
 
   const [horariosDoDia, setHorariosDoDia] = useState<string[] | null>(null);
   const [buscandoHorarios, setBuscandoHorarios] = useState(false);
@@ -2076,6 +2117,41 @@ export default function AdminAppointmentsPage() {
                 </button>
               </div>
             </div>
+            {/* O tempo de viagem, só no domicílio (109 T-3).
+
+                O Bruno: *"como ela é longe que vou no home visit, levo 2h pra
+                ir e 2h pra voltar… pelo menos os slots não podem estar
+                disponíveis naquele dia."* A agenda bloqueia esse tempo antes e
+                depois, e sem ele oferecia horário com o terapeuta na estrada. */}
+            {createForm.mode === "HOME_VISIT" && (
+              <div className="space-y-2">
+                <Label>{isPt ? "Deslocamento (min, de cada lado)" : "Travel (min, each way)"}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={viagem}
+                  placeholder={isPt ? "ex.: 120" : "e.g. 120"}
+                  onChange={(e) => setViagem(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {sugestaoDeViagem?.minutes
+                    ? relabel(isPt
+                        ? `Sugestão: ${sugestaoDeViagem.minutes} min por ${sugestaoDeViagem.patientPostcode}. É uma estimativa por distância — ajuste se souber melhor.`
+                        : `Suggested: ${sugestaoDeViagem.minutes} min from ${sugestaoDeViagem.patientPostcode}. It is a distance estimate — change it if you know better.`)
+                    : sugestaoDeViagem?.reason === "patient_postcode_missing"
+                      ? relabel(isPt
+                          ? "Sem postcode no cadastro do paciente, não dá para estimar. Escreva o tempo que você leva."
+                          : "No postcode on the patient's record, so no estimate. Type how long it takes you.")
+                      : sugestaoDeViagem?.reason === "clinic_postcode_missing"
+                        ? relabel(isPt
+                            ? "A clínica está sem postcode — preencha nos ajustes e a estimativa passa a funcionar."
+                            : "The clinic has no postcode — fill it in settings and the estimate starts working.")
+                        : relabel(isPt
+                            ? "A agenda bloqueia este tempo antes e depois da consulta."
+                            : "The diary blocks this time before and after the appointment.")}
+                </p>
+              </div>
+            )}
             {/* Modo de pagamento — só quando há o que pagar (106 T-3).
                 Oferecer "na clínica ou online" numa consulta de preço zero é a
                 mesma espécie de mentira que a T-1 tirou do cabeçalho: promete
