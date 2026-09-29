@@ -54,7 +54,7 @@ coisa, e está nas perguntas abaixo.
 | T-3 | [Tipo e pagamento, sem camisa de força](t-3-tipo-e-pagamento.md) | 🟢 concluída (29/09) — aguardando QA |
 | T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | 🟢 concluída (29/09) — aguardando QA |
 | T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | 🟢 concluída (29/09) — aguardando QA |
-| T-6 | [A clínica marca como pago](t-6-a-clinica-marca-como-pago.md) | **bloqueada** — espera o Bruno |
+| T-6 | [A clínica marca como pago](t-6-a-clinica-marca-como-pago.md) | 🟢 concluída (29/09) — aguardando QA |
 
 ## Decisões de design
 
