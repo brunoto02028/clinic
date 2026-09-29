@@ -1,6 +1,6 @@
 # T-1: Quem entrou na sala fica registrado
 
-**Status:** pendente
+**Status:** implementada — aguardando QA
 **Depende de:** nenhuma
 
 ## Objetivo

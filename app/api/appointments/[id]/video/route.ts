@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getRequestSession } from "@/lib/dual-auth";
 import { porContaDeNoBearer } from "@/lib/sessao-emprestada";
 import { isProfissionalExterno } from "@/lib/tenant-type";
+import { registrarEntrada } from "@/lib/chamada-aconteceu";
 import {
   VideoCallError,
   criarSalaDaConsulta,
@@ -266,6 +267,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         data: { videoRoomId: sala.name, videoRoomUrl: sala.url },
       });
     }
+
+    /**
+     * A entrada fica registrada (103 T-1).
+     *
+     * **Aqui**, e não antes: o token já foi emitido, a janela já passou, a sala
+     * já existe. Quem chega a este ponto abriu a sala de fato — e recusa não é
+     * presença.
+     *
+     * Sem `await`: um registro que falha não pode atrasar nem derrubar uma
+     * consulta. Perder a linha custa a fila perguntar em vez de sugerir;
+     * derrubar a chamada custa a consulta.
+     */
+    void registrarEntrada({
+      appointmentId: consulta.id,
+      userId: quemPede,
+      clinicId: consulta.clinicId!,
+      ehTerapeuta,
+    });
 
     return NextResponse.json({
       url: sala.url,

@@ -63,7 +63,7 @@ não pode vir simplesmente não vem — e vira falta que ninguém entende.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [Quem entrou na sala fica registrado](t-1-quem-entrou-na-sala.md) | pendente |
+| T-1 | [Quem entrou na sala fica registrado](t-1-quem-entrou-na-sala.md) | implementada — aguardando QA |
 | T-2 | [A fila do que venceu, no painel](t-2-a-fila-do-que-venceu.md) | pendente |
 | T-3 | [O app não diz "Confirmada" para o que passou](t-3-o-app-nao-mente.md) | pendente |
 | T-4 | [O paciente desmarca pelo app](t-4-o-paciente-desmarca.md) | pendente |
