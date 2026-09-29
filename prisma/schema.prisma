@@ -3104,6 +3104,17 @@ model EducationAssignment {
   isCompleted Boolean   @default(false)
   completedAt DateTime?
 
+  /// O telefone da pessoa tocou por causa deste material, neste dia.
+  ///
+  /// Nulo = atribuido e **nao avisado**: o material esta no app dela e ninguem
+  /// lhe disse. Preencher e um ato separado de atribuir, por um botao que
+  /// alguem aperta — a atribuicao nunca toca o telefone sozinha.
+  ///
+  /// E o que torna avisar idempotente: um segundo clique no mesmo material nao
+  /// faz o telefone tocar de novo. Telefone tocando duas vezes pelo mesmo
+  /// material faz a pessoa procurar o segundo.
+  notifiedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

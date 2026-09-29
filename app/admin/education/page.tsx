@@ -8,6 +8,7 @@ import {
   PenSquare, CheckCircle, Clock, Star, BarChart3,
   ClipboardCheck,
 } from "lucide-react";
+import { AvisarMaterial } from "@/components/admin/avisar-material";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
@@ -282,6 +283,17 @@ export default function EducationPage() {
                               <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" />{item._count.assignments}</span>
                             </div>
                             <div className="flex gap-1">
+                              {/* Avisar quem foi atribuído — e só quem ainda
+                                  não foi avisado. Fica ao lado de publicar
+                                  porque é a pergunta seguinte: o material está
+                                  no app dela, e alguém lhe disse?
+
+                                  Atribuir nunca toca o telefone sozinho; este
+                                  botão é o segundo ato, e abre a prévia antes
+                                  de oferecer o disparo. */}
+                              {item._count.assignments > 0 && (
+                                <AvisarMaterial contentId={item.id} contentTitle={item.title} />
+                              )}
                               {/* Trocar entre restrito e biblioteca, de um
                                   clique — a diferença que a 096 T-3 criou só
                                   serve se for fácil de usar. */}

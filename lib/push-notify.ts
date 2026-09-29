@@ -172,3 +172,27 @@ export function pushLembreteDeAtividades(patientId: string) {
     "/(app)/(clinica)/(tabs)/exercises"
   );
 }
+
+/**
+ * A clínica mandou material educativo — **pelo botão, por uma pessoa**.
+ *
+ * Atribuir não toca o telefone. Avisar é um segundo ato, com prévia de quem vai
+ * receber, exatamente como o lembrete de atividades: a regra da casa desde
+ * 17/09/2026 é que nada sai para paciente sozinho.
+ *
+ * ## O texto não diz qual material é
+ *
+ * "Novo material sobre incontinência urinária" na tela bloqueada é o tratamento
+ * de alguém à vista de quem estiver por perto — no ônibus, na mesa do almoço. O
+ * título fica dentro do app, atrás da senha do telefone.
+ */
+export function pushMaterialNovo(patientId: string) {
+  return avisar(
+    patientId,
+    {
+      en: { title: "Your clinic", body: "There is new material for you to read." },
+      pt: { title: "Sua clínica", body: "Há material novo para você ler." },
+    },
+    "/(app)/(clinica)/education"
+  );
+}
