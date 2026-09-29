@@ -4,7 +4,7 @@ import { logAudit } from "@/lib/system-logger";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, pediramEnviarAoPaciente } from "@/lib/notify-patient";
 import { sendEmail } from "@/lib/email";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { isPersonalTenant } from "@/lib/tenant-type";
@@ -96,7 +96,16 @@ export async function POST(request: NextRequest) {
      * A consulta nao depende dele para chegar: ela aparece no aplicativo do
      * paciente assim que existe.
      */
-    const emailPatientNow = sendConfirmation !== false;
+    /**
+     * Quem não pediu, não recebe (106 T-1).
+     *
+     * Estava `!== false`: o campo **ausente** mandava e-mail. A tela sempre
+     * envia o campo, então ela estava salva — mas qualquer outro chamador
+     * (script, versão antiga do app, uma segunda tela) alcançava o paciente
+     * sem ninguém ter decidido isso. A regra da casa é o contrário: nada sai
+     * para paciente sem alguém pedir.
+     */
+    const emailPatientNow = pediramEnviarAoPaciente(sendConfirmation);
 
     if (!patientId || !dateTime) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });

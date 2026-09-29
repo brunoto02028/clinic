@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { ler, lerCodigo } from "../helpers/codigo";
+import { pediramEnviarAoPaciente } from "../../lib/notify-patient";
 import {
   estadoDoPagamento,
   podePagarAgora,
@@ -106,8 +107,14 @@ describe("uma porta de pagamento de cada vez", () => {
   });
 
   it("o e-mail deixou de ser obrigatório, e volta a ter prévia", () => {
-    expect(rotaAdmin).toMatch(/const emailPatientNow = sendConfirmation !== false/);
+    // O pagamento online forçava a confirmação porque o e-mail era o único
+    // veículo do link da Stripe. Sem link, ele voltou a ser opcional.
     expect(rotaAdmin).not.toMatch(/paymentMode === "online" \|\| sendConfirmation/);
+    // Quem decide é o pedido explícito, e o silêncio é não — o comportamento
+    // está medido em `__tests__/agenda/o-texto-nao-mente.test.ts` (106 T-1).
+    // Aqui basta que a rota pergunte, em vez de decidir sozinha.
+    expect(rotaAdmin).toContain("pediramEnviarAoPaciente(");
+    expect(pediramEnviarAoPaciente(undefined)).toBe(false);
   });
 });
 

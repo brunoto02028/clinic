@@ -1,4 +1,23 @@
-import type { useTheme } from "@/theme/useTheme";
+/**
+ * Só as cores que este módulo usa, e não o tema inteiro.
+ *
+ * O tipo vinha de `useTheme`, e com ele vinha a árvore inteira do tema — loja
+ * de estado, contexto, o `@/` do aplicativo. Para escolher entre oito cores
+ * isso é caro: qualquer teste que quisesse medir o **rótulo** tinha de montar
+ * o tema de verdade. O tema real continua servindo aqui; ele tem estas cores.
+ */
+export interface CoresDoStatus {
+  colors: {
+    warnSoft: string;
+    warn: string;
+    okSoft: string;
+    ok: string;
+    surfaceMuted: string;
+    textMuted: string;
+    badSoft: string;
+    bad: string;
+  };
+}
 import { t as tr, type Lang } from "./i18n";
 
 /**
@@ -18,6 +37,40 @@ import { t as tr, type Lang } from "./i18n";
  * "Concluído" on an otherwise English screen — the one place the language of a
  * whole list was decided by a shared helper rather than by the screen.
  */
+/**
+ * A folga depois do fim, igual à do servidor (`lib/video-call.ts`).
+ *
+ * Está repetida porque o aplicativo não importa do `lib/` da web, e não é
+ * inventável: um número diferente aqui faria o app chamar de vencida uma
+ * consulta que o painel ainda considera em curso. Um teste compara os dois.
+ */
+export const FOLGA_DEPOIS_MIN = 30;
+
+/**
+ * Os status que ainda esperam desfecho — os mesmos que a fila do painel busca
+ * (`app/api/admin/appointments/pending-outcome/route.ts`).
+ */
+export const STATUS_ABERTOS = ["PENDING", "PENDING_PATIENT", "CONFIRMED"] as const;
+
+/**
+ * A consulta passou e ninguém fechou.
+ *
+ * Vence no **fim da janela**, não no horário: horário + duração + a folga. Antes
+ * disso ela ainda pode estar acontecendo.
+ */
+export function venceuSemDesfecho(
+  status: string | null | undefined,
+  dateTime: string | Date | null | undefined,
+  duracaoMin: number | null | undefined,
+  agora: number = Date.now()
+): boolean {
+  if (!status || !STATUS_ABERTOS.includes(status as (typeof STATUS_ABERTOS)[number])) return false;
+  const inicio = dateTime ? new Date(dateTime).getTime() : NaN;
+  if (!Number.isFinite(inicio)) return false;
+  const duracao = Number.isFinite(duracaoMin as number) && (duracaoMin as number) > 0 ? (duracaoMin as number) : 60;
+  return agora > inicio + (duracao + FOLGA_DEPOIS_MIN) * 60_000;
+}
+
 export interface StatusStyle {
   bg: string;
   text: string;
@@ -26,7 +79,7 @@ export interface StatusStyle {
 }
 
 export function getStatusStyles(
-  t: ReturnType<typeof useTheme>,
+  t: CoresDoStatus,
   lang: Lang = "en"
 ): Record<string, StatusStyle> {
   return {
@@ -39,13 +92,37 @@ export function getStatusStyles(
   };
 }
 
-/** Falls back to PENDING — the honest answer for a status we do not know is
- *  "not confirmed", never "booked". */
+/**
+ * Falls back to PENDING — the honest answer for a status we do not know is
+ * "not confirmed", never "booked".
+ *
+ * ## O que passou e ninguém fechou (103 T-3)
+ *
+ * Ninguém fecha o que vence, então `CONFIRMED` sobrevive à consulta e o app
+ * repetia fielmente: *"Confirmada"*, sobre uma consulta de três dias atrás.
+ *
+ * O app **não** decide que faltou — ninguém decidiu, e chamar de falta o que
+ * pode ter sido remarcado por telefone seria pior que o erro anterior. O estado
+ * honesto é um terceiro: *aguardando a clínica*. Tom neutro de propósito: nem
+ * verde de confirmado, nem vermelho de falta.
+ *
+ * `quando` é opcional para que nenhuma chamada antiga quebre; quem passar a
+ * consulta ganha o rótulo certo.
+ */
 export function statusStyle(
-  t: ReturnType<typeof useTheme>,
+  t: CoresDoStatus,
   status: string | null | undefined,
-  lang: Lang = "en"
+  lang: Lang = "en",
+  quando?: { dateTime?: string | Date | null; duration?: number | null; agora?: number }
 ): StatusStyle {
   const map = getStatusStyles(t, lang);
+  if (quando && venceuSemDesfecho(status, quando.dateTime, quando.duration, quando.agora)) {
+    return {
+      bg: t.colors.surfaceMuted,
+      text: t.colors.textMuted,
+      label: tr(lang, { en: "Awaiting the clinic", pt: "Aguardando a clínica" }),
+      icon: "hourglass-outline",
+    };
+  }
   return map[status ?? ""] ?? map.PENDING;
 }

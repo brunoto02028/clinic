@@ -64,8 +64,23 @@ import {
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
-import { zonedTimeToUtc, getZonedDateTimeLocalString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { zonedTimeToUtc, getZonedDateTimeLocalString, getZonedMinutesOfDay, getZonedDateString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { disporDia, dentroDaGrade } from "@/lib/agenda-layout";
 import { TREATMENT_OPTIONS } from "@/lib/types";
+
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
+
+// A escala da agenda: uma hora de relógio são estes pixels de tela. É daqui que
+// sai a altura de cada consulta, e por isso é uma constante só — duração e linha
+// da grade têm de medir com a mesma régua.
+const ALTURA_HORA = 56;
+// O piso de legibilidade: abaixo disto o nome do paciente não cabe.
+const ALTURA_MINIMA = 20;
+// Onde a grade termina, em pixels desde a meia-noite. Uma consulta que passe
+// daqui é desenhada até a borda e não além dela.
+const FIM_DA_GRADE_PX = (HOURS[HOURS.length - 1] + 1) * ALTURA_HORA;
+const PRIMEIRA_HORA = HOURS[0];
+const ULTIMA_HORA = HOURS[HOURS.length - 1];
 
 interface DbTreatmentType {
   id: string; name: string; namePt: string | null;
@@ -791,17 +806,73 @@ export default function AdminAppointmentsPage() {
     });
   }, [calendarWeekStart]);
 
-  const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
-
+  /**
+   * O dia de uma consulta é o dia **da clínica**.
+   *
+   * A coluna usava `toDateString()`, que é o relógio do navegador, enquanto a
+   * linha da hora e o rótulo dentro do bloco usam o fuso da clínica. Num
+   * navegador em outro fuso as três coisas discordavam entre si — e a chave
+   * aqui passa a ser a mesma que o contador de vagas já usava.
+   */
   const apptsByDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
     appointments.forEach((a) => {
-      const key = new Date(a.dateTime).toDateString();
+      const key = getZonedDateString(new Date(a.dateTime));
       if (!map[key]) map[key] = [];
       map[key].push(a);
     });
     return map;
   }, [appointments]);
+
+  /** A chave de um dia da grade, no mesmo formato de `apptsByDay`. */
+  const chaveDoDia = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  /**
+   * O minuto de cada consulta no fuso da clínica, calculado **uma vez**.
+   *
+   * `getZonedMinutesOfDay` constrói um `Intl.DateTimeFormat` novo a cada
+   * chamada. Isto estava no corpo do componente, dentro do filtro de cada
+   * célula: 7 dias × 12 horas × consultas do dia — umas 840 construções por
+   * render, 37ms medidos. Como os diálogos de criar e editar renderizam na
+   * mesma árvore, cada tecla digitada pagava o pedágio.
+   */
+  const minutoDaConsulta = useMemo(() => {
+    const mapa: Record<string, number> = {};
+    appointments.forEach((a) => {
+      mapa[a.id] = getZonedMinutesOfDay(new Date(a.dateTime));
+    });
+    return mapa;
+  }, [appointments]);
+
+  /**
+   * Onde cada consulta fica desenhada. Calculado por dia inteiro, e não por
+   * linha de hora, porque uma consulta de 90 minutos às 10:00 invade as 11:00 —
+   * quem decide se duas ficam lado a lado é o relógio, não a linha da grade.
+   *
+   * **Só entra quem é desenhado.** A grade mostra 08:00–19:00; uma consulta das
+   * 07:00 não aparece, mas continuava ocupando coluna — e a das 08:00 ao lado
+   * desenhava em meia largura, com a outra metade vazia e nada explicando por
+   * quê. Quem não aparece não disputa espaço. O sumiço em si é a T-4 da 106, e
+   * é do Bruno decidir a faixa.
+   */
+  const lugaresPorDia = useMemo(() => {
+    const mapa: Record<string, ReturnType<typeof disporDia>> = {};
+    for (const [dia, lista] of Object.entries(apptsByDay)) {
+      const naGrade = lista.filter((a) =>
+        dentroDaGrade(minutoDaConsulta[a.id], PRIMEIRA_HORA, ULTIMA_HORA)
+      );
+      mapa[dia] = disporDia(
+        naGrade.map((a) => ({
+          id: a.id,
+          inicioMin: minutoDaConsulta[a.id],
+          duracaoMin: a.duration || 60,
+        })),
+        { alturaHoraPx: ALTURA_HORA, alturaMinimaPx: ALTURA_MINIMA, fimDaGradePx: FIM_DA_GRADE_PX }
+      );
+    }
+    return mapa;
+  }, [apptsByDay, minutoDaConsulta]);
 
   const STATUS_CAL: Record<string, string> = {
     CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
@@ -982,39 +1053,74 @@ export default function AdminAppointmentsPage() {
 
               {/* Time rows */}
               {HOURS.map((hour) => (
-                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: 56 }}>
+                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: ALTURA_HORA }}>
                   <div className="p-1.5 text-[10px] text-muted-foreground text-right pr-2 border-r pt-1">
                     {hour.toString().padStart(2, "0")}:00
                   </div>
                   {calendarDays.map((day, di) => {
                     const blocked = isDayBlocked(day);
-                    const dayAppts = (apptsByDay[day.toDateString()] || []).filter((a) => {
-                      const h = new Date(a.dateTime).getHours();
-                      return h === hour;
-                    });
+                    const chave = chaveDoDia(day);
+                    const lugares = lugaresPorDia[chave];
+                    // A hora vem do fuso da clínica, o mesmo que aparece escrito
+                    // dentro do bloco — antes a linha usava o relógio do
+                    // navegador e podia discordar do próprio rótulo. O minuto
+                    // já está calculado; aqui é só consulta ao mapa.
+                    const dayAppts = (apptsByDay[chave] || []).filter(
+                      (a) => Math.floor((minutoDaConsulta[a.id] ?? -1) / 60) === hour
+                    );
                     return (
-                      <div key={di} className={`border-l p-0.5 space-y-0.5 relative ${blocked ? "bg-red-500/5" : ""}`}>
+                      <div key={di} className={`border-l relative ${blocked ? "bg-red-500/5" : ""}`}>
                         {blocked && hour === 8 && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
                             <BanIcon className="h-5 w-5 text-red-500" />
                           </div>
                         )}
-                        {dayAppts.map((a) => (
-                          <button
-                            key={a.id}
-                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
-                            className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
-                          >
-                            <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
-                            <p className="truncate opacity-80">{a.treatmentType}</p>
-                            <p className="opacity-60 flex items-center gap-1">
-                              {new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
-                              {/* No mês inteiro não cabe texto, e saber que a
-                                  consulta é remota muda o dia de quem organiza. */}
-                              {a.mode === "VIDEO" && <Video className="h-2.5 w-2.5" />}
-                            </p>
-                          </button>
-                        ))}
+                        {/* O bloco ocupa o tempo real (106 T-2).
+                            Antes tinha altura fixa: uma consulta de 60 minutos
+                            e uma de 30 desenhavam igual, e o horário seguinte
+                            **parecia livre** quando não estava. Numa agenda
+                            isso não é estética — é a informação principal. */}
+                        {dayAppts.map((a) => {
+                          const lugar = lugares?.get(a.id);
+                          if (!lugar) return null;
+                          const inicio = new Date(a.dateTime);
+                          // O topo é medido desde a meia-noite; aqui descontamos
+                          // a linha em que o bloco nasce.
+                          const topo = lugar.topoPx - hour * ALTURA_HORA;
+                          const largura = 100 / lugar.colunas;
+                          // Num bloco curto só cabe o nome. Espremer três linhas
+                          // em 20px não mostra três coisas — esconde as três.
+                          const curto = lugar.alturaPx < 34;
+                          return (
+                            <button
+                              key={a.id}
+                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
+                              title={`${a.patient.firstName} ${a.patient.lastName} · ${a.treatmentType} · ${a.duration || 60} min`}
+                              style={{
+                                position: "absolute",
+                                top: topo,
+                                height: lugar.alturaPx,
+                                left: `calc(${lugar.coluna * largura}% + 2px)`,
+                                width: `calc(${largura}% - 4px)`,
+                                zIndex: 10 + lugar.coluna,
+                              }}
+                              className={`overflow-hidden text-left text-[9px] leading-tight px-1 py-0.5 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
+                            >
+                              <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
+                              {!curto && (
+                                <>
+                                  <p className="truncate opacity-80">{a.treatmentType}</p>
+                                  <p className="opacity-60 flex items-center gap-1">
+                                    {inicio.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
+                                    {/* Saber que a consulta é remota muda o dia
+                                        de quem organiza. */}
+                                    {a.mode === "VIDEO" && <Video className="h-2.5 w-2.5" />}
+                                  </p>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -1528,7 +1634,13 @@ export default function AdminAppointmentsPage() {
               {relabel(isPt ? "Nova Consulta" : "New Appointment")}
             </DialogTitle>
             <DialogDescription>
-              {relabel(isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically.")}
+              {/* A frase dizia que o e-mail saía **automaticamente**, e a caixa
+                  logo abaixo — desmarcada por padrão — dizia o contrário. O
+                  comportamento sempre foi o certo; a frase é que mentia, e foi
+                  ela que fez o Bruno pedir uma funcionalidade que já existia
+                  (29/09/2026). Texto de interface é código: um defeito alguém
+                  mede, uma frase todo mundo acredita. */}
+              {relabel(isPt ? "Agende uma consulta para um paciente. Nada é enviado a ele até você decidir." : "Schedule an appointment for a patient. Nothing is sent to them until you decide.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
@@ -1715,9 +1827,9 @@ export default function AdminAppointmentsPage() {
                 onChange={(e) => setCreateForm(f => ({ ...f, sendConfirmation: e.target.checked }))}
               />
               <span>
-                <span className="font-medium">{isPt ? "Enviar e-mail de confirmação agora (sem prévia)" : "Send the confirmation email now (no preview)"}</span>
+                <span className="font-medium">{isPt ? "Enviar o e-mail de confirmação agora, sem prévia" : "Send the confirmation email now, without a preview"}</span>
                 <span className="block text-muted-foreground">
-                  {isPt ? "Deixe desmarcado para escrever e ver a prévia depois, em \"Confirmar por email\"." : "Leave unchecked to write and preview it afterwards with \"Email confirmation\"."}
+                  {isPt ? "Desmarcado — o padrão — a consulta é criada e nada sai. Você escreve e vê a prévia depois, em \"Confirmar por email\"." : "Unchecked — the default — the appointment is created and nothing goes out. You write it and see the preview afterwards, under \"Email confirmation\"."}
                 </span>
               </span>
             </label>

@@ -49,9 +49,11 @@ coisa, e está nas perguntas abaixo.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [O texto que mente sobre o próprio sistema](t-1-o-texto-que-mente.md) | pendente |
-| T-2 | [A duração ocupa o horário](t-2-a-duracao-ocupa-o-horario.md) | pendente |
+| T-1 | [O texto que mente sobre o próprio sistema](t-1-o-texto-que-mente.md) | 🟢 concluída (29/09) |
+| T-2 | [A duração ocupa o horário](t-2-a-duracao-ocupa-o-horario.md) | 🟢 concluída (29/09) |
 | T-3 | [Tipo e pagamento, sem camisa de força](t-3-tipo-e-pagamento.md) | **bloqueada** — espera o Bruno |
+| T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | **bloqueada** — achado do QA, espera o Bruno |
+| T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | **bloqueada** — achado do QA, espera o Bruno |
 
 ## Decisões de design
 
@@ -66,6 +68,50 @@ quando acontecer, passa pela prévia com o logo — como todo envio da casa.
 Um calendário que não mostra a duração não é um calendário: é uma lista com
 colunas. O bloco ocupa o tempo real, e o que está ocupado **parece** ocupado.
 
+## O que o QA encontrou, 29/09/2026
+
+Os relatórios estão em `qa/report-t-1.md` e `qa/report-t-2.md`, medidos na porta
+4010 deste worktree, com paciente de teste `Qa106 PacienteTeste` numa clínica
+isolada. Os dois aprovaram. Seis achados saíram junto:
+
+| # | achado | o que foi feito |
+|---|---|---|
+| 1 | consulta às 07:00 é invisível na grade | virou a **T-4** |
+| 2 | bloco das 19:30 vazava 28px para fora da moldura | **corrigido** — defeito que a T-2 introduziu |
+| 3 | três sobrepostas cortam o nome | aceito: o `title` cobre, e três ao mesmo tempo é raro |
+| 4 | dia pelo relógio do navegador, hora pelo da clínica | **corrigido** — a chave do dia passou a ser a da clínica |
+| 5 | marcar a caixa manda **dois** e-mails | virou a **T-5** |
+| 6 | `NEXTAUTH_URL` aponta para `:3000` no ambiente local | ambiente, não código |
+
+A prova do 1.2 foi feita como eu pedi: medindo primeiro que o log **fala**
+quando o e-mail sai, e só então tratando o silêncio como prova. O QA ainda
+sabotou o `pediramEnviarAoPaciente` de volta para `!== false` e confirmou que
+oito testes reprovam — a trava tem quem a segure.
+
+## O que o code review encontrou, 29/09/2026
+
+| # | achado | o que foi feito |
+|---|---|---|
+| 4 | consulta invisível fora da faixa **roubava coluna** de quem aparece | **corrigido** — efeito colateral novo da T-2; `dentroDaGrade()` filtra antes de dispor |
+| 5 | a tela de videoconsulta deixou de avisar o paciente, em silêncio | **corrigido no aviso** — o admin passa a ler que ninguém foi notificado e para onde ir |
+| 6 | ~840 `Intl.DateTimeFormat` por render, 37 ms medidos | **corrigido** — o minuto de cada consulta é calculado uma vez, em `useMemo` |
+| 8 | asserções que congelavam a grafia do código | **corrigidas** — passaram a medir comportamento |
+
+O achado 5 é consequência direta da T-1 e ela não o tinha registrado. A direção
+continua certa: nada sai sem alguém pedir. O que faltava era a tela dizer isso.
+
+## O que o code review encontrou, 29/09/2026
+
+| # | achado | o que foi feito |
+|---|---|---|
+| 4 | consulta invisível fora da faixa **roubava coluna** de quem aparece | **corrigido** — efeito colateral novo da T-2; `dentroDaGrade()` filtra antes de dispor |
+| 5 | a tela de videoconsulta deixou de avisar o paciente, em silêncio | **corrigido no aviso** — o admin passa a ler que ninguém foi notificado e para onde ir |
+| 6 | ~840 `Intl.DateTimeFormat` por render, 37 ms medidos | **corrigido** — o minuto de cada consulta é calculado uma vez, em `useMemo` |
+| 8 | asserções que congelavam a grafia do código | **corrigidas** — passaram a medir comportamento |
+
+O achado 5 é consequência direta da T-1 e ela não o tinha registrado. A direção
+continua certa: nada sai sem alguém pedir. O que faltava era a tela dizer isso.
+
 ## Perguntas para o Bruno
 
 1. **"Só tem tratamento condicionado e pago"** — o que falta? As possibilidades
@@ -73,4 +119,5 @@ colunas. O bloco ocupa o tempo real, e o que está ocupado **parece** ocupado.
    (b) marcar sem tipo nenhum; (c) mudar preço e duração naquele agendamento,
    sem mexer no cadastro; (d) outra coisa que eu não vi.
 2. **Bloquear o horário** é só desenhar o bloco ocupando os minutos, ou é também
-   **impedir** que outra consulta seja marcada em cima?
+   **impedir** que outra consulta seja marcada em cima? A T-2 entregou o
+   desenho; impedir é outra tarefa, e não foi feita por conta própria.

@@ -1,7 +1,10 @@
 import { API_URL } from "./config";
 import { AuthError, refreshRequest } from "./auth";
-import { tokenStorage } from "@/lib/secure-storage";
-import { tokenEmprestado, renovarEmprestimo } from "@/lib/emprestimo";
+// Relativo pelo mesmo motivo do `i18n`: o `@/` significa coisas diferentes
+// no aplicativo e na web, e o transformador o resolve antes de qualquer
+// configuração de teste ver.
+import { tokenStorage } from "../lib/secure-storage";
+import { tokenEmprestado, renovarEmprestimo } from "../lib/emprestimo";
 import type { AuthUser } from "./types";
 
 /**
