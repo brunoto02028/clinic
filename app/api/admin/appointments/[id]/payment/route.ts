@@ -98,6 +98,19 @@ export async function POST(
     note: nota,
     recordedById: actor.userId,
     recordedAt: agora,
+    /**
+     * O vestígio da Stripe sai junto (achado do QA).
+     *
+     * O `upsert` fechava uma cobrança pendente de cartão como `TRANSFER` e
+     * **mantinha o `stripeSessionId`**. Se aquela sessão fosse concluída
+     * depois, o webhook encontraria uma linha já `SUCCEEDED` e teria de decidir
+     * sozinho o que fazer com um pagamento em duplicidade.
+     *
+     * Quem recebeu por transferência não tem sessão de cartão. Limpar é dizer a
+     * verdade sobre a linha.
+     */
+    stripeSessionId: null,
+    stripePaymentId: null,
   };
 
   const [pagamento, consultaAtualizada] = await prisma.$transaction([

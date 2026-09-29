@@ -28,8 +28,14 @@ describe("o painel manda um só", () => {
   it("existe a ação, ao lado da pasta", () => {
     expect(aba).toContain("const prescreverUm = async ()");
     expect(aba).toMatch(/Add one/);
-    // A pasta continua: quem manda um programa inteiro continua mandando.
-    expect(aba).toMatch(/Add folder/);
+    /**
+     * A pasta continua: quem manda um programa inteiro continua mandando.
+     *
+     * Medido pelo que o painel **faz** — mandar `folderId` — e não pelo rótulo
+     * do botão. A asserção antiga procurava "Add folder"; o rótulo virou
+     * "Prescribe N" e o teste reprovou sem que nada tivesse piorado.
+     */
+    expect(aba).toMatch(/folderId: chosenFolder\.id/);
   });
 
   it("e ela manda uma lista de um, que a API já entende", () => {

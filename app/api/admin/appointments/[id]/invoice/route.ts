@@ -39,7 +39,7 @@ async function buildInvoiceForAppointment(
     where: { id: appointmentId },
     include: {
       patient: { select: { id: true, firstName: true, lastName: true, email: true } },
-      payment: { select: { status: true, amount: true, updatedAt: true, stripePaymentId: true } },
+      payment: { select: { status: true, amount: true, updatedAt: true, stripePaymentId: true, channel: true } },
     },
   });
   if (!appointment) return null;
@@ -74,9 +74,17 @@ async function buildInvoiceForAppointment(
     // payment, so without this check an admin correcting the price after
     // the fact could produce an invoice marked "paid" for more (or less)
     // than what was really charged. Caught in code review.
+    // O canal viaja junto (achado do QA da 106 T-6): sem ele a fatura e o
+    // livro afirmavam cartão para um dinheiro que entrou por transferência —
+    // com o identificador da Stripe nulo ao lado, provando a contradição.
     stripePayment:
       !overrideAmount && !extraItems?.length && appointment.payment?.status === "SUCCEEDED" && appointment.payment.amount === amount
-        ? { amount: appointment.payment.amount, paidAt: appointment.payment.updatedAt, stripePaymentIntentId: appointment.payment.stripePaymentId }
+        ? {
+            amount: appointment.payment.amount,
+            paidAt: appointment.payment.updatedAt,
+            channel: (appointment.payment as any).channel ?? "STRIPE",
+            stripePaymentIntentId: appointment.payment.stripePaymentId,
+          }
         : null,
   };
 }
@@ -168,7 +176,7 @@ export async function POST(
     items: result.items,
     appointmentId: params.id,
     createdById: actor?.userId || null,
-    alreadyPaidViaStripe: result.stripePayment,
+    alreadyPaid: result.stripePayment,
   });
 
   const invoice: InvoiceData = {
