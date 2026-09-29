@@ -1,6 +1,6 @@
 # T-2: A fila do que venceu, no painel
 
-**Status:** pendente
+**Status:** implementada — aguardando QA
 **Depende de:** T-1
 
 ## Objetivo

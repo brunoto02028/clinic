@@ -52,7 +52,28 @@ comprando. Primeira consulta é a porta de entrada — avaliação, e por isso p
 antes. Retorno é continuidade. Quem já tem pacote não paga nada, e isso precisa
 estar dito, não deduzido de um cartão cinza.
 
-### 4. O profissional manda na própria área
+### 4. A reabilitação é uma coisa; os outros profissionais, outra
+
+**Confirmado pelo Bruno em 29/09/2026**, e não é detalhe de tela — é o eixo da
+atividade:
+
+> *"O profissional da área de reabilitação é uma coisa, que é a clínica de
+> reabilitação, que só eu sou o responsável. Quando tiver outros profissionais
+> cadastrados, como médicos, nutricionistas, psicólogos, aí sim o paciente vai
+> escolher fazer uma consulta com aquele profissional."*
+
+Na **reabilitação** não há quem escolher: a casa é o profissional. Oferecer uma
+lista de um nome seria inventar uma decisão que não existe, e ainda sugerir que
+existe outra opção.
+
+Nas **outras modalidades**, escolher **é** o ato — é para isso que o catálogo,
+a agenda por profissional e o repasse da 102 foram construídos.
+
+Consequência prática, e vale para as duas pontas: **reabilitação é um caminho,
+modalidade é outro.** No app, o primeiro passo separa os dois. No sistema da
+clínica, a mesma separação já existe pelo tipo de inquilino.
+
+### 5. O profissional manda na própria área
 
 Um médico com área no sistema precisa de duas coisas para atender pelo app:
 **o preço dele** e **a agenda dele**. As duas já existem no modelo; falta a tela
@@ -78,9 +99,8 @@ dele e falta o app ler dali.
    existem dão conta.
 2. **Quem detém o paciente continua sendo a reabilitação.** Escolher um médico
    não muda a casa dele; muda quem atende aquela consulta.
-3. **O paciente não escolhe profissional para a primeira consulta da
-   reabilitação** — ela é com a casa. Escolher profissional é para as
-   modalidades.
+3. ~~O paciente não escolhe profissional para a reabilitação~~ — **confirmado
+   pelo Bruno em 29/09/2026**, e promovido a decisão de design (acima).
 4. **A exceção de preço por paciente** (`PatientServicePrice`) continua valendo,
    e vale sobre o preço do profissional também.
 5. **Sem Stripe, o profissional não aparece** — e isso não muda nesta atividade.

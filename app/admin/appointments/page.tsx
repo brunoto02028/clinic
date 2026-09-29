@@ -123,6 +123,38 @@ export default function AdminAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  /**
+   * A fila do que venceu (103 T-2).
+   *
+   * Vem da rota própria, e não da lista já carregada: ela traz a **prova** da
+   * chamada de vídeo, que é o que separa perguntar de sugerir. E porque a lista
+   * da tela é paginada e filtrada — uma consulta de três semanas atrás pode
+   * simplesmente não estar nela.
+   */
+  const [pendencias, setPendencias] = useState<any[]>([]);
+  const [verPendencias, setVerPendencias] = useState(false);
+
+  const carregarPendencias = async () => {
+    try {
+      const res = await fetch("/api/admin/appointments/pending-outcome");
+      if (!res.ok) return;
+      const d = await res.json();
+      setPendencias(Array.isArray(d.appointments) ? d.appointments : []);
+    } catch {
+      /* a fila é complemento: falhar aqui não pode derrubar a agenda */
+    }
+  };
+
+  useEffect(() => {
+    carregarPendencias();
+  }, []);
+
+  /** Resolver tira da fila na hora — e não espera um recarregamento. */
+  const resolverPendencia = async (id: string, status: string) => {
+    await updateStatus(id, status);
+    setPendencias((prev) => prev.filter((p) => p.id !== id));
+  };
   /**
    * Ver só as consultas por vídeo (095 T-2).
    *
@@ -1035,6 +1067,21 @@ export default function AdminAppointmentsPage() {
               </span>
             </Button>
           )}
+          {/* O que venceu e ninguém fechou. Fica junto dos filtros porque é
+              uma pergunta sobre a mesma lista — "o que ficou em aberto?" — e
+              não uma tela à parte que ninguém abre. */}
+          {pendencias.length > 0 && (
+            <Button
+              variant={verPendencias ? "default" : "outline"}
+              size="sm"
+              onClick={() => setVerPendencias((v) => !v)}
+              className="gap-1.5"
+            >
+              <AlertCircle className="h-3.5 w-3.5" />
+              {isPt ? "Sem desfecho" : "Needs an outcome"}
+              <span className="ml-1 text-xs opacity-70">({pendencias.length})</span>
+            </Button>
+          )}
           {Object.entries(statusCounts).map(([status, count]) => (
             <Button
               key={status}
@@ -1049,8 +1096,79 @@ export default function AdminAppointmentsPage() {
         </div>
       </div>
 
-      {/* Appointments List */}
-      {loading ? (
+      {/* A fila do que venceu. Substitui a lista enquanto está ligada: são duas
+          perguntas diferentes, e misturá-las faria a fila sumir na rolagem. */}
+      {verPendencias ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {isPt
+              ? "Estas consultas já passaram e continuam em aberto. Nada muda sozinho — o desfecho é seu."
+              : "These consultations have passed and are still open. Nothing changes on its own — the outcome is yours."}
+          </p>
+          {pendencias.map((p) => (
+            <Card key={p.id}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">
+                    {p.patient?.firstName} {p.patient?.lastName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(p.dateTime).toLocaleString()} · {p.duration} min ·{" "}
+                    {p.mode === "VIDEO"
+                      ? isPt ? "vídeo" : "video"
+                      : p.mode === "HOME_VISIT"
+                        ? isPt ? "domicílio" : "home visit"
+                        : isPt ? "na clínica" : "at the clinic"}
+                  </span>
+                </div>
+
+                {/* A prova, só onde ela existe. Presencial e domicílio ninguém
+                    sabe pelo sistema, e inventar uma frase seria pior que o
+                    silêncio. */}
+                {p.chamada && (
+                  <p
+                    className={`text-xs ${p.chamada.culpaDaClinica ? "text-amber-500" : "text-muted-foreground"}`}
+                  >
+                    {isPt ? p.chamada.pt : p.chamada.en}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button size="sm" onClick={() => resolverPendencia(p.id, "COMPLETED")}>
+                    {isPt ? "Aconteceu" : "It happened"}
+                  </Button>
+                  {/* Quando só o paciente entrou, marcar falta **dele** seria
+                      injusto: ele apareceu e a clínica não. O botão não fica
+                      cinza — ele não existe. */}
+                  {!p.chamada?.culpaDaClinica && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => resolverPendencia(p.id, "NO_SHOW")}
+                    >
+                      {isPt ? "Paciente faltou" : "Patient did not attend"}
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => resolverPendencia(p.id, "CANCELLED")}
+                  >
+                    {isPt ? "Cancelar" : "Cancel it"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {pendencias.length === 0 && (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                {isPt ? "Nada em aberto. " : "Nothing left open. "}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : loading ? (
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse">
