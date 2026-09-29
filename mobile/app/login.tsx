@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, KeyboardAvoidingView, Platform, Pressable } from "react-native";
+import { View, KeyboardAvoidingView, Platform, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -79,7 +79,24 @@ export default function Login() {
             });
           }
         } catch {
-          // Fica para a próxima: a pessoa entrou, que era o que ela queria.
+          /**
+           * A entrada continua valendo — mas o silêncio, não.
+           *
+           * Isto engolia a falha com um "fica para a próxima". A pessoa tinha
+           * acabado de ler *"entre com a sua senha uma vez e a gente liga"*,
+           * entrava, e saía acreditando que ligou. Da próxima o Google pedia a
+           * senha de novo, sem explicação nenhuma.
+           *
+           * Um aviso que não bloqueia: ela entrou, que era o que queria, e fica
+           * sabendo onde terminar o serviço.
+           */
+          Alert.alert(
+            tr(lang, { en: "You are in", pt: "Você entrou" }),
+            tr(lang, {
+              en: "We could not connect your account this time. You can do it under Profile → Connected accounts.",
+              pt: "Não foi possível conectar sua conta desta vez. Você pode fazer isso em Perfil → Contas conectadas.",
+            })
+          );
         }
         setPendente(null);
       }
@@ -157,8 +174,11 @@ export default function Login() {
                 pt: "Já existe uma conta com esse e-mail, e ela ainda não tem senha. Use 'Esqueceu sua senha?' para definir uma.",
               })
             : tr(lang, {
-                en: "There is already an account with this email. Sign in with your password once, and we will connect it for next time.",
-                pt: "Já existe uma conta com esse e-mail. Entre com a sua senha uma vez e a gente liga para as próximas.",
+                // O segundo caminho existe porque o primeiro depende de os dois
+                // passos acontecerem na mesma visita à tela. Quem sair no meio
+                // — e o Bruno saiu — fica sem saber que há outro.
+                en: "There is already an account with this email. Sign in with your password once and we will connect it — or connect it any time under Profile → Connected accounts.",
+                pt: "Já existe uma conta com esse e-mail. Entre com a sua senha uma vez e a gente liga — ou ligue quando quiser em Perfil → Contas conectadas.",
               })
         );
         return;

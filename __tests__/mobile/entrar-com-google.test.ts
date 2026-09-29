@@ -78,6 +78,28 @@ describe("a conta que já existe", () => {
     expect(login).toMatch(/ligarGoogle\(pendente\.idToken\)/);
   });
 
+  it("**o vínculo que falha deixou de falhar em silêncio**", () => {
+    /**
+     * Estava engolido com um "fica para a próxima". A pessoa lia *"entre com a
+     * senha uma vez e a gente liga"*, entrava, e saía acreditando que tinha
+     * ligado — e da próxima o Google pedia a senha de novo, sem explicação.
+     *
+     * O aviso não bloqueia: ela entrou, que era o que queria.
+     */
+    const depoisDoLigar = login.slice(login.indexOf("ligarGoogle(pendente.idToken)"));
+    const ateOFimDoCatch = depoisDoLigar.slice(0, depoisDoLigar.indexOf("setPendente(null)"));
+    expect(ateOFimDoCatch).toMatch(/Alert\.alert/);
+    expect(ateOFimDoCatch).toMatch(/Connected accounts/);
+  });
+
+  it("**a mensagem de conta existente aponta os dois caminhos**", () => {
+    // O primeiro depende de os dois passos acontecerem na mesma visita à tela.
+    // Quem sair no meio fica sem saber que há outro.
+    expect(login).toMatch(/Sign in with your password once and we will connect it/);
+    expect(login).toMatch(/Profile → Connected accounts/);
+    expect(login).toMatch(/Perfil → Contas conectadas/);
+  });
+
   it("conta da clínica é recusada nas duas, dizendo o que fazer", () => {
     for (const tela of [login, cadastro]) {
       expect(tela).toMatch(/The BPR app is for patients/);
