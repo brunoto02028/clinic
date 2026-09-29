@@ -151,14 +151,28 @@ export function estadoDoPedido(c: ConsultaComPedido | null | undefined): EstadoD
 export function pedidoAceitavel(
   pedido: unknown,
   tratamento: TratamentoParaFormato | null | undefined,
-  paciente: EnderecoDoPaciente | null | undefined
+  paciente: EnderecoDoPaciente | null | undefined,
+  /**
+   * As permissões da clínica — **e sem elas esta função mentia**.
+   *
+   * `formatosPermitidos` recebe três argumentos; aqui só dois chegavam, e o
+   * terceiro é justamente quem responde quando não há tipo de tratamento — o
+   * caminho normal desta clínica. A tela oferecia vídeo porque perguntava com
+   * a clínica na mão; o servidor recusava porque perguntava sem ela.
+   *
+   * Uma regra só, avaliada com entradas diferentes nas duas pontas, é pior que
+   * duas regras: parece consistente e não é. O Bruno encontrou pelo lado que
+   * dói — escolheu "By video", confirmou, e leu *"That format is not available
+   * for this treatment"* sobre um formato que a própria tela tinha oferecido.
+   */
+  clinica?: ClinicaParaFormato | null
 ): { ok: true; formato: Formato | null } | { ok: false; erro: string } {
   if (pedido === undefined || pedido === null || pedido === "") {
     return { ok: true, formato: null };
   }
   if (typeof pedido !== "string") return { ok: false, erro: "Invalid appointment format" };
 
-  const permitidos = formatosPermitidos(tratamento, paciente);
+  const permitidos = formatosPermitidos(tratamento, paciente, clinica);
   if (!permitidos.includes(pedido as Formato)) {
     return { ok: false, erro: "That format is not available for this treatment" };
   }

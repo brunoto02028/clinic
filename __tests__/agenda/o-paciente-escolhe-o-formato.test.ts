@@ -189,7 +189,13 @@ describe("a rota de marcar", () => {
   });
 
   it("e o pedido é conferido contra o tratamento, aqui também", () => {
-    expect(marcar).toMatch(/pedidoAceitavel\(body\.requestedMode, tratamentoEscolhido, enderecoDoPaciente\)/);
+    // Medido pelo que a rota **consulta**, e não pela lista de argumentos: a
+    // assertiva antiga congelava a chamada em três parâmetros e reprovou quando
+    // a clínica virou o quarto — que era justamente a correcão (29/09/2026).
+    expect(marcar).toContain("pedidoAceitavel(");
+    expect(marcar).toMatch(/body\.requestedMode/);
+    expect(marcar).toMatch(/tratamentoEscolhido/);
+    expect(marcar).toMatch(/enderecoDoPaciente/);
   });
 
   it("só o paciente pede — a clínica marca o formato direto", () => {

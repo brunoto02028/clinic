@@ -600,6 +600,21 @@ ${tr(lang, {
           loading={mutation.isPending}
           size="lg"
         />
+        {/* **Por que o botão está parado** (29/09/2026).
+
+            Duas vezes hoje o Bruno relatou "o botão não tem ação nenhuma": a
+            primeira era defeito de verdade; a segunda era só faltar escolher o
+            horário. Um botão desabilitado sem motivo visível é indistinguível de
+            um botão quebrado — e quem olha conclui a pior das duas. */}
+        {!mutation.isPending && ((temTipos && !type) || !selectedDate || !selectedTime) && (
+          <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
+            {temTipos && !type
+              ? tr(lang, { en: "Choose the appointment type above.", pt: "Escolha o tipo de consulta acima." })
+              : !selectedDate
+                ? tr(lang, { en: "Choose a date.", pt: "Escolha uma data." })
+                : tr(lang, { en: "Choose a time.", pt: "Escolha um horário." })}
+          </Text>
+        )}
       </View>
     </Screen>
   );
