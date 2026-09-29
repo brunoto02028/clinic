@@ -68,7 +68,9 @@ import { zonedTimeToUtc, getZonedDateTimeLocalString, getZonedMinutesOfDay, getZ
 import { disporDia, dentroDaGrade } from "@/lib/agenda-layout";
 import { TREATMENT_OPTIONS } from "@/lib/types";
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
+/** A faixa que a agenda mostra num dia normal. */
+const PRIMEIRA_HORA_PADRAO = 8;
+const ULTIMA_HORA_PADRAO = 19;
 
 // A escala da agenda: uma hora de relógio são estes pixels de tela. É daqui que
 // sai a altura de cada consulta, e por isso é uma constante só — duração e linha
@@ -85,11 +87,6 @@ const ALTURA_MINIMA = 20;
  * é traduzido para `treatmentType: ""` na hora de guardar.
  */
 const SEM_TIPO = "__sem_tipo__";
-// Onde a grade termina, em pixels desde a meia-noite. Uma consulta que passe
-// daqui é desenhada até a borda e não além dela.
-const FIM_DA_GRADE_PX = (HOURS[HOURS.length - 1] + 1) * ALTURA_HORA;
-const PRIMEIRA_HORA = HOURS[0];
-const ULTIMA_HORA = HOURS[HOURS.length - 1];
 
 interface DbTreatmentType {
   id: string; name: string; namePt: string | null;
@@ -833,9 +830,46 @@ export default function AdminAppointmentsPage() {
     return map;
   }, [appointments]);
 
+  /**
+   * Busca os horários sempre que a data ou a duração mudam.
+   *
+   * A duração entra porque uma consulta de 90 minutos não cabe em toda janela
+   * em que uma de 30 caberia — perguntar sem ela ofereceria horários que o
+   * servidor recusaria depois.
+   */
+  useEffect(() => {
+    const dia = createForm.appointmentDate;
+    if (!dia) {
+      setHorariosDoDia(null);
+      return;
+    }
+    let vivo = true;
+    setBuscandoHorarios(true);
+    fetch(`/api/availability?date=${dia}&duration=${Number(createForm.duration) || 60}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo) return;
+        const lista: string[] = Array.isArray(d?.slots) ? d.slots : [];
+        setHorariosDoDia(lista);
+        // A hora escolhida antes pode não existir no dia novo. Deixá-la ali
+        // seria marcar num horário que a tela já não oferece.
+        setCreateForm((f) =>
+          f.appointmentTime && !lista.includes(f.appointmentTime)
+            ? { ...f, appointmentTime: "" }
+            : f
+        );
+      })
+      .catch(() => vivo && setHorariosDoDia([]))
+      .finally(() => vivo && setBuscandoHorarios(false));
+    return () => {
+      vivo = false;
+    };
+  }, [createForm.appointmentDate, createForm.duration]);
+
   /** A chave de um dia da grade, no mesmo formato de `apptsByDay`. */
   const chaveDoDia = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 
   /**
    * O minuto de cada consulta no fuso da clínica, calculado **uma vez**.
@@ -853,6 +887,37 @@ export default function AdminAppointmentsPage() {
     });
     return mapa;
   }, [appointments]);
+
+  /**
+   * A faixa de horas que a grade desenha — **que cobre o que existe**.
+   *
+   * Era fixa em 08:00–19:00, e o QA marcou uma consulta às 07:00 que não
+   * apareceu em lugar nenhum. Não sumia com aviso: sumia. Uma agenda que
+   * esconde uma consulta é pior que uma que a desenha errada — o erro alguém vê.
+   *
+   * A partir da 106 T-4 o agendamento só oferece horário disponível, então no
+   * uso normal a faixa nem se mexe. Isto é a rede: se uma consulta existir fora
+   * dela — marcada por API, importada, ou porque a clínica abriu mais cedo —, a
+   * grade estica para caber, em vez de fingir que ela não está lá.
+   */
+  const HOURS = useMemo(() => {
+    let primeira = PRIMEIRA_HORA_PADRAO;
+    let ultima = ULTIMA_HORA_PADRAO;
+    for (const a of appointments) {
+      const min = minutoDaConsulta[a.id];
+      if (!Number.isFinite(min)) continue;
+      const inicio = Math.floor(min / 60);
+      // O fim também conta: uma consulta das 19:30 com uma hora ocupa as 20h.
+      const fim = Math.floor((min + (a.duration || 60) - 1) / 60);
+      if (inicio < primeira) primeira = Math.max(0, inicio);
+      if (fim > ultima) ultima = Math.min(23, fim);
+    }
+    return Array.from({ length: ultima - primeira + 1 }, (_, i) => i + primeira);
+  }, [appointments, minutoDaConsulta]);
+
+  const PRIMEIRA_HORA = HOURS[0];
+  const ULTIMA_HORA = HOURS[HOURS.length - 1];
+  const FIM_DA_GRADE_PX = (ULTIMA_HORA + 1) * ALTURA_HORA;
 
   /**
    * Onde cada consulta fica desenhada. Calculado por dia inteiro, e não por
@@ -910,6 +975,21 @@ export default function AdminAppointmentsPage() {
    * não estão.
    */
   const [vagasPorDia, setVagasPorDia] = useState<Record<string, number | null>>({});
+
+  /**
+   * Os horários que existem de verdade no dia escolhido (106 T-4).
+   *
+   * O Bruno: *"somente horários disponíveis podem ter agendamento."*
+   *
+   * O seletor de hora era uma lista **escrita à mão** — 08:00 a 17:30, de meia
+   * em meia hora — que não sabia nada da agenda da clínica. Oferecia horário
+   * fechado e escondia horário aberto, as duas coisas ao mesmo tempo.
+   *
+   * `null` enquanto não há data escolhida ou a resposta não chegou: a diferença
+   * entre "ainda não sei" e "não há vaga" muda o que a tela deve dizer.
+   */
+  const [horariosDoDia, setHorariosDoDia] = useState<string[] | null>(null);
+  const [buscandoHorarios, setBuscandoHorarios] = useState(false);
 
   useEffect(() => {
     const dias = calendarDays;
@@ -1736,17 +1816,39 @@ export default function AdminAppointmentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>{isPt ? "Hora *" : "Time *"}</Label>
-                <Select value={createForm.appointmentTime} onValueChange={v => setCreateForm(f => ({ ...f, appointmentTime: v }))}>
-                  <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar hora..." : "Select time..."} /></SelectTrigger>
+                <Select
+                  value={createForm.appointmentTime}
+                  disabled={!createForm.appointmentDate || buscandoHorarios || horariosDoDia?.length === 0}
+                  onValueChange={v => setCreateForm(f => ({ ...f, appointmentTime: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !createForm.appointmentDate
+                        ? (isPt ? "Escolha a data primeiro" : "Pick the date first")
+                        : buscandoHorarios
+                          ? (isPt ? "Vendo a agenda..." : "Checking the diary...")
+                          : horariosDoDia?.length === 0
+                            ? (isPt ? "Nenhum horário livre neste dia" : "No free time on this day")
+                            : (isPt ? "Selecionar hora..." : "Select time...")
+                    } />
+                  </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 20 }, (_, i) => {
-                      const h = Math.floor(i / 2) + 8;
-                      const m = i % 2 === 0 ? "00" : "30";
-                      const val = `${h.toString().padStart(2, "0")}:${m}`;
-                      return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                    })}
+                    {(horariosDoDia ?? []).map((val) => (
+                      <SelectItem key={val} value={val}>{val}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {/* Um dia fechado responde aqui, e não depois de marcar. A
+                    lista era escrita à mão e ignorava a agenda: oferecia
+                    horário fechado e escondia horário aberto, as duas ao mesmo
+                    tempo (106 T-4). */}
+                {createForm.appointmentDate && !buscandoHorarios && horariosDoDia?.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {relabel(isPt
+                      ? "A clínica não atende neste dia, ou a agenda já está cheia."
+                      : "The clinic is not open on this day, or the diary is already full.")}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

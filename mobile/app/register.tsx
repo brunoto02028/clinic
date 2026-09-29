@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, KeyboardAvoidingView, Platform, Pressable, Linking } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
+import {
+  appleDisponivel,
+  credencialDaApple,
+  googlePronto,
+  SocialCancelado,
+  tokenDoGoogle,
+} from "@/lib/social-signin";
 import { Screen, Text, Input, Button, Logo } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { AuthError } from "@/api/auth";
@@ -58,6 +66,84 @@ export default function Register() {
   // e muitas vezes sem nunca ter definido senha.
   const [alreadyExists, setAlreadyExists] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Criar conta com o Google ou com a Apple (107, pedido do Bruno em 29/09).
+   *
+   * A tela de login já oferecia os dois; **esta nunca ofereceu**. Quem chegava
+   * pelo caminho de cadastro só via e-mail e senha, e a pergunta do Bruno foi
+   * exatamente essa: *"não vi a opção no app de cadastro ou login com o
+   * gmail"*.
+   *
+   * Cada botão só aparece onde de fato funciona: a Apple pergunta ao aparelho,
+   * e o Google fica fora do Android enquanto o cliente OAuth de lá não existir.
+   * Um botão que promete um caminho inexistente é pior que a ausência dele.
+   */
+  const loginComGoogle = useAuth((s) => s.loginComGoogle);
+  const loginComApple = useAuth((s) => s.loginComApple);
+  const [temApple, setTemApple] = useState(false);
+  const [social, setSocial] = useState<null | "google" | "apple">(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void appleDisponivel().then((ok) => vivo && setTemApple(ok));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const criarComSocial = async (qual: "google" | "apple") => {
+    setError(null);
+    setSocial(qual);
+    try {
+      if (qual === "google") await loginComGoogle(await tokenDoGoogle());
+      else await loginComApple(await credencialDaApple());
+      router.replace("/(app)/module-select");
+    } catch (e) {
+      // Desistir não é erro: quem fecha a folha do Google não quer ler
+      // "não foi possível entrar".
+      if (e instanceof SocialCancelado) return;
+
+      if (e instanceof AuthError && e.status === 409 && e.data?.code === "account_exists") {
+        /**
+         * A conta já existe — e o vínculo mora na tela de login.
+         *
+         * Lá a pessoa entra com a senha uma vez e a ligação acontece sozinha,
+         * sem uma segunda viagem ao provedor. Repetir esse fluxo aqui seria uma
+         * segunda cópia de uma regra delicada; mandar para onde ele já está é
+         * honesto e não inventa caminho.
+         */
+        setError(
+          tr(lang, {
+            en: "There is already an account with this email. Go to sign-in and use your password once — we will connect it for next time.",
+            pt: "Já existe uma conta com esse e-mail. Vá para a entrada e use sua senha uma vez — a gente liga para as próximas.",
+          })
+        );
+        return;
+      }
+
+      if (e instanceof AuthError && e.status === 403) {
+        setError(
+          tr(lang, {
+            en: "The BPR app is for patients. This is a clinic account — please use bpr.clinic in your browser.",
+            pt: "O app da BPR é para pacientes. Esta é uma conta da clínica — use o bpr.clinic no navegador.",
+          })
+        );
+        return;
+      }
+
+      setError(
+        e instanceof AuthError
+          ? e.message
+          : tr(lang, {
+              en: "Unable to continue. Please try again.",
+              pt: "Não foi possível continuar. Tente de novo.",
+            })
+      );
+    } finally {
+      setSocial(null);
+    }
+  };
 
   const complete =
     firstName.trim() && lastName.trim() && email.trim() && password && confirm;
@@ -302,6 +388,51 @@ export default function Register() {
                 testID="register-submit"
               />
             </View>
+
+            {/* Os mesmos dois da tela de login, e pelo mesmo critério: cada um
+                só aparece onde de fato funciona. Esta tela nunca os teve — quem
+                chegava pelo cadastro só via e-mail e senha. */}
+            {temApple || googlePronto() ? (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+                  <Text variant="caption" color={t.colors.textMuted}>
+                    {tr(lang, { en: "or", pt: "ou" })}
+                  </Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+                </View>
+
+                {temApple ? (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                    buttonStyle={
+                      t.isDark
+                        ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                        : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                    }
+                    cornerRadius={t.radius.md}
+                    style={{ height: 50, opacity: social ? 0.6 : 1 }}
+                    testID="register-apple"
+                    onPress={() => {
+                      if (!social) void criarComSocial("apple");
+                    }}
+                  />
+                ) : null}
+
+                {googlePronto() ? (
+                  <Button
+                    title={tr(lang, { en: "Continue with Google", pt: "Continuar com o Google" })}
+                    variant="ghost"
+                    size="lg"
+                    loading={social === "google"}
+                    disabled={!!social}
+                    testID="register-google"
+                    icon={<Ionicons name="logo-google" size={17} color={t.colors.text} />}
+                    onPress={() => void criarComSocial("google")}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
           {/* What happens next, said plainly. The Terms are accepted on the

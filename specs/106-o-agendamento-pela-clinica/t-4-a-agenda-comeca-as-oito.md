@@ -1,6 +1,6 @@
 # T-4: A agenda começa às oito, e o que vier antes some
 
-**Status:** pendente — espera o Bruno decidir a faixa
+**Status:** 🟢 concluída (29/09) — aguardando QA
 **Depende de:** T-2 (feita)
 
 ## Objetivo
@@ -42,7 +42,40 @@ corrigido — quem não aparece não disputa espaço.
 
 O que continua em aberto, e é o que esta tarefa espera, é a faixa em si.
 
+## A resposta do Bruno, 29/09/2026
+
+> *"Pode corrigir... somente horários disponíveis podem ter agendamento."*
+
+A resposta é melhor que a pergunta. Eu tinha oferecido quatro formas de
+**mostrar** a consulta das 07:00; ele apontou que o problema é antes: **não
+devia dar para marcar ali.**
+
+## O que estava acontecendo
+
+O seletor de hora do diálogo era uma lista **escrita à mão** — 20 itens, de
+08:00 a 17:30, de meia em meia hora — que não sabia nada da agenda da clínica.
+Errava nos dois sentidos ao mesmo tempo: oferecia horário fechado e escondia
+horário aberto.
+
+## O que foi feito
+
+1. Os horários passam a vir de `GET /api/availability?date=&duration=`, que já
+   existia e já sabe da agenda configurada, das exceções e do que está ocupado.
+   A **duração** entra na pergunta: 90 minutos não cabem em toda janela onde 30
+   caberiam.
+2. Dia fechado ou cheio **diz isso**, em vez de mostrar uma lista vazia.
+3. Trocar a data limpa a hora escolhida, se ela não existir no dia novo.
+4. **A rede:** a faixa da grade deixou de ser fixa e estica para cobrir qualquer
+   consulta que exista fora dela — marcada por API, importada, ou porque a
+   clínica abriu mais cedo. O fim da consulta conta, não só o início.
+
+O 4 é rede, e não a correção: com o agendamento restrito à agenda real, no uso
+normal a faixa nem se mexe. Mas uma agenda que **esconde** uma consulta é pior
+que uma que a desenha errada — o erro alguém vê.
+
 ## Critérios de aceite
-- [ ] O Bruno escolheu a faixa.
-- [ ] Nenhuma consulta do dia fica sem representação na grade.
-- [ ] Teste com consulta antes e depois da faixa.
+- [x] O Bruno escolheu: restringir o agendamento, não esticar a faixa.
+- [x] Só horário disponível é oferecido, e a duração entra na conta.
+- [x] Dia fechado ou cheio diz o que é.
+- [x] Nenhuma consulta do dia fica sem representação na grade.
+- [ ] QA: marcar num dia fechado, num dia cheio, e conferir a grade esticada.

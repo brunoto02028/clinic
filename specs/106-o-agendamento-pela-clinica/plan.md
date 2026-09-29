@@ -52,7 +52,7 @@ coisa, e está nas perguntas abaixo.
 | T-1 | [O texto que mente sobre o próprio sistema](t-1-o-texto-que-mente.md) | 🟢 concluída (29/09) |
 | T-2 | [A duração ocupa o horário](t-2-a-duracao-ocupa-o-horario.md) | 🟢 concluída (29/09) |
 | T-3 | [Tipo e pagamento, sem camisa de força](t-3-tipo-e-pagamento.md) | 🟢 concluída (29/09) — aguardando QA |
-| T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | **bloqueada** — achado do QA, espera o Bruno |
+| T-4 | [A agenda começa às oito, e o que vier antes some](t-4-a-agenda-comeca-as-oito.md) | 🟢 concluída (29/09) — aguardando QA |
 | T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | 🟢 concluída (29/09) — aguardando QA |
 
 ## Decisões de design
