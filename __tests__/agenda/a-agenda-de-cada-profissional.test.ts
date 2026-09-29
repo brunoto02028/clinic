@@ -90,7 +90,11 @@ describe("o fuso é o de quem atende", () => {
      * antes — que é a única forma de mexer em código de marcação que está no ar.
      */
     expect(dia).toMatch(/timeZone\?: string;/);
-    expect(slots).toMatch(/timeZone\?: string \} = \{\}/);
+    // Medido pelo que importa — o campo é opcional e o objeto de opções tem
+    // padrão — e não pela ordem dos campos: a assertiva antiga congelava o
+    // fecho do objeto e reprovou quando `duracaoMin` entrou (109 T-1).
+    expect(slots).toMatch(/timeZone\?: string;/);
+    expect(slots).toMatch(/\} = \{\}/);
   });
 
   it("e ele chega a todos os lugares que convertem hora", () => {

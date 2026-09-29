@@ -1,6 +1,6 @@
 # T-1: O intervalo entre um e outro
 
-**Status:** pendente
+**Status:** implementada — aguardando QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -40,9 +40,35 @@ vira uma linha na lista do paciente.
 - `lib/availability-day.ts`
 - `__tests__/agenda/o-intervalo-entre-um-e-outro.test.ts`
 
+## O que apareceu ao implementar
+
+**O intervalo vale dos dois lados, e isso era meia tarefa a mais.** Eu tinha
+escrito "o intervalo vem depois da consulta". Mas se a marcada às 10:00 só
+empurra o que vem **depois**, então 09:00–10:00 continua sendo oferecido — e
+encosta nela sem folga nenhuma. É o mesmo paciente esperando, do outro lado do
+relógio.
+
+A conta é uma só: a marcada ocupa `intervalo + duração + intervalo`. Exigir
+`candidato.início >= marcada.fim + intervalo` **ou**
+`marcada.início >= candidato.fim + intervalo` é exatamente isso — e uma conta é
+melhor que duas regras que podem divergir.
+
+**A duração pedida não entrava na conta.** O candidato era medido pela casa da
+grade, então 11:00 parecia livre para uma consulta de 90 minutos que iria até
+12:30, em cima da das 12:00. Corrigido junto: era o mesmo defeito de fundo.
+
+**Numa grade de 60 minutos, um intervalo de 15 apaga os dois vizinhos.** Não
+existe casa de 10:15 para oferecer no lugar. É duro e é a verdade da grade —
+quem quiser recuperar meia hora usa `slotMinutes: 30`, não um intervalo menor.
+O teste diz isso em voz alta, porque é o tipo de consequência que se descobre
+com a agenda vazia.
+
 ## Critérios de aceite
-- [ ] Com intervalo 0, nenhuma agenda muda.
-- [ ] Com intervalo 15, uma consulta de 60 às 10:00 tira as 11:00 da oferta.
-- [ ] O último horário do dia não some por causa do intervalo.
-- [ ] Vale para o app e para o painel.
-- [ ] A clínica consegue atravessar de propósito, e isso fica registrado.
+- [x] Com intervalo 0, nenhuma agenda muda.
+- [x] Com intervalo 15, a consulta das 10:00 tira as 11:00 **e as 09:00**.
+- [x] O último horário do dia não some por causa do intervalo.
+- [x] A duração pedida entra na conta.
+- [x] Leitura da clínica que falha não derruba a agenda; negativo vira zero.
+- [x] Vale para o app e para o painel — os dois consultam a mesma função.
+- [x] A clínica atravessa de propósito pelo `forceTime` da 106 T-4.
+- [ ] QA com intervalo de verdade configurado.

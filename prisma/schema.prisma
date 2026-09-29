@@ -520,6 +520,23 @@ model Clinic {
   /// precisa saber o número: o servidor manda a **hora** em que abre.
   videoEarlyMinutes Int @default(10)
 
+  /**
+   * O tempo entre um paciente e o próximo, em minutos (109 T-1).
+   *
+   * O Bruno: *"eu preciso de um gap entre um horário e outro… para nunca
+   * marcar e deixar a paciente esperando."*
+   *
+   * A ocupação usava **exatamente** a duração da consulta, então uma de 60
+   * minutos às 10:00 liberava as 11:00 em ponto — sem um minuto para o
+   * paciente sair, a sala ser arrumada, a anotação ser feita, ou cinco minutos
+   * de atraso serem absorvidos.
+   *
+   * **Zero por padrão**, que é o comportamento de hoje: uma agenda que encolhe
+   * sozinha depois de um deploy é a espécie de surpresa que se descobre com o
+   * paciente na porta.
+   */
+  bufferMinutes Int @default(0)
+
   consultationAllowsVideo     Boolean @default(false)
   /// Domicílio depende também de o paciente ter endereço completo — isso é
   /// checado em `lib/appointment-format.ts`, não aqui.

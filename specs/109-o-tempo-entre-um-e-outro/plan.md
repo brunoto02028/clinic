@@ -62,7 +62,7 @@ diferentes. Nenhum dado de distância entra na conta hoje.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [O intervalo entre um e outro](t-1-o-intervalo.md) | pendente |
+| T-1 | [O intervalo entre um e outro](t-1-o-intervalo.md) | implementada — aguardando QA |
 | T-2 | [Cada formato tem a sua geometria](t-2-geometria-por-formato.md) | pendente |
 | T-3 | [O domicílio ocupa a ida e a volta](t-3-o-domicilio-ocupa-a-viagem.md) | pendente — espera o Bruno |
 | T-4 | [A agenda mostra o intervalo](t-4-a-agenda-mostra-o-intervalo.md) | pendente |
@@ -92,8 +92,10 @@ espécie de surpresa que se descobre com o paciente na porta.
 
 ## Suposições — para você validar
 
-1. O intervalo vem **depois** da consulta, não antes. Quem chega cedo espera;
-   quem sai atrasado não empurra o próximo.
+1. ~~O intervalo vem **depois** da consulta, não antes.~~ **Errado, e a T-1
+   corrigiu.** Se a marcada às 10:00 só empurra o que vem depois, 09:00–10:00
+   continua sendo oferecido e encosta nela sem folga — o mesmo paciente
+   esperando, do outro lado do relógio. O intervalo vale **dos dois lados**.
 2. Ele vale para consulta marcada pelo paciente **e** pela clínica. A marcação
    manual pode ignorá-lo de propósito, como o `forceTime` da 106 T-4.
 3. Ninguém é reagendado por causa disto: o intervalo vale para o que for

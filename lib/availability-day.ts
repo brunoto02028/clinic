@@ -84,6 +84,9 @@ export async function disponibilidadeDoDia(
     // ler o fuso do servidor, que em produção é UTC (QA de 25/09, N1).
     const slots = await slotsForDate(clinicId, therapistId, dateStr, {
       kind,
+      // A duração pedida entra na conta (109 T-1): marcar 90 minutos numa
+      // grade de 60 precisa dos 90 livres, e não só da casa onde começa.
+      duracaoMin: duration,
       timeZone: opts.timeZone,
       nowMinutes:
         dateStr === getZonedDateString(new Date(), opts.timeZone)

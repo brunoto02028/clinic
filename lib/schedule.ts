@@ -179,10 +179,47 @@ export async function slotsForDate(
    * medico no Brasil escreve "09:00" querendo dizer nove da manha **dele** — e
    * ler isso como nove de Londres poe a consulta quatro horas fora do lugar.
    */
-  opts: { kind?: WindowKind; nowMinutes?: number | null; timeZone?: string } = {}
+  opts: {
+    kind?: WindowKind;
+    nowMinutes?: number | null;
+    timeZone?: string;
+    /**
+     * Quantos minutos a consulta candidata vai durar (109 T-1).
+     *
+     * Entra na conta porque o intervalo tem de existir **dos dois lados**: uma
+     * consulta de 90 minutos às 10:00 precisa de folga antes das 11:30 tanto
+     * quanto a das 11:30 precisa de folga depois das 10:00.
+     */
+    duracaoMin?: number;
+    /**
+     * O intervalo, quando quem chama já o tem em mãos.
+     *
+     * A semana pede sete dias de uma vez, e ler a clínica sete vezes para o
+     * mesmo número é desperdício. Omitir continua correto — a leitura acontece
+     * aqui dentro —, porque o modo silencioso de errar seria o chamador
+     * esquecer e o intervalo sumir sem ninguém notar.
+     */
+    bufferMinutes?: number;
+  } = {}
 ): Promise<Slot[]> {
   const janelas = await windowsForDate(clinicId, therapistId, dateStr);
   if (janelas.length === 0) return [];
+
+  /**
+   * O intervalo entre um paciente e o próximo.
+   *
+   * Vem da clínica, e zero mantém tudo como era. Uma consulta que falha ao ler
+   * isto não pode derrubar a agenda: sem o valor, nenhum intervalo.
+   */
+  const doChamador = opts.bufferMinutes;
+  const clinica =
+    doChamador == null
+      ? await prisma.clinic.findUnique({
+          where: { id: clinicId },
+          select: { bufferMinutes: true },
+        })
+      : null;
+  const intervalo = Math.max(0, doChamador ?? clinica?.bufferMinutes ?? 0);
 
   // As bordas do dia **da clínica**, convertidas para instante. `setHours` em
   // cima de um `Date` daria a meia-noite do servidor.
@@ -208,11 +245,24 @@ export async function slotsForDate(
     select: { dateTime: true, duration: true },
   });
 
+  /**
+   * Quem ocupa este pedaço de tempo — **contando o intervalo** (109 T-1).
+   *
+   * O intervalo é somado de um lado só, mas vale para os dois: exigir
+   * `candidato.inicio >= marcada.fim + intervalo` **ou**
+   * `marcada.inicio >= candidato.fim + intervalo` é o mesmo que testar
+   * sobreposição com a marcada esticada em `intervalo` nas duas pontas. Uma
+   * conta, e não duas regras para divergirem.
+   *
+   * Repare que o intervalo **não** precisa caber dentro do expediente: ele
+   * separa consultas, não encurta o dia. Por isso o último horário continua
+   * sendo oferecido.
+   */
   const ocupacao = (inicio: number, fim: number) =>
     marcadas.filter((a) => {
       // Minutos no fuso da clínica, como a rota antiga já fazia.
-      const aInicio = getZonedMinutesOfDay(a.dateTime, opts.timeZone);
-      const aFim = aInicio + (a.duration || 60);
+      const aInicio = getZonedMinutesOfDay(a.dateTime, opts.timeZone) - intervalo;
+      const aFim = aInicio + intervalo + (a.duration || 60) + intervalo;
       return inicio < aFim && aInicio < fim;
     }).length;
 
@@ -226,7 +276,10 @@ export async function slotsForDate(
       // Horário que já começou não é oferta, é armadilha.
       if (opts.nowMinutes != null && t <= opts.nowMinutes) continue;
 
-      const taken = ocupacao(t, t + passo);
+      // O candidato ocupa a duração pedida, e não a casa da grade: marcar 90
+      // minutos numa grade de 60 precisa dos 90 livres.
+      const duracaoDoCandidato = Math.max(passo, opts.duracaoMin ?? 0);
+      const taken = ocupacao(t, t + duracaoDoCandidato);
       const spacesLeft = j.capacity - taken;
       if (spacesLeft <= 0) continue;
 
