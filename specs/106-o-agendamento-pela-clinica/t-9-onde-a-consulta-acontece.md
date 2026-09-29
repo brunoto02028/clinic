@@ -1,6 +1,6 @@
 # T-9: Onde a consulta acontece, dito uma vez só
 
-**Status:** 🟢 concluída (29/09) — QA na tela pendente
+**Status:** 🟢 concluída (29/09) — QA aprovado (L1–L5 + extra)
 **Depende de:** T-7, T-8 (as três rotas que escrevem a frase)
 **Origem:** achado nº 1 da terceira rodada de QA. O primeiro é **efeito da minha
 própria mudança de hoje**.
@@ -93,3 +93,62 @@ Suíte completa: **2817 testes, 189 suítes, verdes.** `tsc --noEmit` em 0.
 - **Os 4 caminhos internos** com o defeito de fuso da T-8.
 - **19 links de e-mail apontam para `/dashboard/*` na web**, que perde acesso
   quando o app lançar.
+
+
+---
+
+## QA na tela — 29/09/2026, servidor em `TZ=UTC`
+
+**L1–L5 e o extra: os seis passam.** Notas confirmadas `null` **antes e depois**
+de cada medição — sem isso o cenário não discrimina, porque o regex antigo
+acertava quando a palavra estava escrita.
+
+Um segundo discriminador, positivo em vez de negativo: o código antigo, **quando**
+detectava domicílio, escrevia a string literal `Home visit / Visita domiciliar` —
+nunca um endereço. Varridos os seis e-mails, a frase está **ausente em todos**.
+O que saiu não veio de nenhum ramo do código velho.
+
+| cenário | `mode` | `📍 Location` no corpo |
+|---|---|---|
+| **L2** domicílio, notas vazias | `HOME_VISIT` | `At your address — 5 Far Away Road, Ipswich, IP1 3QJ` |
+| **L3** controle, a **mesma** consulta virada | `IN_PERSON` | `QA106 Clinica de Teste — 1 Clinic Street, London` |
+| **L4** vídeo | `VIDEO` | `Video consultation — a link opens in your app` |
+| **L1** remarcação presencial | `IN_PERSON` | `QA106 Clinica de Teste — 1 Clinic Street, London` |
+| **L5** remarcação de domicílio | `HOME_VISIT` | `At your address — 5 Far Away Road, Ipswich, IP1 3QJ` |
+| **extra** domicílio sem endereço | `HOME_VISIT` | `At your address` — seco, e não a clínica |
+
+### O par que prova, e por que é um par
+
+L2 e L3 são **a mesma consulta**, com **as mesmas notas vazias**, mudando **só o
+`mode`** — e dão dois endereços diferentes, os dois certos. Sozinho, o L2 passaria
+com um helper que devolvesse a casa do paciente sempre; sozinho, o L3 passaria com
+um que devolvesse a clínica sempre. Juntos, fecham.
+
+### O L1, antes e depois
+
+```
+antes:  📅 Date Thursday, 14 January 2027 🕐 Time 14:00 📍 Location 👨‍⚕️ Therapist Qa106
+depois: 📍 Location QA106 Clinica de Teste — 1 Clinic Street, London 👨‍⚕️ Therapist Qa106
+```
+
+### O extra, que era o desfecho perigoso
+
+Com `address`, `city` e `postcode` do paciente zerados (confirmado no banco antes
+de medir), a frase é exatamente `At your address` e **não menciona a clínica**.
+Cair no endereço da clínica ali seria o pior resultado possível: a frase pareceria
+completa e mandaria a pessoa para a rua.
+
+Console: **0 erros**. Log do servidor: **0** linhas de erro. Nenhum achado novo.
+
+## Placar das quatro rodadas
+
+| rodada | cenários | ✅ | ❌ |
+|---|---|---|---|
+| A–E — as 17 correções | 23 | 22 | 1 (D19) |
+| N1–N9 — o envio opt-in | 9 | 9 | 0 |
+| T1–T6 + 2 controles — o fuso e a fila | 8 | 8 | 0 |
+| L1–L5 + 1 extra — o lugar | 6 | 6 | 0 |
+| **total** | **44** | **44** | **0** |
+
+O único ❌ da sessão foi corrigido e re-verificado com três cenários e um controle
+negativo.
