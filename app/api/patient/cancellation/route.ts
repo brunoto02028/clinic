@@ -6,7 +6,6 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { sendTemplatedEmail } from '@/lib/email-templates';
-import { notifyPatient } from '@/lib/notify-patient';
 import { patientGate } from "@/lib/patient-gate";
 
 const CANCELLATION_WINDOW_HOURS = 24;
@@ -87,7 +86,9 @@ export async function POST(req: NextRequest) {
       });
 
       if (!appointment) return NextResponse.json({ error: isPt ? 'Consulta não encontrada.' : 'Appointment not found.' }, { status: 404 });
-      if (appointment.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Não autorizado.' : 'Unauthorized.' }, { status: 403 });
+      // 404, e não 403: distinguir "não existe" de "não é seu" conta a um
+      // estranho que a consulta existe. É a regra da casa.
+      if (appointment.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Consulta não encontrada.' : 'Appointment not found.' }, { status: 404 });
       if (appointment.status === 'CANCELLED') return NextResponse.json({ error: isPt ? 'A consulta já está cancelada.' : 'Appointment is already cancelled.' }, { status: 400 });
 
       const now = new Date();
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!plan) return NextResponse.json({ error: isPt ? 'Plano de tratamento não encontrado.' : 'Treatment plan not found.' }, { status: 404 });
-      if (plan.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Não autorizado.' : 'Unauthorized.' }, { status: 403 });
+      if (plan.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Plano de tratamento não encontrado.' : 'Treatment plan not found.' }, { status: 404 });
       if (plan.status === 'CANCELLED') return NextResponse.json({ error: isPt ? 'O plano de tratamento já está cancelado.' : 'Treatment plan is already cancelled.' }, { status: 400 });
 
       // Treatment plans: no automatic refund — always requires admin review
@@ -147,20 +148,30 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send cancellation confirmation via preferred channel
-    const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
-    notifyPatient({
-      patientId,
-      emailTemplateSlug: 'APPOINTMENT_CANCELLED',
-      emailVars: {
-        appointmentDate: appointmentId ? 'Your appointment' : 'Your treatment plan',
-        appointmentTime: '',
-        therapistName: 'Bruno Physical Rehabilitation',
-        portalUrl: `${BASE}/dashboard/appointments`,
-      },
-      plainMessage: `Your cancellation request has been submitted. ${refundEligible ? `A refund of £${refundAmount} is being processed.` : 'Please check our cancellation policy for details.'}`,
-      plainMessagePt: `Sua solicitação de cancelamento foi enviada. ${refundEligible ? `Um reembolso de £${refundAmount} está sendo processado.` : 'Consulte nossa política de cancelamento para mais detalhes.'}`,
-    }).catch(err => console.error('[cancellation] notification error:', err));
+    /**
+     * Aqui saía um e-mail, e ele mentia três vezes (103 T-4, code review).
+     *
+     * O modelo era `APPOINTMENT_CANCELLED` — assunto *"Appointment Cancelled"*,
+     * corpo *"your appointment has been cancelled as requested"* — disparado no
+     * instante em que a solicitação nasce `PENDING`. A consulta continuava na
+     * agenda; quem cancela é a clínica, depois, à mão.
+     *
+     * A segunda mentira: `plainMessage` prometia *"a refund of £X is being
+     * processed"*, e `refundEligible` é sempre `true` no caminho de consulta —
+     * o reembolso só existe quando alguém aperta o botão no painel.
+     *
+     * A terceira: `appointmentDate` era a string literal `'Your appointment'`,
+     * então o assunto saía *"Appointment Cancelled — Your appointment"*.
+     *
+     * E nada disso passava por prévia, que é a regra da casa desde 17/09/2026:
+     * nada sai para paciente por decisão do sistema. Enquanto nenhuma tela do
+     * aplicativo chamava esta rota, o e-mail quase não acontecia. A tela nova é
+     * o que o tornaria rotina — então ele sai daqui.
+     *
+     * Quem pediu já sabe que pediu: a tela diz, na hora, que o pedido foi
+     * enviado e que a consulta **continua marcada**. O aviso do desfecho é da
+     * clínica, quando houver desfecho, e com prévia como todo envio daqui.
+     */
 
     return NextResponse.json({
       success: true,

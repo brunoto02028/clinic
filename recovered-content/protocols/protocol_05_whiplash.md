@@ -123,4 +123,3 @@ A: Progressive neurological deficit, vascular signs (dizziness, drop attacks, vi
 - Sharkey, J. (2017) _The Concise Book of Dry Needling._ Lotus Publishing.
 - Watson, T. (2008) _Electrotherapy: Evidence Based Practice._ Elsevier.
 - Clarkson, H. M. (2013) _Musculoskeletal Assessment._ 3rd edn. Lippincott.
-- TODO: add a condition-specific loading-protocol reference (from module notes), Harvard format.

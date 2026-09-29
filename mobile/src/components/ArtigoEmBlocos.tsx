@@ -2,6 +2,7 @@ import { View, Image } from "react-native";
 import { Text } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import type { BlocoDoArtigo } from "@/api/education";
+import { textoEmPedacos } from "@/lib/texto-em-pedacos";
 
 /**
  * O artigo desenhado com a tipografia da casa (28/09/2026).
@@ -21,6 +22,43 @@ import type { BlocoDoArtigo } from "@/api/education";
  * Com blocos, o telefone desenha com a fonte, o espaçamento e as cores daqui.
  * A tradução mora no servidor (`lib/rich-text-blocks.ts`), num lugar só.
  */
+/**
+ * Um texto com a marcação de dentro do parágrafo já aplicada (107 T-4).
+ *
+ * `<Text>` aninhado herda o estilo do pai no React Native, então basta o pai
+ * carregar tamanho, cor e entrelinha, e cada pedaço dizer só o que muda.
+ *
+ * Um pedaço só e sem estilo devolve a string crua: assim o caso comum — texto
+ * sem marcação nenhuma — não paga uma árvore de componentes.
+ */
+function TextoComMarcacao({ texto, paiItalico }: { texto: string; paiItalico?: boolean }) {
+  const pedacos = textoEmPedacos(texto);
+  if (pedacos.length === 1 && pedacos[0].estilo === "normal") return <>{texto}</>;
+
+  return (
+    <>
+      {pedacos.map((p, i) => (
+        <Text
+          key={i}
+          style={
+            p.estilo === "negrito"
+              ? { fontWeight: "700" }
+              : p.estilo === "italico"
+                ? // Ênfase dentro de texto já inclinado volta ao normal — é a
+                  // convenção tipográfica, e é a única que se enxerga. Na
+                  // citação, itálico dentro de itálico saía indistinguível
+                  // (achado do QA, 29/09/2026).
+                  { fontStyle: paiItalico ? "normal" : "italic" }
+                : undefined
+          }
+        >
+          {p.texto}
+        </Text>
+      ))}
+    </>
+  );
+}
+
 export function ArtigoEmBlocos({ blocos }: { blocos: BlocoDoArtigo[] }) {
   const t = useTheme();
 
@@ -49,7 +87,7 @@ export function ArtigoEmBlocos({ blocos }: { blocos: BlocoDoArtigo[] }) {
           case "paragrafo":
             return (
               <Text key={i} variant="body" style={{ lineHeight: 25, fontSize: 15.5 }}>
-                {b.texto}
+                <TextoComMarcacao texto={b.texto} />
               </Text>
             );
 
@@ -62,7 +100,7 @@ export function ArtigoEmBlocos({ blocos }: { blocos: BlocoDoArtigo[] }) {
                       {b.ordenada ? `${j + 1}.` : "•"}
                     </Text>
                     <Text variant="body" style={{ flex: 1, lineHeight: 25, fontSize: 15.5 }}>
-                      {item}
+                      <TextoComMarcacao texto={item} />
                     </Text>
                   </View>
                 ))}
@@ -81,8 +119,63 @@ export function ArtigoEmBlocos({ blocos }: { blocos: BlocoDoArtigo[] }) {
                 }}
               >
                 <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 25, fontSize: 15.5, fontStyle: "italic" }}>
-                  {b.texto}
+                  <TextoComMarcacao texto={b.texto} paiItalico />
                 </Text>
+              </View>
+            );
+
+          case "tabela":
+            /**
+             * Pares rotulados, e não uma tabela (107 T-5).
+             *
+             * Numa tela de telefone uma tabela de duas colunas ou espreme as
+             * duas até ninguém ler, ou pede rolagem lateral — e rolagem lateral
+             * dentro de um artigo que rola para baixo é onde o texto se perde.
+             *
+             * Cada linha vira um cartão: o rótulo da coluna em cima, o valor
+             * embaixo. Lê-se de cima para baixo, que é como o resto do artigo
+             * já se lê.
+             */
+            return (
+              <View key={i} style={{ gap: 10 }}>
+                {b.linhas.map((linha, j) => (
+                  <View
+                    key={j}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: t.colors.borderSubtle,
+                      borderRadius: 12,
+                      padding: 12,
+                      gap: 8,
+                    }}
+                  >
+                    {linha.map((celula, k) => {
+                      if (!celula) return null;
+                      const rotulo = b.cabecalho[k];
+                      // A primeira coluna é o assunto da linha: vai em
+                      // destaque, sem repetir o rótulo em cima dela.
+                      if (k === 0) {
+                        return (
+                          <Text key={k} variant="label" style={{ fontWeight: "700", fontSize: 15 }}>
+                            <TextoComMarcacao texto={celula} />
+                          </Text>
+                        );
+                      }
+                      return (
+                        <View key={k} style={{ gap: 2 }}>
+                          {rotulo ? (
+                            <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11 }}>
+                              {rotulo}
+                            </Text>
+                          ) : null}
+                          <Text variant="body" style={{ lineHeight: 22, fontSize: 15 }}>
+                            <TextoComMarcacao texto={celula} />
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
               </View>
             );
 

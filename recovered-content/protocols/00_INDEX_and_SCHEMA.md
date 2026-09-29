@@ -51,4 +51,8 @@ This collection contains **10 musculoskeletal treatment protocols**, one Markdow
 ## Important usage notes for the system
 - These protocols are **clinical decision-support templates**, not a substitute for individual assessment. Any generated plan must be gated by the **red flags** and **contraindications** sections.
 - Always screen red flags first; several conditions (e.g. cauda equina in low back pain, vascular signs in whiplash) require **immediate referral**, not treatment.
-- `TODO` markers indicate where a condition-specific loading-protocol reference should be added from your module notes.
+- A condition-specific loading-protocol reference is still missing from each
+  protocol, to be added from your module notes in Harvard format. Do **not**
+  leave a `TODO` line in the References list as a placeholder: these files are
+  seeded as articles the patient reads, and a reference that does not exist
+  makes the real ones above it look unreliable too. Track it here, not there.

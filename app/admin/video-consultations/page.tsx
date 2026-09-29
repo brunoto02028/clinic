@@ -185,7 +185,23 @@ export default function VideoConsultationsPage() {
         }),
       });
       if (res.ok) {
-        toast({ title: "Created", description: "Video consultation scheduled" });
+        /**
+         * O que a tela não dizia (achado do code review da 106 T-1).
+         *
+         * Esta chamada não manda `sendConfirmation`, e desde que o padrão
+         * passou a ser **não enviar**, o paciente deixou de receber e-mail
+         * daqui. A direção é a certa — nada sai sem alguém pedir — mas esta
+         * tela não tem caixa nem compositor, então o admin lia "agendada" e
+         * ficava sem saber que ninguém foi avisado.
+         *
+         * A consulta chega ao paciente de qualquer forma: nasce confirmada
+         * (preço zero) e aparece no aplicativo. O que muda é saber disso.
+         */
+        toast({
+          title: "Created",
+          description:
+            "Video consultation scheduled. It appears in the patient app — no email was sent. Use “Email confirmation” on the appointments page to write one.",
+        });
         setShowDialog(false);
         fetchVideoAppointments();
       } else {

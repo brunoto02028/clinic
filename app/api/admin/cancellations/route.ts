@@ -1,25 +1,37 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getActor, isStaff } from '@/lib/tenant-access';
 import { stripe } from '@/lib/stripe';
 import { notifyWaitlistForCancelledAppointment } from '@/lib/waitlist';
 
-// GET: list all cancellation requests (admin)
+/**
+ * As solicitacoes de cancelamento **desta** clinica.
+ *
+ * Estava sem parede: `where: status ? { status } : {}` devolvia as de todas as
+ * clinicas, com nome, e-mail e o motivo em texto livre do paciente. Qualquer
+ * ADMIN de qualquer inquilino lia tudo.
+ *
+ * `CancellationRequest` nao tem `clinicId` proprio, entao a parede e o dono do
+ * pedido: `patient.clinicId`. Um `include` de paciente sem esse filtro no
+ * `where` e exatamente o que vazou duas vezes nesta casa (11/09 e 16/09/2026).
+ */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !['ADMIN', 'SUPERADMIN', 'THERAPIST'].includes((session.user as any).role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const actor = await getActor(req);
+    if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!isStaff(actor)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!actor.clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
     const requests = await (prisma as any).cancellationRequest.findMany({
-      where: status ? { status } : {},
+      where: {
+        patient: { clinicId: actor.clinicId },
+        ...(status ? { status } : {}),
+      },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, email: true } },
         appointment: {
@@ -48,10 +60,14 @@ export async function GET(req: NextRequest) {
 // POST: admin processes a cancellation request (approve/reject + refund)
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const actor = await getActor(req);
+    if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Aprovar, recusar e **reembolsar** sao decisoes de quem administra: o
+    // terapeuta le a fila (GET), mas nao mexe no dinheiro.
+    if (!['ADMIN', 'SUPERADMIN'].includes(actor.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    if (!actor.clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
 
     const body = await req.json();
     const { requestId, action, adminNote, refundAmount } = body;
@@ -61,8 +77,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'requestId and action are required' }, { status: 400 });
     }
 
-    const cancellation = await (prisma as any).cancellationRequest.findUnique({
-      where: { id: requestId },
+    /**
+     * `findFirst` com a parede junto, e nao `findUnique` pelo id.
+     *
+     * Sem isso, um administrador da clinica B aprovava, recusava e disparava
+     * `stripe.refunds.create` sobre o pagamento de um paciente da clinica A —
+     * bastava conhecer o id.
+     *
+     * Quando nao e desta clinica a resposta e **404**, e nao 403: distinguir
+     * "nao existe" de "nao e seu" conta a um estranho que o registro existe.
+     */
+    const cancellation = await (prisma as any).cancellationRequest.findFirst({
+      where: { id: requestId, patient: { clinicId: actor.clinicId } },
       include: {
         appointment: {
           include: { payment: true },
@@ -75,7 +101,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cancellation request not found' }, { status: 404 });
     }
 
-    const adminId = (session.user as any).id;
+    const adminId = actor.userId;
 
     if (action === 'reject') {
       await (prisma as any).cancellationRequest.update({

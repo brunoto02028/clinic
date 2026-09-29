@@ -83,7 +83,12 @@ function AppointmentsScreen() {
           contentContainerStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const status = statusStyle(t, item.status, lang);
+            // A consulta que venceu e ninguém fechou não diz "Confirmada"
+            // (103 T-3). Quem decide é o mesmo helper das duas telas.
+            const status = statusStyle(t, item.status, lang, {
+              dateTime: item.dateTime,
+              duration: item.duration,
+            });
             return (
               <Pressable
                 testID={`appt-${item.id}`}

@@ -92,6 +92,13 @@ node /app/scripts/seed-book-content.js || echo "[start.sh] book content seed war
 echo "[start.sh] Seeding recovered article content..."
 node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-articles seed warning — check logs"
 
+# Tira marca de rascunho do conteudo ja publicado (107 T-3). A semeadura acima
+# cria o artigo uma vez e nao volta nele, entao consertar o markdown de origem
+# nao conserta o que o paciente le hoje. Idempotente: na segunda vez nao acha
+# nada e nao escreve.
+echo "[start.sh] Cleaning draft markers from published content..."
+node /app/scripts/limpar-marcas-de-rascunho.js || echo "[start.sh] draft-marker cleanup warning — check logs"
+
 # Default logo/favicon recovered after the same VPS reinstall — idempotent,
 # only fills in fields still empty (see scripts/seed-site-logo.js).
 echo "[start.sh] Seeding default logo/favicon..."

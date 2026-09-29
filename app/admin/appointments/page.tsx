@@ -64,8 +64,29 @@ import {
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
-import { zonedTimeToUtc, getZonedDateTimeLocalString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { zonedTimeToUtc, getZonedDateTimeLocalString, getZonedMinutesOfDay, getZonedDateString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { disporDia, dentroDaGrade } from "@/lib/agenda-layout";
 import { TREATMENT_OPTIONS } from "@/lib/types";
+
+/** A faixa que a agenda mostra num dia normal. */
+const PRIMEIRA_HORA_PADRAO = 8;
+const ULTIMA_HORA_PADRAO = 19;
+
+// A escala da agenda: uma hora de relógio são estes pixels de tela. É daqui que
+// sai a altura de cada consulta, e por isso é uma constante só — duração e linha
+// da grade têm de medir com a mesma régua.
+const ALTURA_HORA = 56;
+// O piso de legibilidade: abaixo disto o nome do paciente não cabe.
+const ALTURA_MINIMA = 20;
+
+/**
+ * O valor do "sem tipo" no seletor.
+ *
+ * `<Select>` do Radix não aceita `value=""` num item — string vazia é o estado
+ * "nada escolhido", e o item some. Então a ausência precisa de um nome, e ele
+ * é traduzido para `treatmentType: ""` na hora de guardar.
+ */
+const SEM_TIPO = "__sem_tipo__";
 
 interface DbTreatmentType {
   id: string; name: string; namePt: string | null;
@@ -791,17 +812,141 @@ export default function AdminAppointmentsPage() {
     });
   }, [calendarWeekStart]);
 
-  const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
-
+  /**
+   * O dia de uma consulta é o dia **da clínica**.
+   *
+   * A coluna usava `toDateString()`, que é o relógio do navegador, enquanto a
+   * linha da hora e o rótulo dentro do bloco usam o fuso da clínica. Num
+   * navegador em outro fuso as três coisas discordavam entre si — e a chave
+   * aqui passa a ser a mesma que o contador de vagas já usava.
+   */
   const apptsByDay = useMemo(() => {
     const map: Record<string, Appointment[]> = {};
     appointments.forEach((a) => {
-      const key = new Date(a.dateTime).toDateString();
+      const key = getZonedDateString(new Date(a.dateTime));
       if (!map[key]) map[key] = [];
       map[key].push(a);
     });
     return map;
   }, [appointments]);
+
+  /**
+   * Busca os horários sempre que a data ou a duração mudam.
+   *
+   * A duração entra porque uma consulta de 90 minutos não cabe em toda janela
+   * em que uma de 30 caberia — perguntar sem ela ofereceria horários que o
+   * servidor recusaria depois.
+   */
+  useEffect(() => {
+    const dia = createForm.appointmentDate;
+    if (!dia) {
+      setHorariosDoDia(null);
+      return;
+    }
+    let vivo = true;
+    setBuscandoHorarios(true);
+    fetch(`/api/availability?date=${dia}&duration=${Number(createForm.duration) || 60}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!vivo) return;
+        const lista: string[] = Array.isArray(d?.slots) ? d.slots : [];
+        setHorariosDoDia(lista);
+        // A hora escolhida antes pode não existir no dia novo. Deixá-la ali
+        // seria marcar num horário que a tela já não oferece.
+        setCreateForm((f) =>
+          f.appointmentTime && !lista.includes(f.appointmentTime)
+            ? { ...f, appointmentTime: "" }
+            : f
+        );
+      })
+      .catch(() => vivo && setHorariosDoDia([]))
+      .finally(() => vivo && setBuscandoHorarios(false));
+    return () => {
+      vivo = false;
+    };
+  }, [createForm.appointmentDate, createForm.duration]);
+
+  /** A chave de um dia da grade, no mesmo formato de `apptsByDay`. */
+  const chaveDoDia = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+
+  /**
+   * O minuto de cada consulta no fuso da clínica, calculado **uma vez**.
+   *
+   * `getZonedMinutesOfDay` constrói um `Intl.DateTimeFormat` novo a cada
+   * chamada. Isto estava no corpo do componente, dentro do filtro de cada
+   * célula: 7 dias × 12 horas × consultas do dia — umas 840 construções por
+   * render, 37ms medidos. Como os diálogos de criar e editar renderizam na
+   * mesma árvore, cada tecla digitada pagava o pedágio.
+   */
+  const minutoDaConsulta = useMemo(() => {
+    const mapa: Record<string, number> = {};
+    appointments.forEach((a) => {
+      mapa[a.id] = getZonedMinutesOfDay(new Date(a.dateTime));
+    });
+    return mapa;
+  }, [appointments]);
+
+  /**
+   * A faixa de horas que a grade desenha — **que cobre o que existe**.
+   *
+   * Era fixa em 08:00–19:00, e o QA marcou uma consulta às 07:00 que não
+   * apareceu em lugar nenhum. Não sumia com aviso: sumia. Uma agenda que
+   * esconde uma consulta é pior que uma que a desenha errada — o erro alguém vê.
+   *
+   * A partir da 106 T-4 o agendamento só oferece horário disponível, então no
+   * uso normal a faixa nem se mexe. Isto é a rede: se uma consulta existir fora
+   * dela — marcada por API, importada, ou porque a clínica abriu mais cedo —, a
+   * grade estica para caber, em vez de fingir que ela não está lá.
+   */
+  const HOURS = useMemo(() => {
+    let primeira = PRIMEIRA_HORA_PADRAO;
+    let ultima = ULTIMA_HORA_PADRAO;
+    for (const a of appointments) {
+      const min = minutoDaConsulta[a.id];
+      if (!Number.isFinite(min)) continue;
+      const inicio = Math.floor(min / 60);
+      // O fim também conta: uma consulta das 19:30 com uma hora ocupa as 20h.
+      const fim = Math.floor((min + (a.duration || 60) - 1) / 60);
+      if (inicio < primeira) primeira = Math.max(0, inicio);
+      if (fim > ultima) ultima = Math.min(23, fim);
+    }
+    return Array.from({ length: ultima - primeira + 1 }, (_, i) => i + primeira);
+  }, [appointments, minutoDaConsulta]);
+
+  const PRIMEIRA_HORA = HOURS[0];
+  const ULTIMA_HORA = HOURS[HOURS.length - 1];
+  const FIM_DA_GRADE_PX = (ULTIMA_HORA + 1) * ALTURA_HORA;
+
+  /**
+   * Onde cada consulta fica desenhada. Calculado por dia inteiro, e não por
+   * linha de hora, porque uma consulta de 90 minutos às 10:00 invade as 11:00 —
+   * quem decide se duas ficam lado a lado é o relógio, não a linha da grade.
+   *
+   * **Só entra quem é desenhado.** A grade mostra 08:00–19:00; uma consulta das
+   * 07:00 não aparece, mas continuava ocupando coluna — e a das 08:00 ao lado
+   * desenhava em meia largura, com a outra metade vazia e nada explicando por
+   * quê. Quem não aparece não disputa espaço. O sumiço em si é a T-4 da 106, e
+   * é do Bruno decidir a faixa.
+   */
+  const lugaresPorDia = useMemo(() => {
+    const mapa: Record<string, ReturnType<typeof disporDia>> = {};
+    for (const [dia, lista] of Object.entries(apptsByDay)) {
+      const naGrade = lista.filter((a) =>
+        dentroDaGrade(minutoDaConsulta[a.id], PRIMEIRA_HORA, ULTIMA_HORA)
+      );
+      mapa[dia] = disporDia(
+        naGrade.map((a) => ({
+          id: a.id,
+          inicioMin: minutoDaConsulta[a.id],
+          duracaoMin: a.duration || 60,
+        })),
+        { alturaHoraPx: ALTURA_HORA, alturaMinimaPx: ALTURA_MINIMA, fimDaGradePx: FIM_DA_GRADE_PX }
+      );
+    }
+    return mapa;
+  }, [apptsByDay, minutoDaConsulta]);
 
   const STATUS_CAL: Record<string, string> = {
     CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
@@ -830,6 +975,21 @@ export default function AdminAppointmentsPage() {
    * não estão.
    */
   const [vagasPorDia, setVagasPorDia] = useState<Record<string, number | null>>({});
+
+  /**
+   * Os horários que existem de verdade no dia escolhido (106 T-4).
+   *
+   * O Bruno: *"somente horários disponíveis podem ter agendamento."*
+   *
+   * O seletor de hora era uma lista **escrita à mão** — 08:00 a 17:30, de meia
+   * em meia hora — que não sabia nada da agenda da clínica. Oferecia horário
+   * fechado e escondia horário aberto, as duas coisas ao mesmo tempo.
+   *
+   * `null` enquanto não há data escolhida ou a resposta não chegou: a diferença
+   * entre "ainda não sei" e "não há vaga" muda o que a tela deve dizer.
+   */
+  const [horariosDoDia, setHorariosDoDia] = useState<string[] | null>(null);
+  const [buscandoHorarios, setBuscandoHorarios] = useState(false);
 
   useEffect(() => {
     const dias = calendarDays;
@@ -982,39 +1142,74 @@ export default function AdminAppointmentsPage() {
 
               {/* Time rows */}
               {HOURS.map((hour) => (
-                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: 56 }}>
+                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: ALTURA_HORA }}>
                   <div className="p-1.5 text-[10px] text-muted-foreground text-right pr-2 border-r pt-1">
                     {hour.toString().padStart(2, "0")}:00
                   </div>
                   {calendarDays.map((day, di) => {
                     const blocked = isDayBlocked(day);
-                    const dayAppts = (apptsByDay[day.toDateString()] || []).filter((a) => {
-                      const h = new Date(a.dateTime).getHours();
-                      return h === hour;
-                    });
+                    const chave = chaveDoDia(day);
+                    const lugares = lugaresPorDia[chave];
+                    // A hora vem do fuso da clínica, o mesmo que aparece escrito
+                    // dentro do bloco — antes a linha usava o relógio do
+                    // navegador e podia discordar do próprio rótulo. O minuto
+                    // já está calculado; aqui é só consulta ao mapa.
+                    const dayAppts = (apptsByDay[chave] || []).filter(
+                      (a) => Math.floor((minutoDaConsulta[a.id] ?? -1) / 60) === hour
+                    );
                     return (
-                      <div key={di} className={`border-l p-0.5 space-y-0.5 relative ${blocked ? "bg-red-500/5" : ""}`}>
+                      <div key={di} className={`border-l relative ${blocked ? "bg-red-500/5" : ""}`}>
                         {blocked && hour === 8 && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
                             <BanIcon className="h-5 w-5 text-red-500" />
                           </div>
                         )}
-                        {dayAppts.map((a) => (
-                          <button
-                            key={a.id}
-                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
-                            className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
-                          >
-                            <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
-                            <p className="truncate opacity-80">{a.treatmentType}</p>
-                            <p className="opacity-60 flex items-center gap-1">
-                              {new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
-                              {/* No mês inteiro não cabe texto, e saber que a
-                                  consulta é remota muda o dia de quem organiza. */}
-                              {a.mode === "VIDEO" && <Video className="h-2.5 w-2.5" />}
-                            </p>
-                          </button>
-                        ))}
+                        {/* O bloco ocupa o tempo real (106 T-2).
+                            Antes tinha altura fixa: uma consulta de 60 minutos
+                            e uma de 30 desenhavam igual, e o horário seguinte
+                            **parecia livre** quando não estava. Numa agenda
+                            isso não é estética — é a informação principal. */}
+                        {dayAppts.map((a) => {
+                          const lugar = lugares?.get(a.id);
+                          if (!lugar) return null;
+                          const inicio = new Date(a.dateTime);
+                          // O topo é medido desde a meia-noite; aqui descontamos
+                          // a linha em que o bloco nasce.
+                          const topo = lugar.topoPx - hour * ALTURA_HORA;
+                          const largura = 100 / lugar.colunas;
+                          // Num bloco curto só cabe o nome. Espremer três linhas
+                          // em 20px não mostra três coisas — esconde as três.
+                          const curto = lugar.alturaPx < 34;
+                          return (
+                            <button
+                              key={a.id}
+                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
+                              title={`${a.patient.firstName} ${a.patient.lastName} · ${a.treatmentType} · ${a.duration || 60} min`}
+                              style={{
+                                position: "absolute",
+                                top: topo,
+                                height: lugar.alturaPx,
+                                left: `calc(${lugar.coluna * largura}% + 2px)`,
+                                width: `calc(${largura}% - 4px)`,
+                                zIndex: 10 + lugar.coluna,
+                              }}
+                              className={`overflow-hidden text-left text-[9px] leading-tight px-1 py-0.5 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
+                            >
+                              <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
+                              {!curto && (
+                                <>
+                                  <p className="truncate opacity-80">{a.treatmentType}</p>
+                                  <p className="opacity-60 flex items-center gap-1">
+                                    {inicio.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
+                                    {/* Saber que a consulta é remota muda o dia
+                                        de quem organiza. */}
+                                    {a.mode === "VIDEO" && <Video className="h-2.5 w-2.5" />}
+                                  </p>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -1528,7 +1723,13 @@ export default function AdminAppointmentsPage() {
               {relabel(isPt ? "Nova Consulta" : "New Appointment")}
             </DialogTitle>
             <DialogDescription>
-              {relabel(isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically.")}
+              {/* A frase dizia que o e-mail saía **automaticamente**, e a caixa
+                  logo abaixo — desmarcada por padrão — dizia o contrário. O
+                  comportamento sempre foi o certo; a frase é que mentia, e foi
+                  ela que fez o Bruno pedir uma funcionalidade que já existia
+                  (29/09/2026). Texto de interface é código: um defeito alguém
+                  mede, uma frase todo mundo acredita. */}
+              {relabel(isPt ? "Agende uma consulta para um paciente. Nada é enviado a ele até você decidir." : "Schedule an appointment for a patient. Nothing is sent to them until you decide.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
@@ -1545,7 +1746,25 @@ export default function AdminAppointmentsPage() {
             </div>
             <div className="space-y-2">
               <Label>{relabel(isPt ? "Tipo de Tratamento" : "Treatment Type")}</Label>
-              <Select value={createForm.treatmentType} onValueChange={v => {
+              {/* O tipo sempre foi opcional — no envio e no servidor. A tela é
+                  que não dizia (106 T-3).
+
+                  O Bruno: *"tratamento será colocado pelo terapeuta. O paciente
+                  que já conhecemos, se do lado da clinic a clínica quiser
+                  agendar algo com aquele paciente específico, ela pode fazer
+                  isso sem envolver pagamento."*
+
+                  O seletor só oferecia os tipos com preço, então marcar sem
+                  cobrança exigia adivinhar que dava para deixar o campo em
+                  branco. Deixar um caminho existir sem mostrá-lo é o mesmo que
+                  não tê-lo — foi o que fez isto parecer camisa de força. */}
+              <Select value={createForm.treatmentType || SEM_TIPO} onValueChange={v => {
+                if (v === SEM_TIPO) {
+                  // Sem tipo é **sem cobrança**: a consulta nasce confirmada e
+                  // ninguém espera pagamento nenhum.
+                  setCreateForm(f => ({ ...f, treatmentType: "", price: 0, paymentMode: "in_person" }));
+                  return;
+                }
                 const dbOpt = dbTreatments.find(t => t.name === v);
                 if (dbOpt) {
                   const finalPrice = dbOpt.discountPercent > 0 ? dbOpt.price * (1 - dbOpt.discountPercent / 100) : dbOpt.price;
@@ -1557,6 +1776,11 @@ export default function AdminAppointmentsPage() {
               }}>
                 <SelectTrigger><SelectValue placeholder={relabel(isPt ? "Selecionar tratamento..." : "Select treatment...")} /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={SEM_TIPO}>
+                    {relabel(isPt
+                      ? "Sem tipo ainda — sem cobrança"
+                      : "No treatment type yet — no charge")}
+                  </SelectItem>
                   {dbTreatments.length > 0
                     ? dbTreatments.map(t => {
                         const finalPrice = t.discountPercent > 0 ? t.price * (1 - t.discountPercent / 100) : t.price;
@@ -1592,17 +1816,39 @@ export default function AdminAppointmentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>{isPt ? "Hora *" : "Time *"}</Label>
-                <Select value={createForm.appointmentTime} onValueChange={v => setCreateForm(f => ({ ...f, appointmentTime: v }))}>
-                  <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar hora..." : "Select time..."} /></SelectTrigger>
+                <Select
+                  value={createForm.appointmentTime}
+                  disabled={!createForm.appointmentDate || buscandoHorarios || horariosDoDia?.length === 0}
+                  onValueChange={v => setCreateForm(f => ({ ...f, appointmentTime: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !createForm.appointmentDate
+                        ? (isPt ? "Escolha a data primeiro" : "Pick the date first")
+                        : buscandoHorarios
+                          ? (isPt ? "Vendo a agenda..." : "Checking the diary...")
+                          : horariosDoDia?.length === 0
+                            ? (isPt ? "Nenhum horário livre neste dia" : "No free time on this day")
+                            : (isPt ? "Selecionar hora..." : "Select time...")
+                    } />
+                  </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 20 }, (_, i) => {
-                      const h = Math.floor(i / 2) + 8;
-                      const m = i % 2 === 0 ? "00" : "30";
-                      const val = `${h.toString().padStart(2, "0")}:${m}`;
-                      return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                    })}
+                    {(horariosDoDia ?? []).map((val) => (
+                      <SelectItem key={val} value={val}>{val}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {/* Um dia fechado responde aqui, e não depois de marcar. A
+                    lista era escrita à mão e ignorava a agenda: oferecia
+                    horário fechado e escondia horário aberto, as duas ao mesmo
+                    tempo (106 T-4). */}
+                {createForm.appointmentDate && !buscandoHorarios && horariosDoDia?.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {relabel(isPt
+                      ? "A clínica não atende neste dia, ou a agenda já está cheia."
+                      : "The clinic is not open on this day, or the diary is already full.")}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1667,7 +1913,11 @@ export default function AdminAppointmentsPage() {
                 </button>
               </div>
             </div>
-            {/* Payment Mode */}
+            {/* Modo de pagamento — só quando há o que pagar (106 T-3).
+                Oferecer "na clínica ou online" numa consulta de preço zero é a
+                mesma espécie de mentira que a T-1 tirou do cabeçalho: promete
+                uma decisão que não existe. */}
+            {Number(createForm.price) > 0 ? (
             <div className="space-y-2">
               <Label>{isPt ? "Modo de Pagamento" : "Payment Mode"}</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -1706,6 +1956,13 @@ export default function AdminAppointmentsPage() {
                 </p>
               )}
             </div>
+            ) : (
+              <p className="text-xs text-muted-foreground rounded-lg border border-border px-3 py-2">
+                {relabel(isPt
+                  ? "Sem cobrança: a consulta nasce confirmada e o paciente não precisa pagar nada. Escolha um tipo de tratamento acima se for cobrar."
+                  : "No charge: the appointment is confirmed straight away and the patient pays nothing. Pick a treatment type above if you are charging.")}
+              </p>
+            )}
             {/* Confirmation e-mail: off unless asked (the previewed composer is the normal way) */}
             <label className="flex items-start gap-2 text-xs rounded-lg border border-border px-3 py-2">
               <input
@@ -1715,9 +1972,14 @@ export default function AdminAppointmentsPage() {
                 onChange={(e) => setCreateForm(f => ({ ...f, sendConfirmation: e.target.checked }))}
               />
               <span>
-                <span className="font-medium">{isPt ? "Enviar e-mail de confirmação agora (sem prévia)" : "Send the confirmation email now (no preview)"}</span>
+                <span className="font-medium">{isPt ? "Avisar o paciente agora, sem prévia" : "Notify the patient now, without a preview"}</span>
                 <span className="block text-muted-foreground">
-                  {isPt ? "Deixe desmarcado para escrever e ver a prévia depois, em \"Confirmar por email\"." : "Leave unchecked to write and preview it afterwards with \"Email confirmation\"."}
+                  {/* A caixa dizia "o e-mail de confirmação" e mandava **dois**
+                      e-mails: a confirmação e, quando a triagem médica ainda
+                      não foi preenchida, um aviso pedindo que preencha. O
+                      segundo o QA encontrou; nenhum dos dois estava escrito
+                      aqui, e agora os três estão (106 T-5). */}
+                  {isPt ? "Manda o e-mail de confirmação e a notificação no aplicativo — e o aviso de triagem médica, se ela ainda faltar. Desmarcado, o padrão, a consulta é criada e nada sai: você escreve e vê a prévia depois, em \"Confirmar por email\"." : "Sends the confirmation email and the app notification — plus the medical screening reminder, if that is still missing. Unchecked, the default, the appointment is created and nothing goes out: you write it and see the preview afterwards, under \"Email confirmation\"."}
                 </span>
               </span>
             </label>

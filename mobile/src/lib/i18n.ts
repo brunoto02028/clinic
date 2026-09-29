@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchProfile } from "@/api/profile";
+// Relativo, e não `@/api/profile`: o `@/` do aplicativo aponta para
+// `mobile/src/` e o da web para a raiz do repositório, e o transformador
+// resolve o atalho antes de qualquer configuração de teste ver. Com o caminho
+// escrito, este módulo — que carrega `t()`, usado por meia dúzia de outros —
+// pode ser importado também de fora do aplicativo.
+import { fetchProfile } from "../api/profile";
 
 /**
  * Which language this patient reads.

@@ -61,6 +61,22 @@ interface NotifyPatientParams {
    */
 }
 
+/**
+ * Alguém pediu para isto chegar ao paciente?
+ *
+ * A regra da casa é de 17/09/2026 e não tem exceção: nada sai para paciente
+ * por decisão do sistema. Então o silêncio — campo ausente, nulo, vazio — é
+ * **não**. Só um sim explícito envia.
+ *
+ * Isto é uma função e não um `=== true` solto porque já escorregou uma vez:
+ * a rota de agendamento usava `!== false`, e aí o campo esquecido virava um
+ * e-mail para o paciente. Um nome errado a gente lê; um operador invertido,
+ * não.
+ */
+export function pediramEnviarAoPaciente(pedido: unknown): boolean {
+  return pedido === true || pedido === "true";
+}
+
 export async function notifyPatient({
   patientId,
   emailTemplateSlug,

@@ -36,6 +36,20 @@ export type Bloco =
   | { tipo: "lista"; itens: string[]; ordenada: boolean }
   | { tipo: "citacao"; texto: string }
   | { tipo: "imagem"; url: string; legenda?: string }
+  /**
+   * Uma tabela que veio achatada num parágrafo (107 T-5).
+   *
+   * O conversor de markdown desta casa trata título, citação e lista, e não
+   * trata tabela — então a tabela inteira, cabeçalho e linha de traços juntos,
+   * caía como um parágrafo de pipes. O paciente lia, corrido:
+   *
+   *     | Teste | O que um resultado positivo indica | |---|---| | Regra
+   *     canadense para coluna cervical | descarta ou sinaliza necessidade de
+   *     exame de imagem (fratura) | …
+   *
+   * E isso é conteúdo clínico.
+   */
+  | { tipo: "tabela"; cabecalho: string[]; linhas: string[][] }
   | { tipo: "separador" };
 
 const ENTIDADES: Record<string, string> = {
@@ -121,6 +135,48 @@ export function urlAbsoluta(url: string | null | undefined): string | null {
   return limpa.startsWith("/") ? `${base}${limpa}` : `${base}/${limpa}`;
 }
 
+/**
+ * Este parágrafo é, na verdade, uma tabela de markdown?
+ *
+ * O que denuncia não são os pipes — uma frase pode ter um — mas a **linha de
+ * traços** que separa cabeçalho de corpo: `|---|---|`. Sem ela não se sabe
+ * onde o cabeçalho acaba, e inventar um seria pior que deixar o parágrafo.
+ *
+ * Devolve `null` quando não é, para o chamador seguir a vida.
+ */
+export function tabelaAchatada(
+  texto: string
+): { cabecalho: string[]; linhas: string[][] } | null {
+  const separador = /\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|/;
+  const corte = separador.exec(texto);
+  if (!corte) return null;
+
+  const celulas = (pedaco: string) =>
+    pedaco
+      .split("|")
+      .map((c) => c.trim())
+      .filter((c, i, todas) => !(c === "" && (i === 0 || i === todas.length - 1)));
+
+  const cabecalho = celulas(texto.slice(0, corte.index)).filter(Boolean);
+  if (cabecalho.length < 2) return null;
+
+  // Depois do separador vem tudo junto, sem quebra de linha: as células saem em
+  // sequência e voltam a virar linhas pela largura do cabeçalho.
+  const resto = celulas(texto.slice(corte.index + corte[0].length)).filter(Boolean);
+  if (resto.length === 0) return null;
+
+  const linhas: string[][] = [];
+  for (let i = 0; i < resto.length; i += cabecalho.length) {
+    const linha = resto.slice(i, i + cabecalho.length);
+    // Uma sobra que não completa a linha ainda é conteúdo: vai como está, e
+    // some numa célula em branco — melhor que sumir de vez.
+    while (linha.length < cabecalho.length) linha.push("");
+    linhas.push(linha);
+  }
+
+  return { cabecalho, linhas };
+}
+
 export function emBlocos(html: string | null | undefined): Bloco[] {
   if (!html || typeof html !== "string") return [];
 
@@ -199,7 +255,11 @@ export function emBlocos(html: string | null | undefined): Bloco[] {
     }
 
     const texto = textoDe(dentro);
-    if (texto) blocos.push({ tipo: "paragrafo", texto });
+    if (texto) {
+      const tabela = tabelaAchatada(texto);
+      if (tabela) blocos.push({ tipo: "tabela", ...tabela });
+      else blocos.push({ tipo: "paragrafo", texto });
+    }
   }
 
   soltoEntre(html.length);
@@ -210,7 +270,13 @@ export function emBlocos(html: string | null | undefined): Bloco[] {
 export function emTextoSimples(html: string | null | undefined): string {
   return emBlocos(html)
     .map((b) =>
-      b.tipo === "lista" ? b.itens.join("\n") : "texto" in b ? b.texto : ""
+      b.tipo === "lista"
+        ? b.itens.join("\n")
+        : b.tipo === "tabela"
+          ? [b.cabecalho, ...b.linhas].map((l) => l.join(" — ")).join("\n")
+          : "texto" in b
+            ? b.texto
+            : ""
     )
     .filter(Boolean)
     .join("\n\n");

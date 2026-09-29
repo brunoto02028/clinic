@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Pressable, Alert } from "react-native";
+import { View, Pressable, Alert, TextInput } from "react-native";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,6 +12,15 @@ import { statusStyle } from "@/lib/appointment-status";
 import { startAppointmentCheckout } from "@/api/booking";
 import { openCheckout } from "@/lib/checkout";
 import { estadoDoPagamento, TEXTO_DO_PAGAMENTO } from "@/lib/pagamento-da-consulta";
+import { fetchCancellationRequests, requestAppointmentCancellation } from "@/api/cancellation";
+import {
+  avisoDaAntecedencia,
+  estadoDoPedido,
+  horasDeAntecedencia,
+  jaPediu,
+  podePedirCancelamento,
+  TEXTO_DO_PEDIDO,
+} from "@/lib/desmarcar-consulta";
 
 /** The date in the patient's language. The weekday and month names were two
  *  hardcoded Portuguese arrays, so an en-GB patient read "Qua, 24 Set 2026" on
@@ -41,10 +50,25 @@ function AppointmentDetailScreen() {
 
   const qc = useQueryClient();
   const [pagando, setPagando] = useState(false);
+  const [pedindo, setPedindo] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["appointment", id],
     queryFn: () => fetchAppointment(id),
+    enabled: !!id,
+  });
+
+  /**
+   * O que a clínica já respondeu sobre esta consulta (103 T-4).
+   *
+   * Sem isto a tela deixa pedir de novo e a pessoa leva de volta um erro cru do
+   * servidor — *"já existe uma solicitação"* — como se tivesse errado algo.
+   */
+  const pedidos = useQuery({
+    queryKey: ["cancellation-requests"],
+    queryFn: fetchCancellationRequests,
     enabled: !!id,
   });
 
@@ -126,6 +150,45 @@ function AppointmentDetailScreen() {
     }
   };
 
+  /**
+   * Pedir — e só pedir.
+   *
+   * A consulta continua marcada até alguém da clínica decidir. Nenhuma frase
+   * daqui para a frente diz "cancelada": quem sair desta tela achando que
+   * resolveu é quem vai levar uma falta na semana seguinte.
+   */
+  const enviarPedido = async () => {
+    if (!data) return;
+    if (!motivo.trim()) {
+      Alert.alert(tr(lang, TEXTO_DO_PEDIDO.semMotivo));
+      return;
+    }
+    setEnviandoPedido(true);
+    try {
+      await requestAppointmentCancellation({
+        appointmentId: data.id,
+        reason: motivo.trim(),
+        locale: lang === "pt" ? "pt-BR" : "en-GB",
+      });
+      setPedindo(false);
+      setMotivo("");
+      await Promise.all([
+        pedidos.refetch(),
+        refetch(),
+        qc.invalidateQueries({ queryKey: ["appointments"] }),
+      ]);
+      Alert.alert(tr(lang, TEXTO_DO_PEDIDO.enviado), tr(lang, TEXTO_DO_PEDIDO.enviadoCorpo));
+    } catch (e: any) {
+      Alert.alert(
+        tr(lang, { en: "Could not send the request", pt: "Não foi possível enviar o pedido" }),
+        e?.messagePt && lang === "pt" ? e.messagePt : e?.message ||
+          tr(lang, { en: "Try again in a moment.", pt: "Tente de novo daqui a pouco." })
+      );
+    } finally {
+      setEnviandoPedido(false);
+    }
+  };
+
   return (
     <Screen scroll testID="appointment-detail">
       <Stack.Screen
@@ -181,7 +244,10 @@ function AppointmentDetailScreen() {
 
           {/* Status badge */}
           {(() => {
-            const s = statusStyle(t, data.status, lang);
+            const s = statusStyle(t, data.status, lang, {
+              dateTime: data.dateTime,
+              duration: data.duration,
+            });
             return (
               <View style={{
                 flexDirection: "row",
@@ -416,6 +482,163 @@ function AppointmentDetailScreen() {
                   <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} {tr(lang, { en: "minutes", pt: "minutos" })}</Text>
                 </View>
               </View>
+
+              {/* Pedir para desmarcar (103 T-4).
+                  A rota existia e nenhuma tela a chamava: quem não podia vir
+                  ligava, ou sumia — e sumir vira uma falta que ninguém
+                  entende, nem por quem faltou nem por quem esperou. */}
+              {(() => {
+                const estado = estadoDoPedido(pedidos.data, data.id);
+
+                // Qualquer pedido já feito fecha a porta de pedir de novo —
+                // inclusive o aprovado, que o servidor também recusa.
+                if (jaPediu(estado)) {
+                  const titulo =
+                    estado === "recusado" ? TEXTO_DO_PEDIDO.recusado
+                    : estado === "aprovado" ? TEXTO_DO_PEDIDO.aprovado
+                    : TEXTO_DO_PEDIDO.pendente;
+                  const corpo =
+                    estado === "recusado" ? TEXTO_DO_PEDIDO.recusadoCorpo
+                    : estado === "aprovado" ? TEXTO_DO_PEDIDO.aprovadoCorpo
+                    : TEXTO_DO_PEDIDO.pendenteCorpo;
+                  const icone =
+                    estado === "recusado" ? "close-circle-outline"
+                    : estado === "aprovado" ? "checkmark-circle-outline"
+                    : "hourglass-outline";
+                  const cor = estado === "pendente" ? t.colors.warn : t.colors.textMuted;
+                  return (
+                    <>
+                      <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
+                      <View
+                        testID="pedido-de-cancelamento-estado"
+                        style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+                      >
+                        <Ionicons name={icone as any} size={20} color={cor} />
+                        <View style={{ flex: 1 }}>
+                          <Text variant="label" style={{ fontWeight: "700" }}>{tr(lang, titulo)}</Text>
+                          <Text variant="caption" color={t.colors.textMuted}>{tr(lang, corpo)}</Text>
+                        </View>
+                      </View>
+                    </>
+                  );
+                }
+
+                if (!podePedirCancelamento(data.status, data.dateTime)) return null;
+
+                const aviso = avisoDaAntecedencia(horasDeAntecedencia(data.dateTime), lang);
+
+                return (
+                  <>
+                    <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
+                    {!pedindo ? (
+                      <Pressable
+                        testID="pedir-cancelamento"
+                        accessibilityRole="button"
+                        onPress={() => setPedindo(true)}
+                        style={({ pressed }) => ({
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          paddingVertical: 12,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: t.colors.borderSubtle,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Ionicons name="calendar-outline" size={16} color={t.colors.textMuted} />
+                        <Text variant="label" color={t.colors.textMuted} style={{ fontWeight: "600" }}>
+                          {tr(lang, TEXTO_DO_PEDIDO.botao)}
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ gap: 10 }} testID="formulario-cancelamento">
+                        <Text variant="label" style={{ fontWeight: "700" }}>
+                          {tr(lang, TEXTO_DO_PEDIDO.titulo)}
+                        </Text>
+
+                        {/* A antecedência antes do envio: é o número que muda a
+                            resposta da clínica, e escondê-lo até depois seria
+                            deixar a pessoa descobrir a cobrança no extrato. */}
+                        {aviso && (
+                          <View
+                            testID="aviso-antecedencia"
+                            style={{
+                              padding: 10,
+                              borderRadius: 10,
+                              backgroundColor: aviso.dentroDaJanela ? t.colors.warnSoft : t.colors.surfaceMuted,
+                            }}
+                          >
+                            <Text variant="caption" color={aviso.dentroDaJanela ? t.colors.warn : t.colors.textMuted}>
+                              {aviso.quando}{aviso.politica ? ` ${aviso.politica}` : ""}
+                            </Text>
+                          </View>
+                        )}
+
+                        <Text variant="caption" color={t.colors.textMuted}>
+                          {tr(lang, TEXTO_DO_PEDIDO.motivoRotulo)} {tr(lang, TEXTO_DO_PEDIDO.motivoDica)}
+                        </Text>
+                        <TextInput
+                          testID="motivo-cancelamento"
+                          value={motivo}
+                          onChangeText={setMotivo}
+                          multiline
+                          numberOfLines={3}
+                          placeholderTextColor={t.colors.textMuted}
+                          style={{
+                            minHeight: 72,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: t.colors.borderSubtle,
+                            padding: 10,
+                            color: t.colors.text,
+                            textAlignVertical: "top",
+                          }}
+                        />
+
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => { setPedindo(false); setMotivo(""); }}
+                            style={({ pressed }) => ({
+                              flex: 1,
+                              alignItems: "center",
+                              paddingVertical: 12,
+                              borderRadius: 12,
+                              borderWidth: 1,
+                              borderColor: t.colors.borderSubtle,
+                              opacity: pressed ? 0.7 : 1,
+                            })}
+                          >
+                            <Text variant="label" color={t.colors.textMuted}>
+                              {tr(lang, { en: "Back", pt: "Voltar" })}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            testID="enviar-pedido-cancelamento"
+                            accessibilityRole="button"
+                            disabled={enviandoPedido || !motivo.trim()}
+                            onPress={enviarPedido}
+                            style={({ pressed }) => ({
+                              flex: 1,
+                              alignItems: "center",
+                              paddingVertical: 12,
+                              borderRadius: 12,
+                              backgroundColor: t.colors.health,
+                              opacity: pressed || enviandoPedido || !motivo.trim() ? 0.6 : 1,
+                            })}
+                          >
+                            <Text variant="label" color={t.colors.accentFg} style={{ fontWeight: "700" }}>
+                              {enviandoPedido ? tr(lang, TEXTO_DO_PEDIDO.enviando) : tr(lang, TEXTO_DO_PEDIDO.enviar)}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                );
+              })()}
             </View>
           </Card>
         </View>

@@ -13,6 +13,8 @@ export type BlocoDoArtigo =
   | { tipo: "lista"; itens: string[]; ordenada: boolean }
   | { tipo: "citacao"; texto: string }
   | { tipo: "imagem"; url: string; legenda?: string }
+  /** Uma tabela que veio achatada num parágrafo — ver `lib/rich-text-blocks.ts`. */
+  | { tipo: "tabela"; cabecalho: string[]; linhas: string[][] }
   | { tipo: "separador" };
 
 export interface EduContent {
