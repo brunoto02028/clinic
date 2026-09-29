@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { disponibilidadeDoDia } from "@/lib/availability-day";
+import { getZonedDateString, getZonedDateTimeLocalString } from "@/lib/clinic-timezone";
 import { logAudit } from "@/lib/system-logger";
+
+/**
+ * O que gravar quando a clínica marca **sem** tipo de tratamento (106 T-3).
+ *
+ * Era `"General Consultation"`, e o QA mostrou o problema: o caminho aparecia
+ * no seletor como *"Sem tipo ainda"* e sumia no registro com um nome que
+ * ninguém escolheu — nome esse que viaja no e-mail de confirmação.
+ *
+ * Pior: não existe tipo de tratamento nenhum cadastrado nesta clínica (o Bruno:
+ * *"os tipos de tratamento da clinic só crio personalizado depois de atender o
+ * paciente"*), então `"General Consultation"` parecia um serviço da tabela de
+ * preços — e não era.
+ *
+ * `"Consultation"` descreve o que a coisa é, sem afirmar um tipo. O campo é
+ * obrigatório no banco, então algo tem de ficar ali; que seja verdade.
+ */
+const SEM_TIPO_DEFINIDO = "Consultation";
 import { syncSessionsUsed } from "@/lib/package-sessions";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
@@ -49,6 +68,15 @@ export async function GET() {
         therapist: {
           select: { id: true, firstName: true, lastName: true },
         },
+        /**
+         * Por onde a consulta foi paga (106 T-6).
+         *
+         * A lista sabia que a consulta parou de esperar pagamento e não sabia
+         * **como** ela foi paga — então o selo não tinha o que mostrar e o
+         * botão de desfazer não tinha como saber se havia algo manual a
+         * desfazer. Achado do QA.
+         */
+        payment: { select: { status: true, channel: true } },
       },
       orderBy: { dateTime: "desc" },
     });
@@ -85,6 +113,8 @@ export async function POST(request: NextRequest) {
       // numa clínica pequena o caso fora da curva é semanal (atividade 080,
       // T-4).
       courtesySession, waiveCharge, overrideReason,
+      /** Marcar fora da grade de propósito — encaixe, combinado por telefone. */
+      forceTime: forcarHorario,
     } = body;
     /**
      * O e-mail sai quando alguem pede — **inclusive no pagamento online**.
@@ -110,6 +140,49 @@ export async function POST(request: NextRequest) {
 
     if (!patientId || !dateTime) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });
+    }
+
+    /**
+     * Só horário disponível pode ser agendado — **no servidor** (106 T-4).
+     *
+     * O Bruno: *"somente horários disponíveis podem ter agendamento."* A T-4
+     * fez a tela parar de **oferecer** hora fechada, e o QA mostrou que isso não
+     * era a mesma coisa: `POST` com 07:00 num dia que abre às 09:00 respondia
+     * 200. "Somente horários disponíveis podem ter agendamento" tinha virado
+     * "somente horários disponíveis são oferecidos".
+     *
+     * `forcarHorario` existe porque a clínica manda: remarcar um encaixe, honrar
+     * um combinado por telefone fora da grade. Mas passa a ser uma **decisão
+     * escrita**, e não o silenço de quem não conferiu.
+     */
+    if (!forcarHorario) {
+      const quando = new Date(dateTime);
+      if (Number.isNaN(quando.getTime())) {
+        return NextResponse.json({ error: "Invalid date/time" }, { status: 400 });
+      }
+      const diaStr = getZonedDateString(quando);
+      const horaStr = getZonedDateTimeLocalString(quando).slice(11, 16);
+      try {
+        const dia = await disponibilidadeDoDia(clinicId, userId!, diaStr, {
+          duration: Number(duration) || 60,
+        });
+        if (!dia.slots.includes(horaStr)) {
+          return NextResponse.json(
+            {
+              error: dia.available
+                ? "That time is not free in the diary. Pick one of the free slots, or send forceTime to book anyway."
+                : "The clinic is not open then. Pick another day, or send forceTime to book anyway.",
+              code: "slot_unavailable",
+              slots: dia.slots,
+            },
+            { status: 409 }
+          );
+        }
+      } catch (err) {
+        // Uma agenda que não responde não pode impedir a clínica de marcar: o
+        // portao existe para pegar engano, não para virar ponto de falha.
+        console.error("[appointments] availability check failed, booking anyway:", err);
+      }
     }
 
     // Online payment charges BPR's Stripe account — never for a personal
@@ -187,7 +260,7 @@ export async function POST(request: NextRequest) {
         patientPackageId: cortesiaPacoteId,
         dateTime: new Date(dateTime),
         duration: duration || 60,
-        treatmentType: treatmentType || "General Consultation",
+        treatmentType: treatmentType || SEM_TIPO_DEFINIDO,
         notes: notes || null,
         price: precoFinal,
         mode: mode || "IN_PERSON",
@@ -286,7 +359,7 @@ export async function POST(request: NextRequest) {
           appointmentDate: dateStr,
           appointmentTime: timeStr,
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
-          treatmentType: treatmentType || 'General Consultation',
+          treatmentType: treatmentType || SEM_TIPO_DEFINIDO,
           duration: String(duration || 60),
           price: `£${(price || 0).toFixed(2)}`,
           // Sem link: o pagamento mora no app, e o modelo de e-mail que
@@ -313,11 +386,22 @@ export async function POST(request: NextRequest) {
        * O push e um aviso, nao o conteudo: quem carrega a noticia e o e-mail, e
        * a agenda esta no aplicativo de qualquer forma.
        */
+    } catch (emailErr) {
+      console.error('Failed to send appointment confirmation email:', emailErr);
+    }
+
+    /**
+     * E o telefone, **fora do `try` do e-mail** (achado do QA).
+     *
+     * Estava depois do `await notifyPatient` dentro do mesmo bloco: se o e-mail
+     * lançasse — modelo faltando, provedor fora do ar —, o push nem era
+     * tentado. Duas entregas independentes não podem cair juntas porque
+     * compartilham um `try`.
+     */
+    if (emailPatientNow) {
       pushConsulta(appointment.patient.id, "marcada").catch((pushErr) =>
         console.error('Failed to push appointment notification:', pushErr)
       );
-    } catch (emailErr) {
-      console.error('Failed to send appointment confirmation email:', emailErr);
     }
 
     // Check if patient needs to complete screening and notify them
@@ -377,7 +461,7 @@ export async function POST(request: NextRequest) {
               <h2 style="color:#5dc9c0;">Appointment Confirmation Sent</h2>
               <p>A confirmation email was sent to <strong>${appointment.patient.firstName} ${appointment.patient.lastName}</strong> (${appointment.patient.email}).</p>
               <table style="border-collapse:collapse;width:100%;margin:16px 0;">
-                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Treatment</td><td style="padding:8px;border:1px solid #333;">${treatmentType || 'General Consultation'}</td></tr>
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Treatment</td><td style="padding:8px;border:1px solid #333;">${treatmentType || SEM_TIPO_DEFINIDO}</td></tr>
                 <tr><td style="padding:8px;border:1px solid #333;color:#999;">Date</td><td style="padding:8px;border:1px solid #333;">${dateStr} at ${timeStr}</td></tr>
                 <tr><td style="padding:8px;border:1px solid #333;color:#999;">Duration</td><td style="padding:8px;border:1px solid #333;">${duration || 60} min</td></tr>
               </table>

@@ -56,6 +56,26 @@ coisa, e está nas perguntas abaixo.
 | T-5 | [Uma caixa marcada, dois e-mails enviados](t-5-uma-caixa-dois-emails.md) | 🟢 concluída (29/09) — aguardando QA |
 | T-6 | [A clínica marca como pago](t-6-a-clinica-marca-como-pago.md) | 🟢 concluída (29/09) — aguardando QA |
 
+## O que o QA das T-3 a T-6 encontrou, 29/09/2026
+
+**A T-6 reprovou**, e com razão: a rota estava sólida — medida com a linha de
+`Payment` lida no banco — mas três passos da tarefa não chegavam onde importa.
+
+| # | achado | o que foi feito |
+|---|---|---|
+| 1 | a fatura e o livro registravam transferência como **Stripe**, com identificador nulo ao lado | **corrigido** — o canal viaja até `PatientInvoice.paidMethod` e `FinancialEntry.paymentMethod`; o enum do livro já tinha `BANK_TRANSFER` e `CASH` |
+| 2 | desfazer funcionava por `curl` e **não tinha botão** | **corrigido** |
+| 3 | a consulta parava de dizer "esperando", mas nunca dizia **como** foi paga | **corrigido** |
+| 4 | o servidor aceitava 07:00 num dia que abre às 09:00 | **corrigido** — a T-4 tinha virado "só horários disponíveis são oferecidos" |
+| 5 | "Sem tipo ainda" gravava `General Consultation`, e esse nome ia no e-mail | **corrigido** — e não existe tipo nenhum cadastrado, então era um serviço inventado |
+| 6 | o `upsert` fechava cobrança da Stripe mantendo o `stripeSessionId` | **corrigido** — o webhance encontraria uma linha já paga |
+| 7 | a faixa da grade era global, não da semana exibida | **corrigido** |
+| 8 | o push vinha depois do `await` do e-mail, no mesmo `try` | **corrigido** — duas entregas independentes não caem juntas |
+
+O achado 4 é o mais instrutivo: eu tinha lido *"somente horários disponíveis
+podem ter agendamento"* e entregado **a tela deixando de oferecer**. Não é a
+mesma coisa, e o QA provou com um `POST`.
+
 ## Decisões de design
 
 ### Nada sai para o paciente sem alguém decidir

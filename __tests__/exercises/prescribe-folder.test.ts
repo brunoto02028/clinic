@@ -131,6 +131,12 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
   });
 
   it("still accepts an explicit exercise list", async () => {
+    // The route checks the exercises belong to this clinic before prescribing
+    // them — a tenant wall added after this test was written, which is why it
+    // answered 404: `e9` was not among the folder's mocked exercises, so the
+    // route rightly said it did not own it.
+    db.exercise.findMany.mockResolvedValue([exercise("e9")]);
+
     const res = await POST(
       request({ patientId: "pat-1", exercises: [{ exerciseId: "e9", sets: 4 }] })
     );
@@ -139,6 +145,21 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
     expect(res.status).toBe(201);
     expect(body.count).toBe(1);
     expect(db.exerciseFolder.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("**an exercise from another clinic is refused**", () => {
+    // The wall itself, which the test above was accidentally exercising: the
+    // route asks for the requested ids *scoped to this clinic*, and prescribes
+    // only when every one of them comes back.
+    db.exercise.findMany.mockResolvedValue([]);
+
+    return POST(
+      request({ patientId: "pat-1", exercises: [{ exerciseId: "de-outra-clinica" }] })
+    ).then(async (res: any) => {
+      expect(res.status).toBe(404);
+      expect(db.exercisePrescription.create).not.toHaveBeenCalled();
+      expect(db.exercise.findMany.mock.calls[0][0].where.clinicId).toBe("clinic-1");
+    });
   });
 
   it("notifies the patient once for the whole folder, not once per exercise", async () => {

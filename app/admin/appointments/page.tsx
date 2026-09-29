@@ -48,6 +48,7 @@ import {
   Loader2,
   CreditCard,
   Banknote,
+  Undo2,
   Sparkles,
   ChevronLeft,
   ChevronRight,
@@ -88,6 +89,16 @@ const ALTURA_MINIMA = 20;
  */
 const SEM_TIPO = "__sem_tipo__";
 
+/**
+ * Por onde esta consulta foi paga, ou `null` se ainda não foi.
+ *
+ * `FAILED` não conta: é o que o desfazer deixa para trás, e continuar
+ * mostrando "pago" sobre um pagamento desfeito seria o oposto do ponto.
+ */
+function canalPago(a: { payment?: { status?: string | null; channel?: string | null } | null }) {
+  return a.payment?.status === "SUCCEEDED" ? a.payment.channel ?? "STRIPE" : null;
+}
+
 interface DbTreatmentType {
   id: string; name: string; namePt: string | null;
   duration: number; price: number; discountPercent: number; isActive: boolean;
@@ -101,6 +112,12 @@ interface Appointment {
   status: string;
   price: number;
   paymentMethod?: string;
+  /**
+   * O pagamento, quando houve um — e **por onde** (106 T-6).
+   *
+   * Sem o canal a linha só sabia que parou de esperar, e não como foi paga.
+   */
+  payment?: { status?: string | null; channel?: string | null } | null;
   notes: string | null;
   /**
    * Presencial ou por vídeo. O dado sempre veio — o GET da agenda usa `include`
@@ -402,6 +419,37 @@ export default function AdminAppointmentsPage() {
         description: isPt
           ? `£${Number(data.amount).toFixed(2)} por ${canal === "TRANSFER" ? "transferência" : "dinheiro"}. A consulta está confirmada.`
           : `£${Number(data.amount).toFixed(2)} by ${canal === "TRANSFER" ? "bank transfer" : "cash"}. The appointment is confirmed.`,
+      });
+      fetchAppointments();
+    } catch {
+      toast({
+        title: isPt ? "Não deu" : "Could not do it",
+        description: isPt ? "Tente de novo." : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPagandoManual(null);
+    }
+  };
+
+  const desfazerPagamento = async (id: string) => {
+    setPagandoManual(id);
+    try {
+      const res = await fetch(`/api/admin/appointments/${id}/payment`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: isPt ? "Não deu" : "Could not do it",
+          description: data.error || (isPt ? "Tente de novo." : "Try again."),
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: isPt ? "Pagamento desfeito" : "Payment undone",
+        description: isPt
+          ? "A consulta voltou a esperar pagamento. O registro anterior fica no histórico."
+          : "The appointment is waiting for payment again. The earlier record stays in the history.",
       });
       fetchAppointments();
     } catch {
@@ -938,7 +986,16 @@ export default function AdminAppointmentsPage() {
   const HOURS = useMemo(() => {
     let primeira = PRIMEIRA_HORA_PADRAO;
     let ultima = ULTIMA_HORA_PADRAO;
+    /**
+     * Só as consultas **da semana desenhada** esticam a faixa (achado do QA).
+     *
+     * Era sobre todas: uma consulta das 20:00 em 30 de setembro fazia a semana
+     * de 12 a 18 de outubro desenhar até as 20h, vazia. A faixa tem de contar
+     * sobre o que está na tela.
+     */
+    const daSemana = new Set(calendarDays.map((d) => chaveDoDia(d)));
     for (const a of appointments) {
+      if (!daSemana.has(getZonedDateString(new Date(a.dateTime)))) continue;
       const min = minutoDaConsulta[a.id];
       if (!Number.isFinite(min)) continue;
       const inicio = Math.floor(min / 60);
@@ -948,7 +1005,7 @@ export default function AdminAppointmentsPage() {
       if (fim > ultima) ultima = Math.min(23, fim);
     }
     return Array.from({ length: ultima - primeira + 1 }, (_, i) => i + primeira);
-  }, [appointments, minutoDaConsulta]);
+  }, [appointments, minutoDaConsulta, calendarDays]);
 
   const PRIMEIRA_HORA = HOURS[0];
   const ULTIMA_HORA = HOURS[HOURS.length - 1];
@@ -1582,6 +1639,20 @@ export default function AdminAppointmentsPage() {
                               {isPt ? "Esperando o pagamento" : "Waiting for payment"}
                             </span>
                           )}
+                        {/* **Como** foi paga, e não só que parou de esperar
+                            (achado do QA da 106 T-6). Dizer "pago" sem dizer
+                            por onde é metade da informação que a conciliação
+                            com o extrato precisa. */}
+                        {canalPago(appointment) && (
+                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            <Banknote className="h-3 w-3" />
+                            {canalPago(appointment) === "TRANSFER"
+                              ? isPt ? "Pago por transferência" : "Paid by bank transfer"
+                              : canalPago(appointment) === "CASH"
+                                ? isPt ? "Pago em dinheiro" : "Paid in cash"
+                                : isPt ? "Pago pelo cartão" : "Paid by card"}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
@@ -1668,6 +1739,22 @@ export default function AdminAppointmentsPage() {
                             <span className="hidden sm:inline">Cancel</span>
                           </Button>
                         </>
+                      )}
+                      {/* Desfazer só onde há o que desfazer: pagamento
+                          anotado à mão. Cartão se desfaz reembolsando, que é
+                          outro lugar e tem dinheiro do outro lado. */}
+                      {(canalPago(appointment) === "TRANSFER" || canalPago(appointment) === "CASH") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs px-2 text-muted-foreground"
+                          disabled={pagandoManual === appointment.id}
+                          title={isPt ? "Desfazer o registro de pagamento" : "Undo the payment record"}
+                          onClick={() => desfazerPagamento(appointment.id)}
+                        >
+                          <Undo2 className="h-3.5 w-3.5 sm:mr-1" />
+                          <span className="hidden sm:inline">{isPt ? "Desfazer" : "Undo"}</span>
+                        </Button>
                       )}
                       {appointment.status === "CONFIRMED" && (
                         <Button

@@ -42,6 +42,24 @@ describe("displayGroup on a prescription", () => {
     session.mockResolvedValue({ user: { role: "ADMIN", clinicId: "c1", id: "t1" } });
     db.user.findFirst.mockResolvedValue({ id: "pat-1", firstName: "Gabby" });
     db.exercisePrescription.findMany.mockResolvedValue([]);
+    /**
+     * A rota confere que os exercícios são **desta** clínica antes de prescrever
+     * — parede de inquilino posta depois que estes testes foram escritos. Sem
+     * resposta aqui, `findMany` devolvia `undefined` e a rota respondia 404,
+     * corretamente, dizendo que não eram dela.
+     *
+     * Uma lista fixa não serve: a rota compara **quantos pediu** com quantos
+     * são dela, então devolver dois para um pedido de um reprova igual. O falso
+     * responde à pergunta, como o banco faria — e o caminho da pasta, que
+     * consulta por `folderId` e não por `id`, continua com a lista da pasta.
+     */
+    db.exercise.findMany.mockImplementation(({ where }: any = {}) =>
+      Promise.resolve(
+        Array.isArray(where?.id?.in)
+          ? where.id.in.map((id: string) => ({ id }))
+          : [{ id: "e1" }, { id: "e2" }]
+      )
+    );
     db.$transaction.mockImplementation((ops: any[]) => Promise.resolve(ops.map(() => ({ id: "p1" }))));
     (notifyPatient as jest.Mock).mockResolvedValue({ channel: "EMAIL", success: true });
     jest.spyOn(console, "error").mockImplementation(() => {});

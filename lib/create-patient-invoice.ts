@@ -17,11 +17,25 @@ export interface CreatePatientInvoiceOptions {
   appointmentId?: string | null;
   patientSubscriptionId?: string | null;
   createdById?: string | null;
-  /** Set when the underlying charge already cleared via Stripe (e.g. the
-   * Appointment's Payment.status is SUCCEEDED) — the invoice is created
-   * already PAID, no manual "mark as paid" needed. Leave undefined for the
-   * normal DRAFT-until-approved-and-paid flow. */
-  alreadyPaidViaStripe?: { amount: number; paidAt: Date; stripePaymentIntentId?: string | null } | null;
+  /** Set when the underlying charge already cleared (e.g. the Appointment's
+   * Payment.status is SUCCEEDED) — the invoice is created already PAID, no
+   * manual "mark as paid" needed. Leave undefined for the normal
+   * DRAFT-until-approved-and-paid flow.
+   *
+   * `channel` says **how** it cleared. It used to be hardcoded to Stripe, and
+   * once the clinic could record a bank transfer by hand (106 T-6) that made
+   * the invoice and the ledger both claim a card payment that never happened —
+   * with a null payment intent to prove it. QA caught it.
+   *
+   * The name kept `ViaStripe` for a while and stopped being true; it is
+   * `alreadyPaid` now, because a field that lies about its own contents is how
+   * the next person repeats the mistake. */
+  alreadyPaid?: {
+    amount: number;
+    paidAt: Date;
+    channel?: "STRIPE" | "TRANSFER" | "CASH" | null;
+    stripePaymentIntentId?: string | null;
+  } | null;
 }
 
 /**
@@ -40,7 +54,14 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
     total: (it.quantity ?? 1) * it.unitPrice,
   }));
   const total = items.reduce((sum, it) => sum + it.total, 0);
-  const stripe = opts.alreadyPaidViaStripe;
+  const pago = opts.alreadyPaid;
+  const canal = pago?.channel ?? "STRIPE";
+  /**
+   * O livro financeiro já sabia falar de transferência e dinheiro —
+   * `PaymentMethodType` tem `BANK_TRANSFER` e `CASH` desde sempre. O que estava
+   * errado era o valor, fixo em `"STRIPE"`.
+   */
+  const noLivro = canal === "TRANSFER" ? "BANK_TRANSFER" : canal;
 
   // Number + row created in the same transaction (code review) — if the
   // create fails for any reason, the increment rolls back too, so a number
@@ -52,7 +73,7 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
         invoiceNumber,
         clinicId: opts.clinicId,
         patientId: opts.patientId,
-        status: stripe ? "PAID" : "DRAFT",
+        status: pago ? "PAID" : "DRAFT",
         subtotal: total,
         total,
         notes: opts.notes || null,
@@ -60,9 +81,9 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
         appointmentId: opts.appointmentId || null,
         patientSubscriptionId: opts.patientSubscriptionId || null,
         createdById: opts.createdById || null,
-        paidAt: stripe ? stripe.paidAt : null,
-        paidAmount: stripe ? stripe.amount : null,
-        paidMethod: stripe ? "stripe" : null,
+        paidAt: pago ? pago.paidAt : null,
+        paidAmount: pago ? pago.amount : null,
+        paidMethod: pago ? canal.toLowerCase() : null,
         items: { create: items },
       },
       include: { items: true, patient: { select: { firstName: true, lastName: true } } },
@@ -73,7 +94,7 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
     // a FinancialEntry for a paid invoice). Same transaction as the
     // invoice itself, so the two can never disagree about whether this
     // payment happened.
-    if (stripe) {
+    if (pago) {
       await createFinancialEntryForInvoice({
         db: tx,
         clinicId: opts.clinicId,
@@ -81,11 +102,11 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
         patientName: `${invoice.patient.firstName} ${invoice.patient.lastName}`,
         invoiceId: invoice.id,
         invoiceNumber,
-        amount: stripe.amount,
+        amount: pago.amount,
         currency: invoice.currency,
-        paidAt: stripe.paidAt,
-        paymentMethod: "STRIPE",
-        stripePaymentIntentId: stripe.stripePaymentIntentId,
+        paidAt: pago.paidAt,
+        paymentMethod: noLivro,
+        stripePaymentIntentId: pago.stripePaymentIntentId ?? null,
         appointmentId: opts.appointmentId,
         patientSubscriptionId: opts.patientSubscriptionId,
       });
