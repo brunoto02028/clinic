@@ -63,7 +63,20 @@ function AppointmentDetailScreen() {
   const abre = data?.videoOpensAt ? new Date(data.videoOpensAt).getTime() : null;
   const fecha = data?.videoClosesAt ? new Date(data.videoClosesAt).getTime() : null;
   const dentroDaJanela = abre !== null && fecha !== null && agora >= abre && agora <= fecha;
-  const podeEntrar = !!data?.videoRoomReady || dentroDaJanela;
+  /**
+   * A sala aberta adianta a entrada — **não a eterniza**.
+   *
+   * `videoRoomReady` sozinho deixava o botão de pé para sempre: a sala existe
+   * desde que alguém entrou uma vez, então uma consulta de três semanas atrás
+   * continuaria oferecendo "Entrar". O servidor recusaria com `too_late`, e a
+   * pessoa levaria um erro de um botão que não devia existir — que é a falha
+   * que o resto deste código passa o tempo todo evitando.
+   *
+   * O fim da janela vale para os dois caminhos. O começo é que a sala aberta
+   * dispensa.
+   */
+  const aindaNaoFechou = fecha === null || agora <= fecha;
+  const podeEntrar = aindaNaoFechou && (!!data?.videoRoomReady || dentroDaJanela);
   const abreAs =
     abre !== null && (fecha === null || agora <= fecha)
       ? new Date(abre).toLocaleTimeString(lang === "pt" ? "pt-BR" : "en-GB", {
@@ -242,7 +255,13 @@ function AppointmentDetailScreen() {
               {/* Cancelada nao oferece entrada. O servidor ja recusa com
     `not_scheduled`, mas um botao verde ao lado da tarja vermelha
     "Cancelada" e a tela contradizendo a si mesma. */}
-                  {data.mode === "VIDEO" && data.status !== "CANCELLED" && data.status !== "NO_SHOW" && (
+                  {/* `COMPLETED` entrou na lista em 29/09/2026: a rota já
+                      recusava consulta concluída desde a 101, e a tela
+                      continuava oferecendo o botão. */}
+                  {data.mode === "VIDEO" &&
+                    data.status !== "CANCELLED" &&
+                    data.status !== "NO_SHOW" &&
+                    data.status !== "COMPLETED" && (
                 <>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <View style={{

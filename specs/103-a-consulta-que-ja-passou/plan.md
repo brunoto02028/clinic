@@ -67,9 +67,11 @@ não pode vir simplesmente não vem — e vira falta que ninguém entende.
 | T-2 | [A fila do que venceu, no painel](t-2-a-fila-do-que-venceu.md) | pendente |
 | T-3 | [O app não diz "Confirmada" para o que passou](t-3-o-app-nao-mente.md) | pendente |
 | T-4 | [O paciente desmarca pelo app](t-4-o-paciente-desmarca.md) | pendente |
+| T-5 | [A chamada que não pode acontecer não tem botão](t-5-sem-botao-sem-porta.md) | 🟢 concluída (29/09) |
 
 **T-1 antes da T-2**, porque é ela que dá fundamento à sugestão. T-3 e T-4 são
-independentes.
+independentes. **T-5 saiu na frente** — era pequena, e o Bruno pediu no meio do
+planejamento.
 
 ## Suposições — para você validar
 

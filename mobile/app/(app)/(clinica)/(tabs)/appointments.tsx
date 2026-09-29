@@ -184,7 +184,12 @@ function AppointmentsScreen() {
                   {/* Cancelada nao oferece entrada. O servidor ja recusa com
     `not_scheduled`, mas um botao verde ao lado da tarja vermelha
     "Cancelada" e a tela contradizendo a si mesma. */}
-                  {item.mode === "VIDEO" && item.status !== "CANCELLED" && item.status !== "NO_SHOW" && (
+                  {/* Concluída também não: a rota recusa desde a 101, e a lista
+                      continuava oferecendo (29/09/2026). */}
+                  {item.mode === "VIDEO" &&
+                    item.status !== "CANCELLED" &&
+                    item.status !== "NO_SHOW" &&
+                    item.status !== "COMPLETED" && (
                     <View style={{ marginTop: 10, marginLeft: 56 }}>
                       {janelaAberta(item.dateTime, item.duration) ? (
                         <Pressable
