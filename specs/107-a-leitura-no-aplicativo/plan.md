@@ -56,7 +56,7 @@ dentro do parágrafo: itálico e negrito passam como texto.
 | T-2 | [Quem terminou de ler quer o próximo](t-2-o-fim-do-artigo.md) | 🟢 concluída (29/09) |
 | T-3 | [O TODO que chegou ao paciente](t-3-o-todo-no-artigo.md) | 🟢 concluída (29/09) — produção limpa |
 | T-4 | [O markdown que o paciente lê cru](t-4-markdown-cru.md) | 🟢 concluída (29/09) |
-| T-5 | [O `&nbsp;` e a tabela achatada](t-5-nbsp-e-tabela-achatada.md) | pendente — achado ao medir a T-3 |
+| T-5 | [O `&nbsp;` e a tabela achatada](t-5-nbsp-e-tabela-achatada.md) | 🟢 concluída (29/09) — aguardando QA |
 
 **T-3 primeiro.** As outras são melhorias; esta é conteúdo errado na mão de
 quem confia na clínica, e sai com uma linha a menos.

@@ -5,6 +5,7 @@ import { syncSessionsUsed } from "@/lib/package-sessions";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { notifyPatient, pediramEnviarAoPaciente } from "@/lib/notify-patient";
+import { pushConsulta } from "@/lib/push-notify";
 import { sendEmail } from "@/lib/email";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { isPersonalTenant } from "@/lib/tenant-type";
@@ -296,6 +297,25 @@ export async function POST(request: NextRequest) {
         plainMessage: `Your appointment is confirmed: ${treatmentType || 'Consultation'} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.${paymentNote}`,
         plainMessagePt: `Sua consulta está confirmada: ${treatmentType || 'Consulta'} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.${paymentNotePt}`,
       });
+      /**
+       * E a notificacao no telefone, junto (106 T-5).
+       *
+       * O Bruno: *"ao agendar uma consulta ou dias de tratamento de um
+       * determinado paciente, so sera enviado notificacao depois que alguem da
+       * clinic liberar. Ai vamos enviar por email e a notificacao do app para
+       * o paciente ver a agenda dele."*
+       *
+       * Fica **aqui dentro**, atras do mesmo pedido explicito que manda o
+       * e-mail, e nao em `notifyPatient`: o docstring daquele arquivo conta por
+       * que — ele e chamado pelos crons de lembrete, e um push ligado la
+       * comecaria a vibrar telefone de paciente sem ninguem ter decidido isso.
+       *
+       * O push e um aviso, nao o conteudo: quem carrega a noticia e o e-mail, e
+       * a agenda esta no aplicativo de qualquer forma.
+       */
+      pushConsulta(appointment.patient.id, "marcada").catch((pushErr) =>
+        console.error('Failed to push appointment notification:', pushErr)
+      );
     } catch (emailErr) {
       console.error('Failed to send appointment confirmation email:', emailErr);
     }

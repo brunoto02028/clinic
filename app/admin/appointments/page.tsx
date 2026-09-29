@@ -76,6 +76,15 @@ const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
 const ALTURA_HORA = 56;
 // O piso de legibilidade: abaixo disto o nome do paciente não cabe.
 const ALTURA_MINIMA = 20;
+
+/**
+ * O valor do "sem tipo" no seletor.
+ *
+ * `<Select>` do Radix não aceita `value=""` num item — string vazia é o estado
+ * "nada escolhido", e o item some. Então a ausência precisa de um nome, e ele
+ * é traduzido para `treatmentType: ""` na hora de guardar.
+ */
+const SEM_TIPO = "__sem_tipo__";
 // Onde a grade termina, em pixels desde a meia-noite. Uma consulta que passe
 // daqui é desenhada até a borda e não além dela.
 const FIM_DA_GRADE_PX = (HOURS[HOURS.length - 1] + 1) * ALTURA_HORA;
@@ -1657,7 +1666,25 @@ export default function AdminAppointmentsPage() {
             </div>
             <div className="space-y-2">
               <Label>{relabel(isPt ? "Tipo de Tratamento" : "Treatment Type")}</Label>
-              <Select value={createForm.treatmentType} onValueChange={v => {
+              {/* O tipo sempre foi opcional — no envio e no servidor. A tela é
+                  que não dizia (106 T-3).
+
+                  O Bruno: *"tratamento será colocado pelo terapeuta. O paciente
+                  que já conhecemos, se do lado da clinic a clínica quiser
+                  agendar algo com aquele paciente específico, ela pode fazer
+                  isso sem envolver pagamento."*
+
+                  O seletor só oferecia os tipos com preço, então marcar sem
+                  cobrança exigia adivinhar que dava para deixar o campo em
+                  branco. Deixar um caminho existir sem mostrá-lo é o mesmo que
+                  não tê-lo — foi o que fez isto parecer camisa de força. */}
+              <Select value={createForm.treatmentType || SEM_TIPO} onValueChange={v => {
+                if (v === SEM_TIPO) {
+                  // Sem tipo é **sem cobrança**: a consulta nasce confirmada e
+                  // ninguém espera pagamento nenhum.
+                  setCreateForm(f => ({ ...f, treatmentType: "", price: 0, paymentMode: "in_person" }));
+                  return;
+                }
                 const dbOpt = dbTreatments.find(t => t.name === v);
                 if (dbOpt) {
                   const finalPrice = dbOpt.discountPercent > 0 ? dbOpt.price * (1 - dbOpt.discountPercent / 100) : dbOpt.price;
@@ -1669,6 +1696,11 @@ export default function AdminAppointmentsPage() {
               }}>
                 <SelectTrigger><SelectValue placeholder={relabel(isPt ? "Selecionar tratamento..." : "Select treatment...")} /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={SEM_TIPO}>
+                    {relabel(isPt
+                      ? "Sem tipo ainda — sem cobrança"
+                      : "No treatment type yet — no charge")}
+                  </SelectItem>
                   {dbTreatments.length > 0
                     ? dbTreatments.map(t => {
                         const finalPrice = t.discountPercent > 0 ? t.price * (1 - t.discountPercent / 100) : t.price;
@@ -1779,7 +1811,11 @@ export default function AdminAppointmentsPage() {
                 </button>
               </div>
             </div>
-            {/* Payment Mode */}
+            {/* Modo de pagamento — só quando há o que pagar (106 T-3).
+                Oferecer "na clínica ou online" numa consulta de preço zero é a
+                mesma espécie de mentira que a T-1 tirou do cabeçalho: promete
+                uma decisão que não existe. */}
+            {Number(createForm.price) > 0 ? (
             <div className="space-y-2">
               <Label>{isPt ? "Modo de Pagamento" : "Payment Mode"}</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -1818,6 +1854,13 @@ export default function AdminAppointmentsPage() {
                 </p>
               )}
             </div>
+            ) : (
+              <p className="text-xs text-muted-foreground rounded-lg border border-border px-3 py-2">
+                {relabel(isPt
+                  ? "Sem cobrança: a consulta nasce confirmada e o paciente não precisa pagar nada. Escolha um tipo de tratamento acima se for cobrar."
+                  : "No charge: the appointment is confirmed straight away and the patient pays nothing. Pick a treatment type above if you are charging.")}
+              </p>
+            )}
             {/* Confirmation e-mail: off unless asked (the previewed composer is the normal way) */}
             <label className="flex items-start gap-2 text-xs rounded-lg border border-border px-3 py-2">
               <input
@@ -1827,9 +1870,14 @@ export default function AdminAppointmentsPage() {
                 onChange={(e) => setCreateForm(f => ({ ...f, sendConfirmation: e.target.checked }))}
               />
               <span>
-                <span className="font-medium">{isPt ? "Enviar o e-mail de confirmação agora, sem prévia" : "Send the confirmation email now, without a preview"}</span>
+                <span className="font-medium">{isPt ? "Avisar o paciente agora, sem prévia" : "Notify the patient now, without a preview"}</span>
                 <span className="block text-muted-foreground">
-                  {isPt ? "Desmarcado — o padrão — a consulta é criada e nada sai. Você escreve e vê a prévia depois, em \"Confirmar por email\"." : "Unchecked — the default — the appointment is created and nothing goes out. You write it and see the preview afterwards, under \"Email confirmation\"."}
+                  {/* A caixa dizia "o e-mail de confirmação" e mandava **dois**
+                      e-mails: a confirmação e, quando a triagem médica ainda
+                      não foi preenchida, um aviso pedindo que preencha. O
+                      segundo o QA encontrou; nenhum dos dois estava escrito
+                      aqui, e agora os três estão (106 T-5). */}
+                  {isPt ? "Manda o e-mail de confirmação e a notificação no aplicativo — e o aviso de triagem médica, se ela ainda faltar. Desmarcado, o padrão, a consulta é criada e nada sai: você escreve e vê a prévia depois, em \"Confirmar por email\"." : "Sends the confirmation email and the app notification — plus the medical screening reminder, if that is still missing. Unchecked, the default, the appointment is created and nothing goes out: you write it and see the preview afterwards, under \"Email confirmation\"."}
                 </span>
               </span>
             </label>

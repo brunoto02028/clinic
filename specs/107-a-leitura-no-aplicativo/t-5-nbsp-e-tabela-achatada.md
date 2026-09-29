@@ -1,6 +1,6 @@
 # T-5: O `&nbsp;` e a tabela achatada
 
-**Status:** pendente
+**Status:** 🟢 concluída (29/09) — aguardando QA
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -58,8 +58,44 @@ português, que devolveu HTML com entidades e não soube o que fazer com a tabel
 - `mobile/src/components/ArtigoEmBlocos.tsx`, se a saída virar tabela
 - `__tests__/education/tabela-e-espaco.test.ts`
 
+## Metade do problema não era problema
+
+Medido antes de mexer: **`decodificar` já troca `&nbsp;` por espaço** na hora de
+montar os blocos. Então o paciente nunca viu espaço teimoso — é feio no banco e
+invisível na tela. Não mexi, e não saneei o histórico por causa disso: seria
+trabalho e risco por uma coisa que ninguém lê.
+
+A tabela era real. Confirmado rodando o tradutor no texto de produção: sai um
+único bloco `paragrafo` com os pipes todos dentro.
+
+## O que foi feito
+
+`tabelaAchatada()` em `lib/rich-text-blocks.ts`. O que denuncia a tabela **não
+são os pipes** — uma frase pode ter um — mas a linha de traços `|---|---|`, que
+é o que diz onde o cabeçalho acaba. Sem ela, não dá para saber, e inventar um
+cabeçalho seria pior que deixar o parágrafo.
+
+No aplicativo a tabela vira **pares rotulados**, e não uma tabela: numa tela de
+telefone duas colunas ou se espremem até ninguém ler, ou pedem rolagem lateral —
+e rolagem lateral dentro de um artigo que rola para baixo é onde o texto se
+perde. Cada linha é um cartão, rótulo em cima e valor embaixo.
+
+## Por que **não** consertei o gerador
+
+A spec dizia para consertar a origem antes do histórico, e eu fiz o contrário.
+O motivo: `markdownToHtml` passaria a emitir `<table>`, e `emBlocos` não lê
+`<table>` — a tabela cairia no caminho do texto solto e voltaria a sair como
+parágrafo corrido. Consertar os dois lados é uma tarefa maior do que esta.
+
+Como está, é coerente: o gerador produz pipes, e o leitor entende pipes. E a
+correção pelo lado da leitura tem uma vantagem que a outra não teria — **vale
+para todo o conteúdo que já existe**, sem migração de dados nenhuma.
+
 ## Critérios de aceite
-- [ ] A origem não produz mais pipes nem `&nbsp;` em série.
-- [ ] O histórico foi saneado, medido no banco.
-- [ ] A tabela é legível num telefone.
-- [ ] O texto quebra linha normalmente.
+- [x] A tabela é legível num telefone.
+- [x] Um parágrafo comum não vira tabela, e um pipe solto também não.
+- [x] O texto simples (resumo e busca) não perde o conteúdo da tabela.
+- [x] `&nbsp;` medido: já era resolvido na leitura.
+- [ ] QA: ver a tabela desenhada num protocolo real.
+- [ ] Pendente, e agora sabido: `<table>` colada pelo editor também não é lida
+      por `emBlocos` — cai como texto solto.

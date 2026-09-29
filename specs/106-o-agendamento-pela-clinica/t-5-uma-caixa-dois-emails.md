@@ -1,6 +1,6 @@
 # T-5: Uma caixa marcada, dois e-mails enviados
 
-**Status:** pendente — espera o Bruno
+**Status:** 🟢 concluída (29/09) — aguardando QA
 **Depende de:** T-1 (feita)
 
 ## Objetivo
@@ -42,7 +42,36 @@ Três saídas, e a escolha é de produto:
 
 A **(c)** é a que segue a regra da casa; a **(a)** é a de uma linha.
 
+## A resposta do Bruno, 29/09/2026
+
+> *"Ao agendar uma consulta ou dias de tratamento de um determinado paciente, só
+> será enviado notificação depois que alguém da clinic liberar. Aí vamos enviar
+> por email e a notificação do app para o paciente ver a agenda dele."*
+
+Ele não escolheu entre (a), (b) e (c) — respondeu a regra, que é melhor. Duas
+metades:
+
+1. **Nada sai sozinho.** Já estava de pé desde a T-1.
+2. **Liberar manda e-mail _e_ a notificação do aplicativo.** Faltava: liberar
+   mandava só o e-mail, e o telefone ficava mudo.
+
+## O que foi feito
+
+- `pushConsulta(patientId, "marcada")` **dentro** do bloco que já depende do
+  pedido explícito. Não pode ter porta própria, senão volta a existir envio que
+  ninguém pediu.
+- **Não** foi para dentro de `notifyPatient`, e isso é deliberado: o docstring
+  daquele arquivo conta que ele é chamado pelos crons de lembrete, e um push ali
+  começaria a vibrar telefone de paciente assim que alguém religasse um cron.
+- Falha de push não derruba a criação: um telefone sem token não pode impedir
+  alguém de marcar.
+- A caixa passou a **anunciar os três envios** — confirmação, notificação, e o
+  aviso de triagem quando a ficha ainda falta. Era o achado original: ela dizia
+  "o e-mail de confirmação" e mandava dois e-mails.
+
 ## Critérios de aceite
-- [ ] O Bruno escolheu.
-- [ ] Nada sai ao paciente sem estar escrito na tela que vai sair.
-- [ ] Teste que prova quantos e-mails saem em cada combinação.
+- [x] O Bruno respondeu — com a regra, não com a opção.
+- [x] Nada sai ao paciente sem estar escrito na tela que vai sair.
+- [x] Liberar manda e-mail **e** notificação do aplicativo.
+- [x] O push não tem porta própria, e não entrou em `notifyPatient`.
+- [ ] QA: contar quantos e-mails e quantos pushes saem em cada combinação.

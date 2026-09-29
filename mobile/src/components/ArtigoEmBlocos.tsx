@@ -124,6 +124,61 @@ export function ArtigoEmBlocos({ blocos }: { blocos: BlocoDoArtigo[] }) {
               </View>
             );
 
+          case "tabela":
+            /**
+             * Pares rotulados, e não uma tabela (107 T-5).
+             *
+             * Numa tela de telefone uma tabela de duas colunas ou espreme as
+             * duas até ninguém ler, ou pede rolagem lateral — e rolagem lateral
+             * dentro de um artigo que rola para baixo é onde o texto se perde.
+             *
+             * Cada linha vira um cartão: o rótulo da coluna em cima, o valor
+             * embaixo. Lê-se de cima para baixo, que é como o resto do artigo
+             * já se lê.
+             */
+            return (
+              <View key={i} style={{ gap: 10 }}>
+                {b.linhas.map((linha, j) => (
+                  <View
+                    key={j}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: t.colors.borderSubtle,
+                      borderRadius: 12,
+                      padding: 12,
+                      gap: 8,
+                    }}
+                  >
+                    {linha.map((celula, k) => {
+                      if (!celula) return null;
+                      const rotulo = b.cabecalho[k];
+                      // A primeira coluna é o assunto da linha: vai em
+                      // destaque, sem repetir o rótulo em cima dela.
+                      if (k === 0) {
+                        return (
+                          <Text key={k} variant="label" style={{ fontWeight: "700", fontSize: 15 }}>
+                            <TextoComMarcacao texto={celula} />
+                          </Text>
+                        );
+                      }
+                      return (
+                        <View key={k} style={{ gap: 2 }}>
+                          {rotulo ? (
+                            <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11 }}>
+                              {rotulo}
+                            </Text>
+                          ) : null}
+                          <Text variant="body" style={{ lineHeight: 22, fontSize: 15 }}>
+                            <TextoComMarcacao texto={celula} />
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            );
+
           case "imagem":
             return (
               <View key={i} style={{ gap: 6 }}>

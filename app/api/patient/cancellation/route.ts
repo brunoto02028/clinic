@@ -86,7 +86,9 @@ export async function POST(req: NextRequest) {
       });
 
       if (!appointment) return NextResponse.json({ error: isPt ? 'Consulta não encontrada.' : 'Appointment not found.' }, { status: 404 });
-      if (appointment.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Não autorizado.' : 'Unauthorized.' }, { status: 403 });
+      // 404, e não 403: distinguir "não existe" de "não é seu" conta a um
+      // estranho que a consulta existe. É a regra da casa.
+      if (appointment.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Consulta não encontrada.' : 'Appointment not found.' }, { status: 404 });
       if (appointment.status === 'CANCELLED') return NextResponse.json({ error: isPt ? 'A consulta já está cancelada.' : 'Appointment is already cancelled.' }, { status: 400 });
 
       const now = new Date();
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!plan) return NextResponse.json({ error: isPt ? 'Plano de tratamento não encontrado.' : 'Treatment plan not found.' }, { status: 404 });
-      if (plan.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Não autorizado.' : 'Unauthorized.' }, { status: 403 });
+      if (plan.patientId !== patientId) return NextResponse.json({ error: isPt ? 'Plano de tratamento não encontrado.' : 'Treatment plan not found.' }, { status: 404 });
       if (plan.status === 'CANCELLED') return NextResponse.json({ error: isPt ? 'O plano de tratamento já está cancelado.' : 'Treatment plan is already cancelled.' }, { status: 400 });
 
       // Treatment plans: no automatic refund — always requires admin review
