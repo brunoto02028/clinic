@@ -8,7 +8,7 @@
 const ABAS_VALIDAS = [
   "resumo", "screening", "avaliacoes", "assessments", "notas", "medidas", "pressao",
   "protocolo", "rehab", "evidencia", "exercicios", "workouts", "nutrition",
-  "mensagens", "docs", "billing", "atividade", "automacao",
+  "mensagens", "docs", "equipe", "billing", "atividade", "automacao",
 ];
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -37,6 +37,7 @@ import { PatientMonitoringTab } from "@/components/admin/patient-monitoring-tab"
 import PatientWellbeingChart from "@/components/admin/patient-wellbeing-chart";
 import AutomationRuns from "@/components/patients/automation-runs";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
+import { PartilharComAEquipe } from "@/components/admin/partilhar-com-a-equipe";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
@@ -1084,6 +1085,12 @@ export default function PatientProfilePage() {
                     caindo enquanto a dor sobe não aparece olhando uma aba por vez. */}
                 <TabsTrigger value="monitoramento" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Monitoring</TabsTrigger>
                 <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documents</TabsTrigger>
+                {/* A equipe multidisciplinar (102 T-9). Fica ao lado de
+                    Documents porque a pergunta é vizinha — "que papéis existem
+                    sobre esta pessoa" e "quem mais os viu". */}
+                {!isPersonal && (
+                  <TabsTrigger value="equipe" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Care team</TabsTrigger>
+                )}
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
                   <MessageSquare className="h-3 w-3" />Messages
                   {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
@@ -1987,6 +1994,13 @@ export default function PatientProfilePage() {
         </TabsContent>
 
         {/* ── Tab: Documentos ── */}
+        <TabsContent value="equipe" className="mt-4">
+          <PartilharComAEquipe
+            patientId={patientId}
+            patientName={`${data.patient?.firstName ?? ""} ${data.patient?.lastName ?? ""}`.trim()}
+          />
+        </TabsContent>
+
         <TabsContent value="docs" className="mt-4">
         <div className="space-y-2.5">
         {/* ── Documents ── */}

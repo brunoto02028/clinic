@@ -159,3 +159,23 @@ export async function vinculosDoPaciente(patientId: string) {
     },
   });
 }
+
+/**
+ * Os inquilinos que cuidam desta pessoa agora (102 T-9).
+ *
+ * Mora aqui, e não em `care-share.ts`, porque **toda leitura de `careLink`
+ * mora aqui**: uma segunda consulta espalhada por aí seria uma segunda porta, e
+ * ninguém saberia das duas. A varredura `toda-rota-de-paciente-tem-guarda`
+ * existe para pegar exatamente isso, e pegou.
+ *
+ * Não responde "pode agir sobre este paciente" — para isso é `vinculoVivo`.
+ * Responde "quem mais está nesse cuidado", que é o que a tela de partilha
+ * precisa para oferecer **nomes**.
+ */
+export async function inquilinosQueCuidam(patientId: string): Promise<string[]> {
+  const links = await (prisma as any).careLink.findMany({
+    where: { patientId, endedAt: null },
+    select: { professionalClinicId: true },
+  });
+  return links.map((l: any) => l.professionalClinicId as string);
+}

@@ -4,6 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchCareLinks, endCareLink, type VinculoDeCuidado } from "@/api/care-links";
+import {
+  fetchCareShares,
+  revokeCareShare,
+  type PartilhaDeCuidado,
+} from "@/api/care-shares";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { usePullToRefresh } from "@/lib/pull-to-refresh";
@@ -37,6 +42,46 @@ export default function QuemTemAcesso() {
     queryKey: ["care-links"],
     queryFn: fetchCareLinks,
   });
+
+  /**
+   * O que foi partilhado, item a item (102 T-9).
+   *
+   * Mora nesta tela, e nao numa nova: a pergunta e a mesma — *quem ve os meus
+   * dados?* — e a resposta tem duas metades. Quem **pode agir** no meu cuidado
+   * (o vinculo) e **o que**, de mim, cada um recebeu (a partilha). Separar em
+   * duas telas deixaria a segunda sem ninguem para achar.
+   */
+  const partilhas = useQuery({
+    queryKey: ["care-shares"],
+    queryFn: fetchCareShares,
+  });
+
+  const cortar = useMutation({
+    mutationFn: revokeCareShare,
+    onSuccess: () => partilhas.refetch(),
+    onError: () =>
+      Alert.alert(
+        tr(lang, { en: "Could not revoke it", pt: "Nao foi possivel cortar" }),
+        tr(lang, { en: "Try again in a moment.", pt: "Tente de novo daqui a pouco." })
+      ),
+  });
+
+  const perguntarPartilha = (p: PartilhaDeCuidado) =>
+    Alert.alert(
+      tr(lang, { en: "Stop sharing this?", pt: "Cortar esta partilha?" }),
+      tr(lang, {
+        en: `${p.to ?? "They"} will no longer see this item. What was already read stays on the record.`,
+        pt: `${p.to ?? "A pessoa"} deixa de ver este item. O que ja foi lido continua no registro.`,
+      }),
+      [
+        { text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" },
+        {
+          text: tr(lang, { en: "Stop sharing", pt: "Cortar" }),
+          style: "destructive",
+          onPress: () => cortar.mutate(p.id),
+        },
+      ]
+    );
 
   const encerrar = useMutation({
     mutationFn: endCareLink,
@@ -92,21 +137,99 @@ export default function QuemTemAcesso() {
             {tr(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}
           </Text>
         </Card>
-      ) : (data?.length ?? 0) === 0 ? (
-        <Card>
-          <Text variant="body" color={t.colors.textSecondary}>
-            {tr(lang, {
-              en: "Nobody outside your clinic has access to your data.",
-              pt: "Ninguem fora da sua clinica tem acesso aos seus dados.",
-            })}
-          </Text>
-        </Card>
       ) : (
         <FlatList
-          data={data}
+          data={data ?? []}
           keyExtractor={(v) => v.id}
           refreshControl={controle}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          ListEmptyComponent={
+            <Card>
+              <Text variant="body" color={t.colors.textSecondary}>
+                {tr(lang, {
+                  en: "Nobody outside your clinic has access to your data.",
+                  pt: "Ninguem fora da sua clinica tem acesso aos seus dados.",
+                })}
+              </Text>
+            </Card>
+          }
+          ListFooterComponent={
+            <View style={{ marginTop: 24, gap: 10 }}>
+              <Text variant="label" style={{ fontWeight: "700" }}>
+                {tr(lang, { en: "What was shared", pt: "O que foi partilhado" })}
+              </Text>
+              <Text variant="caption" muted>
+                {tr(lang, {
+                  en: "Item by item, and only what someone chose to pass on. Nothing is released automatically.",
+                  pt: "Item a item, e so o que alguem escolheu passar. Nada e liberado automaticamente.",
+                })}
+              </Text>
+
+              {(partilhas.data?.length ?? 0) === 0 ? (
+                <Card>
+                  <Text variant="body" color={t.colors.textSecondary}>
+                    {tr(lang, {
+                      en: "Nothing of yours has been shared with anyone.",
+                      pt: "Nada seu foi partilhado com ninguem.",
+                    })}
+                  </Text>
+                </Card>
+              ) : (
+                partilhas.data!.map((p) => (
+                  <Card key={p.id}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text variant="label" style={{ fontWeight: "700" }}>
+                          {lang === "pt" ? p.itemLabelPt : p.itemLabel}
+                        </Text>
+                        <Text variant="caption" muted>
+                          {tr(lang, { en: "from", pt: "de" })} {p.from ?? p.fromClinic ?? "—"}
+                          {"  ·  "}
+                          {tr(lang, { en: "to", pt: "para" })} {p.to ?? "—"}
+                        </Text>
+                        <Text variant="caption" muted>
+                          {p.revokedAt
+                            ? tr(lang, { en: "Stopped", pt: "Cortado" }) + " " + data_(p.revokedAt)
+                            : data_(p.sharedAt)}
+                        </Text>
+                        {!!p.note && (
+                          <Text variant="caption" muted style={{ fontStyle: "italic" }}>
+                            {p.note}
+                          </Text>
+                        )}
+                      </View>
+
+                      {!p.revokedAt && (
+                        <Pressable
+                          testID={`cortar-${p.id}`}
+                          accessibilityRole="button"
+                          disabled={cortar.isPending}
+                          onPress={() => perguntarPartilha(p)}
+                          hitSlop={8}
+                          style={({ pressed }) => ({
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: t.colors.border,
+                            opacity: pressed || cortar.isPending ? 0.6 : 1,
+                          })}
+                        >
+                          <Text
+                            variant="caption"
+                            color={t.colors.danger}
+                            style={{ fontWeight: "600" }}
+                          >
+                            {tr(lang, { en: "Stop", pt: "Cortar" })}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </Card>
+                ))
+              )}
+            </View>
+          }
           ListHeaderComponent={
             <Text variant="caption" muted style={{ marginBottom: 12 }}>
               {tr(lang, {

@@ -1,6 +1,6 @@
 # T-9: A equipe — compartilhar item a item, nos dois sentidos
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-3
 
 ## Objetivo
@@ -126,3 +126,57 @@ escreveu e não devolveu, a reabilitação não vê.
       aceitam mais de um destinatário por decisão.
 - [ ] O que o paciente entrega diretamente ao profissional chega sem partilha,
       e nada além disso.
+
+## Desenho — decidido ao começar (29/09/2026)
+
+Procurei antes de inventar: `ConsentLog` é o consentimento do paciente aos
+termos, `lib/patient-documents-shared.ts` é a metade sem Prisma da validação de
+upload. **Nada disto serve** — partilha entre profissionais não existe ainda.
+
+### O que a leitura do código revelou, e muda a tarefa
+
+O vínculo da T-3 hoje dá acesso **amplo**, não restrito. `staffPatientAccess`
+recebe de `assertPatientAccess` a marca `porVinculo` e **a joga fora**, e das
+43 rotas sob `/api/admin/patients/[id]/`, **22 não mencionam `clinicId`**. Na
+prática, um médico com vínculo hoje lê `rehab-plan`, `report`, `wellbeing`,
+`activity`, `questions`, `measurements`, `protocol-notes` — e `GET
+/api/admin/patients/[id]`, que se anuncia *"Full patient profile with all
+related data"*, devolve anamnese, notas SOAP, exames, diagnósticos e pressão.
+
+Então esta tarefa **não é só somar** uma caixa de partilha. Ela é, antes disso,
+**fechar**. O pedido do Bruno — *"não pode ser automaticamente liberado"* — já
+está sendo violado pelo que a T-3 entregou.
+
+### A decisão: negar por padrão, e a rota pedir
+
+`staffPatientAccess` passa a **recusar** quando o acesso vem só do vínculo, e
+devolve 404 como faz com qualquer registro de outro inquilino. A rota que
+legitimamente serve um profissional intermediado **pede** — e recebe junto a
+marca, para filtrar pela partilha:
+
+```ts
+const g = await staffPatientAccess(req, params.id, "Patient not found", { porVinculo: true });
+// g.porVinculo === true  → só o que foi partilhado
+```
+
+É a escolha que falha fechada: as 43 rotas param de vazar sem eu tocar em
+nenhuma, e só as que eu adapto de propósito atravessam a parede. O contrário —
+sair marcando 22 rotas uma a uma — deixaria a 23ª, que alguém escreve no mês
+que vem, aberta por omissão.
+
+### Quem pede, e o que devolve
+
+| rota | por que atravessa |
+|---|---|
+| `professional-documents` (GET/POST) e `/send` | é o médico escrevendo para o paciente dele (T-8) |
+| `GET /api/admin/patients/[id]` | ele precisa do nome — mas devolve **perfil reduzido**: identidade e o que foi partilhado, nada mais |
+| as rotas novas de partilha | são o assunto |
+
+### O modelo
+
+`CareShare`: um item, um destinatário **nomeado**, um autor, uma data. A chave
+única é `(patientId, item, itemId, toUserId)` — partilhar duas vezes é a mesma
+linha, e não duas. Não há campo para "equipe", "perfil" ou "tipo": o esquema
+não deixa escrever a liberação automática que o Bruno proibiu.
+
+`revokedAt` corta o futuro; a linha fica, porque quem leu leu.

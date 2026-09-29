@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
+import { perfilPorPartilha } from "@/lib/care-share";
 import { pickEditable } from "@/lib/tenant-field-guard";
 import { relinkBrokenEvidenceReport, notifyNewClinicalDocument } from "@/lib/evidence-report";
 import { logAudit } from "@/lib/system-logger";
@@ -15,8 +16,25 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantAccess = await staffPatientAccess(req, params.id);
+    /**
+     * Um profissional intermediado **pode** abrir esta ficha — ele precisa do
+     * nome de quem vai atender. O que ele não pode é receber o prontuário
+     * inteiro por ter vínculo (102 T-9): a rota se anuncia *"Full patient
+     * profile with all related data"* e era exatamente isso que devolvia.
+     */
+    const tenantAccess = await staffPatientAccess(req, params.id, "Patient not found", {
+      porVinculo: true,
+    });
     if (tenantAccess.response) return tenantAccess.response;
+
+    if (tenantAccess.porVinculo) {
+      return NextResponse.json(
+        await perfilPorPartilha(params.id, {
+          userId: tenantAccess.actor!.userId,
+          role: String(tenantAccess.actor!.role),
+        })
+      );
+    }
 
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {

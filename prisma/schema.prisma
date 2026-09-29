@@ -600,6 +600,7 @@ model Clinic {
 
   /// Os pacientes que escolheram este profissional (102 T-3).
   careLinks CareLink[] @relation("ClinicCareLinks")
+  sharedCare CareShare[] @relation("ClinicSharedCare")
 
   /// Documentos emitidos por este profissional (102 T-8).
   professionalDocuments ProfessionalDocument[] @relation("ClinicProfessionalDocuments")
@@ -1061,6 +1062,9 @@ model User {
 
   /// Os profissionais que podem agir sobre este paciente (102 T-3).
   careLinks CareLink[] @relation("PatientCareLinks")
+  careShares     CareShare[] @relation("PatientCareShares")
+  sharedByMe     CareShare[] @relation("SharedByCareShares")
+  sharedWithMe   CareShare[] @relation("ReceivedCareShares")
 
   /// Documentos que este paciente recebeu de profissionais (102 T-8).
   professionalDocuments ProfessionalDocument[] @relation("PatientProfessionalDocuments")
@@ -8670,4 +8674,93 @@ model ProfessionalDocument {
   @@index([patientId])
   @@index([clinicId])
   @@index([sentAt])
+}
+
+// ============================================
+// A PARTILHA ITEM A ITEM (102 T-9)
+// ============================================
+
+/// O que se partilha e uma **coisa nomeada**, nunca uma area.
+///
+/// Partilhar "a pasta de exames" ou "a area clinica" seria a liberacao
+/// automatica com outro nome: tudo o que entrasse na area depois entraria
+/// junto, sem ninguem decidir. Cada valor aqui aponta para uma linha de uma
+/// tabela, e a partilha carrega o id dela.
+enum CareShareItem {
+  /// PatientDocument — exame, imagem, laudo que alguem anexou.
+  EXAM
+  /// AIDiagnosis — diagnostico / avaliacao.
+  DIAGNOSIS
+  /// MedicalScreening — anamnese, a historia que alguem colheu.
+  ANAMNESIS
+  /// ProfessionalDocument (T-8) — receita, laudo, pedido de exame.
+  PROFESSIONAL_DOCUMENT
+  // O plano alimentar da tabela de itens da tarefa **nao entra aqui**, e nao
+  // por esquecimento: o unico plano que existe e `MealPlan`, que e do
+  // personal e aponta para `studentId`. Area do aluno nao e area do paciente,
+  // e ligar as duas aqui traria o produto do personal para dentro da clinica.
+  // O plano que o nutricionista escreve para um paciente hoje e um
+  // `ProfessionalDocument` (T-8) — e esse se partilha.
+  /// SOAPNote — evolucao, nota de sessao. A mais sensivel da lista.
+  SESSION_NOTE
+  /// ClinicalEvidenceReport — relatorio de monitoramento (099).
+  MONITORING_REPORT
+}
+
+/// Um ato de partilha: **um item, para uma pessoa nomeada, por alguem, num dia**.
+///
+/// ## O que o esquema deliberadamente nao tem
+///
+/// Nao existe campo para equipe, para perfil nem para tipo de profissional. O
+/// Bruno foi explicito duas vezes: *"nao pode ser automaticamente liberado
+/// para todo mundo, so com permissoes"*. Um campo `toClinicType` ou um
+/// `toEveryone Boolean` seria exatamente a liberacao automatica que ele
+/// proibiu, e quem entrasse na equipe amanha herdaria o acesso de hoje.
+///
+/// Partilhar um exame com tres profissionais sao **tres linhas**, com autor e
+/// data cada uma. E mais trabalho de proposito: e o trabalho que a palavra
+/// "permissao" significa.
+model CareShare {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User   @relation("PatientCareShares", fields: [patientId], references: [id], onDelete: Cascade)
+
+  item   CareShareItem
+  /// O id da linha original, na tabela que o `item` nomeia.
+  itemId String
+
+  /// Quem partilhou, e de que inquilino. O inquilino e o que prova que a
+  /// pessoa podia partilhar aquilo: item de fora dele nao se partilha.
+  fromClinicId String
+  fromClinic   Clinic @relation("ClinicSharedCare", fields: [fromClinicId], references: [id], onDelete: Cascade)
+  fromUserId   String
+  fromUser     User   @relation("SharedByCareShares", fields: [fromUserId], references: [id])
+
+  /// **Uma** pessoa. Nao ha lista aqui, e nao ha "para a equipe".
+  toUserId String
+  toUser   User   @relation("ReceivedCareShares", fields: [toUserId], references: [id], onDelete: Cascade)
+  /// Desnormalizado para filtrar a caixa de entrada sem um join por leitura.
+  toClinicId String
+
+  /// O que quem partilha quer dizer junto — "veja a pagina 2".
+  note String?
+
+  sharedAt DateTime @default(now())
+
+  /// Revogar corta **dali para frente**, e a linha fica: quem leu leu, e
+  /// apagar o registro seria apagar a prova de que houve acesso.
+  revokedAt     DateTime?
+  revokedReason String?
+  revokedById   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Partilhar duas vezes o mesmo item com a mesma pessoa e a **mesma** linha.
+  /// Sem isto, revogar uma deixaria a outra viva e o acesso de pe.
+  @@unique([patientId, item, itemId, toUserId])
+  @@index([toUserId, revokedAt])
+  @@index([patientId])
+  @@index([fromClinicId])
 }
