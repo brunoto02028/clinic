@@ -227,3 +227,4 @@ código está inerte esperando:
 | ~~`DAILY_API_KEY` + `VIDEO_CALLS_ENABLED`~~ | **resolvido em 27/09**: as duas estão no Coolify, e a videochamada responde em produção |
 - **103** — [A consulta que já passou: desfecho, falta e cancelamento](103-a-consulta-que-ja-passou/plan.md)
 - **104** — [O paciente escolhe, e o profissional atende](104-o-paciente-escolhe-e-o-profissional-atende/plan.md)
+- **105** — [A pressão o dia inteiro: o bracelete da paciente](105-a-pressao-o-dia-inteiro/plan.md)
