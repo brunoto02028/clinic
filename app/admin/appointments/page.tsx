@@ -190,7 +190,10 @@ export default function AdminAppointmentsPage() {
 
   /** Resolver tira da fila na hora — e não espera um recarregamento. */
   const resolverPendencia = async (id: string, status: string) => {
-    await updateStatus(id, status);
+    // Só sai da fila o que **deu certo**: remover incondicionalmente escondia a
+    // linha e o problema junto (achado da revisão).
+    const deu = await updateStatus(id, status);
+    if (!deu) return;
     setPendencias((prev) => prev.filter((p) => p.id !== id));
   };
   /**
@@ -523,6 +526,13 @@ export default function AdminAppointmentsPage() {
           paymentMode: "in_person", sendConfirmation: false, mode: "IN_PERSON",
           courtesySession: false, waiveCharge: false, overrideReason: "",
         });
+        // A viagem mora fora do formulário e **tem de ser limpa com ele**
+        // (achado da revisão): sem isto, o deslocamento de um paciente a duas
+        // horas ficava no campo para o próximo, a dez minutos — e a agenda
+        // bloqueava quatro horas por engano, enquanto o texto abaixo do campo
+        // dizia outra coisa.
+        setViagem("");
+        setSugestaoDeViagem(null);
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -605,13 +615,30 @@ export default function AdminAppointmentsPage() {
           title: "Status updated",
           description: `Appointment has been marked as ${newStatus}.`,
         });
+        return true;
       }
+      /**
+       * **Dizer quando não deu** (achado da revisão, 29/09/2026).
+       *
+       * Não havia `else`: 401, 409 ou 500 não produziam nada na tela. A linha
+       * continuava como estava, e na fila do que venceu o cartão sumia como se
+       * tivesse sido resolvido — o pior dos dois, porque some a linha **e** o
+       * problema.
+       */
+      const erro = await res.json().catch(() => ({}));
+      toast({
+        title: "Error",
+        description: erro.error || "Failed to update appointment.",
+        variant: "destructive",
+      });
+      return false;
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update appointment.",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -710,6 +737,19 @@ export default function AdminAppointmentsPage() {
     }
   };
 
+  /**
+   * Pediu alguma coisa e ninguém decidiu ainda.
+   *
+   * **Declarada antes do filtro, e isso importa.** Ela estava depois, e
+   * `const` não é içado: enquanto `soPedidos` era `false` o `!soPedidos`
+   * curto-circuitava e ninguém percebia. Bastava clicar no chip "Pedido de
+   * formato" — que só aparece quando **há** pedido pendente — para a tela
+   * quebrar com `ReferenceError`. Falhava exatamente no caso para o qual foi
+   * criada (achado da revisão, 29/09/2026).
+   */
+  const pedidoPendente = (a: Appointment) =>
+    !!a.requestedMode && !a.modeApprovedAt && !a.modeRefusedReason;
+
   const filteredAppointments = appointments.filter((a) => {
     const matchesSearch =
       a.patient.firstName.toLowerCase().includes(search.toLowerCase()) ||
@@ -720,10 +760,6 @@ export default function AdminAppointmentsPage() {
     const matchesPedido = !soPedidos || pedidoPendente(a);
     return matchesSearch && matchesStatus && matchesModo && matchesPedido;
   });
-
-  /** Pediu alguma coisa e ninguém decidiu ainda. */
-  const pedidoPendente = (a: Appointment) =>
-    !!a.requestedMode && !a.modeApprovedAt && !a.modeRefusedReason;
 
   const nomeDoFormato = (m?: string | null) =>
     m === "VIDEO"
@@ -1039,7 +1075,11 @@ export default function AdminAppointmentsPage() {
       );
     }
     return mapa;
-  }, [apptsByDay, minutoDaConsulta]);
+    // `HOURS` entra nas deps: sem ela, navegar de semana esticava a faixa e
+    // **não** recalculava o layout — a linha das 07:00 aparecia vazia, com a
+    // consulta que a justificava ainda invisível (achado da revisão). Uma
+    // faixa vazia provando que algo deveria estar ali é pior que a faixa fixa.
+  }, [apptsByDay, minutoDaConsulta, PRIMEIRA_HORA, ULTIMA_HORA, FIM_DA_GRADE_PX]);
 
   const STATUS_CAL: Record<string, string> = {
     CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
@@ -1325,7 +1365,19 @@ export default function AdminAppointmentsPage() {
                           return (
                             <button
                               key={a.id}
-                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
+                              /**
+                               * `getZonedDateTimeLocalString`, como a lista já
+                               * fazia — e não o ISO cru (achado da revisão).
+                               *
+                               * O ISO com segundos e `Z` é inválido para um
+                               * `datetime-local`: o campo abria **em branco**.
+                               * Quem mudasse só o preço e salvasse mandava um
+                               * valor cortado, lido como hora de Londres, e a
+                               * consulta das 10:00 ia para as 09:00 — uma hora
+                               * de diferença, em silêncio, durante os sete
+                               * meses de horário de verão.
+                               */
+                              onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: getZonedDateTimeLocalString(new Date(a.dateTime)), duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "", mode: a.mode === "VIDEO" ? "VIDEO" : a.mode === "HOME_VISIT" ? "HOME_VISIT" : "IN_PERSON" }); }}
                               title={`${a.patient.firstName} ${a.patient.lastName} · ${a.treatmentType} · ${a.duration || 60} min`}
                               style={{
                                 position: "absolute",
@@ -1662,7 +1714,7 @@ export default function AdminAppointmentsPage() {
                             { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE }
                           )}
                         </span>
-                        <span>£{appointment.price}</span>
+                        <span>£{appointment.price.toFixed(2)}</span>
                         {/* **Esperando o paciente pagar** (101 T-3).
 
                             O Bruno: *"no pagamento já é a confirmação"*. Uma
@@ -1732,7 +1784,14 @@ export default function AdminAppointmentsPage() {
                           Dois botões em sequência viram um esquecido — e o
                           esquecido aqui é o que põe o dinheiro nos livros
                           (106 T-6). Só aparece onde há o que receber. */}
-                      {appointment.status === "PENDING" && appointment.price > 0 && (
+                      {/* Também depois de confirmado (achado da revisão).
+                          Quem apertou *Confirm* antes de o dinheiro entrar
+                          ficava sem os botões e a consulta seguia confirmada
+                          **sem `Payment` nenhum** — que é exatamente o defeito
+                          que esta funcionalidade existe para evitar. */}
+                      {!canalPago(appointment) &&
+                        !["CANCELLED", "NO_SHOW"].includes(appointment.status) &&
+                        appointment.price > 0 && (
                         <>
                           <Button
                             size="sm"
@@ -2246,7 +2305,23 @@ export default function AdminAppointmentsPage() {
                   type="checkbox"
                   className="mt-0.5"
                   checked={createForm.waiveCharge}
-                  onChange={(e) => setCreateForm(f => ({ ...f, waiveCharge: e.target.checked }))}
+                  /**
+                   * Isentar **zera o preço na tela** (achado da revisão).
+                   *
+                   * Isto só marcava a caixa: o preço continuava £80 e a tela
+                   * dizia *"aparece no aplicativo esperando £80,00, e o
+                   * pagamento é o que confirma"* — enquanto o servidor gravava
+                   * zero e a consulta nascia confirmada. A tela prometia uma
+                   * cobrança que não ia existir.
+                   *
+                   * Desmarcar não devolve o preço: escolher o tipo de novo o
+                   * traz, e adivinhar qual era seria pior que pedir.
+                   */
+                  onChange={(e) => setCreateForm(f => ({
+                    ...f,
+                    waiveCharge: e.target.checked,
+                    ...(e.target.checked ? { price: 0 } : {}),
+                  }))}
                 />
                 <span>
                   <span className="font-medium">{isPt ? "Isentar a cobrança" : "Waive the charge"}</span>

@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { disponibilidadeDoDia } from "@/lib/availability-day";
-import { getZonedDateString, getZonedDateTimeLocalString } from "@/lib/clinic-timezone";
+import { getZonedDateString, getZonedDateTimeLocalString, dataEHoraDaClinica } from "@/lib/clinic-timezone";
+
+/**
+ * Onde a consulta acontece, na frase que o paciente lê.
+ *
+ * Domicílio é o endereço **dele**; o resto é o da clínica. Escrever "compareça
+ * à clínica" para quem vai ser atendido em casa é o tipo de erro que só se
+ * descobre com alguém batendo na porta errada.
+ */
+async function localDaConsulta(
+  clinicId: string,
+  mode: string | null | undefined,
+  patientId: string
+): Promise<string> {
+  if (mode === "VIDEO") return "Video consultation — a link opens in your app";
+  if (mode === "HOME_VISIT") {
+    const p = await prisma.user.findUnique({
+      where: { id: patientId },
+      select: { address: true, city: true, postcode: true },
+    });
+    const dele = [p?.address, p?.city, p?.postcode].filter(Boolean).join(", ");
+    return dele ? `At your address — ${dele}` : "At your address";
+  }
+  const c = await prisma.clinic.findUnique({
+    where: { id: clinicId },
+    select: { name: true, address: true, city: true },
+  });
+  const endereco = [c?.address, c?.city].filter(Boolean).join(", ");
+  return c?.name ? `${c.name}${endereco ? " — " + endereco : ""}` : "BPR Physical Rehabilitation";
+}
+
+/** A observação da consulta, no bloco que o modelo espera — ou vazio. */
+function blocoDeNota(notes: string | null | undefined, lang: "en" | "pt"): string {
+  const texto = String(notes ?? "").trim();
+  if (!texto) return "";
+  const rotulo = lang === "pt" ? "Nota" : "Note";
+  const seguro = texto
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 16px;background:#F5F4F1;border-radius:8px;padding:10px 14px;"><strong>${rotulo}:</strong> ${seguro}</p>`;
+}
 import { logAudit } from "@/lib/system-logger";
 
 /**
@@ -40,6 +81,23 @@ export async function GET() {
       (userRole !== "ADMIN" && userRole !== "THERAPIST" && userRole !== "SUPERADMIN")
     ) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    }
+
+    /**
+     * Sem inquilino, **recusa** — não devolve tudo (achado da revisão).
+     *
+     * `withClinicFilter({}, null)` devolve `{}`, e o middleware só define
+     * `x-clinic-id` quando há clínica ativa; para um SUPERADMIN sem clínica
+     * selecionada no cookie, `clinicId` é nulo. O resultado era esta lista
+     * trazendo as consultas de **todos os inquilinos**, com nome, e-mail e data
+     * de nascimento dos pacientes — inclusive de outro estúdio.
+     *
+     * Todas as outras rotas tocadas hoje respondem 400 nessa situação. Só esta
+     * falhava aberta, e falhar aberto num filtro de inquilino é a forma mais
+     * cara de errar que existe nesta casa.
+     */
+    if (!clinicId) {
+      return NextResponse.json({ error: "No clinic selected" }, { status: 400 });
     }
 
     const appointments = await prisma.appointment.findMany({
@@ -347,8 +405,8 @@ export async function POST(request: NextRequest) {
     if (emailPatientNow) try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(dateTime);
-      const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      // O fuso da clínica, e não o do contêiner (que é UTC).
+      const { dateStr, timeStr } = dataEHoraDaClinica(apptDate);
 
       // O e-mail leva a **notícia**, e o pagamento mora no app: um link de
       // Checkout aqui seria uma segunda porta viva para a mesma consulta.
@@ -372,6 +430,15 @@ export async function POST(request: NextRequest) {
           appointmentTime: timeStr,
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
           treatmentType: treatmentType || SEM_TIPO_DEFINIDO,
+          /**
+           * Onde é a consulta, e a observação escrita para esta pessoa.
+           *
+           * O modelo pede as duas e o POST não as passava — o PUT da mesma
+           * consulta passa. O paciente recebia as chaves cruas no corpo.
+           */
+          location: await localDaConsulta(clinicId, mode, appointment.patient.id),
+          notesBlock: blocoDeNota(notes, "en"),
+          notesBlockPt: blocoDeNota(notes, "pt"),
           duration: String(duration || 60),
           price: `£${(price || 0).toFixed(2)}`,
           // Sem link: o pagamento mora no app, e o modelo de e-mail que
@@ -459,8 +526,8 @@ export async function POST(request: NextRequest) {
       });
       if (adminUser?.email) {
         const apptDate = new Date(dateTime);
-        const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        // O fuso da clínica, e não o do contêiner (que é UTC).
+        const { dateStr, timeStr } = dataEHoraDaClinica(apptDate);
         // Price is deliberately left out of this alert — it's only the
         // default/placeholder value at booking time and isn't reviewed
         // before this fires. The real value belongs on the invoice, sent

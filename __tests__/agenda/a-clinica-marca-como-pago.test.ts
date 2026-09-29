@@ -180,7 +180,7 @@ describe("desfazer", () => {
     // valor, não a história.
     actorMock.mockResolvedValue(actor());
     db.appointment.findFirst.mockResolvedValue({
-      id: "c1", payment: { id: "pay1", channel: "TRANSFER" },
+      id: "c1", status: "CONFIRMED", payment: { id: "pay1", channel: "TRANSFER" },
     });
     await del();
     expect(db.payment.update.mock.calls[0][0].data.status).toBe("FAILED");
@@ -189,10 +189,29 @@ describe("desfazer", () => {
     );
   });
 
+  it("**desfazer o dinheiro não desfaz o atendimento**", async () => {
+    /**
+     * Achado da revisão: isto punha a consulta em `PENDING` sem olhar o status.
+     * Uma consulta paga em dinheiro, **atendida** e marcada `COMPLETED` voltava
+     * a pendente ao corrigir a forma de pagamento — perdia o desfecho em
+     * silêncio e reaparecia na fila do que venceu.
+     */
+    actorMock.mockResolvedValue(actor());
+    db.appointment.findFirst.mockResolvedValue({
+      id: "c1", status: "COMPLETED", payment: { id: "pay1", channel: "CASH" },
+    });
+    const res = await del();
+    expect(res.status).toBe(200);
+    expect((await res.json()).status).toBe("COMPLETED");
+    // O pagamento é desfeito; o atendimento continua tendo acontecido.
+    expect(db.payment.update).toHaveBeenCalled();
+    expect(db.appointment.update).not.toHaveBeenCalled();
+  });
+
   it("**pagamento de cartão não se desfaz por aqui** — isso é reembolso", async () => {
     actorMock.mockResolvedValue(actor());
     db.appointment.findFirst.mockResolvedValue({
-      id: "c1", payment: { id: "pay1", channel: "STRIPE" },
+      id: "c1", status: "CONFIRMED", payment: { id: "pay1", channel: "STRIPE" },
     });
     const res = await del();
     expect(res.status).toBe(409);
@@ -202,7 +221,7 @@ describe("desfazer", () => {
 
   it("consulta sem pagamento nenhum é 404", async () => {
     actorMock.mockResolvedValue(actor());
-    db.appointment.findFirst.mockResolvedValue({ id: "c1", payment: null });
+    db.appointment.findFirst.mockResolvedValue({ id: "c1", status: "PENDING", payment: null });
     expect((await del()).status).toBe(404);
   });
 

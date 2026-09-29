@@ -63,6 +63,37 @@ export function getZonedDateTimeLocalString(date: Date, timeZone = CLINIC_TIMEZO
   return `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}`;
 }
 
+/**
+ * A data e a hora como a **clínica** as lê, para pôr num e-mail.
+ *
+ * Quatro lugares faziam `toLocaleDateString('en-GB', …)` sem `timeZone`. O
+ * contêiner roda em UTC — `node:20-alpine`, sem `TZ` —, então durante o horário
+ * de verão britânico o e-mail dizia **uma hora a menos** que a tela: a consulta
+ * marcada para as 10:00 era anunciada às 09:00 ao paciente.
+ *
+ * Sete meses por ano, para todo envio. Existe um helper só porque quatro cópias
+ * da mesma conta foram quatro oportunidades de esquecer o mesmo argumento.
+ */
+export function dataEHoraDaClinica(
+  quando: Date,
+  timeZone = CLINIC_TIMEZONE
+): { dateStr: string; timeStr: string } {
+  return {
+    dateStr: quando.toLocaleDateString("en-GB", {
+      timeZone,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    timeStr: quando.toLocaleTimeString("en-GB", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+}
+
 /** Minutes since midnight for the given instant (now, by default) as seen in the clinic's timezone. */
 export function getZonedMinutesOfDay(date: Date = new Date(), timeZone = CLINIC_TIMEZONE): number {
   const fmt = new Intl.DateTimeFormat("en-US", { timeZone, hour12: false, hour: "2-digit", minute: "2-digit" });

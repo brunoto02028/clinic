@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { dataEHoraDaClinica } from "@/lib/clinic-timezone";
 import { prisma } from "@/lib/db";
 import { janelaDaConsulta, minutosAntesPara } from "@/lib/video-call";
 import { notifyPatient } from "@/lib/notify-patient";
@@ -187,7 +188,10 @@ async function handleUpdate(
     if (body?.treatmentType) updateData.treatmentType = body.treatmentType;
     if (body?.status) updateData.status = body.status;
     if (body?.notes !== undefined) updateData.notes = body.notes;
-    if (body?.price) updateData.price = body.price;
+    // `!= null`, e não a veracidade: editar o preço para **zero** era ignorado
+    // em silêncio, e a tela recarregava mostrando o valor antigo. Isentar uma
+    // consulta depois do fato não tinha caminho (achado da revisão).
+    if (body?.price != null) updateData.price = Number(body.price);
 
     /**
      * Virar uma consulta já marcada para vídeo, ou de volta para presencial.
@@ -256,8 +260,8 @@ async function handleUpdate(
     try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(appointment.dateTime);
-      const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      // O fuso da clínica, e não o do contêiner (que é UTC).
+      const { dateStr, timeStr } = dataEHoraDaClinica(apptDate);
       const isCancellation = body?.status === 'CANCELLED';
       const slug = isCancellation ? 'APPOINTMENT_CANCELLED' : 'APPOINTMENT_CONFIRMATION';
       const plainMsg = isCancellation
