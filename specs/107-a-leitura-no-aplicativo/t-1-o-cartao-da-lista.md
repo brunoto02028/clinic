@@ -1,6 +1,6 @@
 # T-1: O cartão que não decide entre foto e texto
 
-**Status:** pendente
+**Status:** 🟢 concluída (29/09) — QA aprovado, achados corrigidos
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -34,9 +34,24 @@ exatamente o que faltou ao título.
 - `mobile/app/(app)/(clinica)/education.tsx`
 - um componente de cartão, se as duas listas o compartilharem
 
+## O corte que o React Native não sabe fazer
+
+`numberOfLines` corta onde o pixel acaba, e isso cai onde cair — foi assim que
+"doctors" virou "doctor…". Não dá para pedir a ele que respeite palavra.
+
+Então o corte passou a ser nosso, **antes**: `cortarEmPalavra`. O
+`numberOfLines` ficou só como rede, para fonte de aparelho maior que a prevista.
+
+O QA mostrou que a régua precisava de dois valores: cartão **sem** capa tem
+308,67px em vez de 354,67, porque o ícone do tipo come 46px. Com 110 caracteres
+em 5 de 9 casos a terceira linha nascia e a rede a descartava — ou seja, quem
+cortava voltava a ser o `numberOfLines`. O limite passou a acompanhar a largura.
+
 ## Critérios de aceite
-- [ ] A imagem ocupa a largura do cartão, medida em pixels.
-- [ ] O título cabe em duas linhas nos textos reais da clínica.
-- [ ] Nenhum corte no meio de palavra.
-- [ ] Cartão sem imagem continua apresentável.
-- [ ] Medido nas duas listas, claro e escuro.
+- [x] A imagem ocupa a largura do cartão — **380,67px** contra 380,67px.
+- [x] Proporção 16:9 medida: **1,7778**, inclusive com foto de origem em 1,498.
+- [x] O título mais longo da clínica (92 caracteres) cabe em **2,000 linhas**.
+- [x] Nenhuma das nove descrições cortada no meio de palavra.
+- [x] Cartão sem imagem continua apresentável.
+- [x] Claro e escuro: pior contraste **4,57** e **6,08**, os dois passam AA.
+- [x] Zero setas em 10 cartões.

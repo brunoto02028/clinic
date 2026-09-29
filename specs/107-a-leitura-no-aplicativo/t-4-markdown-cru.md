@@ -1,6 +1,6 @@
 # T-4: O markdown que o paciente lê cru
 
-**Status:** pendente
+**Status:** 🟢 concluída (29/09) — QA aprovado, achados corrigidos
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -36,8 +36,19 @@ pior do que ficaria em texto puro.
 - `mobile/src/components/ArtigoEmBlocos.tsx`
 - `__tests__/education/markdown-no-paragrafo.test.ts`
 
+## Duas coisas que só apareceram medindo
+
+1. **`3 * 4 * 5` virava "3 4 5".** O padrão aceitava espaço em volta do
+   conteúdo, então os asteriscos de multiplicação viravam ênfase. Resolvido
+   exigindo que o conteúdo não comece nem termine em espaço.
+2. **Na citação o itálico era invisível** (achado do QA): o bloco inteiro já é
+   itálico, e `_título_` saía itálico dentro de itálico. Ênfase dentro de texto
+   inclinado volta ao **normal** — é a convenção tipográfica, e é a única que se
+   enxerga.
+
 ## Critérios de aceite
-- [ ] `_x_` vira itálico, `**x**` vira negrito.
-- [ ] `snake_case` **não** vira itálico.
-- [ ] Marcação não fechada aparece literal, sem engolir o resto do parágrafo.
-- [ ] Vale em parágrafo, lista e citação.
+- [x] `_x_` vira itálico, `**x**` vira negrito.
+- [x] `snake_case`, `campo_id` e `3 * 4 * 5` continuam literais.
+- [x] Marcação não fechada aparece literal, sem engolir o parágrafo.
+- [x] Vale em parágrafo, lista e citação — e na citação **inverte**.
+- [x] Nas referências reais: 0 sublinhados e 0 underscores visíveis.

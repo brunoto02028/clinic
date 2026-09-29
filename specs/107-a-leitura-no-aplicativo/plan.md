@@ -52,14 +52,35 @@ dentro do parágrafo: itálico e negrito passam como texto.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [O cartão que não decide entre foto e texto](t-1-o-cartao-da-lista.md) | pendente |
-| T-2 | [Quem terminou de ler quer o próximo](t-2-o-fim-do-artigo.md) | pendente |
-| T-3 | [O TODO que chegou ao paciente](t-3-o-todo-no-artigo.md) | implementada — produção esperando aval |
-| T-4 | [O markdown que o paciente lê cru](t-4-markdown-cru.md) | pendente |
+| T-1 | [O cartão que não decide entre foto e texto](t-1-o-cartao-da-lista.md) | 🟢 concluída (29/09) |
+| T-2 | [Quem terminou de ler quer o próximo](t-2-o-fim-do-artigo.md) | 🟢 concluída (29/09) |
+| T-3 | [O TODO que chegou ao paciente](t-3-o-todo-no-artigo.md) | 🟢 concluída (29/09) — produção limpa |
+| T-4 | [O markdown que o paciente lê cru](t-4-markdown-cru.md) | 🟢 concluída (29/09) |
 | T-5 | [O `&nbsp;` e a tabela achatada](t-5-nbsp-e-tabela-achatada.md) | pendente — achado ao medir a T-3 |
 
 **T-3 primeiro.** As outras são melhorias; esta é conteúdo errado na mão de
 quem confia na clínica, e sai com uma linha a menos.
+
+## O que o QA encontrou, 29/09/2026
+
+Quatro relatórios em `qa/`, com 9 screenshots. **As quatro passaram**, nenhuma
+reprovação. Seis achados saíram junto:
+
+| # | achado | o que foi feito |
+|---|---|---|
+| 1 | o "See all materials" sumia junto com as sugestões | **corrigido** — o pior deles, e irônico: quem tem um material só ficava sem saída nenhuma, que é o que a T-2 foi corrigir |
+| 2 | na citação o itálico era invisível (itálico dentro de itálico) | **corrigido** — ênfase dentro de texto inclinado volta ao normal, que é a convenção tipográfica e a única que se enxerga |
+| 3 | `cortarEmPalavra(desc, 110)` calibrado para a coluna larga | **corrigido** — sem capa o ícone come 46px, e o limite passou a acompanhar |
+| 4 | `00_INDEX_and_SCHEMA.md` ainda mandava usar marcas `TODO` | **corrigido** — quem semeasse um protocolo novo reintroduziria a marca |
+| 5 | `urlAbsoluta` usa `NEXTAUTH_URL` e não o host do pedido | só atrapalha QA local; em produção não aparece. **Não mexido** |
+| 6 | a porta 4020 estava morta no ambiente local | ambiente, não código |
+
+As medidas que valem citar: imagem **380,67px** contra conteúdo do cartão de
+**380,67px**; razão **1,7778** nos três cartões, inclusive com foto de origem em
+1,498 — a caixa é que manda. Contraste no pior caso **4,57** no claro e **6,08**
+no escuro. Título mais longo da clínica (92 caracteres) em **2,000 linhas**.
+Nenhuma das nove descrições cortada no meio de palavra. Nas referências,
+**0 sublinhados** e **0 underscores** visíveis.
 
 ## Decisões de design
 

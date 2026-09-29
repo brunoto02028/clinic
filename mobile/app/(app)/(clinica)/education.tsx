@@ -3,6 +3,7 @@ import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { cortarEmPalavra } from "@/lib/cortar-em-palavra";
 import { fetchEducation, educationList } from "@/api/education";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
@@ -111,119 +112,145 @@ function EducationScreen() {
             const typeSoftColor = t.colors[typeSoftKey] ?? t.colors.surfaceMuted;
             return (
               <Pressable testID={`edu-${item.id}`} onPress={() => router.push(`/education/${item.id}`)}>
-                <Card>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    {/* A capa, quando existe — e o icone do tipo quando nao
-                        existe.
+                {/* A capa no topo, e não uma miniatura de 44px na esquerda
+                    (107 T-1).
 
-                        `thumbnailUrl` sempre veio na resposta, e este cartao
-                        nunca a desenhou: a tela de detalhe ganhou a imagem e a
-                        lista ficou para tras, entao o material chegava com cara
-                        de arquivo generico. Um icone de documento nao distingue
-                        um artigo do outro; a capa e a unica coisa no cartao que
-                        diz **qual** material e aquele antes de abrir. */}
-                    {item.thumbnailUrl ? (
-                      <Image
-                        source={{ uri: item.thumbnailUrl }}
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 14,
-                          backgroundColor: t.colors.surfaceMuted,
-                        }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 14,
-                        backgroundColor: typeSoftColor,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}>
-                        <Ionicons name={typeInfo.icon as any} size={22} color={typeColor} />
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text variant="label" style={{ fontWeight: "600" }}>{item.title}</Text>
-                      {item.description ? (
-                        <Text variant="caption" color={t.colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
-                          {item.description}
-                        </Text>
-                      ) : null}
-                      {/* O que o terapeuta escreveu **sobre este material,
-                          para esta pessoa** (096 T-5). A rota sempre mandou;
-                          o app não declarava o campo, e a observação nunca
-                          chegou à tela. */}
-                      {atribuicao?.note ? (
-                        <Text
-                          variant="caption"
-                          color={t.colors.text}
-                          numberOfLines={2}
-                          style={{ marginTop: 4, fontStyle: "italic" }}
-                        >
-                          “{atribuicao.note}”
-                        </Text>
-                      ) : null}
-                      <View style={{ flexDirection: "row", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-                        {/* Obrigatório e prazo mudam o que a pessoa faz
-                            primeiro — e é por isso que estão antes do selo de
-                            concluído, não depois. */}
-                        {atribuicao?.isRequired ? (
-                          <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                            <Text variant="caption" color={t.colors.warn} style={{ fontSize: 10, fontWeight: "600" }}>
-                              {tr(lang, { en: "Required", pt: "Obrigatório" })}
-                            </Text>
-                          </View>
-                        ) : null}
-                        {atribuicao?.dueDate ? (
-                          <View style={{ backgroundColor: t.colors.surfaceMuted, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                            <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 10 }}>
-                              {tr(lang, { en: "by", pt: "até" })} {formatDate(atribuicao.dueDate, lang)}
-                            </Text>
-                          </View>
-                        ) : null}
-                        {/* The endpoint has always returned a progress map; the
-                            client discarded it, so this badge never appeared and
-                            finishing a piece changed nothing on screen. */}
-                        {data?.progress?.[item.id]?.completedAt ? (
-                          <View style={{
-                            backgroundColor: t.colors.okSoft,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                          }}>
-                            <Text variant="caption" color={t.colors.ok} style={{ fontSize: 10, fontWeight: "600" }}>
-                              {tr(lang, { en: "Done", pt: "Concluído" })}
-                            </Text>
-                          </View>
-                        ) : null}
-                        {item.category?.name ? (
-                          <View style={{
-                            backgroundColor: t.colors.healthSoft,
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                          }}>
-                            <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 10 }}>
-                              {item.category.name}
-                            </Text>
-                          </View>
-                        ) : null}
+                    O Bruno: *"tem como melhorar esse UX? Deixar a foto maior
+                    por ex."* Ele tinha razão pelo motivo mais interessante: a
+                    miniatura era o pior dos dois mundos. Pequena demais para
+                    dizer **qual** material é aquele, e o espaço que ela roubava
+                    era exatamente o que faltava ao título — que quebrava em
+                    três linhas numa coluna estreita, com a descrição cortada no
+                    meio de uma palavra.
+
+                    Ou a imagem é a capa, ou o cartão é de texto e fica com a
+                    largura toda. O meio-termo era o que estava na tela. */}
+                <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
+                  {item.thumbnailUrl ? (
+                    <Image
+                      source={{ uri: item.thumbnailUrl }}
+                      style={{
+                        width: "100%",
+                        aspectRatio: 16 / 9,
+                        backgroundColor: t.colors.surfaceMuted,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+                  <View style={{ padding: 13, gap: 6 }}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                      {/* Sem capa, o ícone do tipo continua sendo a única pista
+                          visual — mas ao lado do título, e não no lugar de uma
+                          imagem que não existe. Um retângulo cinza não informa
+                          nada e ocupa uma tela inteira de telefone. */}
+                      {!item.thumbnailUrl ? (
                         <View style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 12,
                           backgroundColor: typeSoftColor,
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 6,
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}>
-                          <Text variant="caption" color={typeColor} style={{ fontSize: 10 }}>
-                            {item.contentType}
+                          <Ionicons name={typeInfo.icon as any} size={19} color={typeColor} />
+                        </View>
+                      ) : null}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          variant="label"
+                          numberOfLines={2}
+                          style={{ fontWeight: "700", fontSize: 15.5, lineHeight: 20 }}
+                        >
+                          {item.title}
+                        </Text>
+                        {item.description ? (
+                          <Text variant="caption" color={t.colors.textSecondary} numberOfLines={2} style={{ marginTop: 3, lineHeight: 17 }}>
+                            {/* Cortado por nós, entre palavras — `numberOfLines`
+                                sozinho corta onde o pixel acaba, e isso caía no
+                                meio da palavra. Ele fica como rede, para fonte de
+                                aparelho maior que a prevista. */}
+                            {/* O limite acompanha a largura que sobra: sem capa,
+                              o ícone do tipo come 46px da coluna, e 110
+                              caracteres passavam para uma terceira linha que o
+                              `numberOfLines` descartava — quem cortava voltava
+                              a ser a rede, não a régua (QA, 29/09/2026). */}
+                          {cortarEmPalavra(item.description, item.thumbnailUrl ? 110 : 95)}
                           </Text>
+                        ) : null}
+                        {/* O que o terapeuta escreveu **sobre este material,
+                            para esta pessoa** (096 T-5). A rota sempre mandou;
+                            o app não declarava o campo, e a observação nunca
+                            chegou à tela. */}
+                        {atribuicao?.note ? (
+                          <Text
+                            variant="caption"
+                            color={t.colors.text}
+                            numberOfLines={2}
+                            style={{ marginTop: 4, fontStyle: "italic" }}
+                          >
+                            “{atribuicao.note}”
+                          </Text>
+                        ) : null}
+                        <View style={{ flexDirection: "row", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                          {/* Obrigatório e prazo mudam o que a pessoa faz
+                              primeiro — e é por isso que estão antes do selo de
+                              concluído, não depois. */}
+                          {atribuicao?.isRequired ? (
+                            <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                              <Text variant="caption" color={t.colors.warn} style={{ fontSize: 10, fontWeight: "600" }}>
+                                {tr(lang, { en: "Required", pt: "Obrigatório" })}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {atribuicao?.dueDate ? (
+                            <View style={{ backgroundColor: t.colors.surfaceMuted, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                              <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 10 }}>
+                                {tr(lang, { en: "by", pt: "até" })} {formatDate(atribuicao.dueDate, lang)}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {/* The endpoint has always returned a progress map; the
+                              client discarded it, so this badge never appeared and
+                              finishing a piece changed nothing on screen. */}
+                          {data?.progress?.[item.id]?.completedAt ? (
+                            <View style={{
+                              backgroundColor: t.colors.okSoft,
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}>
+                              <Text variant="caption" color={t.colors.ok} style={{ fontSize: 10, fontWeight: "600" }}>
+                                {tr(lang, { en: "Done", pt: "Concluído" })}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {item.category?.name ? (
+                            <View style={{
+                              backgroundColor: t.colors.healthSoft,
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}>
+                              <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 10 }}>
+                                {item.category.name}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <View style={{
+                            backgroundColor: typeSoftColor,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text variant="caption" color={typeColor} style={{ fontSize: 10 }}>
+                              {item.contentType}
+                            </Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
+                    {/* A seta saiu: o cartão inteiro já é o alvo do toque, e ela
+                        estava tirando largura do título para repetir isso. */}
                   </View>
                 </Card>
               </Pressable>

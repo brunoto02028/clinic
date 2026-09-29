@@ -1,6 +1,6 @@
 # T-3: O TODO que chegou ao paciente
 
-**Status:** implementada — produção simulada, esperando o Bruno
+**Status:** 🟢 concluída (29/09) — QA aprovado, achados corrigidos
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -79,4 +79,6 @@ maiúsculas e "todos os planos" casou com "TODO".
 - [x] O teste reprova se voltar.
 - [x] O Bruno sabe quais protocolos ficaram com uma referência a menos.
 - [x] A fonte está limpa, e a semeadura de um banco novo não traz a marca.
-- [ ] Produção limpa — esperando o aval, ou o próximo deploy.
+- [x] Produção limpa: 40 itens em 17 registros, e **0** na conferência.
+- [x] QA confirmou de forma independente: 35/35 artigos publicados, 0 marcas.
+- [x] O índice dos protocolos não manda mais usar `TODO` (achado do QA).

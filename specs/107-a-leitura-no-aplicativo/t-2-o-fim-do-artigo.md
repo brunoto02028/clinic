@@ -1,6 +1,6 @@
 # T-2: Quem terminou de ler quer o próximo
 
-**Status:** pendente
+**Status:** 🟢 concluída (29/09) — QA aprovado, achados corrigidos
 **Depende de:** T-1 (reaproveita o cartão)
 
 ## Objetivo
@@ -40,8 +40,17 @@ estranha. O que é honesto agora:
 - `mobile/src/api/education.ts`
 - `__tests__/education/o-fim-do-artigo.test.ts`
 
+## O defeito que o QA achou, e que era o próprio objetivo da tarefa
+
+O "See all materials" estava **dentro** do bloco das sugestões, depois do
+`return null`. Quem era o único material da clínica ficava sem saída nenhuma no
+fim do artigo — exatamente o que esta tarefa existia para corrigir.
+
+Seção vazia continua sumindo. O caminho de volta é que deixou de depender dela.
+
 ## Critérios de aceite
-- [ ] Até três, mesma categoria, sem repetir o atual.
-- [ ] Sem candidatos, a seção some.
-- [ ] O título nunca promete relação que não foi medida.
-- [ ] Há caminho de volta para a lista.
+- [x] Até três, mesma categoria, sem repetir o atual.
+- [x] Sem candidatos, a seção **some do DOM** — medido, não deduzido.
+- [x] O título nunca promete relação que não foi medida.
+- [x] Há caminho de volta **mesmo sem sugestões** (achado do QA).
+- [x] O voltar do aparelho retorna ao artigo anterior, não à lista.
