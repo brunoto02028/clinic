@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { patientGate } from "@/lib/patient-gate";
+import { destinoDoRepasse } from "@/lib/repasse-server";
 import {
   reservarCupom,
   anexarSessao,
@@ -231,18 +232,51 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     req.headers.get("x-platform") === "mobile" ||
     req.nextUrl.searchParams.get("platform") === "mobile";
 
+  /**
+   * O repasse, quando a consulta é de um profissional do catálogo (102 T-6).
+   *
+   * `null` é o caminho de sempre: consulta da reabilitação, ou profissional
+   * que ainda não pode receber — e aí o Checkout sai sem destino, como sempre
+   * saiu. A BPR nunca deixa de cobrar; o que muda é para onde o dinheiro vai
+   * depois.
+   */
+  const repasse = await destinoDoRepasse(appointment.clinicId!, Math.round(aCobrar * 100));
+
   try {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
       customer_email: appointment.patient.email,
+      /**
+       * Cobrança **com destino**: nasce na conta da BPR e é transferida.
+       *
+       * *"A BPR cobra do paciente, recebe e repassa o percentual"* — quem
+       * recebe é ela, então a cobrança é dela. `application_fee_amount` é o
+       * que fica; o resto vai para `destination` na liquidação.
+       */
+      ...(repasse
+        ? {
+            payment_intent_data: {
+              application_fee_amount: repasse.applicationFeeCents,
+              transfer_data: { destination: repasse.destination },
+            },
+          }
+        : {}),
       // O webhook reconhece a consulta por aqui. Sem isto o pagamento entra e
       // ninguém sabe a que horário ele pertence.
       metadata: {
         appointmentId: appointment.id,
         patientId: userId,
         kind: String(appointment.kind),
+        /**
+         * O inquilino de quem atende — é com ele que o vínculo nasce (T-3).
+         *
+         * Vai pelo metadata porque o webhook não tem sessão: ele recebe o
+         * evento assinado e precisa saber, sem consultar nada, de quem é o
+         * pagamento. Ainda assim o webhook relê a consulta antes de escrever.
+         */
+        professionalClinicId: appointment.clinicId ?? "",
         ...(cupom.tipo === "reservado"
           ? { couponCode: cupom.reserva.code, couponRedemptionId: cupom.reserva.redemptionId }
           : {}),

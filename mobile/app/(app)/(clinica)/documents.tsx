@@ -8,6 +8,8 @@ import { ImageViewer, isImageFile, openFileInApp } from "@/components/FileViewer
 import * as ImagePicker from "expo-image-picker";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchDocuments } from "@/api/documents";
+import { fetchProfessionalDocuments } from "@/api/professional-documents";
+import { DocumentosDoProfissional } from "@/components/DocumentosDoProfissional";
 import { formatDate } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
@@ -41,6 +43,17 @@ function DocumentsScreen() {
   const { controle } = usePullToRefresh();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
+  /**
+   * O que os profissionais **escreveram** (102 T-8).
+   *
+   * Fica nesta tela e nao numa nova: para a pessoa, receita e laudo sao
+   * "papeis sobre mim", e ela nao precisa saber que um veio como arquivo e o
+   * outro como texto assinado. Uma segunda tela seria uma que ninguem acha.
+   */
+  const daProfissional = useQuery({
+    queryKey: ["professional-documents"],
+    queryFn: fetchProfessionalDocuments,
+  });
   const [uploading, setUploading] = useState(false);
   const [imagemAberta, setImagemAberta] = useState<{ uri: string; titulo: string } | null>(null);
 
@@ -141,6 +154,10 @@ function DocumentsScreen() {
             </View>
           </Card>
         )}
+
+        {/* Primeiro o que foi escrito para ela, depois o que ela mesma enviou:
+            o documento assinado por um profissional e o que ela veio procurar. */}
+        <DocumentosDoProfissional documentos={daProfissional.data ?? []} />
 
         {isLoading ? (
           <Spinner center />

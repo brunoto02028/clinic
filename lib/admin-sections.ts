@@ -12,6 +12,7 @@ import {
   GraduationCap,
   type LucideIcon,
 } from "lucide-react";
+import { abaVisivelNoTipo, secaoVisivelNoTipo, temPainelProprio } from "@/lib/painel-por-tipo";
 
 export interface AdminTab {
   key: string;
@@ -918,11 +919,30 @@ export function tabAllowedFor(tab: AdminTab, role?: string): boolean {
  * left with no visible tabs is dropped too. Both branches must filter — a bare
  * `return ADMIN_SECTIONS` for a clinic would leak personalOnly sections.
  */
-export function visibleAdminSections(isPersonal: boolean, role?: string): AdminSection[] {
-  const hideSection = (s: AdminSection) => (isPersonal ? s.clinicalOnly : s.personalOnly);
-  const hideTab = (t: AdminTab) => (isPersonal ? t.clinicalOnly : t.personalOnly) || !tabAllowedFor(t, role);
+export function visibleAdminSections(
+  isPersonal: boolean,
+  role?: string,
+  /**
+   * O tipo do inquilino (102 T-2).
+   *
+   * Opcional de propósito: sem ele nada muda, e a clínica e o estúdio seguem
+   * pelos dois booleanos de sempre. Um profissional externo declara o painel
+   * dele em `lib/painel-por-tipo.ts` — **o que vê**, e não o que não vê, para
+   * que uma seção nova nasça escondida para ele em vez de aparecer por
+   * omissão.
+   */
+  tenantType?: string | null
+): AdminSection[] {
+  const proprio = temPainelProprio(tenantType);
+  const hideSection = (s: AdminSection) =>
+    proprio ? !secaoVisivelNoTipo(tenantType, s.key) : isPersonal ? s.clinicalOnly : s.personalOnly;
+  const hideTab = (s: AdminSection, t: AdminTab) => {
+    if (!tabAllowedFor(t, role)) return true;
+    if (proprio) return !abaVisivelNoTipo(tenantType, s.key, t.key);
+    return isPersonal ? t.clinicalOnly : t.personalOnly;
+  };
   return ADMIN_SECTIONS.filter((s) => !hideSection(s))
-    .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !hideTab(t)) }))
+    .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !hideTab(s, t)) }))
     .filter((s) => s.tabs.length > 0);
 }
 

@@ -65,6 +65,30 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   // nothing opens. It returns with the quiz screen (T-4 family).
   { title: { en: "How it works", pt: "Como funciona" }, icon: "book-outline", href: "/(app)/(clinica)/guide", module: "mod_guide" },
   { title: { en: "Terms & consent", pt: "Termos & consentimento" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
+  /**
+   * Quem tem acesso aos meus dados (102 T-3).
+   *
+   * **Sem `module`, de proposito.** Saber quem le o seu prontuario nao e
+   * funcionalidade de plano — e a lista de quem tem a chave da sua casa. Poe-la
+   * atras de um modulo faria o portao decidir se a pessoa pode saber quem a
+   * acessa.
+   *
+   * Ao lado de "Termos & consentimento" porque e a mesma pergunta: o que eu
+   * autorizei, e para quem.
+   */
+  { title: { en: "Who has access", pt: "Quem tem acesso" }, icon: "people-outline", href: "/(app)/(clinica)/quem-tem-acesso" },
+  /**
+   * Os avisos, **a um toque** (29/09/2026).
+   *
+   * A tela existia e so se chegava nela por Perfil -> Conta -> Notificacoes:
+   * tres toques, num lugar onde ninguem procura. E e a chave que decide se a
+   * pessoa fica sabendo que a consulta por video comecou — perder esse aviso e
+   * perder o atendimento.
+   *
+   * **Sem `module`**, como "Quem tem acesso": poder ser alcancado pelo proprio
+   * telefone nao e funcionalidade que uma clinica desligue.
+   */
+  { title: { en: "Notifications", pt: "Notificações" }, icon: "notifications-circle-outline", href: "/(app)/notifications" },
 ];
 
 export default function Profile() {

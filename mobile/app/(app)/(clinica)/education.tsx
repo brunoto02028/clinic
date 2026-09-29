@@ -1,4 +1,4 @@
-import { SectionList, Pressable, View } from "react-native";
+import { SectionList, Pressable, View, Image } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -113,16 +113,38 @@ function EducationScreen() {
               <Pressable testID={`edu-${item.id}`} onPress={() => router.push(`/education/${item.id}`)}>
                 <Card>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: typeSoftColor,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}>
-                      <Ionicons name={typeInfo.icon as any} size={22} color={typeColor} />
-                    </View>
+                    {/* A capa, quando existe — e o icone do tipo quando nao
+                        existe.
+
+                        `thumbnailUrl` sempre veio na resposta, e este cartao
+                        nunca a desenhou: a tela de detalhe ganhou a imagem e a
+                        lista ficou para tras, entao o material chegava com cara
+                        de arquivo generico. Um icone de documento nao distingue
+                        um artigo do outro; a capa e a unica coisa no cartao que
+                        diz **qual** material e aquele antes de abrir. */}
+                    {item.thumbnailUrl ? (
+                      <Image
+                        source={{ uri: item.thumbnailUrl }}
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
+                          backgroundColor: t.colors.surfaceMuted,
+                        }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 14,
+                        backgroundColor: typeSoftColor,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}>
+                        <Ionicons name={typeInfo.icon as any} size={22} color={typeColor} />
+                      </View>
+                    )}
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.title}</Text>
                       {item.description ? (

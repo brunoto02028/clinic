@@ -173,26 +173,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send notifications to patients (bilingual based on patient's preferredLocale)
-    try {
-      for (const patient of targetPatients) {
-        const isPt = ((patient as any).preferredLocale || 'en-GB').startsWith('pt');
-        await (prisma as any).notification.create({
-          data: {
-            userId: patient.id,
-            clinicId,
-            type: "EDUCATION_ASSIGNED",
-            title: isPt ? "Novo Conteúdo Educativo" : "New Educational Content",
-            message: isPt
-              ? `Novo conteúdo atribuído a você: "${content.title}"`
-              : `New content assigned to you: "${content.title}"`,
-            data: { contentId: content.id },
-          },
-        });
-      }
-    } catch (notifErr) {
-      console.warn("[edu-send] Notification creation failed:", notifErr);
-    }
+    /**
+     * **Aqui havia um aviso que nunca existiu** (removido em 29/09/2026).
+     *
+     * O bloco chamava `prisma.notification.create` com tipo
+     * `EDUCATION_ASSIGNED` — e **esse model não existe**: o schema só tem
+     * `JourneyNotification`. A chamada lançava toda vez, o `catch` a
+     * transformava num `console.warn` num container que ninguém abre, e o
+     * `EDUCATION_ASSIGNED` aparecia em um arquivo só: este, o que escrevia.
+     * Nenhuma tela o lia.
+     *
+     * Então atribuir material era silencioso, e o código dizia que não era. É
+     * o mesmo defeito que `lib/notifications/patient-notifications.ts`
+     * documenta nas rotas de foot scan.
+     *
+     * Avisar agora tem porta própria — `POST /api/admin/education/notify` —,
+     * com prévia de quem recebe e um botão que alguém aperta. Atribuir não
+     * toca telefone, e é assim que tem de ser: nada sai para paciente sozinho.
+     */
+
 
     return NextResponse.json({
       success: true,

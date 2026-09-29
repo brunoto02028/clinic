@@ -438,8 +438,31 @@ model Clinic {
   // consentTextsJson/consentTextsJsonPt (act.51, Terms & Conditions).
   reminderTemplatesJson Json?
 
-  // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
+  // Clinic by default; a personal-trainer studio gets its own vocabulary and
+  // modules, and a doctor/psychologist/nutritionist is a professional the
+  // platform intermediates. `lib/tenant-type.ts` is what reads this — never a
+  // `type === "..."` spread across screens.
   type TenantType @default(CLINIC)
+
+  /// O registro profissional e o conselho que o emite — CRM, CRP, CRN.
+  /// Em consulta a distancia no Brasil, mostrar o numero de quem atende e
+  /// obrigacao de quem atende **e** da plataforma que o apresenta. Sem ele, o
+  /// profissional nao aparece no catalogo (`podeAparecerNoApp`).
+  professionalRegistry String?
+  registryKind         String?
+
+  /// Aparece no catalogo do aplicativo?
+  ///
+  /// **Nasce falso, de proposito.** O Bruno: *"uma vez que eu cadastrei os
+  /// medicos, as modalidades de cada um vai aparecer para o paciente... ou
+  /// nao. A gente que da essas permissoes."* Cadastrar um profissional nao o
+  /// poe a venda; ligar isto e uma decisao de alguem.
+  visibleInApp Boolean @default(false)
+
+  /// O percentual que fica com a plataforma neste profissional.
+  /// Por profissional, e nao por consulta: um numero por consulta viraria
+  /// negociacao a cada marcacao.
+  platformFeePercent Float?
 
   /// Em que línguas este profissional atende — `["en-GB"]`, `["pt-BR"]`, ou
   /// as duas (083).
@@ -574,6 +597,13 @@ model Clinic {
   patientServicePrices   PatientServicePrice[]
   coupons                Coupon[]
   appSessions            AppSession[]
+
+  /// Os pacientes que escolheram este profissional (102 T-3).
+  careLinks CareLink[] @relation("ClinicCareLinks")
+  sharedCare CareShare[] @relation("ClinicSharedCare")
+
+  /// Documentos emitidos por este profissional (102 T-8).
+  professionalDocuments ProfessionalDocument[] @relation("ClinicProfessionalDocuments")
 
   @@index([slug])
   @@index([isActive])
@@ -1029,6 +1059,17 @@ model User {
   automationRuns            AutomationRun[]      @relation("PatientAutomationRuns")
   exerciseSubmissions       ExerciseSubmission[] @relation("ExerciseSubmissions")
   exerciseSubmissionReviews ExerciseSubmission[] @relation("ExerciseSubmissionReviews")
+
+  /// Os profissionais que podem agir sobre este paciente (102 T-3).
+  careLinks CareLink[] @relation("PatientCareLinks")
+  careShares     CareShare[] @relation("PatientCareShares")
+  sharedByMe     CareShare[] @relation("SharedByCareShares")
+  sharedWithMe   CareShare[] @relation("ReceivedCareShares")
+
+  /// Documentos que este paciente recebeu de profissionais (102 T-8).
+  professionalDocuments ProfessionalDocument[] @relation("PatientProfessionalDocuments")
+  /// E os que ele emitiu, quando e profissional.
+  issuedDocuments       ProfessionalDocument[] @relation("IssuedProfessionalDocuments")
 
   @@index([clinicId])
   @@index([email])
@@ -3062,6 +3103,17 @@ model EducationAssignment {
   isRequired  Boolean   @default(false)
   isCompleted Boolean   @default(false)
   completedAt DateTime?
+
+  /// O telefone da pessoa tocou por causa deste material, neste dia.
+  ///
+  /// Nulo = atribuido e **nao avisado**: o material esta no app dela e ninguem
+  /// lhe disse. Preencher e um ato separado de atribuir, por um botao que
+  /// alguem aperta — a atribuicao nunca toca o telefone sozinha.
+  ///
+  /// E o que torna avisar idempotente: um segundo clique no mesmo material nao
+  /// faz o telefone tocar de novo. Telefone tocando duas vezes pelo mesmo
+  /// material faz a pessoa procurar o segundo.
+  notifiedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -8517,4 +8569,209 @@ model AutomationRun {
   @@index([patientId, createdAt])
   @@index([ruleCode])
   @@map("automation_runs")
+}
+
+/// O vinculo de cuidado: este profissional pode agir sobre este paciente (102 T-3).
+///
+/// ## Por que existe
+///
+/// `User.clinicId` e a parede: um paciente pertence a um inquilino, e o dia
+/// 28/09/2026 inteiro foi gasto **fechando** furos onde um inquilino alcancava
+/// o paciente de outro. A 102 pede o contrario — e esta tabela e a unica porta.
+///
+/// A diferenca entre vazamento e funcionalidade e **uma linha dizendo que o
+/// paciente concordou**. Por isso ela e explicita, tem dono, tem data, e some
+/// do futuro quando alguem a encerra.
+///
+/// ## Como nasce
+///
+/// **Pelo pagamento** (T-6), e por nenhum outro caminho. Nao existe rota que a
+/// crie a mao: profissional nao ganha paciente por estar na plataforma.
+///
+/// ## O que ela **nao** e
+///
+/// Nao e acesso ao prontuario. Ter vinculo responde "posso agir sobre esta
+/// pessoa?"; o que se ve dela e decidido item a item na partilha (T-9).
+model CareLink {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User   @relation("PatientCareLinks", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// O inquilino do profissional — nunca o da reabilitacao, que alcanca o
+  /// paciente por `clinicId` e nao precisa de vinculo.
+  professionalClinicId String
+  professionalClinic   Clinic @relation("ClinicCareLinks", fields: [professionalClinicId], references: [id], onDelete: Cascade)
+
+  acceptedAt DateTime  @default(now())
+  /// Encerrado corta o acesso **dali para frente**. O que ja aconteceu fica:
+  /// consulta e receita sao registro clinico e nao se apagam.
+  endedAt    DateTime?
+  endedById  String?
+
+  /// A consulta cujo pagamento criou o vinculo. E a prova de como ele nasceu.
+  createdByAppointmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Um vinculo por par. Pagar de novo reativa o mesmo, em vez de empilhar
+  /// vinculos e deixar um encerrado ao lado de um vivo.
+  @@unique([patientId, professionalClinicId])
+  @@index([professionalClinicId])
+  @@index([patientId])
+}
+
+enum ProfessionalDocumentKind {
+  PRESCRIPTION /// Receita
+  REPORT /// Laudo
+  GUIDANCE /// Orientacao
+  EXAM_REQUEST /// Pedido de exame
+}
+
+/// O que o profissional **devolve** ao paciente (102 T-8).
+///
+/// ## Por que nao e um `PatientDocument`
+///
+/// Aquele e um arquivo que alguem enviou: nome, tipo MIME, bytes. Isto e um
+/// texto que alguem **escreveu e assinou** — e a assinatura e o que o torna um
+/// documento clinico. Enfiar os dois no mesmo modelo faria a receita depender
+/// de um arquivo que ela nao tem.
+///
+/// ## A assinatura e uma fotografia
+///
+/// `signerName`, `registryKind` e `registryNumber` sao copiados no momento de
+/// emitir, e nao lidos por relacao. O registro de um profissional pode mudar;
+/// o que ele assinou, nao. Uma receita que "atualiza" o CRM sozinha deixa de
+/// ser prova do que foi prescrito.
+model ProfessionalDocument {
+  id String @id @default(cuid())
+
+  /// O inquilino de quem emitiu — a clinica do profissional, nunca a do paciente.
+  clinicId String
+  clinic   Clinic @relation("ClinicProfessionalDocuments", fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("PatientProfessionalDocuments", fields: [patientId], references: [id], onDelete: Cascade)
+
+  issuedById String
+  issuedBy   User   @relation("IssuedProfessionalDocuments", fields: [issuedById], references: [id])
+
+  kind  ProfessionalDocumentKind @default(GUIDANCE)
+  title String
+  body  String                   @db.Text
+
+  /// A assinatura, congelada no momento da emissao.
+  signerName     String
+  registryKind   String?
+  registryNumber String?
+
+  /// A consulta de onde saiu, quando saiu de uma.
+  appointmentId String?
+
+  createdAt DateTime  @default(now())
+  /// Enviado ao paciente. **Nulo = rascunho**: nada chega a ninguem sem alguem
+  /// apertar um botao, e a previa vem antes do botao.
+  sentAt    DateTime?
+
+  /// Encerrado, e **nunca apagado**. Receita e registro clinico: sumir com ela
+  /// e sumir com a prova de uma prescricao. O paciente continua vendo, com a
+  /// tarja de encerrada e o motivo.
+  revokedAt     DateTime?
+  revokedReason String?
+
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([sentAt])
+}
+
+// ============================================
+// A PARTILHA ITEM A ITEM (102 T-9)
+// ============================================
+
+/// O que se partilha e uma **coisa nomeada**, nunca uma area.
+///
+/// Partilhar "a pasta de exames" ou "a area clinica" seria a liberacao
+/// automatica com outro nome: tudo o que entrasse na area depois entraria
+/// junto, sem ninguem decidir. Cada valor aqui aponta para uma linha de uma
+/// tabela, e a partilha carrega o id dela.
+enum CareShareItem {
+  /// PatientDocument — exame, imagem, laudo que alguem anexou.
+  EXAM
+  /// AIDiagnosis — diagnostico / avaliacao.
+  DIAGNOSIS
+  /// MedicalScreening — anamnese, a historia que alguem colheu.
+  ANAMNESIS
+  /// ProfessionalDocument (T-8) — receita, laudo, pedido de exame.
+  PROFESSIONAL_DOCUMENT
+  // O plano alimentar da tabela de itens da tarefa **nao entra aqui**, e nao
+  // por esquecimento: o unico plano que existe e `MealPlan`, que e do
+  // personal e aponta para `studentId`. Area do aluno nao e area do paciente,
+  // e ligar as duas aqui traria o produto do personal para dentro da clinica.
+  // O plano que o nutricionista escreve para um paciente hoje e um
+  // `ProfessionalDocument` (T-8) — e esse se partilha.
+  /// SOAPNote — evolucao, nota de sessao. A mais sensivel da lista.
+  SESSION_NOTE
+  /// ClinicalEvidenceReport — relatorio de monitoramento (099).
+  MONITORING_REPORT
+}
+
+/// Um ato de partilha: **um item, para uma pessoa nomeada, por alguem, num dia**.
+///
+/// ## O que o esquema deliberadamente nao tem
+///
+/// Nao existe campo para equipe, para perfil nem para tipo de profissional. O
+/// Bruno foi explicito duas vezes: *"nao pode ser automaticamente liberado
+/// para todo mundo, so com permissoes"*. Um campo `toClinicType` ou um
+/// `toEveryone Boolean` seria exatamente a liberacao automatica que ele
+/// proibiu, e quem entrasse na equipe amanha herdaria o acesso de hoje.
+///
+/// Partilhar um exame com tres profissionais sao **tres linhas**, com autor e
+/// data cada uma. E mais trabalho de proposito: e o trabalho que a palavra
+/// "permissao" significa.
+model CareShare {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User   @relation("PatientCareShares", fields: [patientId], references: [id], onDelete: Cascade)
+
+  item   CareShareItem
+  /// O id da linha original, na tabela que o `item` nomeia.
+  itemId String
+
+  /// Quem partilhou, e de que inquilino. O inquilino e o que prova que a
+  /// pessoa podia partilhar aquilo: item de fora dele nao se partilha.
+  fromClinicId String
+  fromClinic   Clinic @relation("ClinicSharedCare", fields: [fromClinicId], references: [id], onDelete: Cascade)
+  fromUserId   String
+  fromUser     User   @relation("SharedByCareShares", fields: [fromUserId], references: [id])
+
+  /// **Uma** pessoa. Nao ha lista aqui, e nao ha "para a equipe".
+  toUserId String
+  toUser   User   @relation("ReceivedCareShares", fields: [toUserId], references: [id], onDelete: Cascade)
+  /// Desnormalizado para filtrar a caixa de entrada sem um join por leitura.
+  toClinicId String
+
+  /// O que quem partilha quer dizer junto — "veja a pagina 2".
+  note String?
+
+  sharedAt DateTime @default(now())
+
+  /// Revogar corta **dali para frente**, e a linha fica: quem leu leu, e
+  /// apagar o registro seria apagar a prova de que houve acesso.
+  revokedAt     DateTime?
+  revokedReason String?
+  revokedById   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Partilhar duas vezes o mesmo item com a mesma pessoa e a **mesma** linha.
+  /// Sem isto, revogar uma deixaria a outra viva e o acesso de pe.
+  @@unique([patientId, item, itemId, toUserId])
+  @@index([toUserId, revokedAt])
+  @@index([patientId])
+  @@index([fromClinicId])
 }

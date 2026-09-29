@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Pressable, Alert, TextInput, Linking } from "react-native";
-import { Stack, router } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchDependentes, type Dependente } from "@/api/dependents";
@@ -20,6 +20,14 @@ import type { CouponPreviewOk } from "@/api/coupons";
 
 function BookAppointmentScreen() {
   const lang = useLang();
+  /**
+   * Com quem, quando a pessoa veio do catalogo (102 T-5).
+   *
+   * Ausente e o caminho de sempre: a reabilitacao. Quem confere se este id
+   * pode ser marcado e o servidor — a tela so o carrega.
+   */
+  const { professionalId } = useLocalSearchParams<{ professionalId?: string }>();
+  const comProfissional = typeof professionalId === "string" ? professionalId : null;
   const clinicName = useAuth((s) => s.user?.clinicName ?? null);
   const t = useTheme();
   const qc = useQueryClient();
@@ -83,8 +91,8 @@ function BookAppointmentScreen() {
     });
 
   const availability = useQuery({
-    queryKey: ["availability", selectedDate, janela],
-    queryFn: () => fetchAvailability(selectedDate!, janela),
+    queryKey: ["availability", selectedDate, janela, comProfissional],
+    queryFn: () => fetchAvailability(selectedDate!, janela, comProfissional),
     enabled: !!selectedDate && !!porta?.kind,
   });
 
@@ -123,6 +131,9 @@ function BookAppointmentScreen() {
         notes: notes || undefined,
         // Ausente = para mim. Quem valida o vínculo é o servidor.
         dependentId: paraQuem ?? undefined,
+        // Com quem, quando veio do catálogo (102 T-5). Quem confere que este
+        // profissional pode ser marcado é o servidor.
+        ...(comProfissional ? { professionalId: comProfissional } : {}),
       });
     },
     onSuccess: async (res: any) => {
@@ -493,6 +504,7 @@ ${tr(lang, {
               selecionada={selectedDate}
               onEscolher={(d) => { setSelectedDate(d); setSelectedTime(null); }}
               kind={janela}
+              professionalId={comProfissional}
               meusDias={meusDias}
             />
           )}

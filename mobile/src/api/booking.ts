@@ -22,6 +22,13 @@ export interface BookingRequest {
    * o corpo pudesse gravar o formato, a aprovação seria enfeite.
    */
   requestedMode?: "VIDEO" | "HOME_VISIT";
+  /**
+   * Com quem (102 T-5).
+   *
+   * Ausente = a reabilitacao, como sempre. Presente = um profissional do
+   * catalogo — e quem confere que ele esta la e o servidor, nunca esta linha.
+   */
+  professionalId?: string;
 }
 
 export async function bookAppointment(data: BookingRequest) {
@@ -52,11 +59,23 @@ export interface AvailabilityResult {
   reason?: string;
 }
 
-export async function fetchAvailability(date: string, kind?: string): Promise<AvailabilityResult> {
+export async function fetchAvailability(
+  date: string,
+  kind?: string,
+  /**
+   * Com quem (102 T-5).
+   *
+   * Ausente = a agenda da clinica, como sempre foi. Presente = a agenda
+   * **daquela pessoa**, e o servidor so a entrega se ela estiver no catalogo.
+   */
+  professionalId?: string | null
+): Promise<AvailabilityResult> {
   // O tipo filtra a janela: quem vai fazer primeira consulta não deve ver
   // horário de tratamento, e vice-versa.
   return apiFetch<AvailabilityResult>(
-    `/api/availability?date=${date}${kind ? `&kind=${kind}` : ""}`
+    `/api/availability?date=${date}${kind ? `&kind=${kind}` : ""}${
+      professionalId ? `&therapistId=${encodeURIComponent(professionalId)}` : ""
+    }`
   );
 }
 
@@ -183,9 +202,12 @@ export interface DiaDaAgenda {
 export async function fetchAgendaDoIntervalo(
   from: string,
   to: string,
-  kind?: string
+  kind?: string,
+  professionalId?: string | null
 ): Promise<{ dias: DiaDaAgenda[]; therapistId?: string }> {
   return apiFetch<{ dias: DiaDaAgenda[]; therapistId?: string }>(
-    `/api/availability?from=${from}&to=${to}${kind ? `&kind=${kind}` : ""}`
+    `/api/availability?from=${from}&to=${to}${kind ? `&kind=${kind}` : ""}${
+      professionalId ? `&therapistId=${encodeURIComponent(professionalId)}` : ""
+    }`
   );
 }

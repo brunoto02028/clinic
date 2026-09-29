@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { isProfissionalExterno, registroExigido } from "@/lib/tenant-type";
 import { conteudoDaClinica } from "@/lib/clinic-contents";
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,40 @@ export async function PATCH(
         // model from Clinic — pulled out here so the rest of `body` can still
         // go straight into `clinic.update` unchanged.
         const { maxTherapists, maxPatients, ...clinicFields } = body;
+
+        /**
+         * Ligar no app exige que o profissional **possa** aparecer (102 T-1).
+         *
+         * `podeAparecerNoApp` ja filtra na leitura, entao ligar sem registro
+         * nao mostraria ninguem — e seria um interruptor que liga e nao
+         * acontece nada, que e a pior especie de botao. Aqui ele diz por que.
+         */
+        if (clinicFields.visibleInApp === true) {
+            const atual = await prisma.clinic.findUnique({
+                where: { id: params.id },
+                select: { type: true, professionalRegistry: true },
+            });
+            if (!atual) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+            const tipo = clinicFields.type ?? atual.type;
+            if (!isProfissionalExterno(tipo)) {
+                return NextResponse.json(
+                    { error: "Only a professional the platform intermediates can appear in the patient app." },
+                    { status: 400 }
+                );
+            }
+            const exige = registroExigido(tipo);
+            const registro = clinicFields.professionalRegistry ?? atual.professionalRegistry;
+            if (exige && exige !== "OUTRO" && !String(registro ?? "").trim()) {
+                return NextResponse.json(
+                    {
+                        error: `Add the ${exige} number first — it is shown to the patient, and required by law.`,
+                        errorPt: `Cadastre o numero do ${exige} antes — ele e mostrado ao paciente, e exigido por lei.`,
+                    },
+                    { status: 400 }
+                );
+            }
+        }
 
         // One transaction: a clinic field (e.g. instagramImportEnabled) and a
         // limit change saved together should not be able to half-apply if the

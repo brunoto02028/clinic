@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
 import { isPersonalBlockedRoute, isPersonalBlockedPatientRoute } from '@/lib/personal-blocked-routes';
+import { rotaPermitidaNoTipo } from '@/lib/painel-por-tipo';
 import { isSuperadminOnlyAdminPage } from '@/lib/superadmin-routes';
 
 // ─── INLINE SECURITY (Edge Runtime compatible) ───
@@ -502,6 +503,31 @@ export async function middleware(request: NextRequest) {
     // their own portal; staff (blocked from clinical /admin routes) go to /admin.
     const home = userRole === 'PATIENT' || isPersonalBlockedPatientRoute(pathname) ? '/dashboard' : '/admin';
     return NextResponse.redirect(new URL(home, request.url));
+  }
+
+  /**
+   * O painel do profissional externo, fechado por URL (102 T-2).
+   *
+   * Um medico nao prescreve exercicio e um nutricionista nao faz escaneamento
+   * de pe — a barra lateral ja nao mostra, e **esconder aba nao e fechar
+   * porta**. O portao esta aqui pela mesma razao que o do estudio acima.
+   *
+   * `rotaPermitidaNoTipo` so decide para quem tem painel proprio: a clinica e
+   * o estudio passam direto, e nada muda para eles. SUPERADMIN e isento, como
+   * na regra de cima, porque ele ve a plataforma inteira.
+   */
+  if (
+    userRole !== 'SUPERADMIN' &&
+    !rotaPermitidaNoTipo(token.clinicType as string | null, pathname)
+  ) {
+    if (pathname.startsWith('/api')) {
+      // 404 e nao 403: dizer "existe, mas nao e seu" conta o que existe.
+      return new NextResponse(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS },
+      });
+    }
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   // Check SUPERADMIN routes

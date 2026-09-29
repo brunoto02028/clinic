@@ -97,7 +97,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [099](099-monitoramento-e-o-relatorio/) | Monitoramento contínuo e o relatório automático | 🟡 no ar, **desligado**: falta o Bruno ligar em `/admin/biohacking` |
 | [100](100-o-caminho-ate-o-paciente/) | O caminho até o paciente (toda tela tem porta) | 🟢 T-1..T-4. A varredura roda na suíte; **4 telas seguem sem caminho**, com motivo escrito |
 | [101](101-o-video-o-artigo-e-o-agendamento/) | O vídeo, o artigo e o agendamento feito pela clínica | 🟢 **T-1..T-3 concluídas** (vídeo 6 correções; artigo 5 + 2 furos de inquilino; agendamento 4). Telas do app esperam build |
-| [102](102-o-paciente-e-varios-profissionais/) | O mesmo paciente, vários profissionais (médico, psicólogo, nutricionista) | 🔵 planejada, **aguardando aprovação**. 9 tarefas; a T-3 abre uma porta entre inquilinos de propósito, e a T-9 é quem prova que ela é só uma. Bloqueada em produção por Stripe |
+| [102](102-o-paciente-e-varios-profissionais/) | O mesmo paciente, vários profissionais (equipe multidisciplinar) | 🔵 planejada, **aguardando aprovação**. 10 tarefas. Duas perguntas separadas: quem alcança o paciente (T-3) e **o que cada um vê** (T-9) — partilha item a item, colega a colega, **nunca automática**. A T-10 prova. Bloqueada em produção por Stripe |
 
 > **A 091 está no ar com um furo conhecido.** O QA (`qa/report-091.md`) reprovou 4 cenários; três
 > foram consertados no mesmo dia — o portão do paciente passou a olhar o aceite de **quem responde**

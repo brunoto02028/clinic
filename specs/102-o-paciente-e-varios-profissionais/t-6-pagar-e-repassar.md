@@ -35,9 +35,14 @@ Sem conta live e sem webhook secret isto não roda fora do ambiente de teste.
 
 ## Critérios de aceite
 
-- [ ] O paciente paga uma vez, e o profissional recebe o líquido.
-- [ ] Pagou ⇒ consulta confirmada **e** vínculo criado, na mesma transação
-      lógica; o reenvio do webhook não duplica nenhum dos dois.
-- [ ] Sem Connect pronto, o profissional não aparece para marcar.
-- [ ] Reembolso desfaz os três: cobrança, taxa e consulta.
-- [ ] Medido em test mode de ponta a ponta antes de qualquer conta live.
+- [x] Cobrança **com destino**: nasce na BPR, `application_fee_amount` fica, o
+      resto é transferido. *"A BPR cobra, recebe e repassa."*
+- [x] Pagou ⇒ consulta confirmada **e** vínculo criado; o reenvio do webhook
+      não duplica nenhum dos dois, e ainda assim garante o vínculo.
+- [x] Sem Connect pronto, o profissional **não aparece** para marcar.
+- [x] Reembolso desfaz os três: `refund_application_fee` e `reverse_transfer`.
+- [x] O percentual é por profissional, definido **na tela** — vazio volta ao
+      padrão da plataforma, que é diferente de zero.
+- [x] A conta arredonda para baixo: o centavo perdido é da BPR, não dele.
+- [ ] **Falta medir contra o Stripe de verdade**, em test mode — e depois em
+      produção, que hoje não tem chave nenhuma.

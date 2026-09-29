@@ -33,6 +33,15 @@ export interface OpcoesDoDia {
   kind?: string | null;
   /** Duração em minutos; só o modelo antigo a usa para montar a grade. */
   duration?: number;
+  /**
+   * O fuso de quem atende (102 T-4).
+   *
+   * Padrão: o da BPR, e aí nada muda. Ele existe porque a 102 traz
+   * profissionais de outro inquilino — e o Bruno cita justamente *"brasileiros
+   * que vivem no exterior e querem profissionais brasileiros"*, que é o caso em
+   * que os dois fusos diferem.
+   */
+  timeZone?: string;
 }
 
 export async function disponibilidadeDoDia(
@@ -48,7 +57,7 @@ export async function disponibilidadeDoDia(
   const dayOfWeek = new Date(`${dateStr}T12:00:00.000Z`).getUTCDay();
 
   // A meia-noite da clínica, não a do servidor.
-  const dayStart = zonedTimeToUtc(dateStr, "00:00");
+  const dayStart = zonedTimeToUtc(dateStr, "00:00", opts.timeZone);
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   // Dia bloqueado (feriado, ausência, formação) vence a agenda semanal.
@@ -75,7 +84,11 @@ export async function disponibilidadeDoDia(
     // ler o fuso do servidor, que em produção é UTC (QA de 25/09, N1).
     const slots = await slotsForDate(clinicId, therapistId, dateStr, {
       kind,
-      nowMinutes: dateStr === getZonedDateString() ? getZonedMinutesOfDay() : null,
+      timeZone: opts.timeZone,
+      nowMinutes:
+        dateStr === getZonedDateString(new Date(), opts.timeZone)
+          ? getZonedMinutesOfDay(new Date(), opts.timeZone)
+          : null,
     });
 
     return {
@@ -141,15 +154,15 @@ export async function disponibilidadeDoDia(
   });
 
   const occupiedRanges = existingAppointments.map((a) => {
-    const apptStart = getZonedMinutesOfDay(a.dateTime);
+    const apptStart = getZonedMinutesOfDay(a.dateTime, opts.timeZone);
     const apptEnd = apptStart + (a.duration || 60);
     return { start: apptStart, end: apptEnd };
   });
 
   // Se a data pedida é hoje (no fuso da própria clínica), horários que já
   // começaram saem — senão o paciente "marca" uma consulta que já passou.
-  const isToday = dateStr === getZonedDateString();
-  const nowMinutes = getZonedMinutesOfDay();
+  const isToday = dateStr === getZonedDateString(new Date(), opts.timeZone);
+  const nowMinutes = getZonedMinutesOfDay(new Date(), opts.timeZone);
 
   const availableSlots = allSlots.filter((slot) => {
     const [sh, sm] = slot.split(":").map(Number);

@@ -183,6 +183,15 @@ describe("uma chamada por visão, não uma por dia", () => {
   it("a chave do cache inclui o intervalo e a janela", () => {
     // Sem a janela na chave, trocar de tipo de consulta mostraria a agenda do
     // tipo anterior.
-    expect(cal).toMatch(/queryKey: \["agenda-intervalo", comoTexto\(inicio\), comoTexto\(fim\), kind \?\? null\]/);
+    /**
+     * A chave inclui **tudo o que muda a resposta**.
+     *
+     * Ela ganhou o profissional na 102 T-5: sem ele, trocar de profissional
+     * devolveria a agenda do anterior, vinda do cache. A asserção segue pedindo
+     * a ordem, porque é ela que garante que nada foi trocado de lugar.
+     */
+    expect(cal).toMatch(
+      /queryKey: \["agenda-intervalo", comoTexto\(inicio\), comoTexto\(fim\), kind \?\? null, professionalId \?\? null\]/
+    );
   });
 });

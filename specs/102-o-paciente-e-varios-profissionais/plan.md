@@ -1,7 +1,7 @@
 # 102 — O mesmo paciente, vários profissionais
 
 **Aberta em:** 28/09/2026
-**Estado:** 🔵 planejada — **aguardando aprovação**. Nada implementado.
+**Estado:** 🟡 **aprovada em 28/09/2026** — implementação em andamento.
 
 ## O pedido
 
@@ -43,6 +43,29 @@ só, e o dia inteiro de 28/09 foi gasto **fechando** furos onde um inquilino
 alcançava o paciente de outro. Esta atividade pede o contrário — e é por isso
 que ela precisa de um desenho explícito, e não de um `clinicId` a menos.
 
+## Quem é o usuário do app, e o que ele vê
+
+Confirmado pelo Bruno em 28/09, e muda duas coisas no desenho:
+
+> *"O paciente já vai fazer o cadastro assim que baixar o aplicativo. Paciente
+> ou não, ele vai ter o cadastro dele. Se ele quiser fisioterapia, reabilitação
+> é uma coisa; se ele quiser médicos, outras modalidades é outra coisa."*
+
+**Quem baixa o app se cadastra, e é usuário antes de ser paciente de alguém.**
+Isso já existe: `/api/mobile/register` cria a conta no inquilino padrão. O que
+muda é a leitura — essa pessoa **não é**, por isso, paciente da reabilitação.
+Ela vira paciente de uma modalidade quando escolhe e paga uma.
+
+E as duas portas são independentes: alguém pode querer só o nutricionista e
+nunca pisar na fisioterapia.
+
+> *"Uma vez que eu cadastrei os médicos, as modalidades de cada um vai aparecer
+> para o paciente… ou não. A gente que dá essas permissões."*
+
+**Cadastrar um profissional não o põe à venda.** Aparecer no app é uma
+permissão que a BPR dá, por profissional, e ela nasce **desligada**. É a mesma
+regra da partilha, um andar acima: nada automático.
+
 ## A decisão que decide tudo: como o paciente é compartilhado
 
 **Três caminhos, e eu recomendo o terceiro.**
@@ -72,36 +95,58 @@ vínculo explícito.** ⬅ **recomendado**
 O vínculo nasce de um jeito só: **o paciente escolhe o profissional e paga**.
 Não existe profissional que "ganhe" um paciente por estar na mesma plataforma.
 
-## O que cada um enxerga
+## A equipe: são **duas** perguntas, não uma
 
-A regra que eu proponho, e que a T-9 mede:
+O Bruno: *"a clínica de reabilitação só vai compartilhar aquilo que foi
+necessário com os médicos. E a mesma coisa dos médicos. O paciente é um e a
+gente pode trabalhar com uma equipe multidisciplinar."*
 
-- **O profissional vê o que o vínculo autoriza**, e nada além: dados
-  cadastrais, exames que o paciente liberou, o que ele mesmo escreveu, e as
-  consultas dele com aquele paciente.
-- **O prontuário de reabilitação não é aberto por padrão.** O médico precisa de
-  exames e de anamnese; ele não precisa da evolução de fisioterapia, e a
-  recíproca vale. Compartilhar mais é uma escolha do paciente, por item.
-- **O que o profissional devolve** (receita, laudo, orientação) vai para o app
-  do paciente como documento, com o nome de quem assinou.
+Isso separa o problema em dois, e juntá-los seria o erro:
+
+**1. Este profissional pode agir sobre este paciente?** — o vínculo (T-3). Sim
+ou não, e nasce do pagamento.
+
+**2. O que, deste paciente, ele enxerga?** — a partilha (T-9). E a resposta é
+**só o que lhe foi passado, item a item**.
+
+Ter vínculo **não** abre o prontuário. O médico recebe o exame e a anamnese
+porque a reabilitação passou; a reabilitação recebe a receita porque o médico
+devolveu; a nota de sessão do psicólogo não vai a lugar nenhum a menos que ele
+a mande, com um passo a mais.
+
+Vale nos dois sentidos por simetria, e não por gentileza: um médico lendo a
+evolução inteira da fisioterapia sem ninguém ter passado é o mesmo defeito que
+uma fisioterapia lendo a sessão do psicólogo.
+
+**Quem decide é a clínica que detém o paciente** — *"eu da clínica quero
+determinar o que o médico vai ver do meu paciente (…) não pode ser
+automaticamente liberado para todo mundo, só com permissões"*. Partilhar é
+sempre com **uma pessoa nomeada**: não existe "mandar para a equipe", porque
+quem entrasse na equipe amanhã herdaria o acesso de hoje.
+
+**E o paciente vê a partilha acontecendo** — quem passou o quê, para quem, e
+quando —, com o direito de revogar. Revogar corta o futuro; o que já foi lido
+não se apaga, porque é registro clínico.
 
 ## Tarefas
 
 | | tarefa | status |
 |---|---|---|
-| T-1 | [O tipo do profissional, e criar a área dele](t-1-o-tipo-do-profissional.md) | pendente |
-| T-2 | [O que cada área mostra — módulos e vocabulário por tipo](t-2-o-que-cada-area-mostra.md) | pendente |
-| T-3 | [O vínculo de cuidado: o paciente atravessa a parede, com consentimento](t-3-o-vinculo-de-cuidado.md) | pendente |
-| T-4 | [A agenda de cada profissional](t-4-a-agenda-de-cada-um.md) | pendente |
-| T-5 | [O paciente escolhe o profissional, no app](t-5-o-paciente-escolhe.md) | pendente |
-| T-6 | [O paciente paga, a BPR repassa](t-6-pagar-e-repassar.md) | pendente |
-| T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | pendente |
-| T-8 | [O que o médico devolve: receita e documento](t-8-o-que-o-profissional-devolve.md) | pendente |
-| T-9 | [A parede clínica: quem vê o quê](t-9-quem-ve-o-que.md) | pendente |
+| T-1 | [O tipo do profissional, e criar a área dele](t-1-o-tipo-do-profissional.md) | 🟢 concluída |
+| T-2 | [O que cada área mostra — módulos e vocabulário por tipo](t-2-o-que-cada-area-mostra.md) | 🟢 concluída |
+| T-3 | [O vínculo de cuidado: o paciente atravessa a parede, com consentimento](t-3-o-vinculo-de-cuidado.md) | 🟢 concluída |
+| T-4 | [A agenda de cada profissional](t-4-a-agenda-de-cada-um.md) | 🟢 concluída |
+| T-5 | [O paciente escolhe o profissional, no app](t-5-o-paciente-escolhe.md) | 🟢 concluída |
+| T-6 | [O paciente paga, a BPR repassa](t-6-pagar-e-repassar.md) | 🟡 construída; **não medida de ponta a ponta** — produção não tem variável `STRIPE` |
+| T-7 | [Consulta por vídeo para todos os tipos](t-7-video-para-todos.md) | 🟢 concluída |
+| T-8 | [O que o médico devolve: receita e documento](t-8-o-que-o-profissional-devolve.md) | 🟢 concluída |
+| T-9 | [A equipe: compartilhar item a item, nos dois sentidos](t-9-a-equipe-compartilha-item-a-item.md) | 🟢 concluída |
+| T-10 | [A parede clínica: quem vê o quê](t-10-quem-ve-o-que.md) | 🟢 concluída |
 
 **T-1 a T-4 são a fundação** e podem ir juntas. **T-5 a T-8 é o ciclo do
-paciente.** **T-9 é a que não pode falhar**, e por isso é a última a fechar e a
-primeira a ser testada em cada uma das outras.
+paciente.** **T-9 é a equipe multidisciplinar** — o coração do pedido. **T-10 é
+a que não pode falhar**, e por isso é a última a fechar e a primeira a ser
+testada em cada uma das outras.
 
 ## Dependências que não são minhas
 
@@ -132,9 +177,11 @@ começar** — cada uma muda código.
    ser a plataforma e vira intermediária de um pagamento que não vê.
 6. **Cancelamento e reembolso seguem a política da BPR**, não a de cada
    profissional. Uma política por profissional multiplica o suporte por N.
-7. **O prontuário não é compartilhado por padrão** (ver "O que cada um
-   enxerga"). Se você quiser o contrário — todo profissional vê tudo —, é uma
-   linha de código e uma decisão sua, e ela precisa estar escrita.
+7. **~~Suposição~~ — decidido por você em 28/09.** Nada é compartilhado por
+   padrão; a partilha é **item a item, colega a colega, nos dois sentidos**, e
+   quem decide é a clínica que detém o paciente. Não existe liberação
+   automática, nem para "todo mundo", nem por tipo de profissional. Detalhes e
+   critérios na [T-9](t-9-a-equipe-compartilha-item-a-item.md).
 8. **Nada disto muda o produto do personal trainer**, que continua separado
    ([[personal-independente-da-clinica]]).
 

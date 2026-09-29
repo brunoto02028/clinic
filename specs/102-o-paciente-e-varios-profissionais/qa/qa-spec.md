@@ -97,18 +97,34 @@ evidência **medida** — nunca "deve funcionar".
 | 8.4 | Outro profissional lendo o documento | 404, sem liberação do paciente |
 | 8.5 | Apagar receita | não existe; encerra-se |
 
-## T-9 — Quem vê o quê
+## T-9 — A equipe: partilha item a item
+
+| # | cenário | esperado |
+|---|---|---|
+| 9.1 | Profissional com vínculo, **sem nada partilhado** | vê só o que o paciente deu a ele |
+| 9.2 | Clínica partilha um exame com o médico A | só o médico A vê, e só aquele exame |
+| 9.3 | Médico B, da mesma equipe | **404** no mesmo exame |
+| 9.4 | Profissional novo entra na equipe | não herda nada do que já foi partilhado |
+| 9.5 | Partilhar com "todos" / "a equipe" / "os médicos" | **não existe rota nem botão** |
+| 9.6 | O médico devolve a receita à reabilitação | chega só se ele partilhar |
+| 9.7 | Nota de sessão de psicologia | fora da partilha comum |
+| 9.8 | Revogar | corta o futuro, preserva o que já foi lido |
+| 9.9 | O paciente lendo o que foi partilhado sobre ele | quem, o quê, para quem, quando |
+| 9.10 | Prévia antes de partilhar | mostra o que o colega vai ver |
+| 9.11 | Leitura de item partilhado | registrada em auditoria |
+
+## T-10 — Quem vê o quê
 
 **A matriz adversária inteira, por rota.** Para cada par (tipo de profissional
 × estado do vínculo × dono do paciente):
 
 | # | cenário | esperado |
 |---|---|---|
-| 9.1 | Tabela de quem-vê-o-quê | escrita no relatório |
-| 9.2 | Varredura das rotas com `patientId` | toda uma passa pelo helper |
-| 9.3 | Cada tipo tentando alcançar paciente sem vínculo | 404 |
-| 9.4 | Paciente de outra clínica | 404 |
-| 9.5 | Vínculo encerrado | 404 |
-| 9.6 | O paciente lendo quem tem acesso | lista completa, com datas |
-| 9.7 | O paciente encerrando um acesso | corta na hora |
-| 9.8 | A mesma matriz **em produção** | com paciente de teste identificado |
+| 10.1 | Tabela de quem-vê-o-quê | escrita no relatório |
+| 10.2 | Varredura das rotas com `patientId` | toda uma passa pelo helper |
+| 10.3 | Cada tipo tentando alcançar paciente sem vínculo | 404 |
+| 10.4 | Paciente de outra clínica | 404 |
+| 10.5 | Vínculo encerrado | 404 |
+| 10.6 | O paciente lendo quem tem acesso | lista completa, com datas |
+| 10.7 | O paciente encerrando um acesso | corta na hora |
+| 10.8 | A mesma matriz **em produção** | com paciente de teste identificado |

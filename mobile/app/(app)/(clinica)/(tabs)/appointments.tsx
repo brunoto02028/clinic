@@ -31,13 +31,32 @@ function AppointmentsScreen() {
     <Screen testID="appointments-screen">
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <Text variant="title">{tr(lang, { en: "Appointments", pt: "Consultas" })}</Text>
-        <Pressable
-          onPress={() => router.push("/book-appointment")}
-          style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: t.colors.healthSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.health }}
-        >
-          <Ionicons name="add" size={16} color={t.colors.health} />
-          <Text variant="caption" color={t.colors.health} style={{ fontWeight: "600" }}>{tr(lang, { en: "Book", pt: "Agendar" })}</Text>
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {/* **Com quem** (102 T-5).
+
+              Marcar com a reabilitação continua a um toque, como sempre foi —
+              não dá para pôr uma escolha a mais no caminho de quem já sabe
+              onde vai. Escolher profissional é um botão ao lado, e não um
+              passo antes.
+
+              Sem este botão a tela de catálogo existiria e ninguém chegaria
+              nela, que é a falha que a varredura da 100 T-4 nasceu para pegar. */}
+          <Pressable
+            testID="escolher-profissional"
+            onPress={() => router.push("/(app)/(clinica)/escolher-profissional" as never)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.border }}
+          >
+            <Ionicons name="people-outline" size={16} color={t.colors.textSecondary} />
+            <Text variant="caption" color={t.colors.textSecondary} style={{ fontWeight: "600" }}>{tr(lang, { en: "Professionals", pt: "Profissionais" })}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/book-appointment")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: t.colors.healthSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.health }}
+          >
+            <Ionicons name="add" size={16} color={t.colors.health} />
+            <Text variant="caption" color={t.colors.health} style={{ fontWeight: "600" }}>{tr(lang, { en: "Book", pt: "Agendar" })}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (

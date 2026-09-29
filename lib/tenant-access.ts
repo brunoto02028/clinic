@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { vinculoVivo } from "@/lib/care-link";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { resolveActorTenant } from "@/lib/actor-tenant";
 
@@ -134,11 +135,29 @@ export function assertClinicAccess(actor: Actor, clinicId: string | null): void 
   }
 }
 
-/** Resolves a patient the actor may act on: themself, or a patient of the staff member's tenant. */
+/**
+ * Resolves a patient the actor may act on: themself, a patient of the staff
+ * member's tenant — **or**, since 102 T-3, a patient bound to them by a live
+ * care link.
+ *
+ * ## Por que o vínculo entra **aqui**, e não numa rota
+ *
+ * Esta é a única função que responde "posso agir sobre este paciente?". Os dois
+ * vazamentos de 28/09/2026 aconteceram porque rotas responderam sozinhas — o id
+ * veio do corpo, o inquilino veio da sessão, e ninguém conferiu que os dois
+ * combinavam.
+ *
+ * A 102 abre uma porta entre inquilinos de propósito. Ela cabe nesta função, e
+ * em nenhuma outra: assim a porta é uma, auditável, e quem a atravessa passa
+ * pelo mesmo `404` de sempre quando não devia.
+ *
+ * **O vínculo não abre prontuário.** Ele responde só a pergunta desta função; o
+ * que se vê do paciente é decidido item a item na partilha (T-9).
+ */
 export async function assertPatientAccess(
   actor: Actor,
   patientId: string
-): Promise<{ id: string; clinicId: string | null }> {
+): Promise<{ id: string; clinicId: string | null; porVinculo?: boolean }> {
   if (actor.role === "PATIENT") {
     if (patientId === actor.userId) return { id: actor.userId, clinicId: actor.clinicId };
     throw new AccessError(404, "Not found");
@@ -151,10 +170,33 @@ export async function assertPatientAccess(
   // this answers 404 like any other unreachable id — no enumeration oracle.
   // The route tells a patient creating their own assessment that their
   // account has no clinic; that message does not belong to staff callers.
-  if (!patient || patient.role !== "PATIENT" || !actor.clinicId || patient.clinicId !== actor.clinicId) {
+  if (!patient || patient.role !== "PATIENT" || !actor.clinicId) {
     throw new AccessError(404, "Not found");
   }
-  return { id: patient.id, clinicId: patient.clinicId };
+
+  if (patient.clinicId === actor.clinicId) {
+    return { id: patient.id, clinicId: patient.clinicId };
+  }
+
+  /**
+   * Fora do inquilino, só com vínculo vivo — e 404 no resto.
+   *
+   * A mesma frase para "não existe" e "não é seu", como sempre: distinguir as
+   * duas contaria a um estranho que aquele paciente existe.
+   */
+  if (await vinculoVivo(patient.id, actor.clinicId)) {
+    /**
+     * Toda leitura atravessada fica registrada.
+     *
+     * Atravessar a parede é a exceção, e exceção sem registro é exceção que
+     * ninguém audita. **Sem `await`**: o registro não pode atrasar nem derrubar
+     * o atendimento — se o log falhar, quem perde é a auditoria, não a consulta.
+     */
+    void registrarAcessoPorVinculo(actor, patient.id, patient.clinicId);
+    return { id: patient.id, clinicId: patient.clinicId, porVinculo: true };
+  }
+
+  throw new AccessError(404, "Not found");
 }
 
 /** Turns an AccessError into its JSON response; anything else is rethrown. */
@@ -163,4 +205,37 @@ export function accessErrorResponse(err: unknown): NextResponse {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
   throw err;
+}
+
+
+/**
+ * O registro de uma leitura que atravessou inquilino (102 T-3).
+ *
+ * Fica fora de `assertPatientAccess` para deixar claro que é efeito colateral,
+ * e para que o `catch` engula tudo: uma falha de auditoria não pode virar uma
+ * falha de atendimento.
+ */
+async function registrarAcessoPorVinculo(
+  actor: Actor,
+  patientId: string,
+  patientClinicId: string | null
+): Promise<void> {
+  try {
+    const { logAudit } = await import("@/lib/system-logger");
+    await logAudit({
+      userId: actor.userId,
+      userEmail: "",
+      userRole: String(actor.role),
+      action: "CARE_LINK_ACCESS",
+      entity: "User",
+      entityId: patientId,
+      description: "Professional reached a patient through a care link",
+      metadata: {
+        professionalClinicId: actor.clinicId,
+        patientClinicId,
+      },
+    });
+  } catch {
+    /* auditoria nunca derruba atendimento */
+  }
 }

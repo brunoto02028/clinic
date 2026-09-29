@@ -13,10 +13,19 @@ import { personalizeLabel } from "@/lib/tenant-vocab";
 export function useVocab() {
   const { data, status } = useSession();
   const { locale } = useLocale();
-  const isPersonal = isPersonalTenant((data?.user as any)?.clinicType);
+  const clinicType = ((data?.user as any)?.clinicType ?? null) as string | null;
+  const isPersonal = isPersonalTenant(clinicType);
   const isPt = !!locale?.startsWith("pt");
   return {
     isPersonal,
+    /**
+     * O tipo cru do inquilino (102 T-2).
+     *
+     * `isPersonal` respondia a pergunta de dois tipos. Com seis, quem precisa
+     * saber **qual** precisa do valor — e quem só quer saber se é estúdio
+     * continua com o booleano.
+     */
+    clinicType,
     // The session has resolved (not still loading). Callers that must not act
     // on a not-yet-known tenant type — e.g. before showing clinic-only content
     // — gate on this so `isPersonal === false` during load isn't read as "clinic".

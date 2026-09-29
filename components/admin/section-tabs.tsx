@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getActiveAdminNav, tabAllowedFor, routeMatches } from "@/lib/admin-sections";
+import { getActiveAdminNav, routeMatches, visibleAdminSections } from "@/lib/admin-sections";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 
@@ -13,7 +13,7 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { locale } = useLocale();
-  const { relabel, isPersonal } = useVocab();
+  const { relabel, isPersonal, clinicType } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
 
   /**
@@ -50,9 +50,18 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
   const isPt = locale?.startsWith("pt");
   // Same rule as the sidebar (visibleAdminSections): clinical tabs off for a
   // studio, studio tabs off for a clinic.
-  const tabs = section.tabs.filter(
-    (tab) => (isPersonal ? !tab.clinicalOnly : !tab.personalOnly) && tabAllowedFor(tab, role)
+  /**
+   * As abas que este inquilino vê — **a mesma regra da barra lateral**
+   * (`visibleAdminSections`), e não uma cópia dela.
+   *
+   * Era um filtro escrito aqui com os dois booleanos. Com o painel por tipo
+   * (102 T-2), duas cópias da regra divergiriam — e a divergência apareceria
+   * como uma aba que existe na barra e não na página, ou pior, o contrário.
+   */
+  const secaoVisivel = visibleAdminSections(isPersonal, role, clinicType).find(
+    (s) => s.key === section.key
   );
+  const tabs = secaoVisivel?.tabs ?? [];
   // The route's first matching tab may be one this tenant can't see (e.g. the
   // clinic's Journey on /admin/quizzes for a studio) — highlight a visible one.
   const clean = pathname.replace(/\/$/, "") || "/admin";

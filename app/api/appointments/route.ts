@@ -10,7 +10,7 @@ import { pushConsulta } from "@/lib/push-notify";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
-import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
+import { appointmentTenantWhere, resolverProfissional } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
 import { bookingOptionsFor } from "@/lib/booking-options";
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dateTime, duration, treatmentType, notes, therapistId, price, paymentMethod } = body ?? {};
+    const { dateTime, duration, treatmentType, notes, therapistId, professionalId, price, paymentMethod } = body ?? {};
 
     if (!dateTime || !treatmentType) {
       return NextResponse.json(
@@ -204,20 +204,33 @@ export async function POST(request: NextRequest) {
       patientId = gerida.id;
     }
 
-    // The therapist is always a member of that same tenant: a patient may only
-    // pick someone who sees patients; staff default to themselves.
-    const therapist = await findTherapist(
-      actor.clinicId,
-      therapistId || (isPatient ? null : actor.userId),
-      isPatient
-    );
-    if (!therapist) {
+    /**
+     * Quem atende — do mesmo inquilino, **ou um profissional do catálogo**.
+     *
+     * A regra de sempre continua a primeira: o terapeuta é da mesma clínica, o
+     * paciente só escolhe quem atende, e a equipe cai em si mesma.
+     *
+     * A 102 T-5 acrescenta o caso do catálogo: o paciente escolheu um médico
+     * que é **outro inquilino**, e `resolverProfissional` só o entrega se ele
+     * estiver publicado, com registro, e quem pede for paciente.
+     */
+    const pedido = professionalId || therapistId || (isPatient ? null : actor.userId);
+    const alvo = await resolverProfissional(actor, pedido, isPatient);
+    if (!alvo) {
       return NextResponse.json(
         { error: "No therapist available" },
-        { status: therapistId ? 404 : 400 }
+        { status: pedido ? 404 : 400 }
       );
     }
-    const selectedTherapistId = therapist.id;
+    const selectedTherapistId = alvo.therapistId;
+    /**
+     * A consulta nasce **no inquilino de quem atende**.
+     *
+     * Era sempre `actor.clinicId` — o do paciente. Com um profissional de
+     * fora, isso poria a consulta dele na clínica errada: ela não apareceria
+     * na agenda de quem vai atender, e apareceria na de quem não vai.
+     */
+    const clinicaDaConsulta = alvo.clinicId;
 
     // A patient never sets their own price — it's the tenant's consultation
     // price, the same figure the booking form shows (activity 52, T-4). Staff
@@ -276,7 +289,7 @@ export async function POST(request: NextRequest) {
     // qualquer modelo, e era justamente no dia regido pelo modelo antigo que o
     // feriado não fechava nada (QA de 25/09, N10).
     if (opcao?.kind) {
-      const excecaoDoDia = await exceptionForDate(actor.clinicId, selectedTherapistId, diaDaClinica);
+      const excecaoDoDia = await exceptionForDate(clinicaDaConsulta, selectedTherapistId, diaDaClinica);
       // `applyException` compara faixas; aqui o que se tem é um instante, e
       // comparar "HH:MM" como texto funciona porque o formato é fixo.
       const dentro =
@@ -297,8 +310,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (opcao?.kind && (await hasConfiguredSchedule(actor.clinicId, selectedTherapistId, diaDaClinica))) {
-      const oferecidos = await slotsForDate(actor.clinicId, selectedTherapistId, diaDaClinica, {
+    if (opcao?.kind && (await hasConfiguredSchedule(clinicaDaConsulta, selectedTherapistId, diaDaClinica))) {
+      const oferecidos = await slotsForDate(clinicaDaConsulta, selectedTherapistId, diaDaClinica, {
         kind: opcao.kind === "FIRST_CONSULTATION" ? "CONSULTATION" : "TREATMENT",
       });
 
@@ -315,10 +328,12 @@ export async function POST(request: NextRequest) {
     }
 
     // O que o paciente escolheu em "Tipo de consulta", quando é um tratamento
-    // que esta clínica oferece de verdade. Qualquer outra coisa é ignorada.
+    // que **quem vai atender** oferece de verdade. Qualquer outra coisa é
+    // ignorada — e a clínica é a dele, não a de quem marca: um médico não
+    // oferece o catálogo de tratamentos da reabilitação (102 T-5).
     const tratamentoEscolhido = isPatient && typeof treatmentType === "string"
       ? await prisma.treatmentType.findFirst({
-          where: { clinicId: actor.clinicId, isActive: true, name: treatmentType },
+          where: { clinicId: clinicaDaConsulta, isActive: true, name: treatmentType },
           select: { name: true, requiresInPerson: true, allowsHomeVisit: true },
         })
       : null;
@@ -352,7 +367,17 @@ export async function POST(request: NextRequest) {
     // dele é a de `bookingOptionsFor`, setenta linhas acima. (Havia uma
     // segunda guarda `isPatient && !opcao` neste ponto: `opcao` é sempre um
     // objeto para o paciente, então ela nunca rodava — QA da 082, F3.)
-    const precoConfigurado = await patientBookingPrice(actor.clinicId, patientId);
+    /**
+     * O preco e o de **quem atende** (102 T-5).
+     *
+     * Era `actor.clinicId`, o da clinica de quem marca. Com um profissional do
+     * catalogo isso cobraria o preco da BPR por uma consulta de medico — e a
+     * conferencia de vaga, logo acima, olharia a agenda na clinica errada.
+     *
+     * No caminho de sempre os dois valores sao o mesmo, entao nada muda para a
+     * reabilitacao.
+     */
+    const precoConfigurado = await patientBookingPrice(clinicaDaConsulta, patientId);
     const resolvedPrice = !isPatient && staffPrice !== null
       ? staffPrice
       : opcao
@@ -366,7 +391,7 @@ export async function POST(request: NextRequest) {
 
     const appointment = await prisma.appointment.create({
       data: {
-        clinicId: actor.clinicId,
+        clinicId: clinicaDaConsulta,
         patientId,
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),

@@ -21,6 +21,7 @@ import {
   User,
   ChevronDown,
 } from "lucide-react";
+import { EscreverDocumento } from "@/components/admin/escrever-documento";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -284,6 +285,14 @@ export default function PatientDocumentsPage() {
           </Button>
         </div>
       </div>
+
+      {/* O que **este profissional escreve** para o paciente (102 T-8).
+
+          Fica nesta tela e não numa nova: o resto da página é o documento que
+          alguém envia como arquivo, e receita é a mesma pergunta — "que papéis
+          existem sobre esta pessoa". Uma tela separada seria uma que ninguém
+          acha, que é a falha que a varredura da 100 T-4 nasceu para pegar. */}
+      <EscreverDocumento patientId={patientId} patientName={patientName} />
 
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-center gap-2">
