@@ -1,4 +1,9 @@
 import { prisma } from "@/lib/db";
+import {
+  formatosPermitidos,
+  porQueSemDomicilio,
+  type Formato,
+} from "@/lib/appointment-format";
 import { activePackageFor } from "@/lib/package-sessions";
 import { servicePricesForPatient, patientBookingPrice } from "@/lib/service-price";
 
@@ -33,6 +38,16 @@ export interface BookingOption {
   sessionsRemaining: number | null;
   sessionsIncluded: number | null;
   patientPackageId: string | null;
+  /**
+   * Os formatos que esta pessoa pode pedir **sem** tipo de tratamento.
+   *
+   * O Bruno: *"os tipos de tratamento da clinic só crio personalizado depois de
+   * atender o paciente"*. Com zero tipos, o seletor de formato — que pendurava
+   * inteiro no tipo — nunca podia aparecer. Aqui ele passa a ter de onde sair.
+   */
+  formats: Formato[];
+  /** Por que o domicílio não está na lista: a clínica, ou o endereço dele. */
+  homeVisitBlockedBy: "tratamento" | "endereco" | null;
 }
 
 /** Consulta que já aconteceu ou está de pé — cancelada não conta como história. */
@@ -46,6 +61,8 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
     sessionsRemaining: null,
     sessionsIncluded: null,
     patientPackageId: null,
+    formats: ["IN_PERSON"] as Formato[],
+    homeVisitBlockedBy: null,
   };
 
   const paciente = await prisma.user.findUnique({
@@ -53,13 +70,40 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
     select: {
       clinicId: true,
       medicalScreening: { select: { isSubmitted: true } },
-      clinic: { select: { extraSessionPayment: true } },
+      address: true,
+      city: true,
+      postcode: true,
+      clinic: {
+        select: {
+          extraSessionPayment: true,
+          consultationAllowsVideo: true,
+          consultationAllowsHomeVisit: true,
+        },
+      },
     },
   });
 
   if (!paciente?.clinicId) {
     return { kind: null, blockedReason: "no_clinic", ...vazio };
   }
+
+  /**
+   * Os formatos, uma vez só, para todos os caminhos abaixo.
+   *
+   * `null` no primeiro argumento é literal: **não há tipo de tratamento**, e é
+   * esse o caso normal desta clínica, não uma exceção.
+   */
+  const daClinica = paciente.clinic
+    ? {
+        consultationAllowsVideo: paciente.clinic.consultationAllowsVideo,
+        consultationAllowsHomeVisit: paciente.clinic.consultationAllowsHomeVisit,
+      }
+    : null;
+  const formatos = formatosPermitidos(null, paciente, daClinica);
+  const domicilioBloqueadoPor = formatos.includes("HOME_VISIT")
+    ? null
+    : porQueSemDomicilio(null, paciente, daClinica);
+  const comFormato = { formats: formatos, homeVisitBlockedBy: domicilioBloqueadoPor };
 
   // A triagem é o pré-requisito clínico que já existia para ver o resto do
   // app. Marcar sem ela seria a clínica recebendo alguém de quem não sabe nada.
@@ -76,6 +120,7 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
   const pacote = await activePackageFor(patientId, clinicId);
   if (pacote) {
     return {
+      ...comFormato,
       kind: "PACKAGE_SESSION",
       price: 0,
       currency: moeda,
@@ -102,7 +147,8 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
       return { kind: null, blockedReason: "price_not_set", ...vazio };
     }
     return {
-      kind: "FIRST_CONSULTATION",
+      ...comFormato,
+    kind: "FIRST_CONSULTATION",
       price: preco,
       currency: moeda,
       requiresPayment: true,
@@ -120,6 +166,7 @@ export async function bookingOptionsFor(patientId: string): Promise<BookingOptio
     return { kind: null, blockedReason: "price_not_set", ...vazio };
   }
   return {
+    ...comFormato,
     kind: "EXTRA_SESSION",
     price: precoExtra,
     currency: moeda,

@@ -174,10 +174,10 @@ describe("a tarja de cookie não entra na consulta", () => {
 describe("a recusa em inglês diz a partir de quando", () => {
   const lib = lerCodigo("lib", "video-call.ts");
 
-  it("**o `too_early` em inglês traz os dez minutos**", () => {
+  it("**o `too_early` em inglês traz o número real de minutos**", () => {
     // O português já dizia; o inglês, que é a língua primária, só dizia "ainda
     // não abriu" — e a pessoa não sabia se esperava um minuto ou uma hora.
-    expect(lib).toMatch(/You can join from \$\{FOLGA_ANTES_MIN\} minutes before/);
+    expect(lib).toMatch(/You can join from \$\{antesMin\} minutes before/);
   });
 });
 

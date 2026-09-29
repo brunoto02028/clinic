@@ -477,6 +477,35 @@ model Clinic {
   /// aparece para desconhecidos quando alguém decide, nunca por existir.
   acceptingPatients Boolean @default(false)
 
+  /// O formato da consulta que **não tem tipo de tratamento**.
+  ///
+  /// O Bruno, em 29/09/2026: *"os tipos de tratamento da clinic só crio
+  /// personalizado depois de atender o paciente"*. Ou seja: a única coisa que o
+  /// paciente marca sozinho é a primeira consulta, e ela nunca tem um
+  /// `TreatmentType` — o tratamento nasce depois, feito para aquela pessoa.
+  ///
+  /// O seletor de formato pendurava inteiro no tipo de tratamento, então nesta
+  /// clínica ele **nunca podia aparecer**: não havia linha onde ligá-lo. Estas
+  /// duas chaves são onde a decisão passa a morar, ligadas uma vez nos ajustes.
+  ///
+  /// Nascem `false` pela mesma razão que `visibleInApp`: oferecer vídeo sem
+  /// alguém ter decidido é prometer uma porta que talvez não exista.
+  /// De quantos minutos antes a sala de vídeo abre.
+  ///
+  /// Era uma constante de dez minutos no código. O Bruno, em 29/09/2026:
+  /// *"queria a opção de começar antes do horário se for o caso"* — e dez
+  /// minutos não cobrem o caso real de o profissional estar pronto antes e
+  /// querer chamar.
+  ///
+  /// Quem atende decide, uma vez, nos ajustes da clínica. O paciente não
+  /// precisa saber o número: o servidor manda a **hora** em que abre.
+  videoEarlyMinutes Int @default(10)
+
+  consultationAllowsVideo     Boolean @default(false)
+  /// Domicílio depende também de o paciente ter endereço completo — isso é
+  /// checado em `lib/appointment-format.ts`, não aqui.
+  consultationAllowsHomeVisit Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

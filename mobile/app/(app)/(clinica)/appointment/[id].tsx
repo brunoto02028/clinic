@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
-import { janelaAberta } from "@/api/video";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
@@ -48,6 +47,30 @@ function AppointmentDetailScreen() {
     queryFn: () => fetchAppointment(id),
     enabled: !!id,
   });
+
+  /**
+   * Quando a sala abre — **o servidor decide**, o app só compara com o relógio.
+   *
+   * O app recalculava a janela com uma constante própria de dez minutos. Agora
+   * que a clínica define o minuto (`videoEarlyMinutes`), o app não tem como
+   * saber sozinho: ele recebe `videoOpensAt` e `videoClosesAt` prontos.
+   *
+   * `videoRoomReady` é a segunda porta: se quem atende já abriu a sala, dá para
+   * entrar mesmo antes da hora. Quem está do outro lado esperando não deve ouvir
+   * "ainda não abriu".
+   */
+  const agora = Date.now();
+  const abre = data?.videoOpensAt ? new Date(data.videoOpensAt).getTime() : null;
+  const fecha = data?.videoClosesAt ? new Date(data.videoClosesAt).getTime() : null;
+  const dentroDaJanela = abre !== null && fecha !== null && agora >= abre && agora <= fecha;
+  const podeEntrar = !!data?.videoRoomReady || dentroDaJanela;
+  const abreAs =
+    abre !== null && (fecha === null || agora <= fecha)
+      ? new Date(abre).toLocaleTimeString(lang === "pt" ? "pt-BR" : "en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
 
   /**
    * Pagar — e, com isso, confirmar (101 T-3).
@@ -242,7 +265,7 @@ function AppointmentDetailScreen() {
                     </View>
                   </View>
 
-                  {janelaAberta(data.dateTime, data.duration) ? (
+                  {podeEntrar ? (
                     <Pressable
                       onPress={() => router.push(`/(app)/(clinica)/consulta-video?id=${data.id}` as never)}
                       accessibilityRole="button"
@@ -264,11 +287,20 @@ function AppointmentDetailScreen() {
                       </Text>
                     </Pressable>
                   ) : (
+                    /* A hora exata, e não "dez minutos antes".
+                       Quem lê "dez minutos antes" precisa fazer a conta e ainda
+                       assim não sabe se a clínica mudou o número — que agora é
+                       configurável. A hora resolve as duas coisas. */
                     <Text variant="caption" color={t.colors.textMuted}>
-                      {tr(lang, {
-                        en: "You can join from ten minutes before the start time.",
-                        pt: "Você pode entrar a partir de dez minutos antes do horário.",
-                      })}
+                      {abreAs
+                        ? tr(lang, {
+                            en: `You can join from ${abreAs}.`,
+                            pt: `Você pode entrar a partir das ${abreAs}.`,
+                          })
+                        : tr(lang, {
+                            en: "This consultation has ended.",
+                            pt: "Esta consulta já terminou.",
+                          })}
                     </Text>
                   )}
 

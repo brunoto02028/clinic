@@ -4,7 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRequestSession } from "@/lib/dual-auth";
 import { pushChamadaComecou } from "@/lib/push-notify";
-import { VideoCallError, exigirJanelaAberta, videoCallsEnabled } from "@/lib/video-call";
+import {
+  VideoCallError,
+  exigirJanelaAberta,
+  minutosAntesPara,
+  videoCallsEnabled,
+} from "@/lib/video-call";
 
 /**
  * O terapeuta **chama** o paciente para a consulta por vídeo (089).
@@ -69,6 +74,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       duration: true,
       patientId: true,
       therapistId: true,
+      // De quantos minutos antes esta clínica abre a sala (29/09/2026).
+      clinic: { select: { videoEarlyMinutes: true } },
     },
   });
 
@@ -132,7 +139,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
    * concordar sobre quando a consulta existe.
    */
   try {
-    exigirJanelaAberta(consulta.dateTime, consulta.duration);
+    exigirJanelaAberta(
+      consulta.dateTime,
+      consulta.duration,
+      new Date(),
+      // Quem chama é sempre quem atende — a checagem acima garante isso.
+      minutosAntesPara(true, consulta.dateTime, (consulta as any).clinic?.videoEarlyMinutes)
+    );
   } catch (e) {
     if (e instanceof VideoCallError) {
       const pt: Record<string, string> = {

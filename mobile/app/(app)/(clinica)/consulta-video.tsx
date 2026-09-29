@@ -2,12 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Pressable, AppState } from "react-native";
 import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+/**
+ * Pelo módulo da casa, e não pelo pacote direto: ele arrasta o WebRTC nativo,
+ * que quebra ao carregar no navegador — e derruba o app inteiro, porque o
+ * `expo-router` importa todas as rotas na abertura. Ver `src/lib/daily-nativo.ts`.
+ */
 import Daily, {
   DailyMediaView,
   type DailyCall,
   type DailyEvent,
   type DailyParticipant,
-} from "@daily-co/react-native-daily-js";
+} from "@/lib/daily-nativo";
 import { Text, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";

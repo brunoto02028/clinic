@@ -9,6 +9,7 @@ import {
   VideoCallError,
   criarSalaDaConsulta,
   exigirJanelaAberta,
+  minutosAntesPara,
   tokenParaEntrar,
   videoCallsEnabled,
 } from "@/lib/video-call";
@@ -70,6 +71,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       therapistId: true,
       clinicId: true,
       videoRoomUrl: true,
+      /**
+       * De quantos minutos antes esta clínica abre a sala (29/09/2026).
+       *
+       * Da clínica **da consulta**, e não de quem pede: quem define o horário
+       * de abrir é a casa que atende.
+       */
+      clinic: { select: { videoEarlyMinutes: true } },
       patient: { select: { firstName: true, lastName: true } },
       therapist: {
         select: {
@@ -217,7 +225,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
      * recusou o pedido" em vez de "esta consulta ja terminou". E todo toque no
      * endpoint criava sala, contrariando o "so existe se alguem vai usar".
      */
-    exigirJanelaAberta(consulta.dateTime, consulta.duration);
+    /**
+     * Quem atende abre desde o começo do dia; o paciente, pelo minuto da
+     * clínica — ou a qualquer hora, se a sala já estiver aberta.
+     */
+    const jaAberta = !!consulta.videoRoomUrl;
+    if (!(ehPaciente && jaAberta)) {
+      exigirJanelaAberta(
+        consulta.dateTime,
+        consulta.duration,
+        new Date(),
+        minutosAntesPara(ehTerapeuta, consulta.dateTime, consulta.clinic?.videoEarlyMinutes)
+      );
+    }
 
     const sala = await criarSalaDaConsulta({
       appointmentId: consulta.id,

@@ -3,7 +3,12 @@ import { View } from "react-native";
 import { Stack } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+/**
+ * Pelo módulo da casa, e não pelo pacote direto: o pacote nativo derruba o
+ * bundle **web** inteiro, e com ele a única forma de o QA abrir as telas do app
+ * num navegador. Ver `src/lib/stripe-nativo.ts`.
+ */
+import { StripeProvider, useStripe } from "@/lib/stripe-nativo";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { openFileInApp } from "@/components/FileViewer";
 import { fetchInvoices, iniciarPagamento, type Invoice, type InvoiceItem } from "@/api/invoices";

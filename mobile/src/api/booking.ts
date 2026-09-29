@@ -93,6 +93,9 @@ export interface BookingOption {
   requiresPayment: boolean;
   sessionsRemaining: number | null;
   sessionsIncluded: number | null;
+  /** Formatos possíveis sem tipo de tratamento — da clínica (29/09/2026). */
+  formats?: string[];
+  homeVisitBlockedBy?: "tratamento" | "endereco" | null;
 }
 
 export async function fetchBookingOptions(): Promise<BookingOption> {

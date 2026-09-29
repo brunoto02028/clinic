@@ -28,6 +28,18 @@ export interface TratamentoParaFormato {
   allowsHomeVisit: boolean;
 }
 
+/**
+ * O que a **clínica** permite quando não há tipo de tratamento.
+ *
+ * O Bruno: *"os tipos de tratamento da clinic só crio personalizado depois de
+ * atender o paciente"*. A primeira consulta, que é a única que o paciente marca
+ * sozinho, nunca tem tipo — então sem isto o seletor de formato jamais aparece.
+ */
+export interface ClinicaParaFormato {
+  consultationAllowsVideo: boolean;
+  consultationAllowsHomeVisit: boolean;
+}
+
 /** O endereço do paciente, como ele está no cadastro (081 separou os três). */
 export interface EnderecoDoPaciente {
   address?: string | null;
@@ -55,10 +67,27 @@ export function enderecoCompleto(p: EnderecoDoPaciente | null | undefined): bool
  */
 export function formatosPermitidos(
   tratamento: TratamentoParaFormato | null | undefined,
-  paciente: EnderecoDoPaciente | null | undefined
+  paciente: EnderecoDoPaciente | null | undefined,
+  clinica?: ClinicaParaFormato | null
 ): Formato[] {
   const formatos: Formato[] = ["IN_PERSON"];
-  if (!tratamento) return formatos;
+
+  /**
+   * Sem tipo de tratamento, quem responde é a **clínica**.
+   *
+   * Este ramo não é uma queda de emergência: para a BPR ele é o caminho normal,
+   * porque o tratamento nasce personalizado depois da avaliação e a primeira
+   * consulta nunca tem tipo. Sem ele, o seletor de formato existia no código e
+   * era invisível na prática.
+   */
+  if (!tratamento) {
+    if (!clinica) return formatos;
+    if (clinica.consultationAllowsVideo) formatos.push("VIDEO");
+    if (clinica.consultationAllowsHomeVisit && enderecoCompleto(paciente)) {
+      formatos.push("HOME_VISIT");
+    }
+    return formatos;
+  }
 
   if (!tratamento.requiresInPerson) formatos.push("VIDEO");
   if (tratamento.allowsHomeVisit && enderecoCompleto(paciente)) formatos.push("HOME_VISIT");
@@ -76,9 +105,15 @@ export function formatosPermitidos(
  */
 export function porQueSemDomicilio(
   tratamento: TratamentoParaFormato | null | undefined,
-  paciente: EnderecoDoPaciente | null | undefined
+  paciente: EnderecoDoPaciente | null | undefined,
+  clinica?: ClinicaParaFormato | null
 ): "tratamento" | "endereco" | null {
-  if (!tratamento?.allowsHomeVisit) return "tratamento";
+  // Sem tipo de tratamento, quem permite é a clínica — e a resposta tem de
+  // distinguir "a clínica não faz" de "falta o seu endereço". Dizer
+  // "tratamento" quando não há tratamento nenhum mandaria a pessoa procurar
+  // algo que não existe.
+  const permite = tratamento ? tratamento.allowsHomeVisit : !!clinica?.consultationAllowsHomeVisit;
+  if (!permite) return "tratamento";
   if (!enderecoCompleto(paciente)) return "endereco";
   return null;
 }
