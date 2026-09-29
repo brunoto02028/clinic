@@ -40,7 +40,7 @@ export default function EducationDetail() {
   });
 
   return (
-    <Screen scroll testID="education-detail">
+    <Screen scroll semRecuoNoTopo testID="education-detail">
       <Stack.Screen
         options={{ headerShown: true, title: tr(lang, { en: "Article", pt: "Conteúdo" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
