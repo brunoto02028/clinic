@@ -48,6 +48,25 @@ describe("o servidor aceita marcar sem tipo de tratamento", () => {
   });
 });
 
+describe("o formato é julgado com as mesmas entradas nas duas pontas", () => {
+  const regra = lerCodigo("lib", "appointment-format.ts");
+  const rotaP = lerCodigo("app", "api", "appointments", "route.ts");
+
+  it("**a checagem do servidor recebe a clínica**", () => {
+    /**
+     * `formatosPermitidos` recebe três argumentos, e o terceiro — a clínica —
+     * é quem responde quando não há tipo de tratamento, que é o caminho normal
+     * desta clínica. `pedidoAceitavel` passava só dois.
+     *
+     * A tela oferecia vídeo porque perguntava com a clínica na mão; o servidor
+     * recusava porque perguntava sem ela. Uma regra só, avaliada com entradas
+     * diferentes, é pior que duas regras: parece consistente e não é.
+     */
+    expect(regra).toMatch(/formatosPermitidos\(tratamento, paciente, clinica\)/);
+    expect(rotaP).toMatch(/consultationAllowsVideo: true, consultationAllowsHomeVisit: true/);
+  });
+});
+
 describe("a tela não exige o que ela mesma não oferece", () => {
   it("**o botão só pede o tipo quando há tipo para escolher**", () => {
     expect(tela).toMatch(/disabled=\{\(temTipos && !type\) \|\| !selectedDate \|\| !selectedTime\}/);
@@ -66,6 +85,26 @@ describe("a tela não exige o que ela mesma não oferece", () => {
 
   it("e o tipo da requisição deixou de exigi-lo", () => {
     expect(api).toMatch(/treatmentType\?: string;/);
+  });
+
+  it("**o botão parado diz por que está parado**", () => {
+    /**
+     * Duas vezes no mesmo dia o Bruno relatou "o botão não tem ação nenhuma".
+     * A primeira era defeito; a segunda era só faltar escolher o horário.
+     *
+     * Um botão desabilitado sem motivo visível é indistinguível de um botão
+     * quebrado — e quem olha conclui a pior das duas.
+     */
+    expect(tela).toMatch(/Choose the appointment type above/);
+    expect(tela).toMatch(/Choose a date/);
+    expect(tela).toMatch(/Choose a time/);
+    expect(tela).toMatch(/Escolha um horário/);
+  });
+
+  it("e some enquanto o pedido está em curso", () => {
+    // Durante o envio o botão mostra "Agendando..."; repetir ali o que falta
+    // seria contradizer o que está acontecendo.
+    expect(tela).toMatch(/!mutation\.isPending && \(\(temTipos && !type\)/);
   });
 
   it("data e hora continuam obrigatórias", () => {

@@ -375,7 +375,23 @@ export async function POST(request: NextRequest) {
         where: { id: patientId },
         select: { address: true, city: true, postcode: true },
       });
-      const r = pedidoAceitavel(body.requestedMode, tratamentoEscolhido, enderecoDoPaciente);
+      /**
+       * As permissões da clínica entram na conta — como entram na da tela.
+       *
+       * Sem isto o servidor recusava um formato que ele mesmo tinha mandado a
+       * tela oferecer: `formatosPermitidos` decide pela clínica quando não há
+       * tipo de tratamento, e aqui a clínica não estava chegando.
+       */
+      const clinicaDoFormato = await prisma.clinic.findUnique({
+        where: { id: clinicaDaConsulta },
+        select: { consultationAllowsVideo: true, consultationAllowsHomeVisit: true },
+      });
+      const r = pedidoAceitavel(
+        body.requestedMode,
+        tratamentoEscolhido,
+        enderecoDoPaciente,
+        clinicaDoFormato
+      );
       if (!r.ok) return NextResponse.json({ error: r.erro }, { status: 400 });
       formatoPedido = (r.formato as "VIDEO" | "HOME_VISIT" | null) ?? null;
     }
