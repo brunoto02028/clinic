@@ -68,7 +68,7 @@ coisa, e está nas perguntas abaixo.
 | 3 | a consulta parava de dizer "esperando", mas nunca dizia **como** foi paga | **corrigido** |
 | 4 | o servidor aceitava 07:00 num dia que abre às 09:00 | **corrigido** — a T-4 tinha virado "só horários disponíveis são oferecidos" |
 | 5 | "Sem tipo ainda" gravava `General Consultation`, e esse nome ia no e-mail | **corrigido** — e não existe tipo nenhum cadastrado, então era um serviço inventado |
-| 6 | o `upsert` fechava cobrança da Stripe mantendo o `stripeSessionId` | **corrigido** — o webhance encontraria uma linha já paga |
+| 6 | o `upsert` fechava cobrança da Stripe mantendo o `stripeSessionId` | **corrigido** — o webhook encontraria uma linha já paga |
 | 7 | a faixa da grade era global, não da semana exibida | **corrigido** |
 | 8 | o push vinha depois do `await` do e-mail, no mesmo `try` | **corrigido** — duas entregas independentes não caem juntas |
 
