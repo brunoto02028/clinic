@@ -136,9 +136,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { dateTime, duration, treatmentType, notes, therapistId, professionalId, price, paymentMethod } = body ?? {};
 
-    if (!dateTime || !treatmentType) {
+    /**
+     * O tipo de tratamento **não** é obrigatório — e nunca deveria ter sido.
+     *
+     * O Bruno: *"os tipos de tratamento da clinic só crio personalizado depois
+     * de atender o paciente."* Nesta clínica não existe nenhum cadastrado, e a
+     * tela do app faz a coisa certa: some com a seção quando não há o que
+     * escolher, com um comentário dizendo *"a consulta é marcada do mesmo
+     * jeito, e o servidor põe o rótulo"*.
+     *
+     * Só que o servidor exigia o rótulo aqui, e a tela desabilitava o botão
+     * pelo mesmo motivo. Resultado: **nenhum paciente desta clínica conseguia
+     * marcar consulta** — o botão "Confirm booking" não fazia nada, e nada
+     * dizia por quê.
+     *
+     * O rótulo continua saindo daqui, logo abaixo: `tipoEscolhido` quando a
+     * pessoa escolheu um, e o nome do tipo de agendamento quando não há o que
+     * escolher.
+     */
+    if (!dateTime) {
       return NextResponse.json(
-        { error: "Date, time, and treatment type are required" },
+        { error: "Date and time are required" },
         { status: 400 }
       );
     }
@@ -403,7 +421,10 @@ export async function POST(request: NextRequest) {
         // fechou (nenhuma string arbitrária entra) sem jogar fora a escolha.
         treatmentType: opcao
           ? tipoEscolhido ?? (opcao.kind === "FIRST_CONSULTATION" ? "Initial Consultation" : "Treatment Session")
-          : treatmentType,
+          // Sem `opcao` e sem tipo escolhido ainda sobra um rótulo: o campo é
+          // obrigatório no banco, e gravar vazio deixaria a consulta sem nome
+          // na lista do paciente.
+          : treatmentType || "Consultation",
         notes: notes || null,
         price: resolvedPrice,
         // A sessão do pacote não gera cobrança: ela já foi paga quando o

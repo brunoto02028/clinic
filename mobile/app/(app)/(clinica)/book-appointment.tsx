@@ -134,16 +134,22 @@ function BookAppointmentScreen() {
   const [paraQuem, setParaQuem] = useState<string | null>(null);
   const geridas = useQuery({ queryKey: ["dependentes"], queryFn: fetchDependentes });
   const cuidaDeAlguem = (geridas.data?.length ?? 0) > 0;
+  /** Esta clínica cadastrou tipos de tratamento? Se não, não há o que exigir. */
+  const temTipos = (tipos.data ?? []).length > 0;
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!type || !selectedDate || !selectedTime) throw new Error(tr(lang, { en: "Please fill in every field.", pt: "Preencha todos os campos." }));
+      // `type` fica de fora de propósito: esta clínica não cadastra tipo de
+      // tratamento, a seção não é desenhada, e o servidor põe o rótulo. Exigir
+      // aqui era o que matava o botão.
+      if (!selectedDate || !selectedTime) throw new Error(tr(lang, { en: "Please fill in every field.", pt: "Preencha todos os campos." }));
       return bookAppointment({
         // The slot is clinic wall-clock time, not UTC. Appending "Z" made a
         // 09:00 booking arrive as 09:00Z, which the diary shows as 10:00 for
         // the seven months the UK is on BST.
         dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
-        treatmentType: type,
+        // `undefined` quando não há tipo — o servidor rotula.
+        treatmentType: type ?? undefined,
         ...(formato !== "IN_PERSON" ? { requestedMode: formato } : {}),
         notes: notes || undefined,
         // Ausente = para mim. Quem valida o vínculo é o servidor.
@@ -414,7 +420,7 @@ ${tr(lang, {
         {/* Tipo — o que ESTA clínica oferece, não sete nomes escritos no
             código. Sem tratamento cadastrado a seção não existe: a consulta
             é marcada do mesmo jeito, e o servidor põe o rótulo. */}
-        {(tipos.data ?? []).length > 0 && (
+        {temTipos && (
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -582,7 +588,15 @@ ${tr(lang, {
             ? tr(lang, { en: "Booking...", pt: "Agendando..." })
             : tr(lang, { en: "Confirm booking", pt: "Confirmar agendamento" })}
           onPress={() => mutation.mutate()}
-          disabled={!type || !selectedDate || !selectedTime}
+          /**
+           * O tipo só é exigido quando **há** tipo para escolher.
+           *
+           * A seção some quando a clínica não cadastrou nenhum — e o botão
+           * continuava exigindo o que a tela não oferecia. Ficava desabilitado
+           * para sempre, sem dizer por quê, e nenhum paciente desta clínica
+           * conseguia marcar (29/09/2026, achado pelo Bruno no aplicativo).
+           */
+          disabled={(temTipos && !type) || !selectedDate || !selectedTime}
           loading={mutation.isPending}
           size="lg"
         />
