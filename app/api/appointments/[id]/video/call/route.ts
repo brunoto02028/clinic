@@ -69,6 +69,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       duration: true,
       patientId: true,
       therapistId: true,
+      // De quantos minutos antes esta clínica abre a sala (29/09/2026).
+      clinic: { select: { videoEarlyMinutes: true } },
     },
   });
 
@@ -132,7 +134,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
    * concordar sobre quando a consulta existe.
    */
   try {
-    exigirJanelaAberta(consulta.dateTime, consulta.duration);
+    exigirJanelaAberta(
+      consulta.dateTime,
+      consulta.duration,
+      new Date(),
+      (consulta as any).clinic?.videoEarlyMinutes
+    );
   } catch (e) {
     if (e instanceof VideoCallError) {
       const pt: Record<string, string> = {

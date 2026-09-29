@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { janelaDaConsulta } from "@/lib/video-call";
 import { notifyPatient } from "@/lib/notify-patient";
 import { pushConsulta } from "@/lib/push-notify";
 import { syncSessionsUsed } from "@/lib/package-sessions";
@@ -77,6 +78,8 @@ export async function GET(
         },
         payment: true,
         soapNote: true,
+        // De quantos minutos antes esta clínica abre a sala (29/09/2026).
+        clinic: { select: { videoEarlyMinutes: true } },
       },
     });
 
@@ -87,7 +90,39 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ appointment });
+    /**
+     * **A hora em que a sala abre sai do servidor**, e não da conta do app.
+     *
+     * O app recalculava a janela com uma constante própria de dez minutos.
+     * Duas cópias da mesma regra é a garantia de que uma delas vai mentir — e
+     * agora que o minuto é da clínica, o app não tem como saber sozinho.
+     *
+     * Ele recebe duas datas prontas e compara com o relógio. Nada mais.
+     */
+    const { videoOpensAt, videoClosesAt } =
+      appointment.mode === "VIDEO"
+        ? (() => {
+            const { inicio, fim } = janelaDaConsulta(
+              appointment.dateTime,
+              appointment.duration,
+              (appointment as any).clinic?.videoEarlyMinutes
+            );
+            return {
+              videoOpensAt: new Date(inicio * 1000).toISOString(),
+              videoClosesAt: new Date(fim * 1000).toISOString(),
+            };
+          })()
+        : { videoOpensAt: null, videoClosesAt: null };
+
+    return NextResponse.json({
+      appointment: {
+        ...appointment,
+        videoOpensAt,
+        videoClosesAt,
+        /** A sala já existe: alguém a abriu, e dá para entrar. */
+        videoRoomReady: !!appointment.videoRoomUrl,
+      },
+    });
   } catch (error) {
     console.error("Error fetching appointment:", error);
     return NextResponse.json(

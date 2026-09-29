@@ -109,9 +109,20 @@ async function daily<T>(
   return (await res.json()) as T;
 }
 
-/** A janela em que a chamada aceita gente, em segundos desde a época. */
-export function janelaDaConsulta(dateTime: Date, duracaoMin: number) {
-  const inicio = Math.floor(dateTime.getTime() / 1000) - FOLGA_ANTES_MIN * 60;
+/**
+ * A janela em que a chamada aceita gente, em segundos desde a época.
+ *
+ * `antesMin` vem da clínica (`videoEarlyMinutes`), e não mais de uma constante:
+ * dez minutos não cobrem o profissional que está pronto antes e quer chamar.
+ * Quando ninguém passa nada, vale o padrão de sempre.
+ */
+export function janelaDaConsulta(
+  dateTime: Date,
+  duracaoMin: number,
+  antesMin: number = FOLGA_ANTES_MIN
+) {
+  const antes = Number.isFinite(antesMin) && antesMin >= 0 ? antesMin : FOLGA_ANTES_MIN;
+  const inicio = Math.floor(dateTime.getTime() / 1000) - antes * 60;
   const fim = Math.floor(dateTime.getTime() / 1000) + (duracaoMin + FOLGA_DEPOIS_MIN) * 60;
   return { inicio, fim };
 }
@@ -223,8 +234,13 @@ export async function criarSalaDaConsulta(opts: {
  * terminou"*. Pior: qualquer toque no endpoint criava sala, contrariando o
  * "a sala só existe se alguém de fato vai usá-la".
  */
-export function exigirJanelaAberta(dateTime: Date, duracaoMin: number, agora = new Date()): void {
-  const { inicio, fim } = janelaDaConsulta(dateTime, duracaoMin);
+export function exigirJanelaAberta(
+  dateTime: Date,
+  duracaoMin: number,
+  agora = new Date(),
+  antesMin: number = FOLGA_ANTES_MIN
+): void {
+  const { inicio, fim } = janelaDaConsulta(dateTime, duracaoMin, antesMin);
   const t = Math.floor(agora.getTime() / 1000);
   /**
    * O inglês diz **a partir de quando**, como o português já dizia.
@@ -236,7 +252,7 @@ export function exigirJanelaAberta(dateTime: Date, duracaoMin: number, agora = n
    */
   if (t < inicio)
     throw new VideoCallError(
-      `This consultation has not opened yet. You can join from ${FOLGA_ANTES_MIN} minutes before.`,
+      `This consultation has not opened yet. You can join from ${antesMin} minutes before.`,
       409,
       "too_early"
     );

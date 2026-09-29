@@ -36,6 +36,16 @@ export interface Appointment {
   /** O pagamento, quando ja houve um. `status: "COMPLETED"` e o que quitou. */
   payment?: { id: string; status: string; amount: number } | null;
   therapist: { firstName: string; lastName: string } | null;
+  /**
+   * Quando a sala de vídeo abre e fecha — **calculado no servidor** (29/09/2026).
+   *
+   * O app tinha a própria constante de dez minutos e refazia a conta. Agora que
+   * a clínica define o minuto, duas cópias da regra iriam divergir.
+   */
+  videoOpensAt?: string | null;
+  videoClosesAt?: string | null;
+  /** A sala já foi aberta por quem atende: dá para entrar mesmo antes da hora. */
+  videoRoomReady?: boolean;
 }
 
 export async function fetchAppointments(): Promise<Appointment[]> {

@@ -102,7 +102,10 @@ describe("e a rota que chama o paciente", () => {
   });
 
   it("recusa antes de tocar o telefone: fora da janela, presencial, desmarcada", () => {
-    const iJanela = rota.indexOf("exigirJanelaAberta(consulta.dateTime");
+    // A **chamada**, sem fixar os argumentos: eles ganharam o minuto da clínica
+    // em 29/09/2026 e passaram a ocupar várias linhas. O que este teste guarda é
+    // a ordem, não a grafia.
+    const iJanela = rota.indexOf("exigirJanelaAberta(");
     const iPush = rota.indexOf("await pushChamadaComecou(");
     expect(iJanela).toBeGreaterThan(0);
     expect(iPush).toBeGreaterThan(iJanela);

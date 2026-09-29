@@ -46,6 +46,9 @@ interface Clinic {
     type: string;
     visibleInApp?: boolean;
     platformFeePercent?: number | null;
+    consultationAllowsVideo?: boolean;
+    consultationAllowsHomeVisit?: boolean;
+    videoEarlyMinutes?: number | null;
     professionalRegistry?: string | null;
     email: string;
     isActive: boolean;
@@ -317,6 +320,10 @@ export default function ClinicsPage() {
      * negociação a cada marcação. Vazio = o padrão da plataforma.
      */
     const [settingsFeePercent, setSettingsFeePercent] = useState("");
+    // Como a consulta acontece quando não há tipo de tratamento (29/09/2026).
+    const [settingsVideo, setSettingsVideo] = useState(false);
+    const [settingsHome, setSettingsHome] = useState(false);
+    const [settingsVideoEarly, setSettingsVideoEarly] = useState("");
     const [settingsMaxPatients, setSettingsMaxPatients] = useState("");
     const [savingSettings, setSavingSettings] = useState(false);
 
@@ -327,6 +334,11 @@ export default function ClinicsPage() {
         setSettingsMaxTherapists(clinic.subscription?.maxTherapists ? String(clinic.subscription.maxTherapists) : "");
         setSettingsMaxPatients(clinic.subscription?.maxPatients ? String(clinic.subscription.maxPatients) : "");
         setSettingsFeePercent(clinic.platformFeePercent != null ? String(clinic.platformFeePercent) : "");
+        setSettingsVideo(!!clinic.consultationAllowsVideo);
+        setSettingsHome(!!clinic.consultationAllowsHomeVisit);
+        setSettingsVideoEarly(
+            clinic.videoEarlyMinutes != null ? String(clinic.videoEarlyMinutes) : ""
+        );
     };
 
     const saveSettings = async () => {
@@ -342,7 +354,21 @@ export default function ClinicsPage() {
             const res = await fetch(`/api/admin/clinics/${settingsClinic.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, dailyRemindersEnabled: settingsDailyReminders, maxTherapists, maxPatients, ...(isProfissionalExterno(settingsClinic.type) ? { platformFeePercent } : {}) }),
+                body: JSON.stringify({
+                    instagramImportEnabled: settingsInstagramImport,
+                    dailyRemindersEnabled: settingsDailyReminders,
+                    maxTherapists,
+                    maxPatients,
+                    consultationAllowsVideo: settingsVideo,
+                    consultationAllowsHomeVisit: settingsHome,
+                    // Vazio volta ao padrão de dez minutos, e não a zero — zero
+                    // seria "abre na hora exata", que é uma escolha diferente.
+                    videoEarlyMinutes:
+                        settingsVideoEarly.trim() === ""
+                            ? 10
+                            : Math.max(0, Math.min(1440, parseInt(settingsVideoEarly, 10) || 0)),
+                    ...(isProfissionalExterno(settingsClinic.type) ? { platformFeePercent } : {}),
+                }),
             });
             if (!res.ok) throw new Error("Failed to save");
             toast({ title: "Success", description: "Clinic settings saved", variant: "success" });
@@ -745,6 +771,67 @@ export default function ClinicsPage() {
                                     </p>
                                 </div>
                             )}
+
+                            {/* Como a consulta acontece, quando não há tipo de
+                                tratamento (29/09/2026).
+
+                                O Bruno: *"os tipos de tratamento da clinic só
+                                crio personalizado depois de atender o
+                                paciente"*. A primeira consulta — a única que o
+                                paciente marca sozinho — nunca tem tipo, então o
+                                seletor de formato pendurado no tipo jamais
+                                aparecia. É aqui que a decisão passa a morar. */}
+                            <div className="space-y-2 rounded-lg border p-3">
+                                <p className="text-xs font-medium">How a consultation can happen</p>
+                                <label className="flex items-start gap-2 text-xs">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5"
+                                        checked={settingsVideo}
+                                        onChange={(e) => setSettingsVideo(e.target.checked)}
+                                    />
+                                    <span>
+                                        By video
+                                        <span className="block text-[11px] text-muted-foreground">
+                                            The patient can ask for a video consultation when booking.
+                                        </span>
+                                    </span>
+                                </label>
+                                <label className="flex items-start gap-2 text-xs">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5"
+                                        checked={settingsHome}
+                                        onChange={(e) => setSettingsHome(e.target.checked)}
+                                    />
+                                    <span>
+                                        At the patient&apos;s home
+                                        <span className="block text-[11px] text-muted-foreground">
+                                            Only offered to patients whose address is complete — otherwise it
+                                            is a request nobody can fulfil.
+                                        </span>
+                                    </span>
+                                </label>
+                                <div className="space-y-1 pt-1">
+                                    <Label htmlFor="video-early" className="text-xs text-muted-foreground">
+                                        Video room opens (minutes before)
+                                    </Label>
+                                    <Input
+                                        id="video-early"
+                                        type="number"
+                                        min={0}
+                                        max={1440}
+                                        placeholder="10"
+                                        value={settingsVideoEarly}
+                                        onChange={(e) => setSettingsVideoEarly(e.target.value)}
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">
+                                        How early both sides can join. Ten minutes is the default; raise it if
+                                        you often start before the hour.
+                                    </p>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
                                     <Label htmlFor="max-therapists" className="text-xs text-muted-foreground">Max staff</Label>

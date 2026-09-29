@@ -55,9 +55,26 @@ function BookAppointmentScreen() {
   // de ser escrita no código e passou a ser o que a clínica cadastrou.
   const tipos = useQuery({ queryKey: ["treatment-types"], queryFn: fetchTreatmentTypes });
 
+  /**
+   * Os formatos que dá para pedir agora.
+   *
+   * Do tipo de tratamento quando há um; da clínica quando não há — que é o caso
+   * normal aqui, porque o tratamento nasce personalizado depois da avaliação.
+   */
   /** O tratamento escolhido — e quem decide quais formatos existem (098). */
   const tipoEscolhido =
     (tipos.data ?? []).find((tt: ClinicTreatmentType) => tt.name === type) ?? null;
+
+  /**
+   * Os formatos que dá para pedir agora — do tipo, ou da clínica.
+   *
+   * Quando existe tipo de tratamento, manda ele: eletroterapia não vira vídeo,
+   * e isso é por tratamento. Quando não existe — o caso normal desta clínica —
+   * quem responde é a clínica, pela porta de agendamento.
+   */
+  const formatosDisponiveis: FormatoDaConsulta[] = tipoEscolhido
+    ? ((tipoEscolhido.formats ?? ["IN_PERSON"]) as FormatoDaConsulta[])
+    : ((porta?.formats ?? ["IN_PERSON"]) as FormatoDaConsulta[]);
 
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   // Which days the clinic opens is not something to guess at. When the schedule
@@ -416,14 +433,21 @@ ${tr(lang, {
 
         {/* O formato — e só o que pode acontecer (098 T-2).
             Opção bloqueada **não aparece**, em vez de aparecer cinza: um botão
-            que promete um caminho inexistente é pior que a ausência dele. */}
-        {tipoEscolhido && (tipoEscolhido.formats ?? ["IN_PERSON"]).length > 1 && (
+            que promete um caminho inexistente é pior que a ausência dele.
+
+            Os formatos saem do tipo de tratamento quando há um, e **da
+            clínica** quando não há (29/09/2026). O Bruno: *"os tipos de
+            tratamento da clinic só crio personalizado depois de atender o
+            paciente"* — ou seja, a primeira consulta, que é a única que o
+            paciente marca sozinho, nunca tem tipo. Pendurado só no tipo, este
+            seletor existia no código e era invisível na vida real. */}
+        {formatosDisponiveis.length > 1 && (
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>
               {tr(lang, { en: "Where", pt: "Onde" })}
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {(tipoEscolhido.formats ?? ["IN_PERSON"]).map((f) => {
+              {formatosDisponiveis.map((f) => {
                 const ativo = formato === f;
                 const rotulo =
                   f === "VIDEO"
@@ -466,7 +490,9 @@ ${tr(lang, {
 
             {/* Faltar endereço é diferente de o tratamento não sair da clínica:
                 a primeira a pessoa resolve em trinta segundos. */}
-            {tipoEscolhido.homeVisitBlockedBy === "endereco" && (
+            {(tipoEscolhido
+              ? tipoEscolhido.homeVisitBlockedBy
+              : porta?.homeVisitBlockedBy) === "endereco" && (
               <Pressable
                 onPress={() => router.push("/profile-edit")}
                 style={{ marginTop: 10 }}
