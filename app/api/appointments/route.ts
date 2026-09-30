@@ -10,6 +10,7 @@ import { pushConsulta } from "@/lib/push-notify";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
+import { assertModuleAccess } from "@/lib/module-access";
 import { appointmentTenantWhere, resolverProfissional } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
@@ -40,6 +41,27 @@ export async function GET(request: NextRequest) {
     let whereClause: any = {};
 
     if (userRole === "PATIENT") {
+      /**
+       * **`mod_appointments` vale aqui também** (110, achado do QA).
+       *
+       * `/api/patient/appointments` pedia o módulo e esta não pedia nada — duas
+       * rotas para a mesma coisa, uma guardada e a outra não.
+       *
+       * A consequência estava na **primeira tela que o paciente abre**: com as
+       * consultas desligadas, o atalho *Book a new session* sumia da Home e o
+       * cartão **NEXT SESSION** logo acima continuava mostrando data, hora,
+       * tratamento e quem atende, com um botão *Reschedule* que levava a "não
+       * incluído no seu plano". A aba de consultas já era guardada por
+       * `PlanGate`; o cartão da Home vinha por aqui.
+       *
+       * Só o ramo do paciente: staff não passa por este `if`, e a parede de
+       * inquilino deles continua onde estava.
+       */
+      try {
+        await assertModuleAccess(userId, "mod_appointments");
+      } catch (err) {
+        return accessErrorResponse(err);
+      }
       whereClause.patientId = userId;
     } else {
       // Staff see their own appointments or, with viewAll, every appointment
@@ -131,6 +153,21 @@ export async function POST(request: NextRequest) {
     const actor = await getActor(request);
     if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    }
+
+    /**
+     * Ler e **marcar** pedem o mesmo módulo.
+     *
+     * Fechar só o `GET` esconderia a agenda e deixaria a porta de marcar
+     * aberta — que é a mesma meia correção de sempre, com os verbos trocados.
+     * O paciente do app marca por aqui (`mobile/src/api/booking.ts`).
+     */
+    if (actor.role === "PATIENT") {
+      try {
+        await assertModuleAccess(actor.userId, "mod_appointments");
+      } catch (err) {
+        return accessErrorResponse(err);
+      }
     }
 
     const body = await request.json();
