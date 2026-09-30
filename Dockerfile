@@ -20,9 +20,20 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL
 ARG STRIPE_SECRET_KEY
 ARG NEXT_OUTPUT_MODE=standalone
+# Qual commit está sendo construído, para o `public/version.json`.
+#
+# `scripts/update-version.js` procura esta variável primeiro e cai no `git`
+# depois — e **o git não existe aqui**: o `.dockerignore` exclui o `.git` na
+# primeira linha, de propósito, para a imagem não carregar o histórico. Sem
+# declarar o `ARG`, o build arg que o Coolify passa não chega ao ambiente do
+# `RUN`, e o campo saía `null` em produção.
+#
+# Sem valor, o script avisa e o campo fica `null` — nunca derruba o build.
+ARG SOURCE_COMMIT
 ENV DATABASE_URL=${DATABASE_URL}
 ENV STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 ENV NEXT_OUTPUT_MODE=${NEXT_OUTPUT_MODE}
+ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 

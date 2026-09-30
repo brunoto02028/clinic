@@ -99,6 +99,54 @@ describe("de onde o commit pode vir", () => {
   });
 });
 
+describe("o caminho que produção usa de verdade", () => {
+  /**
+   * O campo saiu `null` no primeiro deploy, e a causa era minha.
+   *
+   * O script procura o `git` como segunda fonte — e **não há git no build**: o
+   * `.dockerignore` exclui o `.git` na primeira linha, de propósito, para a
+   * imagem não carregar o histórico. E o `ARG SOURCE_COMMIT` não estava
+   * declarado, então o build arg do Coolify não chegava ao ambiente do `RUN`.
+   *
+   * Três fontes, e em produção só uma podia funcionar. Este teste guarda a que
+   * sobra.
+   */
+  const fs = require("fs");
+  const path = require("path");
+  const RAIZ = path.join(__dirname, "..", "..");
+  const dockerfile = () => fs.readFileSync(path.join(RAIZ, "Dockerfile"), "utf8");
+
+  it("**o `.dockerignore` continua excluindo o `.git`** — a premissa", () => {
+    // Se um dia o `.git` entrar na imagem, este teste cai e alguém relê o
+    // resto — e aí a exclusão do histórico terá sido desfeita sem querer.
+    const ignore = fs.readFileSync(path.join(RAIZ, ".dockerignore"), "utf8");
+    expect(ignore.split("\n").map((l: string) => l.trim())).toContain(".git");
+  });
+
+  it("**o Dockerfile declara e exporta `SOURCE_COMMIT`**", () => {
+    const d = dockerfile();
+    expect(d).toMatch(/^ARG SOURCE_COMMIT$/m);
+    expect(d).toMatch(/^ENV SOURCE_COMMIT=\$\{SOURCE_COMMIT\}$/m);
+  });
+
+  it("**a exportação vem antes do build** — depois dele não serve para nada", () => {
+    const d = dockerfile();
+    const env = d.indexOf("ENV SOURCE_COMMIT=");
+    const build = d.indexOf("npm run build");
+    expect(env).toBeGreaterThan(-1);
+    expect(build).toBeGreaterThan(-1);
+    expect(env).toBeLessThan(build);
+  });
+
+  it("o script procura essa variável primeiro", () => {
+    const script = fs.readFileSync(path.join(RAIZ, "scripts", "update-version.js"), "utf8");
+    const varr = script.indexOf("SOURCE_COMMIT");
+    const git = script.indexOf("git rev-parse");
+    expect(varr).toBeGreaterThan(-1);
+    expect(varr).toBeLessThan(git);
+  });
+});
+
 describe("o que não pode acontecer", () => {
   it("**sem git e sem variável, o build não cai**", () => {
     // Um `execSync` solto num contêiner sem git derruba o `npm run build`
