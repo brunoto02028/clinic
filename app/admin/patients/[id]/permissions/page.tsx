@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVocab } from "@/hooks/use-vocab";
 import { useLocale } from "@/hooks/use-locale";
 import { ordenarPorNome } from "@/lib/ordenar-modulos";
+import { MODULE_CATEGORIES, PERMISSION_CATEGORIES } from "@/lib/module-registry";
 
 type OverrideVal = true | false | "hidden" | null; // true=grant(unlocked), false=revoke(locked/padlock), "hidden"=not shown, null=plan default
 
@@ -54,23 +55,27 @@ interface PermItem {
   effectiveAccess: boolean;
 }
 
-const MODULE_CATEGORIES = [
-  { key: "core", label: "Main (Always Visible)", color: "bg-slate-100 text-slate-700" },
-  { key: "clinical", label: "Clinical", color: "bg-blue-100 text-blue-700" },
-  { key: "wellness", label: "Wellbeing & Self-Care", color: "bg-emerald-100 text-emerald-700" },
-  { key: "content", label: "Content & Education", color: "bg-violet-100 text-violet-700" },
-  // As duas áreas entre as quais o app alterna. A API já obedecia estes dois
-  // overrides desde a 083; faltava a categoria para eles aparecerem aqui.
-  { key: "app_areas", label: "App areas", color: "bg-amber-100 text-amber-800" },
-];
-
-const PERM_CATEGORIES = [
-  { key: "booking", label: "Bookings" },
-  { key: "content", label: "Content Access" },
-  { key: "communication", label: "Communication" },
-  { key: "clinical", label: "Clinical" },
-  { key: "advanced", label: "Advanced Features" },
-];
+/**
+ * As cores dos crachás — e **só** as cores.
+ *
+ * Esta tela tinha um catálogo **próprio** de categorias, com nome e tudo, e os
+ * dois já tinham divergido: aqui era *Main (Always Visible)* e *Wellbeing &
+ * Self-Care*, no catálogo é *Core* e *Wellness*; aqui *Bookings*, lá *Booking*.
+ * Ninguém escreveu diferente de propósito — é o que duas listas fazem sozinhas.
+ *
+ * Pior que a divergência: a lista local **não tinha português**, e o cabeçalho
+ * saía `CLINICAL` com a tela toda em português. Foi o que o QA apanhou.
+ *
+ * O nome passou a vir do catálogo. A cor fica aqui porque é da tela, e não do
+ * vocabulário — a mesma divisão que a página da pressão usa desde hoje de manhã.
+ */
+const COR_DA_CATEGORIA: Record<string, string> = {
+  core: "bg-slate-100 text-slate-700",
+  clinical: "bg-blue-100 text-blue-700",
+  wellness: "bg-emerald-100 text-emerald-700",
+  content: "bg-violet-100 text-violet-700",
+  app_areas: "bg-amber-100 text-amber-800",
+};
 
 export default function PatientPermissionsPage() {
   const { isPersonal, relabel } = useVocab();
@@ -772,7 +777,7 @@ export default function PatientPermissionsPage() {
               return (
                 <div key={cat.key}>
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <Badge className={`${cat.color} text-[9px]`}>{cat.label}</Badge>
+                    <Badge className={`${COR_DA_CATEGORIA[cat.key] ?? ""} text-[9px]`}>{rlabel(cat.label, cat.labelPt)}</Badge>
                   </h4>
                   <div className="space-y-2">
                     {catModules.map(renderModuleRow)}
@@ -799,12 +804,12 @@ export default function PatientPermissionsPage() {
         </CardHeader>
         {showPermissions && (
           <CardContent className="pt-0 space-y-4">
-            {PERM_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
+            {PERMISSION_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
               const catPerms = ordenar((permissions as PermItem[]).filter((p: PermItem) => p.category === cat.key));
               if (catPerms.length === 0) return null;
               return (
                 <div key={cat.key}>
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{cat.label}</h4>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{rlabel(cat.label, cat.labelPt)}</h4>
                   <div className="space-y-1.5">
                     {catPerms.map(renderPermRow)}
                   </div>

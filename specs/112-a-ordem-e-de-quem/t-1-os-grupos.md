@@ -1,6 +1,6 @@
 # T-1: Os grupos chegam ao app
 
-**Status:** pendente
+**Status:** 🟢 implementada (30/09) — QA pendente
 **Depende de:** nenhuma
 **Decidido pelo Bruno em 30/09/2026.**
 
@@ -66,10 +66,101 @@ Duas coisas precisam de decisão, e ficam registradas como suposição:
 
 ## Critérios de aceite
 
-- [ ] O menu do app sai em grupos, na mesma ordem do painel
-- [ ] Dentro de cada grupo, ordem alfabética na língua exibida
-- [ ] Nenhuma linha ficou sem grupo
-- [ ] Grupo que ficou sem itens **não aparece** — cabeçalho sozinho é pior que
+- [x] O menu do app sai em grupos, na mesma ordem do painel
+- [x] Dentro de cada grupo, ordem alfabética na língua exibida
+- [x] Nenhuma linha ficou sem grupo
+- [x] Grupo que ficou sem itens **não aparece** — cabeçalho sozinho é pior que
       nenhum
-- [ ] Os cabeçalhos aparecem na língua do paciente, nos dois lados
-- [ ] Desligar um módulo não deixa cabeçalho órfão
+- [x] Os cabeçalhos aparecem na língua do paciente, nos dois lados
+- [x] Desligar um módulo não deixa cabeçalho órfão
+
+Medidos por teste; **falta o QA na tela**, que é onde se vê se quatro cabeçalhos
+em vinte linhas ajudam ou atrapalham.
+
+---
+
+# O que foi feito
+
+## Onde cada coisa decide
+
+| quem | decide |
+|---|---|
+| `lib/module-registry.ts` | os quatro grupos, e em qual cai cada módulo |
+| `app/api/patient/access/route.ts` | manda os grupos **junto** com os módulos |
+| `mobile/src/lib/agrupar-secoes.ts` | distribui as linhas pelos blocos |
+| `mobile/app/.../profile.tsx` | o grupo das seis linhas **sem módulo** |
+
+Os grupos viajam na mesma resposta que os módulos de propósito: num segundo
+pedido, o menu ficaria sem grupos justamente quando a rede está ruim — e aí a
+tela fica pior do que era antes de agrupar.
+
+## A tradução da taxonomia
+
+Os grupos são os mesmos da clínica; os **nomes** não podem ser. `Core (Always
+Visible)` é conceito de quem administra — fala do interruptor, não do tratamento.
+
+| painel | app (EN) | app (PT) |
+|---|---|---|
+| CLINICAL | Your care | Seu tratamento |
+| WELLBEING & SELF-CARE | Day to day | Seu dia a dia |
+| CONTENT & EDUCATION | Learn | Aprender |
+| (sem módulo) | Your account | Sua conta |
+
+Cinco módulos mudam de casa a caminho do app, e cada um tem um porquê: a
+**avaliação** e o **progresso** são `core` no painel e tratamento para quem é
+tratado; o **como funciona** é leitura; os **planos** são da conta; e a
+**jornada** é material no painel mas acende o **check-in diário** no app — que é
+o que a pessoa faz todo dia, não algo que ela lê. Este último apareceu ao listar
+o que cada grupo mostraria **antes** de desenhar a tela.
+
+## O que quase deu errado
+
+**Abas viravam linha de menu.** `mod_appointments` e `mod_exercises` caíam no
+grupo `clinical` e apareceriam **duas vezes** — uma como aba, outra dentro de
+*Seu tratamento*. O teste apanhou antes de a tela existir.
+
+**O que não entra em grupo nenhum.** É o ponto delicado, e não o agrupar: o
+laboratório passa pelo mesmo componente com quatro linhas sem módulo; um app
+atualizado pode falar com um servidor antigo; uma linha nova pode nascer sem
+chave. Em todos, a lista cai num último bloco **sem cabeçalho** — que é
+exatamente a tela de antes. Perder linha é o único desfecho inaceitável: some sem
+erro, e ninguém descobre.
+
+Por isso o agrupamento virou função pura (`agrupar-secoes.ts`) em vez de ficar
+dentro do render: dentro do componente, a única forma de cobrar isso seria ler o
+arquivo como texto.
+
+## E um achado, no passo 5
+
+Os cabeçalhos não traduziam porque a tela de permissões do paciente tinha um
+**catálogo próprio** de categorias — e os dois já tinham divergido:
+
+| | a tela | o catálogo |
+|---|---|---|
+| core | Main (Always Visible) | Core (Always Visible) |
+| wellness | Wellbeing & Self-Care | Wellness & Self-Care |
+| booking | Bookings | Booking |
+
+Ninguém escreveu diferente de propósito; é o que duas listas fazem sozinhas. A
+cópia local saiu; a cor ficou na tela, que é de onde ela é. **É a terceira vez
+hoje que um catálogo duplicado aparece** — o `classifyBP` do painel de pressão de
+manhã, o `bp-bands` que o QA achou à tarde, e este.
+
+`app/admin/service-pricing/page.tsx` continua em inglês: ela é **inglês inteiro**,
+e traduzir só o cabeçalho poria um título em português sobre uma lista em inglês.
+Fica para a revisão de EN+PT daquela tela, e está declarada como a **única**
+exceção do teste — um segundo arquivo na lista derruba a varredura.
+
+## Provas
+
+- `__tests__/permissoes/os-grupos-do-menu-do-app.test.ts` — 25 cenários, o menu
+  **lido do arquivo** e distribuído pelos blocos de verdade.
+- `__tests__/permissoes/o-cabecalho-fala-a-lingua-da-tela.test.ts` — a varredura
+  do catálogo único e da tradução.
+- Mutação, cinco: tirar o bloco de sobra → caem 3; a pressão perder o grupo → 4;
+  grupo escrito errado → 2; o cabeçalho voltar ao inglês cru → 1; acrescentar um
+  arquivo à lista de exceções → 1.
+- `tsc --noEmit` em 0 nos dois lados; suíte completa verde.
+
+**Ainda não chegou ao telefone:** a mudança é de JavaScript, então vai por `eas
+update` junto com o resto — e o QA da tela vem antes.

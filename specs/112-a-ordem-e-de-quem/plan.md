@@ -42,7 +42,7 @@ novo.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [Os grupos chegam ao app](t-1-os-grupos.md) | pendente |
+| T-1 | [Os grupos chegam ao app](t-1-os-grupos.md) | 🟢 implementada — QA pendente |
 | T-2 | [A clínica arrasta, e o app obedece](t-2-a-clinica-arrasta.md) | pendente |
 | T-3 | [O paciente arruma o próprio app](t-3-o-paciente-arruma.md) | pendente |
 | T-4 | [Voltar ao alfabeto](t-4-voltar-ao-alfabeto.md) | pendente |
@@ -53,9 +53,10 @@ novo.
   está confirmada, e "dividir" era **levar os grupos ao app**, não mexer nos do
   painel: o menu do paciente é hoje uma lista única de vinte linhas, e ele quer a
   mesma leitura agrupada que a clínica tem. Ver a T-1.
-- **Os nomes dos grupos no app ainda não estão decididos.** `CLINICAL` e
-  `WELLBEING & SELF-CARE` são rótulos de quem administra, não de quem é tratado.
-  A T-1 traz uma proposta; ela precisa de um sim.
+- ~~Os nomes dos grupos no app~~ — **o Bruno aceitou a proposta da T-1** em
+  30/09 (*"aceito suas recomendações"*): *Seu tratamento · Seu dia a dia ·
+  Aprender · Sua conta*. Ficam à vista no QA da tela, que é onde um nome errado
+  aparece.
 - **Arrastar na web e no telefone não é o mesmo gesto.** No painel é
   drag-and-drop com o ponteiro; no app é segurar-e-arrastar, e compete com o
   gesto de puxar para atualizar (atividade 113). As duas atividades tocam a mesma
