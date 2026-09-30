@@ -258,6 +258,18 @@ Há interruptor no painel de permissões e **nenhuma tela no app**:
 Desde 30/09/2026 esses quatro carregam no painel o selo *"Not in the app yet"*.
 Foi assim que se descobriu o problema: ligar não acendia nada.
 
+**Quando eles são feitos — decidido em 30/09/2026.** O Bruno: *"só vamos mexer
+nelas depois de todas as outras coisas prontas e revisadas."*
+
+São os **últimos** da fila, depois do laboratório e da aprovação nas lojas. Isso
+fecha a pergunta que a 110 T-1 tinha deixado aberta — marcar ou construir: marcar
+agora, construir por último.
+
+Para quem escrever as páginas, a consequência é simples e não muda com o tempo:
+**eles não entram no texto**, nem como "em breve". Uma funcionalidade que é a
+última da fila não tem data, e prometer sem data é como se cria a primeira
+reclamação.
+
 **A jornada (BPR Journey)** é caso à parte: o interruptor existe e hoje acende o
 **check-in diário**, não uma tela de jornada. O conteúdo dela ainda vai ser
 revisto. **Não prometer "sua jornada de reabilitação" como tela** — prometer o
