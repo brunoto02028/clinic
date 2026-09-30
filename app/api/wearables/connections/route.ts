@@ -50,6 +50,11 @@ export async function GET() {
       createdAt: true,
       notifyConfirmedAppli: true,
       notifyCheckedAt: true,
+      // Para saber se esta ligacao pessoal divide a conta com o aparelho da
+      // clinica — e, sendo assim, se ela esta **muda para pressao** de
+      // proposito (092 T-1).
+      providerUserId: true,
+      isClinicDevice: true,
       accessToken: true,
       refreshToken: true,
       tokenExpiresAt: true,
@@ -72,6 +77,37 @@ export async function GET() {
   });
   const limite = await silenceThreshold(eu?.clinicId);
 
+  /**
+   * **A ligacao pessoal que nao recebe pressao de proposito** (achado do Bruno,
+   * 30/09, olhando a propria tela).
+   *
+   * Quando a mesma conta Withings esta ligada duas vezes — uma como aparelho da
+   * clinica, outra como pessoal —, a pessoal **nao processa pressao**: num
+   * aparelho partilhado so a da clinica sabe de quem e a leitura (092 T-1).
+   *
+   * O efeito colateral so apareceu agora, com a tela a dizer ha quantos dias
+   * nada chega: um medidor de pressao **so produz pressao**, entao a ligacao
+   * pessoal nunca recebe nada — e o silencio dela cresce para sempre. A tela
+   * mandava *"verifique o aparelho, ou reconecte"* sobre um aparelho que estava
+   * perfeitamente ligado, a medir todos os dias.
+   *
+   * Um aviso que manda arranjar o que nao esta partido gasta a paciencia de
+   * quem o le, e da terceira vez ninguem le mais. Entao a tela passa a dizer o
+   * que e verdade: **a pressao desta conta entra pela clinica**.
+   */
+  const contasDaClinica = new Set(
+    (
+      await (prisma as any).wearableConnection.findMany({
+        where: {
+          provider: "WITHINGS",
+          isClinicDevice: true,
+          providerUserId: { in: connections.map((c: any) => c.providerUserId).filter(Boolean) },
+        },
+        select: { providerUserId: true },
+      })
+    ).map((c: any) => c.providerUserId)
+  );
+
   // `status: CONNECTED` only ever meant "the authorisation worked". Whether
   // anything is actually coming is a second question, and until activity 075
   // nothing asked it — a device could be authorised and silent and look
@@ -91,7 +127,19 @@ export async function GET() {
       // do provedor e a chegada do dado sao perguntas diferentes, e a tela
       // precisa das duas para nao pintar de verde um silencio.
       daysSilent: daysSilent(c),
-      silent: isSilent(c, limite),
+      /**
+       * Muda para pressao **por desenho**, e nao por defeito.
+       *
+       * Nesse caso o silencio nao e noticia: a conta entrega pela ligacao da
+       * clinica, e esta nunca vai receber nada de um aparelho que so mede
+       * pressao.
+       */
+      pressaoPelaClinica:
+        c.isClinicDevice !== true && !!c.providerUserId && contasDaClinica.has(c.providerUserId),
+      silent:
+        c.isClinicDevice !== true && !!c.providerUserId && contasDaClinica.has(c.providerUserId)
+          ? false
+          : isSilent(c, limite),
       silenceThreshold: limite,
       createdAt: c.createdAt,
       delivery: c.provider === 'WITHINGS' ? deliveryState(c) : undefined,

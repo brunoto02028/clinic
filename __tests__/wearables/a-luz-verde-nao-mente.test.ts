@@ -51,7 +51,7 @@ describe("a tela do paciente", () => {
     // A condicao cresceu depois do QA: `quebrada` entrou quando se descobriu
     // que a ligacao em `ERROR` nem chegava a esta tela. O que o teste fixa e
     // que **o silencio continua a contar** — nao o numero de termos.
-    expect(codigo).toMatch(/silent = isConnected && \([^)]*calada[^)]*\)/);
+    expect(codigo).toMatch(/silent = isConnected &&[^;]*calada/);
   });
 
   it("**`unchecked` também não é verde**", () => {
