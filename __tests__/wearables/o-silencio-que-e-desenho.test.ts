@@ -168,3 +168,24 @@ describe("a sincronia presta contas", () => {
     expect(c.slice(i, i + 600)).toMatch(/invalidateQueries/);
   });
 });
+
+describe("o Sync não mente sobre o aparelho", () => {
+  it("**quando a pressão vem pela clínica, a frase diz isso**", () => {
+    // Nesta ligação a pressão **nunca é pedida** à Withings: `ingestWithings`
+    // nem chega a perguntar. Então "salvas" e "devolvidas" dão sempre zero, por
+    // desenho — e "nenhuma leitura nesta janela" seria verdade sobre a ligação
+    // e mentira sobre o aparelho, que mediu e está na app da Withings.
+    const c = codigo(...TELA);
+    expect(c).toMatch(/pressaoVemDaClinica/);
+    expect(c).toMatch(/it is not fetched here|não é buscada por aqui/);
+  });
+
+  it("**e essa frase vem antes das contagens**", () => {
+    // As contagens são zero por desenho neste caso. Mostrá-las primeiro seria
+    // responder com um número que não significa nada.
+    const c = codigo(...TELA);
+    const i = c.indexOf("const linhas");
+    const bloco = c.slice(i, i + 1800);
+    expect(bloco.indexOf("pressaoVemDaClinica")).toBeLessThan(bloco.indexOf("vieram > salvas"));
+  });
+});

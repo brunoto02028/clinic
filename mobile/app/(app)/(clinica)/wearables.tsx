@@ -78,8 +78,31 @@ function WearablesScreen() {
        * nada: `salvas` e `vieram` respondem coisas diferentes, e as duas
        * precisam de sair.
        */
+      /**
+       * **Nesta ligacao a pressao nunca e pedida** — dizer "nenhuma leitura"
+       * seria verdade sobre ela e mentira sobre o aparelho.
+       *
+       * Quando a conta esta ligada duas vezes, a pessoal nao processa pressao:
+       * `ingestWithings` nem chega a perguntar a Withings por ela. Entao tanto
+       * "salvas" como "devolvidas" dao **sempre zero** aqui, por desenho.
+       *
+       * Foi o que o Bruno ia ler a seguir: *"nenhuma leitura de pressao nesta
+       * janela"*, com a medicao dele visivel na app da Withings. Uma frase
+       * correta sobre o objeto errado — o mesmo defeito que a tela da ficha
+       * tinha, e que este lote acabou de corrigir do outro lado.
+       */
+      const pressaoVemDaClinica = (connections ?? []).some(
+        (c) => c.provider?.toUpperCase() === "WITHINGS" && c.pressaoPelaClinica === true
+      );
       const linhas: string[] = [];
-      if (vieram > salvas) {
+      if (pressaoVemDaClinica) {
+        linhas.push(
+          tr(lang, {
+            en: "Blood pressure for this account comes in through the clinic's device — it is not fetched here.",
+            pt: "A pressão desta conta entra pelo aparelho da clínica — não é buscada por aqui.",
+          })
+        );
+      } else if (vieram > salvas) {
         linhas.push(
           tr(lang, {
             en: `Withings returned ${vieram} blood-pressure reading(s); ${salvas} went into your record. The rest are handled by the clinic's device.`,
