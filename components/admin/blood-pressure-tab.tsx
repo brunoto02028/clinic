@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TrendChart, type TrendPoint } from "@/components/dashboard/trend-chart";
 import { useLocale } from "@/hooks/use-locale";
-import { classifyBP, type BPClassification } from "@/lib/blood-pressure";
+import { classifyBP, BP_LABELS, BP_GUIDANCE_NOTE, type BPClassification } from "@/lib/blood-pressure";
 import { zonedTimeToUtc, getZonedDateTimeLocalString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 export type BPReading = {
@@ -44,7 +44,7 @@ const T = {
     origin: "Origin", atHome: "Patient's own device", atClinic: "Clinic device", byHand: "Entered by hand",
     PRE_SESSION: "before the session", POST_SESSION: "after the session", HOME: "at home", OTHER: "",
     numbersOnly: "Use whole numbers only.", networkError: "Network error — nothing was changed. Try again.",
-    LOW: "Low", NORMAL: "Normal", ELEVATED: "Elevated", STAGE1: "High (Stage 1)", STAGE2: "High (Stage 2)", CRISIS: "Hypertensive crisis",
+    LOW: BP_LABELS.LOW.en, NORMAL: BP_LABELS.NORMAL.en, ELEVATED: BP_LABELS.ELEVATED.en, STAGE1: BP_LABELS.STAGE1.en, STAGE2: BP_LABELS.STAGE2.en, CRISIS: BP_LABELS.CRISIS.en,
     latest: "Latest reading",
   },
   pt: {
@@ -58,7 +58,7 @@ const T = {
     origin: "Origem", atHome: "Aparelho do paciente", atClinic: "Aparelho da clínica", byHand: "Digitada",
     PRE_SESSION: "antes da sessão", POST_SESSION: "depois da sessão", HOME: "em casa", OTHER: "",
     numbersOnly: "Use apenas números inteiros.", networkError: "Erro de rede — nada foi alterado. Tente de novo.",
-    LOW: "Baixa", NORMAL: "Normal", ELEVATED: "Elevada", STAGE1: "Alta (Estágio 1)", STAGE2: "Alta (Estágio 2)", CRISIS: "Crise hipertensiva",
+    LOW: BP_LABELS.LOW.pt, NORMAL: BP_LABELS.NORMAL.pt, ELEVATED: BP_LABELS.ELEVATED.pt, STAGE1: BP_LABELS.STAGE1.pt, STAGE2: BP_LABELS.STAGE2.pt, CRISIS: BP_LABELS.CRISIS.pt,
     latest: "Última medida",
   },
 } as const;

@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { classifyBP as classificarPressao, BP_LABELS, BP_GUIDANCE_NOTE } from "@/lib/blood-pressure";
 
 interface Patient {
   id: string;
@@ -78,16 +79,32 @@ interface PatientBP {
   } | null;
 }
 
+/**
+ * **O painel usa o mesmo classificador do app** (105 T-6).
+ *
+ * Havia aqui uma cópia com limiares próprios, e ela **discordava**: 145/85 saía
+ * como *Stage 1* para o terapeuta e `STAGE2` para o paciente; 115/95 e 135/95,
+ * idem. Duas telas, a mesma leitura, severidades diferentes — e quem conversa
+ * sobre o número é justamente o par que via coisas diferentes.
+ *
+ * O rótulo e as faixas vêm de `lib/blood-pressure.ts`; as cores ficam aqui,
+ * porque são desta tela.
+ */
 function classifyBP(sys: number, dia: number) {
-  // A crise não existia aqui: 185/125 aparecia como "High (Stage 2)" para o
-  // terapeuta, o mesmo rótulo de 140/90. O app do paciente já distingue, e
-  // quem age sobre a leitura é quem está deste lado.
-  if (sys >= 180 || dia >= 120) return { label: "Crisis", color: "text-white bg-red-700 border-red-800", icon: AlertTriangle };
-  if (sys < 90 || dia < 60) return { label: "Low", color: "text-blue-600 bg-blue-50 border-blue-200", icon: TrendingDown };
-  if (sys < 120 && dia < 80) return { label: "Normal", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: CheckCircle };
-  if (sys < 130 && dia < 80) return { label: "Elevated", color: "text-amber-600 bg-amber-50 border-amber-200", icon: TrendingUp };
-  if (sys < 140 || dia < 90) return { label: "High (Stage 1)", color: "text-orange-600 bg-orange-50 border-orange-200", icon: AlertTriangle };
-  return { label: "High (Stage 2)", color: "text-red-600 bg-red-50 border-red-200", icon: AlertTriangle };
+  const faixa = classificarPressao(sys, dia);
+  const cor: Record<string, string> = {
+    LOW: "text-sky-600 bg-sky-50 border-sky-200",
+    NORMAL: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    ELEVATED: "text-amber-600 bg-amber-50 border-amber-200",
+    STAGE1: "text-orange-600 bg-orange-50 border-orange-200",
+    STAGE2: "text-red-600 bg-red-50 border-red-200",
+    CRISIS: "text-white bg-red-600 border-red-700",
+  };
+  const icone: Record<string, any> = {
+    LOW: TrendingUp, NORMAL: CheckCircle, ELEVATED: TrendingUp,
+    STAGE1: AlertTriangle, STAGE2: AlertTriangle, CRISIS: AlertTriangle,
+  };
+  return { label: BP_LABELS[faixa].en, color: cor[faixa], icon: icone[faixa] };
 }
 
 export default function AdminBloodPressurePage() {
@@ -562,8 +579,8 @@ export default function AdminBloodPressurePage() {
               { label: "Low", range: "<90/60", color: "bg-blue-50 text-blue-700 border-blue-200" },
               { label: "Normal", range: "<120/80", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
               { label: "Elevated", range: "120-129/<80", color: "bg-amber-50 text-amber-700 border-amber-200" },
-              { label: "High (Stage 1)", range: "130-139/80-89", color: "bg-orange-50 text-orange-700 border-orange-200" },
-              { label: "High (Stage 2)", range: "≥140/≥90", color: "bg-red-50 text-red-700 border-red-200" },
+              { label: BP_LABELS.STAGE1.en, range: "130-139/80-89", color: "bg-orange-50 text-orange-700 border-orange-200" },
+              { label: BP_LABELS.STAGE2.en, range: "≥140/≥90", color: "bg-red-50 text-red-700 border-red-200" },
             ].map((cat) => (
               <div key={cat.label} className={`p-2 rounded border text-center ${cat.color}`}>
                 <p className="font-semibold">{cat.label}</p>

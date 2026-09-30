@@ -1,6 +1,6 @@
 # T-6: O estágio não é diagnóstico
 
-**Status:** pendente
+**Status:** 🟢 concluída (30/09) — QA pendente
 **Origem:** eu levantei ao ver as capturas; o Bruno decidiu em 30/09/2026.
 
 ## O que a tela mostra hoje
@@ -76,3 +76,74 @@ do que se conclui sozinho.
 - [ ] A varredura não deixou nenhum lugar com o rótulo antigo
 - [ ] A leitura alta continua **parecendo** alta — a mudança é de palavra, não de
       sinal
+
+
+---
+
+# O que a varredura encontrou, e por que ela era obrigatória
+
+O rótulo estava em **nove arquivos**, e dois deles eu não teria adivinhado.
+
+## O pior: o produto diagnosticava por e-mail
+
+`lib/automation/bp-bands.ts` alimenta a variável `{{classification}}` do modelo
+**`BP_HIGH_ALERT`**, que começa com:
+
+> *"Hi {{patientName}}, your recent blood pressure reading requires attention."*
+
+É e-mail **para o paciente**, e o valor era `"Stage 2 Hypertension"`. Um
+diagnóstico não pedido, chegando na caixa de entrada de quem não tem a quem
+perguntar.
+
+O mais irônico: aquele arquivo **já tinha brigado com esse nome**. Os comentários
+dele dizem, sobre um defeito anterior nos limiares, *"a name, not a measurement,
+and a false one"* e *"a diagnosis, in a product that must not make one"*. A
+consciência estava escrita ali e nunca chegou ao vocabulário.
+
+## O segundo: o painel e o app discordavam da mesma leitura
+
+`app/admin/blood-pressure/page.tsx` tinha um `classifyBP` **próprio**, com
+limiares diferentes dos da lib:
+
+| leitura | app (paciente) | painel (terapeuta) |
+|---|---|---|
+| 145/85 | `STAGE2` | *High (Stage 1)* |
+| 135/95 | `STAGE2` | *High (Stage 1)* |
+| 115/95 | `STAGE2` | *High (Stage 1)* |
+
+A mesma leitura, duas severidades — e quem conversa sobre aquele número é
+justamente esse par. O painel passou a usar o classificador da lib; as cores
+ficaram onde estavam, porque são da tela e não do vocabulário.
+
+## O que mudou, ao todo
+
+| onde | de | para |
+|---|---|---|
+| etiqueta STAGE1 | Stage 1 / Estágio 1 | Above UK guidance / Acima do parâmetro do NHS |
+| etiqueta STAGE2 | Stage 2 / Estágio 2 | Well above UK guidance / Bem acima do parâmetro do NHS |
+| etiqueta CRISIS | Crisis / Crise hipertensiva | Very high — get help now / Muito alta — procure ajuda agora |
+| e-mail ao paciente | Stage 2 Hypertension | Well above UK guidance |
+| aviso de crise no app | Hypertensive crisis | Very high reading / Leitura muito alta |
+| alertas da clínica | HYPERTENSIVE CRISIS | VERY HIGH READING |
+| resumo do prontuário | "readings show Stage 2 hypertension" | "readings are at or above 140/90 — well above UK guidance" |
+
+**`CRISIS` mudou sem ter sido pedido**, e por coerência: *hypertensive crisis*
+também é nome de categoria. O texto novo é **mais** acionável, não menos — o que
+a pessoa precisa de saber ali é o que fazer agora, e a linha de baixo (ligar 999)
+continua igual.
+
+**Os limiares não mudaram.** Isto foi vocabulário.
+
+## Provas
+
+`__tests__/pressao/a-etiqueta-nao-diagnostica.test.ts` — 17 cenários.
+
+**Por mutação, três:**
+- o painel volta a ter limiar próprio → cai;
+- um rótulo volta a nomear diagnóstico → caem 3, incluindo a varredura;
+- **todos os rótulos viram amenos** → cai o que exige que leitura alta continue
+  parecendo alta. É o controle contra a correção virar eufemismo, e foi posto
+  para isso.
+
+Suíte completa: **2906 testes, 196 suítes, verdes.** `tsc` em 0 nos dois lados.
+Build compilou.

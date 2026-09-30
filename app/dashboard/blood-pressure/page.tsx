@@ -38,6 +38,7 @@ import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 import { NonEmergencyNotice } from "@/components/patient/non-emergency-notice";
 import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
+import { BP_LABELS } from "@/lib/blood-pressure";
 
 interface BPReading {
   id: string;
@@ -70,9 +71,9 @@ interface PPGAnalysis {
 }
 
 function classifyBP(sys: number, dia: number): { labelEn: string; labelPt: string; color: string; icon: any; severity: number } {
-  if (sys >= 180 || dia >= 120) return { labelEn: "Crisis", labelPt: "Crise Hipertensiva", color: "text-ba1-bad bg-ba1-bad/15 border-ba1-bad/30", icon: AlertTriangle, severity: 5 };
-  if (sys >= 140 || dia >= 90) return { labelEn: "High (Stage 2)", labelPt: "Alta (Estágio 2)", color: "text-ba1-bad bg-ba1-bad/10 border-ba1-bad/20", icon: AlertTriangle, severity: 4 };
-  if (sys >= 130 || dia >= 80) return { labelEn: "High (Stage 1)", labelPt: "Alta (Estágio 1)", color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: AlertTriangle, severity: 3 };
+  if (sys >= 180 || dia >= 120) return { labelEn: BP_LABELS.CRISIS.en, labelPt: BP_LABELS.CRISIS.pt, color: "text-ba1-bad bg-ba1-bad/15 border-ba1-bad/30", icon: AlertTriangle, severity: 5 };
+  if (sys >= 140 || dia >= 90) return { labelEn: BP_LABELS.STAGE2.en, labelPt: BP_LABELS.STAGE2.pt, color: "text-ba1-bad bg-ba1-bad/10 border-ba1-bad/20", icon: AlertTriangle, severity: 4 };
+  if (sys >= 130 || dia >= 80) return { labelEn: BP_LABELS.STAGE1.en, labelPt: BP_LABELS.STAGE1.pt, color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: AlertTriangle, severity: 3 };
   if (sys >= 120 && dia < 80) return { labelEn: "Elevated", labelPt: "Elevada", color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: TrendingUp, severity: 2 };
   if (sys < 90 || dia < 60) return { labelEn: "Low", labelPt: "Baixa", color: "text-ba1-health bg-ba1-health/10 border-ba1-health/20", icon: TrendingDown, severity: 1 };
   return { labelEn: "Normal", labelPt: "Normal", color: "text-ba1-ok bg-ba1-ok/10 border-ba1-ok/20", icon: CheckCircle, severity: 0 };
@@ -635,7 +636,7 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
             <span className="text-sm font-semibold text-ba1-health">NHS / GP</span>
           </div>
           <p className="text-xs text-ba1-health/80">
-            {systolic >= 180 || diastolic >= 120 ? (locale === "pt-BR" ? "🚨 CRISE HIPERTENSIVA: Ligue 999 ou vá ao pronto-socorro imediatamente. Não espere." : "🚨 HYPERTENSIVE CRISIS: Call 999/112 or go to A&E immediately. Do not wait.") :
+            {systolic >= 180 || diastolic >= 120 ? (locale === "pt-BR" ? "🚨 LEITURA MUITO ALTA: Ligue 999 ou vá ao pronto-socorro imediatamente. Não espere." : "🚨 VERY HIGH READING: Call 999/112 or go to A&E immediately. Do not wait.") :
              systolic >= 140 || diastolic >= 90 ? T("bp.nhsStage2") :
              systolic >= 130 || diastolic >= 80 ? T("bp.nhsStage1") :
              systolic >= 120 && diastolic < 80 ? T("bp.nhsElevated") :
@@ -695,10 +696,10 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
             // BP assessment
             if (systolic >= 180 || diastolic >= 120) {
               riskScore += 40;
-              findings.push({ text: locale === "pt-BR" ? "Crise hipertensiva detectada — procure atendimento médico imediatamente." : "Hypertensive crisis detected — seek immediate medical attention.", severity: "high" });
+              findings.push({ text: locale === "pt-BR" ? "Leitura muito alta — procure atendimento médico imediatamente." : "Very high reading — seek immediate medical attention.", severity: "high" });
             } else if (systolic >= 140 || diastolic >= 90) {
               riskScore += 25;
-              findings.push({ text: locale === "pt-BR" ? "Hipertensão Estágio 2 — consulte seu médico para manejo." : "Stage 2 Hypertension — consult your doctor for management.", severity: "high" });
+              findings.push({ text: locale === "pt-BR" ? "Leituras bem acima do parâmetro do NHS — consulte o seu médico." : "Readings well above UK guidance — speak to your doctor.", severity: "high" });
             } else if (systolic >= 130 || diastolic >= 80) {
               riskScore += 15;
               findings.push({ text: locale === "pt-BR" ? "Pressão arterial elevada — monitore regularmente e considere mudanças no estilo de vida." : "Elevated blood pressure — monitor regularly and consider lifestyle changes.", severity: "medium" });
@@ -1705,7 +1706,7 @@ export default function BloodPressurePage() {
               </div>
               {latestClass.severity >= 5 && (
                 <div className="mt-2 bg-ba1-bad/20 border border-ba1-bad/30 rounded-lg p-2 text-center animate-pulse">
-                  <p className="text-xs font-bold text-ba1-bad">{locale === "pt-BR" ? "⚠️ CRISE HIPERTENSIVA — Procure atendimento médico IMEDIATAMENTE" : "⚠️ HYPERTENSIVE CRISIS — Seek medical attention IMMEDIATELY"}</p>
+                  <p className="text-xs font-bold text-ba1-bad">{locale === "pt-BR" ? "⚠️ LEITURA MUITO ALTA — Procure atendimento médico IMEDIATAMENTE" : "⚠️ VERY HIGH READING — Seek medical attention IMMEDIATELY"}</p>
                 </div>
               )}
             </CardContent>
@@ -1975,8 +1976,8 @@ export default function BloodPressurePage() {
                 { label: locale === "pt-BR" ? "Baixa" : "Low", range: "<90/60", color: "bg-ba1-health/10 text-ba1-health border-ba1-health/20" },
                 { label: "Normal", range: "<120/80", color: "bg-ba1-ok/10 text-ba1-ok border-ba1-ok/20" },
                 { label: locale === "pt-BR" ? "Elevada" : "Elevated", range: "120-129/<80", color: "bg-ba1-warn/10 text-ba1-warn border-ba1-warn/20" },
-                { label: locale === "pt-BR" ? "Estágio 1" : "Stage 1", range: "130-139/80-89", color: "bg-ba1-warn/10 text-ba1-warn border-ba1-warn/20" },
-                { label: locale === "pt-BR" ? "Estágio 2" : "Stage 2", range: "≥140/≥90", color: "bg-ba1-bad/10 text-ba1-bad border-ba1-bad/20" },
+                { label: locale === "pt-BR" ? BP_LABELS.STAGE1.pt : BP_LABELS.STAGE1.en, range: "130-139/80-89", color: "bg-ba1-warn/10 text-ba1-warn border-ba1-warn/20" },
+                { label: locale === "pt-BR" ? BP_LABELS.STAGE2.pt : BP_LABELS.STAGE2.en, range: "≥140/≥90", color: "bg-ba1-bad/10 text-ba1-bad border-ba1-bad/20" },
                 { label: locale === "pt-BR" ? "Crise" : "Crisis", range: "≥180/≥120", color: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/30 font-bold" },
               ].map((cat) => (
                 <div key={cat.label} className={`p-1.5 rounded border text-center ${cat.color}`}>

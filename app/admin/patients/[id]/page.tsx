@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BP_LABELS } from "@/lib/blood-pressure";
 
 const DOC_TYPES = [
   { value: "MEDICAL_REFERRAL", label: "Medical Referral" },
@@ -1941,7 +1942,7 @@ export default function PatientProfilePage() {
                   return (
                     <p className={`text-[10px] font-semibold mt-1.5 ${avgColor}`}>
                       Average: {avgS}/{avgD} mmHg
-                      {avgS >= 140 || avgD >= 90 ? " — Stage 2 Hypertension ⚠️" : avgS >= 130 ? " — Stage 1 / Elevated" : avgS < 90 ? " — Low BP" : " — Normal range"}
+                      {avgS >= 140 || avgD >= 90 ? ` — ${BP_LABELS.STAGE2.en} ⚠️` : avgS >= 130 ? ` — ${BP_LABELS.STAGE1.en}` : avgS < 90 ? ` — ${BP_LABELS.LOW.en}` : ` — ${BP_LABELS.NORMAL.en}`}
                     </p>
                   );
                 })()}
@@ -1952,7 +1953,7 @@ export default function PatientProfilePage() {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-2 flex items-start gap-2">
                   <AlertCircle className="h-3.5 w-3.5 text-red-600 mt-0.5 shrink-0" />
                   <p className="text-[10px] text-red-700">
-                    <strong>Alert:</strong> {data.bpReadings.filter((r: any) => r.systolic >= 140 || r.diastolic >= 90).length} of {data.bpReadings.length} readings show Stage 2 hypertension (≥140/90). Consider referring to GP for ABPM.
+                    <strong>Alert:</strong> {data.bpReadings.filter((r: any) => r.systolic >= 140 || r.diastolic >= 90).length} of {data.bpReadings.length} readings are at or above 140/90 — well above UK guidance. Consider referring to GP for ABPM.
                   </p>
                 </div>
               )}

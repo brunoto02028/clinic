@@ -727,8 +727,11 @@ const translations: Record<string, Record<Locale, string>> = {
   "bp.low": { "en-GB": "Low", "pt-BR": "Baixa" },
   "bp.normal": { "en-GB": "Normal", "pt-BR": "Normal" },
   "bp.elevated": { "en-GB": "Elevated", "pt-BR": "Elevada" },
-  "bp.stage1": { "en-GB": "High (Stage 1)", "pt-BR": "Alta (Estágio 1)" },
-  "bp.stage2": { "en-GB": "High (Stage 2)", "pt-BR": "Alta (Estágio 2)" },
+  // Não nomeiam diagnóstico (105 T-6): "stage 2 hypertension" é categoria
+  // diagnóstica, e numa tela que o paciente abre sozinho lê-se como veredito.
+  // Os textos são os mesmos de `BP_LABELS`; um teste cobra que não divirjam.
+  "bp.stage1": { "en-GB": "Above UK guidance", "pt-BR": "Acima do parâmetro do NHS" },
+  "bp.stage2": { "en-GB": "Well above UK guidance", "pt-BR": "Bem acima do parâmetro do NHS" },
   "bp.report": { "en-GB": "Measurement Report", "pt-BR": "Relatório da Medição" },
   "bp.rhythmAnalysis": { "en-GB": "Cardiac Rhythm Analysis", "pt-BR": "Análise do Ritmo Cardíaco" },
   "bp.waveform": { "en-GB": "PPG Waveform (ECG-like)", "pt-BR": "Forma de Onda PPG (tipo ECG)" },

@@ -1,3 +1,5 @@
+import { BP_LABELS } from "@/lib/blood-pressure";
+
 /**
  * The blood-pressure bands, with no database in them.
  *
@@ -134,14 +136,19 @@ export function classify(
     // 160/100 got e-mails calling 145/95 "Stage 1 Hypertension" — a diagnosis,
     // in a product that must not make one, about a reading that clinic does
     // not consider high.
+    // **Isto vai no e-mail que o paciente recebe** (`BP_HIGH_ALERT`), e dizia
+    // "Stage 2 Hypertension" — o nome de uma categoria diagnóstica, chegando
+    // sozinho na caixa de entrada de quem não tem como pedir explicação. Os
+    // comentários acima já brigavam com esse nome nos limiares; faltava o
+    // vocabulário. Agora é o mesmo de `BP_LABELS` (105 T-6).
     classification: isCrisis
-      ? "Hypertensive Crisis"
+      ? BP_LABELS.CRISIS.en
       : !isAlert
         ? systolic < 120 && diastolic < 80
-          ? "Normal"
+          ? BP_LABELS.NORMAL.en
           : "Below this clinic's alert threshold"
         : isStage2
-          ? "Stage 2 Hypertension"
-          : "Stage 1 Hypertension",
+          ? BP_LABELS.STAGE2.en
+          : BP_LABELS.STAGE1.en,
   };
 }

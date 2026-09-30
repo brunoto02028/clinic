@@ -9,6 +9,7 @@ import { useLang, t as tr } from "@/lib/i18n";
 import { LoadFailure } from "@/components/LoadFailure";
 import { NonEmergencyNotice } from "@/components/NonEmergencyNotice";
 import { formatDate } from "@/lib/format";
+import { ROTULOS_DE_PRESSAO, AVISO_DAS_FAIXAS, type FaixaDePressao } from "@/lib/faixa-de-pressao";
 import {
   fetchBloodPressure,
   saveBloodPressure,
@@ -58,6 +59,10 @@ export default function BloodPressureScreen() {
     queryFn: () => fetchBloodPressure(30),
   });
 
+  const ehPt = String(lang || "").toLowerCase().startsWith("pt");
+  const rotuloDaFaixa = (f: FaixaDePressao, pt: boolean) =>
+    pt ? ROTULOS_DE_PRESSAO[f].pt : ROTULOS_DE_PRESSAO[f].en;
+
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
   const [heartRate, setHeartRate] = useState("");
@@ -72,13 +77,23 @@ export default function BloodPressureScreen() {
    * com a cor do pilar Work, que é o azul da identidade — a web já pinta de
    * azul, e baixo não é uma versão mais fraca de alto.
    */
+  /**
+   * Os rótulos vêm de `@/lib/faixa-de-pressao` — **eles não nomeiam um
+   * diagnóstico** (105 T-6). Diziam *"Stage 1"* e *"Stage 2"*, que é o nome de
+   * uma categoria diagnóstica, e numa tela que o paciente abre sozinho isso
+   * lê-se como veredito do aplicativo.
+   *
+   * As **cores** ficam aqui, porque são da identidade desta tela, e não do
+   * vocabulário clínico.
+   */
+  const rot = (f: Parameters<typeof rotuloDaFaixa>[0]) => rotuloDaFaixa(f, ehPt);
   const BAND: Record<BpBand, { label: string; color: string; bg: string }> = {
-    low: { label: tr(lang, { en: "Low", pt: "Baixa" }), color: t.colors.work, bg: t.colors.workSoft },
-    normal: { label: tr(lang, { en: "Normal", pt: "Normal" }), color: t.colors.ok, bg: t.colors.okSoft },
-    elevated: { label: tr(lang, { en: "Elevated", pt: "Elevada" }), color: t.colors.warn, bg: t.colors.warnSoft },
-    stage1: { label: tr(lang, { en: "Stage 1", pt: "Estágio 1" }), color: t.colors.bad, bg: t.colors.badSoft },
-    stage2: { label: tr(lang, { en: "Stage 2", pt: "Estágio 2" }), color: t.colors.accentFg, bg: t.colors.bad },
-    crisis: { label: tr(lang, { en: "Crisis", pt: "Crise" }), color: t.colors.accentFg, bg: t.colors.bad },
+    low: { label: rot("LOW"), color: t.colors.work, bg: t.colors.workSoft },
+    normal: { label: rot("NORMAL"), color: t.colors.ok, bg: t.colors.okSoft },
+    elevated: { label: rot("ELEVATED"), color: t.colors.warn, bg: t.colors.warnSoft },
+    stage1: { label: rot("STAGE1"), color: t.colors.bad, bg: t.colors.badSoft },
+    stage2: { label: rot("STAGE2"), color: t.colors.accentFg, bg: t.colors.bad },
+    crisis: { label: rot("CRISIS"), color: t.colors.accentFg, bg: t.colors.bad },
   };
 
   const sys = parseInt(systolic, 10);
@@ -179,9 +194,14 @@ export default function BloodPressureScreen() {
                 <Ionicons name="warning" size={18} color={t.colors.accentFg} style={{ marginTop: 1 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: t.colors.accentFg, fontWeight: "700", fontSize: 14 }}>
+                    {/* Era "Hypertensive crisis" — nome de categoria
+                        diagnóstica, em caixa vermelha, para quem está sozinho
+                        olhando o próprio número. O que a pessoa precisa de
+                        saber ali é **o que fazer**, e a linha de baixo já diz.
+                        O título deixa de julgar e passa a descrever. */}
                     {tr(lang, {
-                      en: "Hypertensive crisis",
-                      pt: "Crise hipertensiva",
+                      en: "Very high reading",
+                      pt: "Leitura muito alta",
                     })}
                   </Text>
                   <Text style={{ color: t.colors.accentFg, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
@@ -242,6 +262,13 @@ export default function BloodPressureScreen() {
         <View style={{ gap: 8 }}>
           <Text variant="label" style={{ fontWeight: "600" }}>
             {tr(lang, { en: "Last 30 days", pt: "Últimos 30 dias" })}
+          </Text>
+          {/* De quem é a régua, e que ela não é um veredito (105 T-6).
+              Fica **acima** da lista, e não num rodapé: a etiqueta de cada
+              leitura é o que se lê primeiro, e esta frase é o que se lê a
+              seguir — ou nunca, se estiver no fim. */}
+          <Text variant="caption" style={{ color: t.colors.textMuted, lineHeight: 18 }}>
+            {ehPt ? AVISO_DAS_FAIXAS.pt : AVISO_DAS_FAIXAS.en}
           </Text>
           {isLoading ? (
             <Spinner center />
