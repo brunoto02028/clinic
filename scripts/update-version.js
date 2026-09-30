@@ -102,6 +102,31 @@ function lerCommitDoGit(raiz) {
         if (p.length === 2 && p[1] === ref && /^[0-9a-f]{40}$/i.test(p[0])) return p[0];
       }
     }
+
+    /**
+     * `FETCH_HEAD` — e é **esta** que o build do Coolify precisa.
+     *
+     * O log do deploy mostra o que ele faz: clona e depois busca o commit para
+     * o `FETCH_HEAD`, não para uma branch —
+     *
+     *     Cloning into '/artifacts/<uuid>'...
+     *     From github.com:brunoto02028/clinic
+     *      * branch  cde0e0dea…  ->  FETCH_HEAD
+     *
+     * Então o `HEAD` fica apontando para `refs/heads/main`, essa ref não existe
+     * no clone, e as duas buscas acima falham. O `FETCH_HEAD` guarda o SHA que
+     * foi de facto trazido, na primeira coluna da primeira linha.
+     *
+     * Vem por último de propósito: onde `HEAD` e as refs respondem, elas são a
+     * verdade do que está em disco; o `FETCH_HEAD` é o que sobrou da última
+     * busca, e num repositório de trabalho pode ser de outra coisa.
+     */
+    const buscado = path.join(git, 'FETCH_HEAD');
+    if (fs.existsSync(buscado)) {
+      const primeira = fs.readFileSync(buscado, 'utf8').split('\n')[0] || '';
+      const sha = primeira.trim().split(/\s+/)[0];
+      if (/^[0-9a-f]{40}$/i.test(sha)) return sha;
+    }
     return null;
   } catch {
     return null;
@@ -123,9 +148,52 @@ const versionData = {
 fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2));
 
 console.log('Version updated:', versionData);
+
 if (!commit) {
+  /**
+   * O aviso **diz o que viu**, e não só que falhou.
+   *
+   * A versão anterior dizia "nenhuma variavel de ambiente e nenhum git no
+   * diretorio" — uma frase só, para três causas diferentes. Eu li isso no log
+   * do build e conclui que o `.git` não estava lá; podia ser o `HEAD` apontando
+   * para uma ref ausente, ou a pasta existir e a leitura falhar por outro
+   * motivo. Três tentativas minhas falharam por eu estar a adivinhar entre
+   * essas hipóteses.
+   *
+   * Isto transforma o próximo build numa **medição**: o log passa a dizer se o
+   * `.git` existe, se é pasta, e o que há no `HEAD`. Nada sensível — nome de
+   * ref e nomes de arquivo.
+   */
+  const raiz = path.join(__dirname, '..');
+  const git = path.join(raiz, '.git');
+  const pistas = [];
+  try {
+    if (!fs.existsSync(git)) {
+      pistas.push('.git ausente no contexto do build');
+    } else {
+      const st = fs.statSync(git);
+      pistas.push('.git e ' + (st.isDirectory() ? 'pasta' : 'arquivo'));
+      if (st.isDirectory()) {
+        pistas.push('conteudo: ' + fs.readdirSync(git).slice(0, 12).join(','));
+        const h = path.join(git, 'HEAD');
+        pistas.push(
+          fs.existsSync(h)
+            ? 'HEAD: ' + fs.readFileSync(h, 'utf8').trim().slice(0, 60)
+            : 'HEAD ausente'
+        );
+      }
+    }
+  } catch (e) {
+    pistas.push('erro ao inspecionar: ' + (e && e.message));
+  }
+
   console.warn(
-    '[update-version] sem commit: nenhuma variavel de ambiente e nenhum git no diretorio. ' +
-      'O version.json sai sem a prova de qual codigo subiu.'
+    '[update-version] sem commit — o version.json sai sem a prova de qual codigo subiu.\n' +
+      '[update-version] variaveis: ' +
+      ['SOURCE_COMMIT', 'COOLIFY_GIT_COMMIT_SHA', 'GIT_COMMIT_SHA', 'GITHUB_SHA']
+        .map((k) => k + '=' + (process.env[k] ? 'sim' : 'nao'))
+        .join(' ') +
+      '\n[update-version] ' +
+      pistas.join(' | ')
   );
 }
