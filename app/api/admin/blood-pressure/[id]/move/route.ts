@@ -98,6 +98,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       // Deixa de ser automática no momento em que uma pessoa decide. O campo
       // existe para marcar *"ninguém disse de quem era"*, e agora alguém disse.
       autoAttributed: false,
+      // **A nota sobrevivia à mudança** (achado do QA da 114). O crachá sumia e
+      // a frase ficava: uma leitura na ficha da Ana continuava a dizer
+      // *"auto-attributed to the account owner"*, falando de um dono que já não
+      // é o dela. Limpar só a nota que a regra escreveu — uma nota de pessoa
+      // não se apaga por causa de uma mudança de dono.
+      ...(leitura.autoAttributed ? { notes: null } : {}),
       recordedById: guard.actor.userId,
     },
   });

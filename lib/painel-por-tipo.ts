@@ -226,6 +226,7 @@ export const ROTA_PARA_ABA: Record<string, { secao: string; aba: string }> = {
   "/admin/marketing/leads": { secao: "marketing", aba: "leads" },
   "/admin/marketplace": { secao: "finance", aba: "marketplace" },
   "/admin/measurements": { secao: "clinical", aba: "biohacking" },
+  "/admin/blood-pressure": { secao: "patients", aba: "blood-pressure" },
   "/admin/measurements/inbox": { secao: "patients", aba: "measurements" },
   "/admin/memberships": { secao: "finance", aba: "memberships" },
   "/admin/my-education": { secao: "settings", aba: "my-education" },

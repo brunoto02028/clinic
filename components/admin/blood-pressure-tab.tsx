@@ -326,7 +326,24 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
           dado. `ultima leitura` diz quando veio alguma coisa. Uma tela que so
           mostra a primeira parece saudavel para sempre. */}
       {conexoes.map((c: any) => {
-        const mal = c.silent || c.delivery === "silent" || c.delivery === "unchecked" || c.status === "ERROR";
+        /**
+         * **Quatro causas, quatro frases** (114 T-6, achado do QA).
+         *
+         * Isto era um `mal` so, e todas as quatro saiam como *"sem receber ha N
+         * dias"*. Para uma ligacao nunca perguntada que recebeu dado hoje, a
+         * linha dizia *"nada recebido ha 0 dias — pode ser preciso reconectar"*
+         * ao lado de *"ultima leitura: hoje as 17:50"*. A frase contradizia-se,
+         * e o conselho estava errado: ninguem perguntou a Withings se ela vai
+         * avisar, que e outra coisa.
+         *
+         * A tela do paciente ja separava os casos e ja tinha as frases prontas.
+         * Era esta que nao as tinha copiado — e e o mesmo defeito que esta
+         * atividade abriu para consertar, do lado da clinica.
+         */
+        const quebrada = c.status === "ERROR";
+        const naoConfirmada = c.delivery === "unchecked";
+        const naoEntrega = c.delivery === "silent";
+        const mal = c.silent || naoEntrega || naoConfirmada || quebrada;
         const parcial = c.delivery === "partial";
         const quando = c.lastReadingAt
           ? new Intl.DateTimeFormat(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(c.lastReadingAt))
@@ -347,10 +364,16 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
               <strong>{c.provider}</strong>
               {c.isClinicDevice ? (isPt ? " (aparelho da clínica)" : " (clinic device)") : ""}
               {" · "}
-              {mal
+              {quebrada
+                ? isPt ? "a conexão parou — precisa reconectar" : "the connection stopped — needs reconnecting"
+                : naoEntrega
+                ? isPt ? "autorizado, mas não está enviando" : "authorised, but not sending"
+                : naoConfirmada
+                ? isPt ? "não confirmamos que está enviando" : "not confirmed as sending"
+                : c.silent
                 ? isPt
-                  ? `sem receber há ${c.daysSilent ?? "?"} dia(s) — pode ser preciso reconectar`
-                  : `nothing received for ${c.daysSilent ?? "?"} day(s) — may need reconnecting`
+                  ? `sem receber há ${c.daysSilent ?? "?"} dias — verifique o aparelho`
+                  : `nothing received for ${c.daysSilent ?? "?"} days — check the device`
                 : parcial
                   ? isPt ? "a receber só parte dos dados" : "receiving only some kinds"
                   : isPt ? "a receber" : "receiving"}
@@ -481,7 +504,21 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                             </div>
                           )}
                         </td>
-                        <td className="p-2 whitespace-nowrap">{r.recordedBy ? `${r.recordedBy.firstName} ${r.recordedBy.lastName}` : <span className="text-muted-foreground">{t.self}</span>}
+                        <td className="p-2 whitespace-nowrap">{
+                          /* **Nulo nao quer dizer "foi o paciente"** (114 T-5,
+                             achado do QA).
+                             Uma leitura do aparelho da clinica, atribuida por
+                             regra, nao tem `recordedById` — e a coluna dizia
+                             *"autorregistrada pela paciente"* ao lado de
+                             *"Clinic device · atribuida automaticamente"*. Duas
+                             colunas a discordar sobre a mesma leitura, e uma
+                             delas a inventar um facto: e exatamente o que o
+                             `context: "OTHER"` foi escolhido para evitar. */
+                          r.recordedBy
+                            ? `${r.recordedBy.firstName} ${r.recordedBy.lastName}`
+                            : r.autoAttributed
+                              ? <span className="text-muted-foreground">{isPt ? "ninguém — atribuída por regra" : "nobody — attributed by rule"}</span>
+                              : <span className="text-muted-foreground">{t.self}</span>}
                           {r.notes && <div className="text-muted-foreground whitespace-normal max-w-[16rem] mt-0.5">{r.notes}</div>}
                         </td>
                         <td className="p-2 whitespace-nowrap text-right">

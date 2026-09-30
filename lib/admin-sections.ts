@@ -185,6 +185,28 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         clinicalOnly: true,
       },
       {
+        /**
+         * A pressão arterial da clínica (105 T-5).
+         *
+         * O Bruno: *"a página blood pressure não aparece na área da clinic mas
+         * aparece no app."* A tela existia desde a atividade 069 e só abria por
+         * **URL digitada**: estava no `admin-sidebar.old.tsx` e não veio na
+         * troca para este menu.
+         *
+         * Dói mais aqui do que noutra tela qualquer porque é onde a clínica
+         * olha a **série** de um paciente — e o aparelho dela escreve ali.
+         *
+         * Fica ao lado das medições, que é o assunto vizinho: uma é a leitura
+         * que chegou sem dono, a outra é a leitura ao longo do tempo.
+         */
+        key: "blood-pressure",
+        label: "Blood pressure",
+        labelPt: "Pressão arterial",
+        href: "/admin/blood-pressure",
+        matchRoutes: ["/admin/blood-pressure"],
+        clinicalOnly: true,
+      },
+      {
         key: "portal",
         label: "Portal",
         labelPt: "Portal",

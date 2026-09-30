@@ -18,7 +18,25 @@ export async function GET() {
   }
 
   const connections = await (prisma as any).wearableConnection.findMany({
-    where: { userId: eff.userId, status: 'CONNECTED' },
+    /**
+     * `DISCONNECTED` fica de fora; **`ERROR` nao** (114 T-2, achado do QA).
+     *
+     * O filtro era `status: 'CONNECTED'`, e por isso uma ligacao **partida**
+     * desaparecia da tela do paciente: ele via o convite *Connect*, como se
+     * nunca tivesse ligado nada — e perdia tambem o caminho *Ver meus dados*,
+     * porque a lista vinha vazia.
+     *
+     * Era o pior caso possivel: **exatamente quando a ligacao cai**, que e o
+     * momento em que a T-7 existe para avisar, o paciente deixava de ver que
+     * havia alguma coisa para resolver.
+     *
+     * `lib/wearable-silence.ts` ja tinha escrito a distincao, com um comentario
+     * a dizer que o `ERROR` *"e justamente o que precisa aparecer"* — e esse
+     * cuidado era inalcancavel daqui. A rota irma da clinica nunca filtrou por
+     * `status`, e e por isso que os dois lados discordavam sobre o mesmo
+     * paciente.
+     */
+    where: { userId: eff.userId, status: { not: 'DISCONNECTED' } },
     select: {
       id: true,
       provider: true,

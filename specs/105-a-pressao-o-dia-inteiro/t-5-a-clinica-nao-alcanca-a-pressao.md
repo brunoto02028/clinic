@@ -1,6 +1,6 @@
 # T-5: A clínica não alcança a própria tela de pressão
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente
 **Depende de:** nenhuma
 **Origem:** o Bruno, 30/09/2026.
 
@@ -45,3 +45,58 @@ sem saber o endereço de cor.
 - [ ] A varredura comparou os dois menus, e o que faltava está listado
 - [ ] Nenhuma entrada nova aponta para tela que não existe — o inverso do defeito
 - [ ] A tela abre e mostra dado quando alcançada pelo menu
+
+---
+
+## O que foi feito
+
+A pressao entrou no menu em uso, ao lado das **Medicoes** — que e o assunto
+vizinho: uma e a leitura que chegou sem dono, a outra e a leitura ao longo do
+tempo.
+
+## A varredura achou mais quatro
+
+O passo 2 pedia para conferir se outras entradas se perderam na troca de menu. A
+varredura — e nao uma lista a mao — encontrou:
+
+| tela | estado |
+|---|---|
+| `/admin/blood-pressure` | **sem porta** — a que o Bruno viu. Corrigida |
+| `/admin/body-assessments` | **sem porta nenhuma** |
+| `/admin/marketing/content-intelligence` | **sem porta nenhuma** |
+| `/admin/marketplace/pdf-creator` | alcancavel por link de outra tela |
+| `/admin/media` | alcancavel por link de outra tela |
+
+E uma quinta que o menu **antigo tambem nao tinha**:
+`/admin/marketplace/orders`. Essa nunca teve porta em lado nenhum, e a tela do
+marketplace ja le os pedidos pela mesma API — a funcao dela parece viver noutro
+sitio.
+
+**As tres continuam sem caminho, de proposito.** Nao sao o que foi pedido, e
+`body-assessments` e clinica: decidir se volta ao menu e do Bruno, nao meu.
+
+## A trava
+
+`__tests__/permissoes/toda-tela-do-painel-tem-porta.test.ts` varre `app/admin` e
+exige que toda tela esteja no menu **ou** ligada a partir de outra. As tres sem
+porta estao declaradas numa lista que **so pode encolher**: uma tela nova que
+nasca sem caminho derruba o teste em vez de se juntar a elas em silencio.
+
+E a terceira vez este mes que esta casa encontra *"o recurso existia e nao tinha
+porta"* — a tela de quem eu cuido, a lista de atribuicoes do education, e agora
+estas. Por isso a varredura, e nao so a correcao.
+
+## O que o teste existente apanhou
+
+Acrescentar o `href` nao bastava: `o-painel-de-cada-tipo.test.ts` exige que toda
+rota do menu esteja tambem em `ROTA_PARA_ABA`, que e o mapa que o middleware
+consulta. Sem isso a entrada apareceria e o painel nao saberia em que seccao ela
+vive. **Uma guarda que ja existia apanhou a minha meia correcao** — e e
+exatamente para isso que ela foi escrita.
+
+## Criterios de aceite
+
+- [x] A pressao esta no menu da clinica
+- [x] A varredura conferiu o resto do menu antigo
+- [x] Uma tela nova sem porta derruba o teste
+- [ ] QA: abrir pelo menu, nas duas linguas
