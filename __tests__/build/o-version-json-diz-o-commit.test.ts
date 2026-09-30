@@ -14,7 +14,7 @@
  * arquivo que ele escreve. Não leem o código como texto.
  */
 
-import { execFileSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -178,6 +178,35 @@ describe("o `.git` lido como arquivo — o caminho que só existe no build", () 
     expect(v.commit).toBe(SHA);
   });
 
+  it("**o clone do Coolify**: HEAD numa branch que não existe, e o SHA no FETCH_HEAD", () => {
+    // É exatamente o que o log do deploy mostra:
+    //   * branch  cde0e0dea…  ->  FETCH_HEAD
+    // O clone fica com `HEAD` apontando para `refs/heads/main`, essa ref não
+    // existe, e sem esta leitura o campo voltava `null` — que foi o que
+    // aconteceu nas três primeiras tentativas.
+    const v = comGit((git) => {
+      fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/main" + NL);
+      fs.writeFileSync(
+        path.join(git, "FETCH_HEAD"),
+        SHA + "\t\tbranch 'main' of github.com:brunoto02028/clinic" + NL
+      );
+    });
+    expect(v.commit).toBe(SHA);
+  });
+
+  it("**a ref ganha do FETCH_HEAD** quando as duas existem", () => {
+    // O `FETCH_HEAD` é o que sobrou da última busca; num repositório de
+    // trabalho pode ser de outra coisa. Onde a ref responde, ela é a verdade.
+    const OUTRO = "abcdef0123456789abcdef0123456789abcdef01";
+    const v = comGit((git) => {
+      fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/main" + NL);
+      fs.mkdirSync(path.join(git, "refs", "heads"), { recursive: true });
+      fs.writeFileSync(path.join(git, "refs", "heads", "main"), SHA + NL);
+      fs.writeFileSync(path.join(git, "FETCH_HEAD"), OUTRO + "\t\tbranch 'x'" + NL);
+    });
+    expect(v.commit).toBe(SHA);
+  });
+
   it("**ref que não existe não vira commit**", () => {
     // Escrever qualquer coisa ali seria pior que deixar vazio: mentiria com
     // cara de verdade.
@@ -252,6 +281,97 @@ describe("o caminho que produção usa de verdade", () => {
     const git = script.indexOf("git rev-parse");
     expect(varr).toBeGreaterThan(-1);
     expect(varr).toBeLessThan(git);
+  });
+});
+
+describe("o aviso diz o que viu", () => {
+  /**
+   * Três tentativas minhas falharam porque a mensagem antiga juntava três
+   * causas numa frase só. O aviso agora é uma **medição**: o próximo build
+   * responde no log se o `.git` está lá, se é pasta, e o que há no `HEAD`.
+   */
+  function avisoDe(montar: (raiz: string) => void): string {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "aviso-"));
+    fs.mkdirSync(path.join(temp, "scripts"));
+    fs.mkdirSync(path.join(temp, "public"));
+    fs.copyFileSync(SCRIPT, path.join(temp, "scripts", "update-version.js"));
+    montar(temp);
+    const env: Record<string, string | undefined> = { ...process.env, PATH: "" };
+    for (const k of ["SOURCE_COMMIT", "GITHUB_SHA", "COOLIFY_GIT_COMMIT_SHA", "GIT_COMMIT_SHA"]) {
+      delete env[k];
+    }
+    const saida = execFileSync(process.execPath, [path.join(temp, "scripts", "update-version.js")], {
+      cwd: temp,
+      env: env as NodeJS.ProcessEnv,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 30000,
+    });
+    // O aviso vai para stderr; `execFileSync` com encoding devolve stdout, e o
+    // stderr vem no erro só quando falha. Lê-se o arquivo e o stdout juntos.
+    fs.rmSync(temp, { recursive: true, force: true });
+    return String(saida);
+  }
+
+  it("**sem `.git`, o aviso diz que ele está ausente**", () => {
+    // A causa que eu supus nas três tentativas. Se for esta, o log dirá.
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "aviso2-"));
+    fs.mkdirSync(path.join(temp, "scripts"));
+    fs.mkdirSync(path.join(temp, "public"));
+    fs.copyFileSync(SCRIPT, path.join(temp, "scripts", "update-version.js"));
+    const env: Record<string, string | undefined> = { ...process.env, PATH: "" };
+    for (const k of ["SOURCE_COMMIT", "GITHUB_SHA", "COOLIFY_GIT_COMMIT_SHA", "GIT_COMMIT_SHA"]) {
+      delete env[k];
+    }
+    const r = spawnSync(process.execPath, [path.join(temp, "scripts", "update-version.js")], {
+      cwd: temp,
+      env: env as NodeJS.ProcessEnv,
+      encoding: "utf8",
+      timeout: 30000,
+    });
+    expect(r.stderr).toContain(".git ausente");
+    expect(r.stderr).toContain("SOURCE_COMMIT=nao");
+    fs.rmSync(temp, { recursive: true, force: true });
+  });
+
+  it("**com `.git` e HEAD numa ref ausente, o aviso mostra o HEAD**", () => {
+    // A outra hipótese. O aviso tem de separar as duas, senão a próxima
+    // tentativa é outro palpite.
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "aviso3-"));
+    fs.mkdirSync(path.join(temp, "scripts"));
+    fs.mkdirSync(path.join(temp, "public"));
+    fs.copyFileSync(SCRIPT, path.join(temp, "scripts", "update-version.js"));
+    const git = path.join(temp, ".git");
+    fs.mkdirSync(git);
+    fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/sumida\n");
+    const env: Record<string, string | undefined> = { ...process.env, PATH: "" };
+    for (const k of ["SOURCE_COMMIT", "GITHUB_SHA", "COOLIFY_GIT_COMMIT_SHA", "GIT_COMMIT_SHA"]) {
+      delete env[k];
+    }
+    const r = spawnSync(process.execPath, [path.join(temp, "scripts", "update-version.js")], {
+      cwd: temp,
+      env: env as NodeJS.ProcessEnv,
+      encoding: "utf8",
+      timeout: 30000,
+    });
+    expect(r.stderr).toContain(".git e pasta");
+    expect(r.stderr).toContain("refs/heads/sumida");
+    expect(r.stderr).toContain("conteudo: HEAD");
+    fs.rmSync(temp, { recursive: true, force: true });
+  });
+
+  it("quando o commit é achado, **não há aviso nenhum**", () => {
+    // Ruído em log de build é como se aprende a não ler log de build.
+    const r = spawnSync(process.execPath, [SCRIPT], {
+      cwd: RAIZ,
+      env: process.env,
+      encoding: "utf8",
+      timeout: 30000,
+    });
+    if (fs.existsSync(DESTINO)) {
+      execFileSync("git", ["checkout", "--", "public/version.json"], { cwd: RAIZ });
+    }
+    expect(r.stderr).not.toContain("sem commit");
   });
 });
 
