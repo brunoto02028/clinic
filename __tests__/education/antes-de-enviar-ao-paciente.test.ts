@@ -134,8 +134,12 @@ describe("o material e o paciente são desta clínica", () => {
    * corpo, o tenant vem da sessão, e ninguém verifica que os dois combinam.
    */
   it("**atribuir confere o paciente e o material**", () => {
-    expect(rotaAtribuir).toMatch(/assertPatientAccess\(actorParaChecar, patientId\)/);
-    expect(rotaAtribuir).toMatch(/findFirst\(\{\s*where: \{ id: contentId, clinicId \}/);
+    // Fixado no **comportamento**, e não no nome da variável: a versão
+    // anterior exigia `assertPatientAccess(actorParaChecar, …)` e caiu quando
+    // a 096 T-6 unificou os dois inquilinos num ator só — uma correção de
+    // segurança acusada por um teste que guardava um identificador.
+    expect(rotaAtribuir).toMatch(/assertPatientAccess\(\w+, patientId\)/);
+    expect(rotaAtribuir).toMatch(/findFirst\(\{\s*where: \{ id: contentId, clinicId/);
   });
 
   it("**enviar em massa confere o material**", () => {

@@ -11,12 +11,33 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const user = session.user as any;
-    const clinicId = user.clinicId;
+    /**
+     * **O filtro sumia quando não havia clínica** (096 T-6, passo 4).
+     *
+     * Era `const where = clinicId ? { clinicId } : {}` — e esse `{}` lista as
+     * atribuições de **todas as clínicas**. Um superadmin sem clínica própria
+     * via o material de toda a gente, e nada na resposta dizia isso.
+     *
+     * A regra da casa é a inversa: sem inquilino resolvido não se responde,
+     * não se responde tudo. E o `patientId` vinha da barra de endereços sem
+     * ninguém conferir que aquele paciente é desta clínica — a mesma forma do
+     * vazamento da lista de pacientes por `?clinicId`, em 16/09/2026.
+     */
+    const actor = await getActor(req);
+    if (!actor?.clinicId) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    const clinicId = actor.clinicId;
     const { searchParams } = new URL(req.url);
     const patientId = searchParams.get('patientId');
 
-    const where: any = clinicId ? { clinicId } : {};
+    if (patientId) {
+      try {
+        await assertPatientAccess(actor, patientId);
+      } catch (e) {
+        return accessErrorResponse(e);
+      }
+    }
+
+    const where: any = { clinicId };
     if (patientId) where.patientId = patientId;
 
     const assignments = await prisma.educationAssignment.findMany({
@@ -42,8 +63,6 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
     const user = session.user as any;
-    const clinicId = user.clinicId;
-    if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
 
     const body = await req.json();
     const { contentId, patientId, note, dueDate, frequency, isRequired } = body;
@@ -66,23 +85,41 @@ export async function POST(req: NextRequest) {
      * combinam. 404 nos dois casos — dizer "existe, mas não é sua" já conta
      * que existe.
      */
-    const actorParaChecar = await getActor(req);
-    if (!actorParaChecar) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    /**
+     * **Um inquilino só, e é o do `getActor`** (096 T-6).
+     *
+     * Havia dois neste mesmo handler: a guarda do paciente perguntava ao
+     * `getActor`, que honra o cookie de clínica selecionada, e a escrita usava
+     * `session.user.clinicId`, que é a clínica **de origem** de quem está
+     * logado. Para toda a gente menos um superadmin que trocou de clínica, os
+     * dois dão a mesma resposta — e é por isso que ninguém reparou.
+     *
+     * Para esse, davam respostas diferentes: o paciente da clínica B passava a
+     * guarda, o material tinha de ser da A, e a linha nascia carimbada com A.
+     * **Material de uma clínica ligado ao paciente de outra**, exatamente a
+     * forma do vazamento de 11/09/2026 — o id vem de fora, o tenant vem de
+     * dois sítios, e a divergência não é conferida por ninguém.
+     *
+     * Um critério só, lido pelos dois lados.
+     */
+    const actor = await getActor(req);
+    if (!actor?.clinicId) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    const clinicDoAtor = actor.clinicId;
     try {
-      await assertPatientAccess(actorParaChecar, patientId);
+      await assertPatientAccess(actor, patientId);
     } catch (e) {
       return accessErrorResponse(e);
     }
 
     const material = await prisma.educationContent.findFirst({
-      where: { id: contentId, clinicId },
+      where: { id: contentId, clinicId: clinicDoAtor },
       select: { id: true },
     });
     if (!material) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const assignment = await prisma.educationAssignment.create({
       data: {
-        clinicId,
+        clinicId: clinicDoAtor,
         contentId,
         patientId,
         assignedById: user.id,
