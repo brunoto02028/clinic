@@ -10,6 +10,7 @@ import { syncSessionsUsed } from "@/lib/package-sessions";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import { localDaConsulta } from "@/lib/appointment-location";
+import { assertModuleAccess } from "@/lib/module-access";
 import {
   getActor,
   getSessionStaffActor,
@@ -54,6 +55,21 @@ export async function GET(
     const { id } = params;
     try {
       await assertAppointmentAccess(actor, id);
+      /**
+       * **O detalhe pede o mesmo que a lista** (110, achado do teste).
+       *
+       * Terceira vez no mesmo dia que uma lista foi fechada e o detalhe ficou
+       * aberto — antes foram o PDF da nota clínica e o relatório por id. Desta
+       * vez não fui eu que percebi: assim que `/api/appointments` passou a
+       * pedir `mod_appointments`, a varredura de pares lista/detalhe acusou
+       * esta rota no ato.
+       *
+       * Só o paciente: staff lê consulta por id o tempo todo, e a parede de
+       * inquilino deles é o `assertAppointmentAccess` acima.
+       */
+      if (actor.role === "PATIENT") {
+        await assertModuleAccess(actor.userId, "mod_appointments");
+      }
     } catch (err) {
       return accessErrorResponse(err);
     }

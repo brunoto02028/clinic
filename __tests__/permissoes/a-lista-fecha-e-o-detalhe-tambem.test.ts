@@ -88,6 +88,52 @@ describe("a varredura encontra pares", () => {
   });
 });
 
+describe("a mesma coisa servida duas vezes não pode ter uma porta aberta", () => {
+  /**
+   * `/api/X` e `/api/patient/X` servem o mesmo recurso por caminhos diferentes —
+   * a web por um, o app pelo outro. Se só um pedir o módulo, o interruptor
+   * funciona de um lado e não do outro.
+   *
+   * Foi o que o QA achou: `/api/patient/appointments` pedia `mod_appointments` e
+   * `/api/appointments` não pedia nada. Com as consultas desligadas, o atalho
+   * sumia da Home e o cartão **NEXT SESSION** logo acima continuava mostrando
+   * data, hora, tratamento e quem atende — servido pela rota sem portão.
+   *
+   * São poucos pares hoje. O teste existe para o próximo.
+   */
+  function paresIrmaos(): Array<{ publico: string; doPaciente: string }> {
+    const pares: Array<{ publico: string; doPaciente: string }> = [];
+    const base = path.join(API, "patient");
+    if (!fs.existsSync(base)) return pares;
+    for (const nome of fs.readdirSync(base)) {
+      const doPaciente = path.join(base, nome, "route.ts");
+      const publico = path.join(API, nome, "route.ts");
+      if (fs.existsSync(doPaciente) && fs.existsSync(publico)) {
+        pares.push({ publico, doPaciente });
+      }
+    }
+    return pares;
+  }
+
+  it("a varredura acha pares — senão aprova o vazio", () => {
+    expect(paresIrmaos().length).toBeGreaterThan(0);
+  });
+
+  it("**os dois caminhos pedem o mesmo módulo, ou nenhum pede**", () => {
+    const erros: string[] = [];
+    for (const { publico, doPaciente } of paresIrmaos()) {
+      const a = moduloDaRota(publico);
+      const b = moduloDaRota(doPaciente);
+      if (a !== b) {
+        erros.push(
+          `${rel(publico)} pede ${a ?? "nada"} e ${rel(doPaciente)} pede ${b ?? "nada"}`
+        );
+      }
+    }
+    expect(erros).toEqual([]);
+  });
+});
+
 describe("o detalhe não fica para trás", () => {
   it("**toda lista que pede módulo tem detalhe que pede o mesmo**", () => {
     const erros: string[] = [];
