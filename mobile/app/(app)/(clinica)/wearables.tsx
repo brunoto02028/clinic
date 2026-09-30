@@ -215,7 +215,22 @@ function WearablesScreen() {
               // não confirmou o envio, o aparelho está autorizado e mudo — e
               // pintar isso de verde era a parte pior do problema.
               const delivery = conn?.delivery;
-              const silent = isConnected && (delivery === "silent" || delivery === "partial");
+              /**
+               * Tres perguntas diferentes, e so a ultima e sobre hoje (114 T-2).
+               *
+               * O Bruno: *"nao pode ter uma luz verde dizendo que esta
+               * conectado quando a verdade nao esta."*
+               *
+               * - `isConnected` — a autorizacao deu certo **um dia**;
+               * - `delivery` — o provedor prometeu avisar;
+               * - `conn.silent` — **nao chega nada ha dias**.
+               *
+               * A terceira faltava aqui: uma ligacao podia estar `receiving` e
+               * calada ha uma semana, e a tela pintava verde.
+               */
+              const naoEntrega = delivery === "silent" || delivery === "partial" || delivery === "unchecked";
+              const calada = conn?.silent === true;
+              const silent = isConnected && (naoEntrega || calada);
 
               return (
                 <View
@@ -241,14 +256,30 @@ function WearablesScreen() {
                       <Text variant="label" style={{ fontWeight: "600" }}>
                         {p.name}
                       </Text>
-                      {isConnected && conn?.lastSyncedAt && (
+                      {/* **A data que significa dado.** Dizia "Último sync",
+                          que e quando falamos com o provedor — com ou sem
+                          medicao. Era a linha que fazia sete dias de silencio
+                          parecerem um dia normal. */}
+                      {isConnected && (
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                          {tr(lang, { en: "Last sync", pt: "Último sync" })}: {formatDate(conn.lastSyncedAt, lang)}
+                          {conn?.lastReadingAt
+                            ? `${tr(lang, { en: "Last reading", pt: "Última leitura" })}: ${formatDate(conn.lastReadingAt, lang)}`
+                            : tr(lang, { en: "No measurement yet", pt: "Nenhuma medição ainda" })}
                         </Text>
                       )}
                       {silent && (
                         <Text variant="caption" color={t.colors.warn} style={{ marginTop: 2, maxWidth: 190 }}>
-                          {delivery === "silent"
+                          {calada && !naoEntrega
+                            ? tr(lang, {
+                                en: `Nothing has arrived for ${conn?.daysSilent ?? "?"} days. Check the device, or reconnect.`,
+                                pt: `Nada chega há ${conn?.daysSilent ?? "?"} dias. Verifique o aparelho, ou reconecte.`,
+                              })
+                            : delivery === "unchecked"
+                            ? tr(lang, {
+                                en: "We have not been able to confirm it is sending.",
+                                pt: "Não conseguimos confirmar que está enviando.",
+                              })
+                            : delivery === "silent"
                             ? tr(lang, {
                                 en: "Authorised, but not sending measurements yet.",
                                 pt: "Autorizado, mas ainda não está enviando medições.",

@@ -17,6 +17,18 @@ export interface WearableConnection {
   provider: string;
   status: string;
   lastSyncedAt: string | null;
+  /**
+   * Quando chegou dado **de facto** (114 T-2).
+   *
+   * `lastSyncedAt` diz quando falamos com o provedor, e falamos com ele haja ou
+   * nao haja medicao. Uma tela que so mostra essa parece saudavel para sempre —
+   * foi o que fez o Bruno ver *"ultimo sync: hoje"* com a lista vazia.
+   */
+  lastReadingAt?: string | null;
+  /** Ha quantos dias nao chega nada. `null` quando nunca chegou. */
+  daysSilent?: number | null;
+  /** Calado alem do limiar da clinica — autorizado, a entregar, e mudo. */
+  silent?: boolean;
   createdAt: string;
   delivery?: WearableDelivery;
   /** Se o que falta é justamente a pressão — a medida que esta clínica trata. */

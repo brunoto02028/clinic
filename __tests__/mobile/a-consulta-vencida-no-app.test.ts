@@ -165,8 +165,21 @@ describe("um helper só decide, nas duas telas", () => {
 describe("a home não anuncia o que já passou", () => {
   it("a próxima sessão é uma que ainda não aconteceu", () => {
     const { nextUpcoming } = require("../../mobile/src/api/appointments");
-    const passada = { id: "ontem", dateTime: comecouHa(24), status: "CONFIRMED" };
-    const futura = { id: "amanha", dateTime: new Date(AGORA + 24 * 60 * MIN).toISOString(), status: "CONFIRMED" };
+    // **As datas aqui saem do relogio real, e nao do `AGORA` congelado.**
+    //
+    // Este teste era uma bomba-relogio. `AGORA` e 29/09/2026 15:00Z, e
+    // `nextUpcoming` le `Date.now()` de verdade — nao aceita um "agora"
+    // injetado, ao contrario dos outros ajudantes deste arquivo. Entao o
+    // "amanha" dele expirou em 30/09 as 15:00Z, um dia e pouco depois de ter
+    // sido escrito, e a suite passou a falhar por hora do dia.
+    //
+    // Um teste que depende de quando e executado nao mede o que diz medir. A
+    // saida limpa seria `nextUpcoming(lista, agora)`, como o resto do arquivo
+    // faz — mas isso e codigo de producao, e fica anotado em vez de ser mudado
+    // de passagem.
+    const agora = Date.now();
+    const passada = { id: "ontem", dateTime: new Date(agora - 24 * 60 * MIN).toISOString(), status: "CONFIRMED" };
+    const futura = { id: "amanha", dateTime: new Date(agora + 24 * 60 * MIN).toISOString(), status: "CONFIRMED" };
     expect(nextUpcoming([passada, futura])?.id).toBe("amanha");
     expect(nextUpcoming([passada])).toBeNull();
   });
