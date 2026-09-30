@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useVocab } from "@/hooks/use-vocab";
 import { useLocale } from "@/hooks/use-locale";
+import { ordenarPorNome } from "@/lib/ordenar-modulos";
 
 type OverrideVal = true | false | "hidden" | null; // true=grant(unlocked), false=revoke(locked/padlock), "hidden"=not shown, null=plan default
 
@@ -32,6 +33,10 @@ interface ModuleItem {
   defaultGranted: boolean;
   /** Governed here, but only the app has a screen for it. */
   appOnly: boolean;
+  /** O contrário: governado aqui, e o app ainda não tem tela para mostrar. */
+  semTelaNoApp: boolean;
+  /** O que este interruptor acende no app, com o nome que o paciente lê lá. */
+  mostraNoApp: { en: string; pt: string }[];
   grantedByPlan: boolean;
   adminOverride: boolean | null;
   effectiveAccess: boolean;
@@ -74,6 +79,11 @@ export default function PatientPermissionsPage() {
   // Registry items carry both label (EN) and labelPt (PT); pick by locale, then
   // apply the tenant vocab (patient→student, treatment→workout, …).
   const rlabel = (en: string, pt: string) => relabel((isPt ? pt : en) || en || pt);
+
+  /** A ordem vem de `lib/ordenar-modulos.ts` — a mesma nas duas telas. */
+  const ordenar = <T extends { label: string; labelPt: string }>(itens: T[]) =>
+    ordenarPorNome(itens, rlabel, isPt);
+
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -380,8 +390,23 @@ export default function PatientPermissionsPage() {
             {m.alwaysVisible && (
               <Badge className="bg-muted text-muted-foreground text-[9px]">Always On</Badge>
             )}
+            {/* Os dois selos convivem.
+                Eu tinha tirado o *Admin Override* das linhas marcadas para não
+                pôr dois selos competindo — e o QA mostrou o custo: nelas some a
+                diferença entre "liberado pelo plano" e "liberado na mão". Numa
+                tela cujo propósito passou a ser dizer a verdade sobre cada
+                linha, perder **quem** ligou é caro demais por um pouco de
+                arrumação. */}
             {isOverridden && !m.alwaysVisible && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px]">Admin Override</Badge>
+            )}
+            {/* Ligar isto não acende nada no telefone. O selo vem **antes** do
+                interruptor na leitura da linha, para quem está prestes a clicar
+                ler o aviso e não a promessa. */}
+            {m.semTelaNoApp && (
+              <Badge className="bg-muted text-muted-foreground/80 text-[9px] border border-border">
+                {rlabel("Not in the app yet", "Ainda não no app")}
+              </Badge>
             )}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">{relabel(m.description)}</p>
@@ -402,6 +427,22 @@ export default function PatientPermissionsPage() {
             {m.appOnly && (
               <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                 <Smartphone className="h-2.5 w-2.5" /> App only
+              </span>
+            )}
+            {m.semTelaNoApp && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Smartphone className="h-2.5 w-2.5" />
+                {rlabel("Turning this on does not change what the patient sees", "Ligar isto não muda o que o paciente vê")}
+              </span>
+            )}
+            {/* O que o interruptor acende, com o nome que o paciente lê no
+                telefone. O painel dizia *BPR Journey* e o app mostrava *Daily
+                check-in*; quem ligava não sabia o que tinha ligado. */}
+            {m.mostraNoApp?.length > 0 && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Smartphone className="h-2.5 w-2.5" />
+                {isPt ? "No app:" : "In the app:"}{" "}
+                {m.mostraNoApp.map((i) => (isPt ? i.pt : i.en)).join(" · ")}
               </span>
             )}
             <span className="text-[10px] text-muted-foreground/50">·</span>
@@ -726,7 +767,7 @@ export default function PatientPermissionsPage() {
         {showModules && (
           <CardContent className="pt-0 space-y-4">
             {MODULE_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
-              const catModules = (modules as ModuleItem[]).filter((m: ModuleItem) => m.category === cat.key);
+              const catModules = ordenar((modules as ModuleItem[]).filter((m: ModuleItem) => m.category === cat.key));
               if (catModules.length === 0) return null;
               return (
                 <div key={cat.key}>
@@ -759,7 +800,7 @@ export default function PatientPermissionsPage() {
         {showPermissions && (
           <CardContent className="pt-0 space-y-4">
             {PERM_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
-              const catPerms = (permissions as PermItem[]).filter((p: PermItem) => p.category === cat.key);
+              const catPerms = ordenar((permissions as PermItem[]).filter((p: PermItem) => p.category === cat.key));
               if (catPerms.length === 0) return null;
               return (
                 <div key={cat.key}>

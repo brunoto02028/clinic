@@ -63,6 +63,40 @@ export interface ModuleDefinition {
   defaultGranted?: boolean;
   /** Governs the app only: the web has no page of its own for it. */
   appOnly?: boolean;
+  /**
+   * **O que este interruptor acende no app**, com o nome que o paciente lê ali.
+   *
+   * O painel dizia *BPR Journey* e o app mostrava *Daily check-in*; dizia
+   * *Education* e o app mostrava *Articles*; dizia *My Records* e o app mostrava
+   * *Outcome measures* e *My reports*. Quem ligava não sabia o que tinha ligado,
+   * e o Bruno só descobriu ligando três e não vendo nada.
+   *
+   * Renomear os quatro rótulos resolveria hoje e voltaria a divergir na próxima
+   * tela que alguém acrescentasse. Isto é declarado aqui e **cobrado contra o
+   * menu de verdade** por `__tests__/permissoes/o-painel-nao-promete.test.ts`:
+   * um nome que o menu não tem faz o teste cair.
+   *
+   * Vazio ou ausente quando o módulo não tem linha no menu — as abas, as áreas,
+   * e os quatro sem tela.
+   */
+  mostraNoApp?: Array<{ en: string; pt: string }>;
+  /**
+   * **A tela ainda não existe no app** — ligar isto não muda o que o paciente vê.
+   *
+   * O Bruno ligou *Achievements*, *BPR Journey* e *Community* e nada apareceu no
+   * telefone. Três destes quatro têm rota na web e nenhuma tela no app, e o app é
+   * o único alvo do paciente depois do lançamento: o interruptor prometia uma
+   * coisa que não havia onde acontecer.
+   *
+   * O selo **informa, não trava**. A API continua aceitando gravar o módulo: uma
+   * trava aqui seria um segundo lugar para alguém esquecer de destravar no dia
+   * em que a tela nascer, e aí a tela existiria e ninguém conseguiria ligá-la.
+   *
+   * Quando a tela nascer, tire a linha — e o teste
+   * `__tests__/permissoes/o-painel-nao-promete.test.ts` cobra o inverso: um
+   * módulo que o menu do app já mostra **não** pode ficar com o selo.
+   */
+  semTelaNoApp?: boolean;
 }
 
 export const MODULE_REGISTRY: ModuleDefinition[] = [
@@ -93,6 +127,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_plans",
+    mostraNoApp: [{ en: "Plans", pt: "Planos" }],
     label: "Plans & Membership",
     labelPt: "Planos & Assinatura",
     description: "View available plans and manage subscription",
@@ -117,6 +152,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_guide",
+    mostraNoApp: [{ en: "How it works", pt: "Como funciona" }],
     label: "How It Works",
     labelPt: "Como Funciona",
     description: "Patient guide — what to do before your appointment",
@@ -131,6 +167,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   // ── Screening (always visible — required for onboarding) ──
   {
     key: "mod_screening",
+    mostraNoApp: [{ en: "Assessment screening", pt: "Avaliação" }, { en: "My progress", pt: "Meu progresso" }],
     label: "Assessment Screening",
     labelPt: "Triagem de Avaliação",
     description: "Complete assessment screening form",
@@ -156,6 +193,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_treatment",
+    mostraNoApp: [{ en: "Treatment plan", pt: "Plano de tratamento" }],
     label: "Treatment Plan",
     labelPt: "Plano de Tratamento",
     description: "View treatment protocol and track progress",
@@ -167,10 +205,11 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_records",
+    mostraNoApp: [{ en: "Outcome measures", pt: "Medidas de evolução" }, { en: "My reports", pt: "Meus relatórios" }],
     label: "My Records",
     labelPt: "Meus Registros",
-    description: "Access treatment history and clinical notes",
-    descriptionPt: "Acessar histórico de tratamento e notas clínicas",
+    description: "Outcome measures and follow-up reports — what is written for the patient",
+    descriptionPt: "Medidas de evolução e relatórios de acompanhamento — o que é escrito para o paciente",
     icon: FileText,
     href: "/dashboard/records",
     category: "clinical",
@@ -178,6 +217,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_tasks",
+    mostraNoApp: [{ en: "Pending actions", pt: "Pendências" }],
     label: "Pending Actions",
     labelPt: "Ações Pendentes",
     description: "View and complete actions requested by your clinic",
@@ -197,13 +237,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/recordings",
     category: "clinical",
     defaultEnabled: true,
+    semTelaNoApp: true,
   },
   {
     key: "mod_clinical_notes",
+    mostraNoApp: [{ en: "My records", pt: "Meu prontuário" }],
     label: "Clinical Notes",
     labelPt: "Notas Clínicas",
-    description: "View clinical notes from sessions",
-    descriptionPt: "Ver notas clínicas das sessões",
+    description: "The therapist's session notes, written clinician to clinician",
+    descriptionPt: "As notas de sessão do terapeuta, escritas de profissional para profissional",
     icon: ClipboardList,
     href: "/dashboard/clinical-notes",
     category: "clinical",
@@ -211,6 +253,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_documents",
+    mostraNoApp: [{ en: "My documents", pt: "Meus documentos" }],
     label: "My Documents",
     labelPt: "Meus Documentos",
     description: "Upload and view medical documents",
@@ -240,6 +283,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_education",
+    mostraNoApp: [{ en: "Articles", pt: "Artigos" }],
     label: "Education",
     labelPt: "Educação",
     description: "Access educational content and articles",
@@ -270,12 +314,14 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/achievements",
     category: "content",
     defaultEnabled: true,
+    semTelaNoApp: true,
   },
 
 
   // ── JOURNEY (BPR Journey section) ──
   {
     key: "mod_journey",
+    mostraNoApp: [{ en: "Daily check-in", pt: "Check-in diário" }],
     label: "BPR Journey",
     labelPt: "Jornada BPR",
     description: "Your rehabilitation journey milestones and progress",
@@ -295,6 +341,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/community",
     category: "content",
     defaultEnabled: true,
+    semTelaNoApp: true,
   },
   {
     key: "mod_marketplace",
@@ -306,6 +353,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/marketplace",
     category: "content",
     defaultEnabled: false,
+    semTelaNoApp: true,
   },
 
   // ── Added when nothing governed them ──
@@ -318,6 +366,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   // check-in (`mod_journey`) and the devices stopped sharing one page.
   {
     key: "mod_messages",
+    mostraNoApp: [{ en: "Messages", pt: "Mensagens" }],
     label: "Messages",
     labelPt: "Mensagens",
     description: "Message the clinic and read its replies",
@@ -331,6 +380,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
   {
     key: "mod_devices",
+    mostraNoApp: [{ en: "Devices", pt: "Dispositivos" }],
     label: "Devices",
     labelPt: "Dispositivos",
     description: "Connect a wearable and see its sleep, activity and recovery data",

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useVocab } from "@/hooks/use-vocab";
 import { useLocale } from "@/hooks/use-locale";
+import { ordenarPorNome } from "@/lib/ordenar-modulos";
 import {
   MODULE_REGISTRY,
   PERMISSION_REGISTRY,
@@ -27,6 +28,10 @@ export default function PatientDefaultPermissionsPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const rlabel = (en: string, pt: string) => relabel((isPt ? pt : en) || en || pt);
+
+  /** A ordem vem de `lib/ordenar-modulos.ts` — a mesma nas duas telas. */
+  const ordenar = <T extends { label: string; labelPt: string }>(itens: T[]) =>
+    ordenarPorNome(itens, rlabel, isPt);
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -107,7 +112,7 @@ export default function PatientDefaultPermissionsPage() {
         <CardHeader className="pb-2"><CardTitle className="text-base">{isPt ? "Módulos" : "Modules"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {MODULE_CATEGORIES.filter((c) => c.key !== "core").map((cat) => {
-            const items = gatedModules.filter((m) => m.category === cat.key);
+            const items = ordenar(gatedModules.filter((m) => m.category === cat.key));
             if (items.length === 0) return null;
             return (
               <div key={cat.key} className="space-y-2">
@@ -117,8 +122,37 @@ export default function PatientDefaultPermissionsPage() {
                     <label key={m.key} className="flex items-start gap-2 rounded-lg border p-2.5 cursor-pointer hover:bg-muted/50">
                       <Checkbox checked={selected.has(m.key)} onCheckedChange={() => toggle(m.key)} className="mt-0.5" />
                       <span>
-                        <span className="text-sm font-medium block">{rlabel(m.label, m.labelPt)}</span>
+                        <span className="text-sm font-medium block">
+                          {rlabel(m.label, m.labelPt)}
+                          {/* O mesmo selo da tela do paciente. Sem ele aqui a
+                              armadilha só mudava de lugar: quem configura o
+                              padrão para **todos** os pacientes novos é
+                              exatamente quem não pode ligar o que não acende. */}
+                          {m.semTelaNoApp && (
+                            <span className="ml-1.5 align-middle inline-block rounded px-1 py-px text-[9px] border border-border bg-muted text-muted-foreground/80 font-normal">
+                              {isPt ? "Ainda não no app" : "Not in the app yet"}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-xs text-muted-foreground">{isPt ? m.descriptionPt : m.description}</span>
+                        {/* O que o interruptor acende, como na tela do paciente.
+                            Aqui pesa mais: esta tela decide o que **todo**
+                            paciente novo recebe, e é onde alguém marcaria
+                            "BPR Journey" achando que está dando a jornada
+                            quando está dando o check-in diário. */}
+                        {(m.mostraNoApp?.length ?? 0) > 0 && (
+                          <span className="text-[11px] text-muted-foreground/80 block mt-0.5">
+                            {isPt ? "No app:" : "In the app:"}{" "}
+                            {m.mostraNoApp!.map((i) => (isPt ? i.pt : i.en)).join(" · ")}
+                          </span>
+                        )}
+                        {m.semTelaNoApp && (
+                          <span className="text-[11px] text-muted-foreground/80 block mt-0.5">
+                            {isPt
+                              ? "Ligar isto não muda o que o paciente vê."
+                              : "Turning this on does not change what the patient sees."}
+                          </span>
+                        )}
                       </span>
                     </label>
                   ))}
@@ -133,7 +167,7 @@ export default function PatientDefaultPermissionsPage() {
         <CardHeader className="pb-2"><CardTitle className="text-base">{isPt ? "Permissões" : "Permissions"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {PERMISSION_CATEGORIES.map((cat) => {
-            const items = PERMISSION_REGISTRY.filter((p) => p.category === cat.key);
+            const items = ordenar(PERMISSION_REGISTRY.filter((p) => p.category === cat.key));
             if (items.length === 0) return null;
             return (
               <div key={cat.key} className="space-y-2">
