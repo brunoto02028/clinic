@@ -1,6 +1,6 @@
 # T-5: O aparelho serve os dois papéis
 
-**Status:** implementada (30/09) — QA pendente; falta a tela de limpar
+**Status:** implementada (30/09) — QA pendente
 **Decidido pelo Bruno em 30/09/2026** — e é uma **reversão consciente** de uma
 decisão de 27/09.
 
@@ -106,11 +106,17 @@ marcada derruba 1.
 
 Suite: **2999 testes**, `tsc` em 0, build ok.
 
-## O que falta
+## A porta
 
-**A tela de limpar.** A rota de mover existe e tem teste; falta a lista das
-auto-atribuidas por confirmar, que e por onde o Bruno vai limpar o que for de
-paciente. Sem ela, mover existe e nao tem porta.
+A rota sozinha nao servia de nada — o Bruno nao ia chamar uma API. Na aba de
+pressao da ficha, cada leitura auto-atribuida mostra um rotulo
+*"atribuida automaticamente"* e um botao de mover.
+
+A escolha do destino abre **debaixo da propria leitura**, e nao num dialogo:
+mover para o paciente errado e o unico jeito de esta ferramenta piorar as
+coisas, e ver os numeros enquanto se escolhe e o que impede isso.
+
+## O que falta
 
 **O `db push` do campo novo.** `autoAttributed` entra no deploy — e o log do
 contentor tem de dizer *in sync*, senao a coluna nao existe e a gravacao falha

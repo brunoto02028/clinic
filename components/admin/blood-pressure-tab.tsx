@@ -6,9 +6,9 @@
 // (app/dashboard/blood-pressure); the patient's own history/dashboard shows
 // these mixed in with their self-measured ones, unchanged from today.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { HeartPulse, Inbox, Loader2, Pencil, Trash2, Save, X, Watch } from "lucide-react";
+import { HeartPulse, Inbox, Loader2, Pencil, Trash2, Save, X, Watch, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +30,15 @@ export type BPReading = {
   // were: something a person typed.
   source?: "PATIENT_DEVICE" | "CLINIC_DEVICE" | "MANUAL" | null;
   context?: "PRE_SESSION" | "POST_SESSION" | "HOME" | "OTHER" | null;
+  /**
+   * Arquivada **sem ninguem ter dito de quem era** (114 T-5).
+   *
+   * Num aparelho partilhado que tambem e o do dono, uma leitura fora de
+   * qualquer sessao vai para o prontuario dele por regra. Este campo e o que a
+   * distingue de uma que alguem atribuiu — e o que diz que ela pode estar
+   * errada e ser movida.
+   */
+  autoAttributed?: boolean | null;
 };
 
 const T = {
@@ -156,6 +165,57 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
   const t = T[isPt ? "pt" : "en"];
   const { items, error: loadError, reload } = useReadings(patientId);
   const conexoes = useConexoes(patientId);
+
+  /**
+   * Mover uma leitura que caiu aqui **sem ninguem ter dito de quem era**
+   * (114 T-5).
+   *
+   * A regra nova arquiva no prontuario do dono do aparelho quando nao ha sessao
+   * aberta. Ela erra quando alguem mede um paciente e esquece de abrir a
+   * janela — e e este botao que torna esse erro reversivel. Sem ele, a regra
+   * nao valeria a pena: um engano clinico irreversivel nao se compensa com
+   * comodidade.
+   */
+  const [movendo, setMovendo] = useState<string | null>(null);
+  const [buscaPaciente, setBuscaPaciente] = useState("");
+  const [achados, setAchados] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!movendo) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/patients?search=${encodeURIComponent(buscaPaciente)}&limit=8`,
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const d = await res.json();
+          setAchados(d.patients ?? d ?? []);
+        }
+      } catch {}
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [movendo, buscaPaciente]);
+
+  const mover = async (readingId: string, destino: string) => {
+    try {
+      const res = await fetch(`/api/admin/blood-pressure/${readingId}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: destino }),
+      });
+      const d = await res.json().catch(() => null);
+      if (res.ok) {
+        setMovendo(null);
+        setBuscaPaciente("");
+        reload();
+      } else {
+        setMsg({ kind: "err", text: (isPt ? d?.errorPt : null) ?? d?.error ?? "Failed" });
+      }
+    } catch {
+      setMsg({ kind: "err", text: isPt ? "Falha ao mover" : "Failed to move" });
+    }
+  };
   const esperando = useUnassignedCount();
 
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -390,7 +450,11 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                   {items.map((r) => {
                     const cls = classifyBP(r.systolic, r.diastolic);
                     return (
-                      <tr key={r.id} className="border-t align-top">
+                    /* `Fragment` com chave, e nao `<>`: o atalho nao aceita
+                       `key`, e a linha do mover fez esta iteracao passar a
+                       devolver dois elementos. */
+                    <Fragment key={r.id}>
+                      <tr className="border-t align-top">
                         <td className="p-2 whitespace-nowrap">{new Intl.DateTimeFormat(isPt ? "pt-BR" : "en-GB", { timeZone: CLINIC_TIMEZONE, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(r.measuredAt))}</td>
                         <td className="p-2 font-medium whitespace-nowrap">{r.systolic} / {r.diastolic}</td>
                         <td className="p-2 whitespace-nowrap">
@@ -408,6 +472,14 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                           {r.context && t[r.context] ? (
                             <div className="text-[10px] text-muted-foreground">{t[r.context]}</div>
                           ) : null}
+                          {/* Ninguem disse de quem era: a regra decidiu. E o
+                              que distingue esta leitura de uma que alguem
+                              atribuiu — e o que diz que ela pode estar errada. */}
+                          {r.autoAttributed && (
+                            <div className="text-[10px] text-ba1-warn">
+                              {isPt ? "atribuída automaticamente" : "auto-attributed"}
+                            </div>
+                          )}
                         </td>
                         <td className="p-2 whitespace-nowrap">{r.recordedBy ? `${r.recordedBy.firstName} ${r.recordedBy.lastName}` : <span className="text-muted-foreground">{t.self}</span>}
                           {r.notes && <div className="text-muted-foreground whitespace-normal max-w-[16rem] mt-0.5">{r.notes}</div>}
@@ -415,8 +487,61 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                         <td className="p-2 whitespace-nowrap text-right">
                           <button type="button" aria-label="edit" className="p-1 hover:text-primary" onClick={() => startEdit(r)}><Pencil className="h-3.5 w-3.5" /></button>
                           <button type="button" aria-label="delete" className="p-1 hover:text-red-600" onClick={() => remove(r.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+                          {r.autoAttributed && (
+                            <button
+                              type="button"
+                              aria-label="move"
+                              title={isPt ? "Mover para outro paciente" : "Move to another patient"}
+                              className="p-1 hover:text-primary"
+                              onClick={() => { setMovendo(movendo === r.id ? null : r.id); setBuscaPaciente(""); }}
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </td>
                       </tr>
+                      {movendo === r.id && (
+                        /* A escolha fica **debaixo da propria leitura**, e nao
+                           num dialogo: mover a leitura errada e o unico jeito
+                           de esta ferramenta piorar as coisas, e ver os numeros
+                           enquanto se escolhe o destino e o que impede isso. */
+                        <tr className="border-t bg-muted/30">
+                          <td colSpan={7} className="p-2">
+                            <div className="flex flex-col gap-1.5">
+                              <p className="text-[11px] text-muted-foreground">
+                                {isPt
+                                  ? `Mover ${r.systolic}/${r.diastolic} para qual paciente?`
+                                  : `Move ${r.systolic}/${r.diastolic} to which patient?`}
+                              </p>
+                              <Input
+                                autoFocus
+                                value={buscaPaciente}
+                                onChange={(e) => setBuscaPaciente(e.target.value)}
+                                placeholder={isPt ? "Buscar por nome ou e-mail" : "Search by name or email"}
+                                className="h-7 text-xs max-w-sm"
+                              />
+                              <div className="flex flex-wrap gap-1.5">
+                                {achados.map((p: any) => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className="rounded-md border px-2 py-1 text-[11px] hover:bg-muted"
+                                    onClick={() => mover(r.id, p.id)}
+                                  >
+                                    {p.firstName} {p.lastName}
+                                  </button>
+                                ))}
+                                {achados.length === 0 && buscaPaciente.length > 1 && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {isPt ? "Ninguém encontrado" : "Nobody found"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                     );
                   })}
                 </tbody>
