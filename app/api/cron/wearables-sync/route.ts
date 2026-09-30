@@ -6,11 +6,20 @@ import { subscribeAndRecord, deliveryState } from "@/lib/withings-subscriptions"
 /**
  * Quanto tempo uma confirmacao de assinatura vale (114 T-3).
  *
- * Doze horas: curto o bastante para uma assinatura caida ser reposta no mesmo
- * dia, e longo o bastante para nao gastar chamadas — o plano gratuito da
- * Withings vai ate 5.000, e isto custa uma por conexao por corrida.
+ * **Uma hora**, que na pratica quer dizer *toda corrida*: o cron corre de duas
+ * em duas horas, entao qualquer valor abaixo disso reconfirma sempre.
+ *
+ * Comecou em doze, e o Bruno pediu menos — *"assim que chegar o meu relogio vai
+ * ser bom para testar, porque ele vai estar conectado 24 horas."* Ele tem razao
+ * e o numero era timido: o que custa e **uma chamada por conexao por corrida**,
+ * e o plano gratuito da Withings vai ate 5.000 por dia. Com doze corridas
+ * diarias e um punhado de conexoes, isto nao chega perto do limite.
+ *
+ * O limitador real nunca foi este numero: era a **frequencia do cron**. Com ele
+ * de seis em seis horas, doze horas significava reconfirmar em corridas
+ * alternadas. Os dois desceram juntos.
  */
-const CONFIRMACAO_VALE_MS = 12 * 60 * 60 * 1000;
+const CONFIRMACAO_VALE_MS = 1 * 60 * 60 * 1000;
 
 /**
  * Se vale a pena perguntar a Withings se ela ainda esta a avisar.

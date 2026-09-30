@@ -75,13 +75,38 @@ E exatamente o quadro que o Bruno descreveu.
 | a resposta era **incompleta** | `partial` ou `silent` — a Withings confirmou parte dos tipos, ou nenhum |
 | a resposta esta **velha** | mais de 12 horas |
 
-Doze horas: curto o bastante para uma assinatura caida ser reposta no mesmo dia,
-e longo o bastante para nao gastar chamadas — o plano gratuito vai ate 5.000, e
-isto custa uma por conexao por corrida.
+**Uma hora** — que na pratica quer dizer *toda corrida*.
+
+Comecou em doze, e o Bruno pediu menos: *"assim que chegar o meu relogio vai ser
+bom para testar, porque ele vai estar conectado 24 horas."* Ele tem razao, e o
+numero era timido.
+
+Mas o numero nunca foi o limitador. **O cron corria de 6 em 6 horas**, entao doze
+significava reconfirmar em corridas alternadas — baixar so a constante nao teria
+mudado quase nada. Os dois desceram juntos: o agendamento no Coolify passou a
+`0 */2 * * *`, e a constante para uma hora, que e menos que o intervalo.
+
+O custo e **uma chamada por conexao por corrida**. Doze corridas por dia, um
+punhado de conexoes: longe das 5.000 do plano gratuito.
 
 O `select` da consulta passou a trazer `notifyConfirmedAppli`. **Sem ele,
 `deliveryState` lia `undefined` e devolvia `silent` para toda a gente**: iria
 reconfirmar sempre, por uma razao falsa, e o teste passaria na mesma.
+
+## O agendamento faz parte do conserto
+
+| | antes | depois |
+|---|---|---|
+| cron `wearables-sync` | `0 */6 * * *` | `0 */2 * * *` |
+| validade da confirmacao | 12 h | 1 h |
+| reconfirma de facto | de 12 em 12 h | **toda corrida — de 2 em 2 h** |
+
+Fica escrito aqui porque e infraestrutura e nao aparece no diff: quem ler so o
+codigo ve a constante e nao ve o cron, e a constante sozinha nao responde
+"de quanto em quanto tempo isto acontece".
+
+Um teste cobra que a constante **nao seja maior que o intervalo do cron**. Se
+alguem voltar a subi-la sem mexer no agendamento, cai.
 
 ## Provas
 

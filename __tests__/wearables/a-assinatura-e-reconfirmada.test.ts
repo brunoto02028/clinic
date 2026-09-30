@@ -85,12 +85,16 @@ describe("os três motivos para perguntar de novo", () => {
 
   it("**a resposta está velha** — e a validade é declarada, não mágica", () => {
     expect(fn()).toContain("CONFIRMACAO_VALE_MS");
-    expect(codigo()).toMatch(/CONFIRMACAO_VALE_MS\s*=\s*12\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+    expect(codigo()).toMatch(/CONFIRMACAO_VALE_MS\s*=\s*\d+\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
   });
 
-  it("a validade é em horas, e não em dias — a conexão tem de se curar no mesmo dia", () => {
+  it("**a validade não é maior que o intervalo do cron**", () => {
+    // O cron corre de 2 em 2 horas. Uma validade maior que isso significa
+    // reconfirmar em corridas alternadas — e foi o que aconteceu: o número
+    // estava em 12 e o limitador real era o cron, não ele. Se alguém voltar a
+    // subir este valor sem mexer no agendamento, isto cai.
     const m = codigo().match(/CONFIRMACAO_VALE_MS\s*=\s*(\d+)\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
     expect(m).toBeTruthy();
-    expect(Number(m![1])).toBeLessThanOrEqual(24);
+    expect(Number(m![1])).toBeLessThanOrEqual(2);
   });
 });
