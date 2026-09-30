@@ -11,6 +11,7 @@ import { useAreaSwitch } from "@/lib/areas";
 import { fetchAccess } from "@/api/access";
 import Constants from "expo-constants";
 import { runningVersion } from "@/lib/app-updates";
+import { ordenarSecoes } from "@/lib/ordenar-secoes";
 
 export interface ProfileSection {
   /** English canonical, Portuguese alongside — this menu was English-only, so
@@ -68,8 +69,19 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
    * conexão seria pior que a linha extra.
    */
   const { data: acesso } = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
-  const visiveis = (sections ?? []).filter(
-    (s) => !s.module || !acesso || acesso.modules.includes(s.module)
+  /**
+   * Filtra e **ordena** — a mesma ordem do painel de permissões da clínica.
+   *
+   * O Bruno pediu que os dois reflitam a mesma ordem. Aqui vale para as três
+   * áreas que passam por este componente, porque três arrumações diferentes no
+   * mesmo aplicativo seria a coisa que ele acabou de mandar corrigir.
+   *
+   * Ordena **depois** de filtrar, não antes: o que muda é só o custo, e assim a
+   * conta é feita sobre a lista que vai à tela.
+   */
+  const visiveis = ordenarSecoes(
+    (sections ?? []).filter((s) => !s.module || !acesso || acesso.modules.includes(s.module)),
+    lang
   );
 
   const initials = profile
