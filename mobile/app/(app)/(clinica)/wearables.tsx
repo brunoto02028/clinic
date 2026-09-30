@@ -65,26 +65,51 @@ function WearablesScreen() {
       const salvas = r.bloodPressure ?? 0;
       const vieram = r.bloodPressureRead ?? 0;
       const outros = (r.activityDays ?? 0) + (r.sleepNights ?? 0) + (r.vitalsDays ?? 0) + (r.ecgRecords ?? 0);
-      let texto: string;
-      if (salvas > 0 || outros > 0) {
-        texto = tr(lang, {
-          en: `Done — ${salvas} new blood-pressure reading(s), ${outros} other day(s) of data.`,
-          pt: `Pronto — ${salvas} leitura(s) nova(s) de pressão e ${outros} dia(s) de outros dados.`,
-        });
-      } else if (vieram > 0) {
-        // O caso que estava invisivel: a Withings entregou, e a leitura nao e
-        // desta ligacao — vai para a caixa da clinica, porque o aparelho e
-        // partilhado. Dizer "nada novo" aqui seria falso.
-        texto = tr(lang, {
-          en: `Withings returned ${vieram} reading(s), and they are handled by the clinic's device. Nothing new here.`,
-          pt: `A Withings devolveu ${vieram} leitura(s), e elas entram pelo aparelho da clínica. Nada novo aqui.`,
-        });
+      /**
+       * **A pressao tem a sua propria frase, sempre** — e nao um ramo que os
+       * outros dados apagam.
+       *
+       * A primeira versao punha *"veio N e foi para a clinica"* num `else if`,
+       * depois de *"salvas ou outros dias"*. O Bruno carregou em Sync e leu
+       * *"0 leituras novas, 5 dias de outros dados"* — os cinco dias de balanca
+       * e relogio **engoliram** a unica linha que respondia a pergunta dele.
+       *
+       * O numero que diagnostica nao pode depender de nao ter chegado mais
+       * nada: `salvas` e `vieram` respondem coisas diferentes, e as duas
+       * precisam de sair.
+       */
+      const linhas: string[] = [];
+      if (vieram > salvas) {
+        linhas.push(
+          tr(lang, {
+            en: `Withings returned ${vieram} blood-pressure reading(s); ${salvas} went into your record. The rest are handled by the clinic's device.`,
+            pt: `A Withings devolveu ${vieram} leitura(s) de pressão; ${salvas} entraram no seu prontuário. O resto entra pelo aparelho da clínica.`,
+          })
+        );
+      } else if (salvas > 0) {
+        linhas.push(
+          tr(lang, {
+            en: `${salvas} new blood-pressure reading(s).`,
+            pt: `${salvas} leitura(s) nova(s) de pressão.`,
+          })
+        );
       } else {
-        texto = tr(lang, {
-          en: "Nothing new — Withings had no measurements in this window.",
-          pt: "Nada novo — a Withings não tinha medições nesta janela.",
-        });
+        linhas.push(
+          tr(lang, {
+            en: "No blood-pressure readings in this window.",
+            pt: "Nenhuma leitura de pressão nesta janela.",
+          })
+        );
       }
+      if (outros > 0) {
+        linhas.push(
+          tr(lang, {
+            en: `${outros} day(s) of other data.`,
+            pt: `${outros} dia(s) de outros dados.`,
+          })
+        );
+      }
+      const texto = linhas.join(" ");
       Alert.alert(tr(lang, { en: "Sync", pt: "Sincronização" }), texto);
     },
     onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),

@@ -137,12 +137,26 @@ describe("a sincronia presta contas", () => {
 
   it("**e separa 'a Withings não tem nada' de 'veio e foi para outro lugar'**", () => {
     // `bloodPressureRead` conta o que a Withings devolveu, salvo ou não. É o
-    // número que diagnostica o aparelho partilhado — sem ele, as duas
-    // situações davam a mesma tela muda.
+    // número que diagnostica o aparelho partilhado.
     const c = codigo(...TELA);
     expect(c).toMatch(/r\.bloodPressureRead \?\? 0/);
-    expect(c).toMatch(/handled by the clinic|entram pelo aparelho da clínica/);
-    expect(c).toMatch(/had no measurements in this window|não tinha medições nesta janela/);
+    expect(c).toMatch(/handled by the clinic|entra pelo aparelho da clínica/);
+    expect(c).toMatch(/No blood-pressure readings in this window|Nenhuma leitura de pressão nesta janela/);
+  });
+
+  it("**a frase da pressão não é um `else` dos outros dados**", () => {
+    // O Bruno carregou em Sync e leu "0 leituras novas, 5 dias de outros
+    // dados": os cinco dias de balança e relógio **engoliram** a única linha
+    // que respondia à pergunta dele, porque ela vinha num `else if`.
+    //
+    // O número que diagnostica não pode depender de não ter chegado mais nada.
+    const c = codigo(...TELA);
+    expect(c).not.toMatch(/if \(salvas > 0 \|\| outros > 0\)/);
+    // A pressão entra primeiro, e os outros dados acrescentam.
+    const i = c.indexOf("const linhas");
+    expect(i).toBeGreaterThan(0);
+    const bloco = c.slice(i, i + 1400);
+    expect(bloco.indexOf("vieram > salvas")).toBeLessThan(bloco.indexOf("outros > 0"));
   });
 
   it("**e a tela recarrega depois de sincronizar**", () => {
