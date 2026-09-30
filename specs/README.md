@@ -237,3 +237,5 @@ código está inerte esperando:
 - **112** — [A ordem é de quem?](112-a-ordem-e-de-quem/plan.md) — arrastar no painel, personalizar no app, e quem ganha do alfabeto
 - **113** — [O app se atualiza sozinho](113-o-app-se-atualiza-sozinho/plan.md) — voltar ao app traz dado novo; puxar para baixo em toda tela
 - **114** — [O Withings não traz dado](114-o-withings-nao-traz-dado/plan.md) — conectado, `last sync` de hoje, e a tela vazia
+- **115** — [A pressão vem do aparelho](115-a-pressao-vem-do-aparelho/plan.md) — sai a medição por câmera; fica o BPM Connect e a digitação
+- **116** — [O painel no escuro](116-o-painel-no-escuro/plan.md) — paleta clara crua sobre tema escuro; o conserto é token, não `dark:`
