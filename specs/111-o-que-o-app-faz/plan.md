@@ -264,8 +264,15 @@ Sugestão de por onde o conteúdo entra — **a executar noutra branch**:
 
 **19 links de e-mail apontam para `/dashboard/*` na web.** Quando a área do
 paciente na web perder acesso, esses e-mails passam a mandar a pessoa para uma
-porta fechada. Isso tem de ser resolvido **antes** da divulgação, senão a
-primeira campanha leva gente para o lugar errado.
+porta fechada.
+
+**Decisão do Bruno (30/09/2026): resolver no momento de publicar o app**, não
+antes. Vira item de lançamento, junto com a decisão de bloquear ou não a web do
+paciente.
+
+O que fica dito, para quem executar: tem de sair **antes da primeira campanha**.
+Publicar o app e divulgar são dois momentos, e é entre eles que estes links têm
+de mudar — senão a campanha leva gente para o lugar errado no primeiro dia.
 
 ---
 
