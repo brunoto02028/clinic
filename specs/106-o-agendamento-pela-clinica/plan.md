@@ -58,6 +58,7 @@ coisa, e está nas perguntas abaixo.
 | T-7 | [Salvar uma edição não avisa o paciente sozinho](t-7-salvar-uma-edicao-nao-avisa-sozinho.md) | 🟢 concluída (29/09) — QA aprovado (N1–N9) |
 | T-8 | [A hora que o paciente lê](t-8-a-hora-que-o-paciente-le.md) | 🟢 concluída (29/09) — QA aprovado (T1–T6) |
 | T-9 | [Onde a consulta acontece, dito uma vez só](t-9-onde-a-consulta-acontece.md) | 🟢 concluída (29/09) — QA aprovado |
+| T-10 | [O `version.json` diz qual commit está no ar](t-10-o-version-json-diz-o-commit.md) | 🟢 concluída (30/09) |
 
 ## O que o QA das T-3 a T-6 encontrou, 29/09/2026
 
