@@ -793,3 +793,396 @@ atividade e **não foi corrigido** — fica avisado, como manda a casa.
 **Falta medir na tela:** as duas correções acima não passaram por QA. A Home
 precisa do par ligado/desligado como o menu teve, e o relatório por id precisa do
 403/200.
+
+---
+
+# Rodada de confirmação das duas correções — 30/09/2026
+
+**Onde:** local, worktree `C:\Users\bruno\orca\workspaces\clinic\app_clinic`, HEAD
+`8861d7d37` (as correções são `5442b244b` e `bddaae8b1`), banco local
+`bpr_clinic_local`. **Produção não foi tocada.**
+
+**Resultado geral:** ✅ **as duas falhas estão corrigidas — 13 de 13 cenários
+passaram.** Nenhuma ressalva sobre o que foi corrigido. Uma **observação fora do
+escopo**, medida por acaso na mesma tela, está no fim: o cartão *NEXT SESSION*
+mostra a consulta com `mod_appointments` desligado, porque `/api/appointments` — a
+rota que a Home chama — não pede módulo. É o mesmo defeito, um cartão acima.
+
+## Onde isto foi medido
+
+Par de portas novo, diferente do da rodada anterior (`:4075`/`:8105`), e `dist`
+próprio:
+
+```
+:4076  -> next dev -p 4076, NEXT_DIST_DIR=.next-qa110fix, NEXTAUTH_URL=http://localhost:4076
+:8106  -> expo start --web --port 8106, EXPO_PUBLIC_API_URL=http://localhost:4076
+```
+
+**Confirmado pelo command line dos processos**, não por suposição — as duas
+árvores apontam para este worktree:
+
+```
+node ...\orca\workspaces\clinic\app_clinic\node_modules\.bin\..\next\dist\bin\next dev -p 4076
+node ...\orca\workspaces\clinic\app_clinic\mobile\node_modules\.bin\..\expo\bin\cli start --web --port 8106
+```
+
+**Chunk velho: descartado por prova direta, não por indício.** Troquei o
+`index.tsx` da Home pela versão **anterior** à correção (`5442b244b^`), com o
+banco no mesmo estado, e a tela **voltou a mostrar os quatro atalhos**; devolvi o
+arquivo e a tela **voltou a esconder** (C3 e B5 abaixo). O Metro está servindo o
+arquivo que está no disco, nos dois sentidos — é o mesmo argumento de uma prova
+por mutação, aplicada ao bundle.
+
+**Contas de teste, nenhuma real, nenhuma criada** — as mesmas da rodada anterior:
+`qa106.admin@example.com` e `Qa106 PacienteTeste` (`qa106.paciente@example.com`),
+clínica `qa106-clinica-de-teste`. Nenhum e-mail e nenhum push: nenhuma rota
+exercitada aqui dispara envio.
+
+**Como o estado foi mudado.** Sempre pela rota que o botão do painel chama —
+`PATCH /api/admin/patients/<id>/permissions`, `action: updateOverrides`, com a
+sessão do admin, **200** em todas as trocas, e a lista efetiva relida em
+`GET /api/patient/access` depois de cada uma. O `fullAccessOverride` foi desligado
+pela própria rota (`action: toggleFullAccess`), porque ele concede tudo e ignora
+os interruptores.
+
+## Resumo
+
+| # | cenário | tipo | resultado |
+|---|---|---|---|
+| A1 | `mod_records` **ligado** → lista **e** detalhe 200 com dado | API | ✅ |
+| A2 | `mod_records` **desligado** → lista **e** detalhe **403**, sem HTML no corpo | API | ✅ |
+| A3 | O **link assinado** (`?t=`) ainda abre com o módulo desligado | API | ✅ |
+| A3b | O mesmo link com a assinatura adulterada → **401** *(controle)* | API | ✅ |
+| A4 | O mesmo 403 pelo canal de **cookie**, não só pelo Bearer | API | ✅ |
+| A5 | Religar e os dois voltarem a 200 — **depois** do 403 | API | ✅ |
+| B1 | Só `mod_records` off → **só** *Pain trend* sai | UI | ✅ |
+| B2 | Só `mod_appointments` off → **só** *Book a new session* sai | UI | ✅ |
+| B3 | Só `mod_clinical_notes` off → **só** *My records* sai | UI | ✅ |
+| B4 | Só `mod_messages` off → **só** *Message the clinic* sai, e a **borda anda** | UI | ✅ |
+| B5 | Os **quatro** off → o cartão inteiro sai, não fica vazio com borda | UI | ✅ |
+| B7 | **Fail-open**: permissões fora do ar → os quatro aparecem | UI | ✅ |
+| C | **O controle:** tudo ligado, Home **byte a byte** igual à de antes | UI | ✅ |
+
+Extras: `B6` os 24 desligados; `B8` o servidor negando por baixo do fail-open; as
+4 suítes `__tests__/permissoes` (**35/35**) rodadas aqui; e **duas provas por
+mutação** na varredura nova, refeitas por este QA.
+
+---
+
+## A) `app/api/patient/reports/[id]` — o detalhe obedece
+
+Relatório de teste criado no banco local com um marcador no HTML
+(`MARCADOR-HTML-DO-RELATORIO-QA110FIX`), para que "não veio relatório no corpo"
+seja uma medição e não uma impressão. Apagado no fim.
+
+### A1 ✅ — com `mod_records` **ligado**, os dois servem
+
+```
+--- GET /api/patient/reports
+    HTTP 200  content-type=application/json  bytes=417
+    {"reports":[{"id":"cmuntgub90001xzf4xbgtrh4b","cadence":"WEEKLY",...,
+      "url":"http://localhost:4076/api/patient/reports/cmuntgub9...?t=Y211bnRndWI5..."}]}
+--- GET /api/patient/reports/cmuntgub90001xzf4xbgtrh4b   (Bearer, SEM ?t=)
+    HTTP 200  content-type=text/html; charset=utf-8  bytes=110
+    <html><body><h1>QA FIX 110 — Relatorio de teste</h1><p>MARCADOR-HTML-DO-RELATORIO-QA110FIX</p></body></html>
+```
+
+Este passo não é decoração: sem ele, um portão que negasse **sempre** passaria no
+A2 e eu chamaria de correção o que seria uma porta emperrada.
+
+### A2 ✅ — com `mod_records` **desligado**, os dois negam, com o status exato
+
+Um interruptor mudou, e só ele — `/api/patient/access` passou de 24 para 23
+módulos, com `mod_records` fora e os outros três atalhos dentro:
+
+```
+PATCH overrides HTTP 200  (desligados: mod_records)
+GET /api/patient/access HTTP 200
+  modules: 23 | records=off appointments=ON clinical_notes=ON messages=ON
+```
+
+```
+--- GET /api/patient/reports            (a lista)
+    HTTP 403  content-type=application/json  bytes=140
+    {"error":"My Records is not included in your plan",
+     "errorPt":"Meus Registros não está incluído no seu plano","code":"module_not_in_plan"}
+--- GET /api/patient/reports/<id>       (o detalhe, Bearer, SEM ?t=)
+    HTTP 403  content-type=application/json  bytes=140
+    {"error":"My Records is not included in your plan",
+     "errorPt":"Meus Registros não está incluído no seu plano","code":"module_not_in_plan"}
+```
+
+**403 nos dois, não "≠ 200"** — e o corpo do detalhe conferido pelo marcador:
+`grep -c MARCADOR-HTML-DO-RELATORIO-QA110FIX = 0`, `grep -c '<html' = 0`. O que era
+200 com o relatório inteiro agora é 403 com uma mensagem, nas duas línguas e com
+código de máquina.
+
+### A3 ✅ — o link assinado continua passando por cima, de propósito
+
+O `?t=` usado aqui **foi emitido pela própria lista** no A1 (é assim que o app abre
+um relatório no navegador do telefone), não forjado por mim. Com `mod_records`
+desligado, **sem Bearer e sem cookie**:
+
+```
+--- GET http://localhost:4076/api/patient/reports/<id>?t=Y211bnRndWI5...
+    HTTP 200  content-type=text/html; charset=utf-8  bytes=110
+    marcador presente: 1
+```
+
+**Comportamento querido, e confirmado como tal:** o link é emitido pela clínica
+para um relatório, uma pessoa e cinco minutos, e o portão de módulo governa quem
+chega por sessão.
+
+**A3b, o controle que impede a leitura ingênua** — trocar **um caractere** da
+assinatura do mesmo link:
+
+```
+    HTTP 401  {"error":"Unauthorized"}
+```
+
+Ou seja: o 200 acima veio da assinatura valer, não da porta estar aberta. Sem este
+controle, "o link assinado ainda abre" e "a rota não confere nada" dariam a mesma
+leitura.
+
+### A4 ✅ — o mesmo 403 pelo canal do navegador
+
+O app usa `Bearer`, a web usa cookie, e o portão fica antes dos dois. Com sessão
+NextAuth do paciente e `mod_records` desligado:
+
+```
+--- GET /api/patient/reports/<id>   (cookie, sem ?t=)
+    HTTP 403  {"error":"My Records is not included in your plan",...}
+```
+
+### A5 ✅ — religar, e os dois voltarem
+
+```
+PATCH overrides HTTP 200  (desligados: nenhum)  |  modules: 24
+    lista            HTTP 200  bytes=417
+    detalhe          HTTP 200  text/html  bytes=110   marcador: 1
+    detalhe (cookie) HTTP 200  bytes=110
+```
+
+O caminho painel → banco → API foi percorrido inteiro nas duas direções.
+
+### A varredura nova, com as duas mutações refeitas por este QA
+
+`__tests__/permissoes/a-lista-fecha-e-o-detalhe-tambem.test.ts`. Arquivo copiado
+antes, restaurado depois e **conferido por `sha256`**
+(`3a8a505dd9555a9ae9ac61dd1e461b047d9da7b051dd4182f6a86c5e858582e5`, igual antes e
+depois), suítes verdes ao fim:
+
+| mutação em `app/api/patient/reports/[id]/route.ts` | resultado |
+|---|---|
+| `patientGate({ module: "mod_records" })` → `patientGate()` | ✅ **cai**: `"app/api/patient/reports/[id]/route.ts: a lista pede mod_records e o detalhe não pede nada"` |
+| `mod_records` → `mod_clinical_notes` | ✅ **cai**: `"...a lista pede mod_records e o detalhe pede mod_clinical_notes"` |
+
+Confirmo também o que o implementador disse sobre os comentários: o
+`moduloDaRota()` tira bloco e linha antes de procurar, e os comentários deste
+arquivo citam as duas chaves — sem isso a mutação 2 passaria.
+
+**O limite da varredura, dito com precisão:** ela cobra **coerência entre uma
+lista e o detalhe dela**. Se a lista não pede módulo, o par passa. É exatamente por
+isso que ela não pega a observação do fim deste relatório (`/api/appointments` não
+pede módulo, logo `/api/appointments/[id]` não é cobrado). A varredura impede a
+terceira repetição do erro que aconteceu duas vezes; ela não afirma que toda rota
+do paciente tem portão.
+
+---
+
+## B) A Home — os quatro atalhos, um a um
+
+Cada medição: troca de interruptor pela rota do painel → recarga da Home → leitura
+do **DOM** (não da impressão da imagem) com `borderBottomWidth` computado de cada
+linha → captura. `mod_clinica` fica ligado em todas, senão não há área clínica para
+entrar.
+
+### O par, um a um — quatro medições ✅
+
+| estado | Pain trend | Book a new session | My records | Message the clinic | linhas no cartão |
+|---|---|---|---|---|---|
+| **B0** os quatro ligados | ✔ `0.667px` | ✔ `0.667px` | ✔ `0.667px` | ✔ **`0px`** | 4 |
+| **B1** `mod_records` off | **—** | ✔ `0.667px` | ✔ `0.667px` | ✔ **`0px`** | 3 |
+| **B2** `mod_appointments` off | ✔ `0.667px` | **—** | ✔ `0.667px` | ✔ **`0px`** | 3 |
+| **B3** `mod_clinical_notes` off | ✔ `0.667px` | ✔ `0.667px` | **—** | ✔ **`0px`** | 3 |
+| **B4** `mod_messages` off | ✔ `0.667px` | ✔ `0.667px` | ✔ **`0px`** | **—** | 3 |
+
+Em cada linha sai **um** atalho e ficam **três**. É o que separa "obedece" de
+"esconde tudo quando qualquer coisa falta" — e as quatro medições são
+complementares: nenhum interruptor mexeu na linha de outro.
+
+**A borda andou, e está medida:** o `0px` é a borda de baixo suprimida no último
+item **visível**. Em B0–B3 ele é *Message the clinic*; em **B4**, com o último
+escondido, o `0px` migrou para *My records* e os dois de cima ficaram com
+`0.667px`. É a razão de a correção ser uma lista filtrada e não quatro `&&` soltos
+— com guardas soltas a borda ficaria num item que não está na tela.
+
+Evidências: `screenshots/fix-home-B0-quatro-ligados.png`,
+`fix-home-B1-records-desligado.png`, `fix-home-B2-appointments-desligado.png`,
+`fix-home-B3-clinical-notes-desligado.png`,
+`fix-home-B4-messages-desligado-borda-andou.png`
+
+### B5 ✅ — com os quatro desligados o cartão **sai**, não fica vazio
+
+Os quatro off, os outros 20 ligados (`modules: 20`). Filhos do container de
+conteúdo da Home, lidos do DOM:
+
+```
+antes (B0):  [ "Health", "NEXT SESSION...", "YOUR PLAN...", "📈Pain trend..." ]   <- 4
+B5:          [ "Health", "NEXT SESSION...", "YOUR PLAN..." ]                      <- 3
+```
+
+O cartão não está vazio: ele **não existe**. E varri a tela inteira por um
+retângulo vazio com borda (`textContent` em branco, `border-top-width > 0`, mais de
+8px de altura e mais de 100px de largura): **0 encontrados**.
+
+Evidência: `screenshots/fix-home-B5-quatro-desligados-cartao-sai.png`
+
+**B6, extra** — com os 24 desligados (só `mod_clinica`), a Home fica em três blocos
+e o cartão do plano passa a dizer *"Not included in your plan"*:
+`screenshots/fix-home-B6-todos-desligados.png`
+
+### B7 ✅ — o fail-open existe, e é o querido
+
+Com os **24 desligados no banco** e a chamada de permissões **abortada no
+navegador** (`page.route('**/api/patient/access**', r => r.abort('failed'))`), a
+Home mostra os **quatro** atalhos:
+
+```
+presentes: ["Pain trend","Book a new session","My records","Message the clinic"]
+```
+
+Rede ruim não esvaziou a tela de quem tem acesso. **B8, a outra metade:** com o
+fail-open na tela, toquei em *My records* — e o servidor negou:
+
+```
+/clinical-notes -> "Clinical Notes is not included in your plan
+                    Ask your clinic if you think this is wrong."
+```
+
+Quem tranca é o servidor, e ele trancou. Evidências:
+`screenshots/fix-home-B7-fail-open-permissoes-caidas.png`,
+`fix-home-B8-fail-open-servidor-ainda-nega.png`
+
+---
+
+## C) O controle: com tudo ligado, a Home é a de antes
+
+Três capturas, um argumento fechado. Mesmo servidor, mesma porta, mesmo viewport
+(390×844), mesma sessão:
+
+```
+ada9f1ff0f2274c8242cf1f5c495b17a7c3e4927ce8a9b03c1b591f6be43063d  fix-home-C1-depois-tudo-ligado.png       (código NOVO, 24 ligados)
+ada9f1ff0f2274c8242cf1f5c495b17a7c3e4927ce8a9b03c1b591f6be43063d  fix-home-C2-antes-tudo-ligado.png        (código ANTES, 24 ligados)
+ada9f1ff0f2274c8242cf1f5c495b17a7c3e4927ce8a9b03c1b591f6be43063d  fix-home-C3-antes-quatro-desligados-...png (código ANTES, os quatro DESLIGADOS)
+4e85df28a46f83011d690959bf972653eb2782442701e73a498c6c2d28aa0ff3  fix-home-B5-quatro-desligados-cartao-sai.png (código NOVO, os quatro DESLIGADOS)
+```
+
+Três leituras, nesta ordem:
+
+1. **C1 = C2** — com tudo ligado, a Home nova é **byte a byte** a Home de antes da
+   mudança. A troca de quatro `ListItem` escritos à mão por uma lista filtrada não
+   moveu um pixel de quem tem acesso.
+2. **C2 = C3** — no código **antigo**, a Home com os quatro módulos desligados é
+   byte a byte a Home de quem tem tudo. É **a falha 2.8 reproduzida aqui**, não
+   citada da rodada anterior.
+3. **B5 ≠ C3** — no código **novo**, com o **mesmo estado de banco** de C3, a Home
+   é outra. O interruptor passou a existir para a primeira tela.
+
+O arquivo foi devolvido e conferido:
+`sha256 = 2957d866971d5540a73b3c9b100cdec1e3f36fb68d77bc7293e79d16001ab5bc`, igual
+antes e depois, e `git status` sem modificação nele.
+
+---
+
+## Suítes, no ambiente deste QA
+
+```
+npx jest __tests__/permissoes --ci
+Test Suites: 4 passed, 4 total
+Tests:       35 passed, 35 total
+```
+
+(A varredura nova soma 1 suíte e 4 testes aos 31 da rodada anterior.) Os números da
+sessão principal — `tsc` 0, 2863 testes / 194 suítes, build compilado — **não foram
+refeitos** por este QA; o que conferi foi a suíte de permissões e as duas mutações
+acima.
+
+---
+
+## Erros de console
+
+**Nenhum erro de JavaScript.** Filtrando as portas desta rodada (`:4076`, `:8106`),
+30 entradas de nível `error`, todas `Failed to load resource`:
+
+| o quê | quantas | de onde |
+|---|---|---|
+| `403` em `/api/patient/messages` | 16 | estados com as mensagens desligadas — é o cenário |
+| `403` em `/api/patient/protocol` e `/api/exercises` | 4 + 4 | estado com tudo desligado — esperado |
+| `ERR_FAILED` em `/api/patient/access` | 4 | **a minha própria** simulação de fail-open (B7/B8) |
+| `403` em `/api/patient/clinical-notes` | 2 | o toque do B8 — o servidor negando, que é o ponto |
+
+Zero exceções lançadas. Os logs do `next dev` e do Metro fecharam sem nenhuma linha
+de erro de compilação. (O arquivo de console do MCP guarda também 58 entradas de
+`:4075` e de um `.next-qa095b`, de abas sobreviventes de sessões anteriores cujos
+servidores não são estes — alheias a esta rodada.)
+
+---
+
+## Observação fora do escopo: o cartão *NEXT SESSION* não obedece
+
+Medido por acaso enquanto eu conferia o B2, **na mesma tela**, e **não é** uma das
+duas falhas desta rodada. Registro porque é a mesma forma:
+
+Com `mod_appointments` **desligado**, o atalho *Book a new session* sai (B2 ✅), e o
+cartão **NEXT SESSION** logo acima continua mostrando a consulta — data, hora, tipo
+de tratamento e o nome de quem atende — com o botão **Reschedule**. Tocar nele leva
+a `/appointment/<id>` e à tela do portão:
+
+> *"Not included in your plan — Your clinic can add this to your plan. Ask them if
+> you think this is wrong."*
+
+A porta está fechada e a maçaneta ficou na parede — o mesmo defeito que a T-2
+nomeou, um cartão acima do que foi corrigido.
+
+**Por que acontece:** a Home chama `/api/appointments` (via
+`mobile/src/api/appointments.ts:52`), e não `/api/patient/appointments`. Medido com
+o módulo desligado, no mesmo instante:
+
+```
+GET /api/patient/appointments   -> HTTP 403  {"error":"Appointments is not included in your plan",...}
+GET /api/appointments           -> HTTP 200  bytes=53299   (as consultas do paciente, inteiras)
+```
+
+`app/api/patient/appointments/route.ts:11` tem
+`patientGate({ module: "mod_appointments" })`; `app/api/appointments/route.ts`
+autentica por `getActor` + `assertPatientAccess` — que resolve inquilino, **não
+módulo**. Não é vazamento entre clínicas: o dado é do próprio paciente. É o
+interruptor que não fecha esta porta.
+
+**A varredura nova não pega isto**, e não é falha dela: `/api/appointments` não pede
+módulo, então o par lista/detalhe é coerente e passa. Fica para a sessão principal
+decidir se é um passo desta atividade ou de outra — **não mexi em nada**.
+
+Evidência: `screenshots/fix-obs-next-session-reschedule-com-modulo-desligado.png`
+
+---
+
+## Estado deixado para trás
+
+| o quê | como ficou |
+|---|---|
+| `qa106.paciente`: `fullAccessOverride`, `moduleOverrides` | **restaurados** (`true`, `null`) — conferido por leitura depois |
+| `preferredLocale`, `consentAcceptedAt` do paciente | **não tocados** (`en-GB`, `2026-09-29T20:55:54.560Z`) |
+| `qa106b.paciente` | **não tocado** nesta rodada |
+| 1 `PatientReport` criado para o A1–A5 | **apagado** — o banco voltou a 0 relatórios |
+| `mobile/app/(app)/(clinica)/(tabs)/index.tsx` (troca pela versão de antes) | **restaurado**, `sha256` conferido |
+| `app/api/patient/reports/[id]/route.ts` (duas mutações) | **restaurado**, `sha256` conferido; suítes verdes depois |
+| `tsconfig.json` | **revertido** — o dev server acrescentou `.next-qa110fix/types` |
+| servidores `:4076` e `:8106` | **derrubados**; `netstat` não cita mais as portas |
+| senhas de `qa106.admin` e `qa106.paciente` | trocadas no banco **local** e não restauradas (o hash antigo não é recuperável) |
+| paciente criado ou apagado | **nenhum** |
+| e-mail ou push disparado | **nenhum** |
+| produção | **não tocada** |
+
+`git status` ao fim desta rodada lista apenas as 13 capturas novas e este relatório.
