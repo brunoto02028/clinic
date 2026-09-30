@@ -99,6 +99,103 @@ describe("de onde o commit pode vir", () => {
   });
 });
 
+describe("o `.git` lido como arquivo — o caminho que só existe no build", () => {
+  /**
+   * Na máquina de quem desenvolve isto nunca corre: o binário do git existe e
+   * atende antes. **No build é o único caminho** — não há git na imagem, e o
+   * `.dockerignore` deixa passar só `HEAD`, `refs/` e `packed-refs`.
+   *
+   * Por isso os cenários montam um `.git` de mentira num diretório temporário,
+   * com o `PATH` esvaziado para o binário não salvar o teste. É o que o build
+   * vê, e não o que esta máquina vê.
+   */
+  const SHA = "1234567890abcdef1234567890abcdef12345678";
+  const NL = "\n";
+
+  function rodarSemBinario(montar: (raiz: string) => void) {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "gitdir-"));
+    fs.mkdirSync(path.join(temp, "scripts"));
+    fs.mkdirSync(path.join(temp, "public"));
+    fs.copyFileSync(SCRIPT, path.join(temp, "scripts", "update-version.js"));
+    montar(temp);
+
+    const env: Record<string, string | undefined> = { ...process.env, PATH: "" };
+    for (const k of ["SOURCE_COMMIT", "GITHUB_SHA", "COOLIFY_GIT_COMMIT_SHA", "GIT_COMMIT_SHA"]) {
+      delete env[k];
+    }
+    execFileSync(process.execPath, [path.join(temp, "scripts", "update-version.js")], {
+      cwd: temp,
+      env: env as NodeJS.ProcessEnv,
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 30000,
+    });
+    const v = JSON.parse(fs.readFileSync(path.join(temp, "public", "version.json"), "utf8"));
+    fs.rmSync(temp, { recursive: true, force: true });
+    return v;
+  }
+
+  const comGit = (montar: (git: string) => void) =>
+    rodarSemBinario((raiz) => {
+      const git = path.join(raiz, ".git");
+      fs.mkdirSync(git);
+      montar(git);
+    });
+
+  it("**HEAD destacado** — o SHA direto no arquivo, que é o caso de um clone de build", () => {
+    const v = comGit((git) => fs.writeFileSync(path.join(git, "HEAD"), SHA + NL));
+    expect(v.commit).toBe(SHA);
+    expect(v.commitShort).toBe(SHA.slice(0, 7));
+  });
+
+  it("**HEAD apontando para uma branch**, com a ref solta", () => {
+    const v = comGit((git) => {
+      fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/main" + NL);
+      fs.mkdirSync(path.join(git, "refs", "heads"), { recursive: true });
+      fs.writeFileSync(path.join(git, "refs", "heads", "main"), SHA + NL);
+    });
+    expect(v.commit).toBe(SHA);
+  });
+
+  it("**ref empacotada** — um clone recém-feito costuma estar assim", () => {
+    // Sem esta leitura, um clone com `packed-refs` e sem `refs/heads/main` daria
+    // `null`, e o campo voltaria a mentir por omissão.
+    const v = comGit((git) => {
+      fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/main" + NL);
+      fs.writeFileSync(
+        path.join(git, "packed-refs"),
+        "# pack-refs with: peeled fully-peeled sorted" + NL + SHA + " refs/heads/main" + NL
+      );
+    });
+    expect(v.commit).toBe(SHA);
+  });
+
+  it("branch com barra no nome não confunde a leitura", () => {
+    const v = comGit((git) => {
+      fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/brunoto02028/app_clinic" + NL);
+      fs.mkdirSync(path.join(git, "refs", "heads", "brunoto02028"), { recursive: true });
+      fs.writeFileSync(path.join(git, "refs", "heads", "brunoto02028", "app_clinic"), SHA + NL);
+    });
+    expect(v.commit).toBe(SHA);
+  });
+
+  it("**ref que não existe não vira commit**", () => {
+    // Escrever qualquer coisa ali seria pior que deixar vazio: mentiria com
+    // cara de verdade.
+    const v = comGit((git) => fs.writeFileSync(path.join(git, "HEAD"), "ref: refs/heads/sumida" + NL));
+    expect(v.commit).toBeNull();
+  });
+
+  it("**`.git` que é arquivo, como num worktree**, não estoura", () => {
+    // É o caso desta máquina: `.git` é um ponteiro para outro lugar. Esta fonte
+    // não serve, e sem o binário o campo fica nulo — sem derrubar o build.
+    const v = rodarSemBinario((raiz) =>
+      fs.writeFileSync(path.join(raiz, ".git"), "gitdir: /outro/lugar" + NL)
+    );
+    expect(v.commit).toBeNull();
+    expect(typeof v.timestamp).toBe("number");
+  });
+});
+
 describe("o caminho que produção usa de verdade", () => {
   /**
    * O campo saiu `null` no primeiro deploy, e a causa era minha.
@@ -116,11 +213,22 @@ describe("o caminho que produção usa de verdade", () => {
   const RAIZ = path.join(__dirname, "..", "..");
   const dockerfile = () => fs.readFileSync(path.join(RAIZ, "Dockerfile"), "utf8");
 
-  it("**o `.dockerignore` continua excluindo o `.git`** — a premissa", () => {
-    // Se um dia o `.git` entrar na imagem, este teste cai e alguém relê o
-    // resto — e aí a exclusão do histórico terá sido desfeita sem querer.
-    const ignore = fs.readFileSync(path.join(RAIZ, ".dockerignore"), "utf8");
-    expect(ignore.split("\n").map((l: string) => l.trim())).toContain(".git");
+  it("**o `.dockerignore` deixa passar o `HEAD` e barra a história**", () => {
+    // A troca que fez o campo funcionar: era `.git` inteiro e agora é estreita.
+    // Se alguém voltar a excluir o `.git` de uma vez, o campo volta a `null` —
+    // e este teste cai antes de isso chegar a produção.
+    const linhas = fs
+      .readFileSync(path.join(RAIZ, ".dockerignore"), "utf8")
+      .split("\n")
+      .map((l: string) => l.trim())
+      .filter((l: string) => l && !l.startsWith("#"));
+
+    for (const largo of [".git", ".git/", ".git/**", ".git/*"]) {
+      expect(linhas).not.toContain(largo);
+    }
+    // E a história continua fora da imagem, que é o motivo de a exclusão existir.
+    expect(linhas).toContain(".git/objects");
+    expect(linhas).toContain(".git/logs");
   });
 
   it("**o Dockerfile declara e exporta `SOURCE_COMMIT`**", () => {
