@@ -1,6 +1,6 @@
 # T-1: Voltar ao app traz dado novo
 
-**Status:** pendente
+**Status:** ✅ já estava feita (075 T-12) — verificada em 30/09
 
 ## Objetivo
 
