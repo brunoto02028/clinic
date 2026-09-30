@@ -1980,7 +1980,7 @@ export default function PatientProfilePage() {
                           <td className={`text-center py-1 font-semibold ${high ? "text-red-600" : ""}`}>{r.systolic}</td>
                           <td className={`text-center py-1 font-semibold ${high ? "text-red-600" : ""}`}>{r.diastolic}</td>
                           <td className="text-center py-1">{r.heartRate || "—"}</td>
-                          <td className="text-center py-1"><Badge variant="outline" className="text-[8px] h-4">{r.method === "CAMERA_PPG" ? "PPG" : "Manual"}</Badge></td>
+                          <td className="text-center py-1"><Badge variant="outline" className="text-[8px] h-4">{r.method === "CAMERA_PPG" ? "Camera" : "Manual"}</Badge></td>
                           <td className="py-1 text-muted-foreground truncate max-w-[150px]">{r.notes || "—"}</td>
                         </tr>
                       );

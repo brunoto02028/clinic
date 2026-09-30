@@ -98,7 +98,7 @@ cobra isso. O crachá continua a saber desenhar o que já está gravado.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [O painel deixa de oferecer a câmera](t-1-o-painel-deixa-de-oferecer.md) | pendente |
+| T-1 | [O painel deixa de oferecer a câmera](t-1-o-painel-deixa-de-oferecer.md) | implementada (30/09) — QA pendente |
 | T-2 | [A captura sai da web do paciente](t-2-a-captura-sai.md) | pendente |
 | T-3 | [Os textos, o crachá e o enum](t-3-os-textos-e-o-enum.md) | pendente |
 | T-4 | [O que fica no lugar do cartão](t-4-o-que-fica-no-lugar.md) | pendente |

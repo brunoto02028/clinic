@@ -1,6 +1,6 @@
 # T-1: O painel deixa de oferecer a câmera
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -37,6 +37,33 @@ estar a ser oferecido.
 
 ## Critérios de aceite
 
-- [ ] A tela não oferece medir por câmera em lugar nenhum
-- [ ] A lista, a legenda e a frase do NHS continuam onde estavam
-- [ ] O teste cai se alguém puser a oferta de volta
+- [x] A tela não oferece medir por câmera em lugar nenhum
+- [x] A lista, a legenda e a frase do NHS continuam onde estavam
+- [x] O teste cai se alguém puser a oferta de volta
+
+## O que foi feito, e o que apareceu no caminho
+
+O cartão saiu — 2.444 caracteres, e com ele o import órfão do ícone.
+
+**O cartão não era o único lugar.** O diálogo do QR, por paciente, dizia nas
+instruções: *"It will open the Blood Pressure page where they can measure using
+the camera PPG method or enter readings manually"*, e chamava a página de
+*"measurement page"*. Um cartão removido e um diálogo esquecido seria o defeito
+de sempre — a lista fechada e o detalhe aberto. As duas frases mudaram.
+
+**E o crachá do histórico falava duas línguas.** Para o mesmo valor gravado,
+`/admin/blood-pressure` escrevia `Camera` e a ficha do paciente escrevia `PPG`.
+A sigla saiu; ficou `Camera` nas duas. O crachá **continua a desenhar** leituras
+antigas — é registro, não convite.
+
+### Provas
+
+`__tests__/pressao/o-painel-nao-oferece-a-camera.test.ts`. A varredura separa as
+duas coisas que não podem ser confundidas: **oferecer** medir por câmera (sai) e
+**desenhar uma leitura antiga** medida assim (fica). Ela remove o identificador
+`CAMERA_PPG` antes de procurar, e só então proíbe o resto.
+
+Por mutação, duas: pôr a oferta de volta → caem 2; "limpar" o crachá do
+histórico → cai 1 — o controle contra a limpeza que apaga o passado.
+
+Suíte completa: **2954 testes, 200 suítes**, verdes. `tsc` em 0.

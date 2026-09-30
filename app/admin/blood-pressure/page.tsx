@@ -5,7 +5,6 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   HeartPulse,
   QrCode,
-  Smartphone,
   Copy,
   ExternalLink,
   Loader2,
@@ -226,55 +225,6 @@ export default function AdminBloodPressurePage() {
           View patient blood pressure readings and generate QR codes for mobile measurement.
         </p>
       </div>
-
-      {/* Prominent QR Code Section */}
-      <Card className="border-primary/30 bg-gradient-to-r from-red-50/50 to-primary/5">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="p-5 bg-white rounded-2xl border-2 border-primary/20 shadow-md flex-shrink-0">
-              <QRCodeSVG
-                value={`${baseUrl}/dashboard/blood-pressure`}
-                size={180}
-                level="H"
-                includeMargin
-                bgColor="#ffffff"
-                fgColor="#000000"
-              />
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h2 className="text-xl font-bold flex items-center gap-2 justify-center md:justify-start">
-                <Smartphone className="h-5 w-5 text-primary" />
-                Scan to Measure Blood Pressure
-              </h2>
-              <p className="text-muted-foreground mt-2">
-                Scan this QR code with a mobile phone to open the Blood Pressure measurement page.
-                The patient can measure via <strong>camera PPG</strong> (photoplethysmography) or enter readings <strong>manually</strong>.
-              </p>
-              <div className="flex items-center gap-2 mt-3 justify-center md:justify-start">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${baseUrl}/dashboard/blood-pressure`);
-                    toast({ title: "Copied", description: "URL copied to clipboard" });
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5" /> Copy Link
-                </Button>
-                <a href={`${baseUrl}/dashboard/blood-pressure`} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <ExternalLink className="h-3.5 w-3.5" /> Open Page
-                  </Button>
-                </a>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 inline-block">
-                <strong>Note:</strong> Camera PPG is for informational purposes only — not a medical device.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Search */}
       <div className="relative">
@@ -604,8 +554,8 @@ export default function AdminBloodPressurePage() {
             </DialogTitle>
             <DialogDescription>
               {selectedPatient
-                ? `Scan this QR code on ${selectedPatient.firstName} ${selectedPatient.lastName}'s phone to open the Blood Pressure measurement page.`
-                : "Generate a QR code for mobile blood pressure measurement."}
+                ? `Scan this QR code on ${selectedPatient.firstName} ${selectedPatient.lastName}'s phone to open their Blood Pressure page.`
+                : "Generate a QR code for the patient's Blood Pressure page."}
             </DialogDescription>
           </DialogHeader>
 
@@ -640,9 +590,9 @@ export default function AdminBloodPressurePage() {
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 w-full">
               <p className="text-xs text-amber-800">
-                <strong>Instructions:</strong> The patient should scan this QR code with their phone camera.
-                It will open the Blood Pressure page where they can measure using the camera PPG method
-                or enter readings manually.
+                <strong>Instructions:</strong> The patient should scan this QR code with their phone
+                camera. It will open the Blood Pressure page, where they can enter a reading from a
+                blood-pressure monitor.
               </p>
             </div>
           </div>
