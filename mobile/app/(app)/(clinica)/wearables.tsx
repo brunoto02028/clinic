@@ -41,15 +41,52 @@ function WearablesScreen() {
     onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
+  /**
+   * A sincronia diz **o que trouxe**, e nao que comecou.
+   *
+   * O Bruno: *"quando esta sincronizando, eu preciso saber o tempo,
+   * acompanhar."* Dizia *"os seus dados serao atualizados em breve"* — uma
+   * promessa sem prazo e sem resultado, e a tela ficava igual.
+   *
+   * A rota **ja devolvia** os numeros; era a tela que os deitava fora. E um
+   * deles diagnostica o caso dele: `bloodPressureRead` conta o que a Withings
+   * **devolveu**, salvo ou nao. Com ele, estas duas deixam de ser a mesma tela
+   * muda:
+   *
+   * - *"a Withings nao tem nada"* — o aparelho nao mediu, ou nao subiu;
+   * - *"veio 1 leitura e foi para outro lugar"* — chegou, e esta na caixa de
+   *   atribuicao da clinica, porque o aparelho e partilhado.
+   */
   const syncMut = useMutation({
     mutationFn: syncProvider,
-    onSuccess: () => Alert.alert(
-      tr(lang, { en: "Sync", pt: "Sincronização" }),
-      tr(lang, {
-        en: "Sync started. Your data will be updated shortly.",
-        pt: "Sincronização iniciada. Os dados serão atualizados em breve.",
-      }),
-    ),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["wearable-connections"] });
+      qc.invalidateQueries({ queryKey: ["wearable-data"] });
+      const salvas = r.bloodPressure ?? 0;
+      const vieram = r.bloodPressureRead ?? 0;
+      const outros = (r.activityDays ?? 0) + (r.sleepNights ?? 0) + (r.vitalsDays ?? 0) + (r.ecgRecords ?? 0);
+      let texto: string;
+      if (salvas > 0 || outros > 0) {
+        texto = tr(lang, {
+          en: `Done — ${salvas} new blood-pressure reading(s), ${outros} other day(s) of data.`,
+          pt: `Pronto — ${salvas} leitura(s) nova(s) de pressão e ${outros} dia(s) de outros dados.`,
+        });
+      } else if (vieram > 0) {
+        // O caso que estava invisivel: a Withings entregou, e a leitura nao e
+        // desta ligacao — vai para a caixa da clinica, porque o aparelho e
+        // partilhado. Dizer "nada novo" aqui seria falso.
+        texto = tr(lang, {
+          en: `Withings returned ${vieram} reading(s), and they are handled by the clinic's device. Nothing new here.`,
+          pt: `A Withings devolveu ${vieram} leitura(s), e elas entram pelo aparelho da clínica. Nada novo aqui.`,
+        });
+      } else {
+        texto = tr(lang, {
+          en: "Nothing new — Withings had no measurements in this window.",
+          pt: "Nada novo — a Withings não tinha medições nesta janela.",
+        });
+      }
+      Alert.alert(tr(lang, { en: "Sync", pt: "Sincronização" }), texto);
+    },
     onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 

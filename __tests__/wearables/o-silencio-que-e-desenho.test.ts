@@ -120,3 +120,37 @@ describe("o cartão cabe na tela", () => {
     expect(c).not.toMatch(/marginTop: 2, maxWidth: 190/);
   });
 });
+
+describe("a sincronia presta contas", () => {
+  it("**não diz mais 'em breve'**", () => {
+    // Uma promessa sem prazo e sem resultado: a tela ficava igual e a pessoa
+    // não sabia se tinha vindo alguma coisa.
+    const c = codigo(...TELA);
+    expect(c).not.toMatch(/Sync started\. Your data will be updated shortly/);
+  });
+
+  it("**diz quantas leituras chegaram**", () => {
+    const c = codigo(...TELA);
+    expect(c).toMatch(/r\.bloodPressure \?\? 0/);
+    expect(c).toMatch(/new blood-pressure reading|leitura\(s\) nova\(s\) de pressão/);
+  });
+
+  it("**e separa 'a Withings não tem nada' de 'veio e foi para outro lugar'**", () => {
+    // `bloodPressureRead` conta o que a Withings devolveu, salvo ou não. É o
+    // número que diagnostica o aparelho partilhado — sem ele, as duas
+    // situações davam a mesma tela muda.
+    const c = codigo(...TELA);
+    expect(c).toMatch(/r\.bloodPressureRead \?\? 0/);
+    expect(c).toMatch(/handled by the clinic|entram pelo aparelho da clínica/);
+    expect(c).toMatch(/had no measurements in this window|não tinha medições nesta janela/);
+  });
+
+  it("**e a tela recarrega depois de sincronizar**", () => {
+    // Sem isto o cartão continuava a dizer o que dizia antes da sincronia —
+    // o resultado no alerta e a tela por baixo a discordarem.
+    const c = codigo(...TELA);
+    const i = c.indexOf("mutationFn: syncProvider");
+    expect(i).toBeGreaterThan(0);
+    expect(c.slice(i, i + 600)).toMatch(/invalidateQueries/);
+  });
+});

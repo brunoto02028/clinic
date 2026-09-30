@@ -84,8 +84,32 @@ export async function fetchWearableData(days = 7): Promise<WearableDataPoint[]> 
   return res.data ?? [];
 }
 
+/**
+ * O que a sincronia trouxe, e **nao so que ela comecou**.
+ *
+ * A rota ja devolvia estes numeros; a tela deitava-os fora e dizia *"os seus
+ * dados serao atualizados em breve"*. O Bruno: *"quando esta sincronizando, eu
+ * preciso saber o tempo, acompanhar."*
+ *
+ * `bloodPressureRead` e o numero que diagnostica: **quantas leituras a Withings
+ * devolveu**, salvas ou nao. Com ele, *"a Withings nao tem nada"* e *"veio, e
+ * foi para outro lugar"* deixam de ser a mesma tela muda.
+ */
+export interface ResultadoDaSincronia {
+  ok: boolean;
+  message?: string;
+  /** Salvas no prontuario desta pessoa. */
+  bloodPressure?: number;
+  /** Devolvidas pela Withings na janela — salvas ou nao. */
+  bloodPressureRead?: number;
+  activityDays?: number;
+  sleepNights?: number;
+  vitalsDays?: number;
+  ecgRecords?: number;
+}
+
 export async function syncProvider(provider: string) {
-  return apiFetch<{ ok: boolean; message?: string }>("/api/wearables/sync", {
+  return apiFetch<ResultadoDaSincronia>("/api/wearables/sync", {
     method: "POST",
     body: JSON.stringify({ provider }),
   });
