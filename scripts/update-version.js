@@ -5,37 +5,51 @@ const { execSync } = require('child_process');
 const versionPath = path.join(__dirname, '..', 'public', 'version.json');
 
 /**
- * Qual commit está no ar — a pergunta que ninguém conseguia responder de fora.
+ * Qual commit está no ar — e, **no deploy do Coolify, o campo vem `null`**.
  *
- * Este arquivo tinha `version`, `timestamp` e `buildDate` e nenhum commit, e o
- * `buildDate` só diz que **algo** foi construído: um deploy que falhou no meio
+ * ## O que se queria
+ *
+ * `buildDate` só diz que **algo** foi construído: um deploy que falha no meio
  * deixa o contêiner velho servindo, e o `buildDate` antigo parece novo assim que
  * alguém reconstrói por outro motivo. Esta casa já anotou duas vezes que ele
- * mente, e todo QA de produção começava por inferência — ou por fabricar uma
- * sessão de staff só para achar um sinal comportamental do código novo.
+ * mente. Com o commit aqui, a prova de "qual código está no ar" seria uma
+ * requisição pública — sem sessão, sem token.
  *
- * Com o commit aqui, a prova é uma requisição pública: sem sessão, sem token,
- * sem segredo. O SHA sozinho não dá acesso a nada; é o número do recibo.
+ * ## Por que não é possível aqui
  *
- * Três fontes, em ordem de confiança:
+ * O Coolify **apaga o `.git` entre o checkout e o build** e **não passa nenhuma
+ * variável com o commit** — o log mostra os build args, e são
+ * `COOLIFY_URL`, `COOLIFY_FQDN`, `COOLIFY_BRANCH` e `COOLIFY_RESOURCE_UUID`.
+ * O build genuinamente não tem como saber qual commit ele é.
  *
- * 1. As variáveis que um CI injeta. **O Coolify não injeta nenhuma** — o log do
- *    build mostra que ele passa `COOLIFY_URL`, `COOLIFY_FQDN`, `COOLIFY_BRANCH`
- *    e `COOLIFY_RESOURCE_UUID`, e nada sobre o commit. Ficam para o GitHub
- *    Actions e para quem construir por outro caminho.
- * 2. **O diretório `.git`, lido como arquivo.** É esta que funciona no build:
- *    não há binário do git na imagem, e o `.dockerignore` foi estreitado para
- *    deixar passar `HEAD`, `refs/` e `packed-refs` — alguns bytes, sem história.
- * 3. O binário do git, que existe na máquina de quem desenvolve e resolve o
- *    caso do worktree, onde `.git` é um arquivo apontando para outro lugar.
+ * Isso foi descoberto depois de **quatro** tentativas, três delas palpites:
+ * confiar no binário do git (a imagem não tem), declarar `ARG SOURCE_COMMIT`
+ * (não é passado), estreitar o `.dockerignore` para o `.git` passar (não há o
+ * que passar). A quarta não tentou consertar — fez o aviso **dizer o que viu**,
+ * e o log respondeu em uma linha: `.git ausente no contexto do build`.
  *
- * Duas tentativas minhas falharam antes desta, e as duas por eu não ter lido o
- * log do build: primeiro confiei no binário do git, que a imagem não tem; depois
- * declarei `ARG SOURCE_COMMIT`, que o Coolify não passa. O log dizia as duas
- * coisas.
+ * **A lição é essa, e vale mais que o campo:** três causas atrás de uma
+ * mensagem só são três palpites. Um aviso que relata o que viu teria poupado as
+ * outras duas tentativas.
  *
- * Se nenhuma responder, o campo vem `null` — **nunca** derruba o build, que é o
- * que um `execSync` solto num contêiner sem git faria.
+ * ## O que responde, então
+ *
+ * A lista de deployments do Coolify, que sempre soube o commit e é a regra já
+ * escrita aqui. Precisa de token, e é o preço.
+ *
+ * ## O que este código continua fazendo
+ *
+ * As três fontes ficam porque **funcionam noutros lugares** — GitHub Actions
+ * injeta `GITHUB_SHA`, e quem construir fora de um contêiner tem o `.git` e o
+ * binário. Num build de Coolify as três falham, o campo vem `null`, e o aviso
+ * explica por quê em vez de mandar alguém adivinhar.
+ *
+ * 1. As variáveis que um CI injeta.
+ * 2. O diretório `.git`, lido como arquivo, sem o binário.
+ * 3. O binário do git, que resolve também o worktree, onde `.git` é um arquivo.
+ *
+ * Nenhuma delas **nunca** derruba o build — que é o que um `execSync` solto num
+ * contêiner sem git faria.
  */
 function commitDoBuild() {
   const daEnv =
