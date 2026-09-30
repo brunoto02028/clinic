@@ -1,6 +1,6 @@
 # T-1: Medir antes de consertar
 
-**Status:** pendente
+**Status:** parcial (30/09) — [metade medida](qa/report-t-1.md); falta uma leitura do banco de producao
 
 ## Objetivo
 
@@ -44,3 +44,27 @@ Nenhum. Esta tarefa não muda código.
 - [ ] Está escrito se o token está válido, e se o `sync` realmente sincroniza
 - [ ] A causa está **nomeada**, e não suposta
 - [ ] As duas perguntas do `plan.md` — a pressão e o resto — têm resposta separada
+
+---
+
+## O que a medicao ja respondeu
+
+O relatorio esta em [`qa/report-t-1.md`](qa/report-t-1.md). O resumo:
+
+**A tela vazia nao e ligacao partida.** `/api/wearables/data` le so a tabela
+`WearableDataPoint` — sono, passos, HRV, SpO2, temperatura. **A pressao arterial
+nao entra nessa tabela**: vai para `BloodPressureReading`, por outro caminho. E
+um BPM Connect e uma bracadeira: so mede pressao.
+
+Entao "View my data" mostra, para aquele aparelho, exatamente o conjunto vazio —
+e nao diz porque. Isso e a **T-4**, e deixou de ser suposicao.
+
+**`lastSyncedAt` nao mente.** Ele e escrito no fim de um ingest bem sucedido, nao
+no inicio. Entao *"Last sync: hoje"* significa que correu e terminou — o que
+**enfraquece** a hipotese do token expirado e **fortalece** a de as leituras
+estarem a parar na caixa de atribuicao.
+
+**O que falta e uma leitura do banco de producao**, sem escrita: as ligacoes
+Withings deste utilizador, as leituras de pressao por data, e quantas medicoes
+estao por atribuir. Sem isso, consertar e palpite — que foi o que custou tres
+tentativas no `version.json`.
