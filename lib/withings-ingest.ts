@@ -259,7 +259,10 @@ export async function ingestWithings(
         { id: connection.id, clinicId: connection.clinicId ?? null, isClinicDevice: true },
         reading
       );
-      if (outcome.kind === "assigned") bpSaved++;
+      // O dono tambem conta como salva: a leitura entrou num prontuario. Sem
+      // esta linha, a varredura diria "nenhuma leitura chegou" num dia em que
+      // todas chegaram — e e por esse numero que se julga se o cano funciona.
+      if (outcome.kind === "assigned" || outcome.kind === "owner") bpSaved++;
       if (outcome.kind === "unassigned") {
         console.log(`[withings-ingest] unassigned reading (${outcome.reason}) id=${outcome.id}`);
       }

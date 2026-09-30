@@ -5006,6 +5006,18 @@ model BloodPressureReading {
   // list cannot tell them apart without this.
   source        BpSource                  @default(MANUAL)
   context       MeasurementContext        @default(HOME)
+
+  // Arquivada **sem ninguem ter dito de quem era** (114 T-5).
+  //
+  // Num aparelho partilhado que tambem e o do dono, uma leitura fora de
+  // qualquer sessao vai para o prontuario dele. E a regra que o Bruno escolheu,
+  // e ela tem um custo: se alguem medir um paciente e esquecer de abrir a
+  // sessao, aquela leitura entra no prontuario errado.
+  //
+  // Este campo e o que torna esse erro **reversivel**: as auto-atribuidas ficam
+  // reconheciveis e podem ser movidas. Sem ele, a regra seria irreversivel — e
+  // ai nao valeria a pena.
+  autoAttributed Boolean @default(false)
   // The session owns the link (its `readingId`); this is only the way back.
   clinicSession ClinicMeasurementSession?
 
