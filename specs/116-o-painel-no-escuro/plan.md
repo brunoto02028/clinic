@@ -32,19 +32,32 @@ O que acontece de facto é a mistura:
 da captura, exatamente. E o botão `variant="outline"` é o contrário: todo por
 token, sobre um cartão que ficou escuro — some no fundo.
 
-## O tamanho
+## O tamanho — recontado
 
-Contando as classes de paleta crua clara (`bg-*-50` e `bg-*-100`) em `app/admin`:
+O Bruno perguntou se eu não estava a medir coisa já retirada do circuito. Boa
+pergunta, e ele tinha razão em parte: **a captura que ele mandou era do cartão do
+QR, que a 115 T-1 apagou**. Aquele cartão levou 2 das 15 classes da tela de
+pressão.
 
-| tela | classes cruas |
-|---|---|
-| `marketing/instagram-studio` | 65 |
-| `patients/[id]` (a ficha) | 63 |
-| `journey` | 37 |
-| `ai-coworker` | 33 |
-| `patients/[id]/permissions` | 22 |
-| `appointments` | 22 |
-| `blood-pressure` | 15 |
+Recontado depois disso, e com a lista de cores completa (a primeira contagem
+deixava de fora violet, purple, indigo e pink — por isso os números subiram):
+
+| tela | classes cruas | ainda ligada? |
+|---|---|---|
+| `marketing/instagram-studio` | 108 | sim, de 6 lugares |
+| `patients/[id]` (a ficha) | 71 | sim |
+| `marketplace` | 60 | sim, de 10 |
+| `body-assessments` | 47 | sim, de 8 |
+| `journey` | 42 | sim, de 9 |
+| `ai-coworker` | 36 | sim, de 4 |
+| `patients/[id]/diagnosis` | 32 | sim |
+| `finance` | 29 | sim |
+| `appointments` | 28 | sim |
+| `blood-pressure` | 13 | sim |
+
+**Nenhuma está retirada.** Conferi uma a uma: todas são alcançáveis, e as que não
+estão no menu de topo (`patients/[id]` e as filhas) são as mais usadas de todas,
+porque é onde o terapeuta passa a sessão.
 
 Não é uma tela: é o painel inteiro, escrito como se fosse claro.
 
@@ -76,9 +89,12 @@ seguinte — que é como as sete chegaram aqui.
 - **A medição é do contraste que sai, não da classe que entra.** Trocar
   `bg-amber-50` por um token só é melhoria se o contraste medido subir — já
   troquei 4,9 por 3,2 anunciando que estava a melhorar. A T-1 mede antes.
-- **O cartão do QR sai na 115 T-1**, então ele não entra na contagem da T-2 —
-  seria consertar o que vai ser apagado.
-- **`instagram-studio` lidera a lista e não entra nas três tarefas**: não é tela
-  de uso diário da clínica. Entra pela trava, quando alguém lhe tocar.
+- ~~O cartão do QR sai na 115 T-1~~ — **saiu**, e com ele 2 das 15 classes da
+  tela de pressão. A captura que abriu esta atividade era dele; a tela mudou
+  desde então, e a T-2 mede o que ficou.
+- **`instagram-studio` lidera a lista e não entra nas três tarefas**: está
+  ligada, mas não é tela de uso diário da clínica. Entra pela trava, quando
+  alguém lhe tocar. Consertar por tamanho da lista, e não por uso, arruma o que
+  ninguém abre.
 - O alvo é o painel. A área do paciente é clara por desenho e não tem este
   defeito — mas o app é o alvo real do paciente, e ele tem tema próprio.
