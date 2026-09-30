@@ -57,6 +57,14 @@ export default function Health() {
   // Uma das rotas que responde antes do aceite (passa `skipConsent` no gate),
   // e a que sabe dizer por que o resto está recusando.
   const access = useQuery({ queryKey: ["patient-access"], queryFn: fetchAccess });
+  /**
+   * Os módulos que este paciente alcança, ou `null` enquanto não se sabe.
+   *
+   * `null` mostra tudo, como o menu do perfil faz: uma rede ruim não pode
+   * esvaziar a tela inicial de quem tem acesso. Quem tranca é o servidor — cada
+   * uma destas rotas pede o seu módulo e responde 403.
+   */
+  const acesso: string[] | null = access.data?.modules ?? null;
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
   // `?? 0` turned a failed request — and a 403 from the plan gate — into the
@@ -290,67 +298,92 @@ export default function Health() {
           )}
         </Card>
 
-        {/* ── Quick links ── */}
-        <Card>
-          <ListItem
-            icon={<Avatar label="📈" pillar="health" size={36} />}
-            title={tr(lang, { en: "Pain trend", pt: "Evolução da dor" })}
-            subtitle={tr(lang, { en: "Track your progress over time", pt: "Acompanhe seu progresso ao longo do tempo" })}
-            right={
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={t.colors.textMuted}
-              />
-            }
-            onPress={() => router.push("/outcome-measures")}
-          />
-          <ListItem
-            icon={<Avatar label="🗓" pillar="health" size={36} />}
-            title={tr(lang, { en: "Book a new session", pt: "Agendar nova sessão" })}
-            subtitle={tr(lang, { en: "Schedule your next appointment", pt: "Marque sua próxima consulta" })}
-            right={
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={t.colors.textMuted}
-              />
-            }
-            onPress={() => router.push("/appointments")}
-          />
-          <ListItem
-            icon={<Avatar label="📋" pillar="health" size={36} />}
-            title={tr(lang, { en: "My records", pt: "Meu prontuário" })}
-            subtitle={tr(lang, { en: "Notes from your sessions", pt: "Notas das suas sessões" })}
-            right={
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={t.colors.textMuted}
-              />
-            }
-            onPress={() => router.push("/clinical-notes")}
-          />
-          {/* This link used to say "Message the clinic" and open the
-              therapist's read-only SOAP notes, because the channel did not
-              exist in the app. Now it does, and the badge counts what the
-              clinic has sent and the patient has not read. */}
-          <ListItem
-            icon={<Avatar label="💬" pillar="health" size={36} />}
-            title={tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" })}
-            subtitle={tr(lang, { en: "Send a message to your therapist", pt: "Envie uma mensagem ao seu terapeuta" })}
-            right={
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                {unreadMessages > 0 && (
+        {/* ── Quick links ──
+            **Cada atalho pergunta pelo módulo** (110 T-2, achado do QA).
+            Os quatro apareciam sempre. Com tudo desligado a Home era byte a
+            byte igual à Home de quem tem tudo, e tocar caía em "Not included in
+            your plan" — a maçaneta na parede, na **primeira** tela que o
+            paciente abre.
+            `access.data` ausente mostra tudo, como o menu: uma rede ruim não
+            pode esvaziar a tela inicial de quem tem acesso. Quem tranca é o
+            servidor. */}
+        {(() => {
+          /**
+           * Os atalhos que o paciente **pode** abrir.
+           *
+           * Montados como lista e filtrados, em vez de quatro `&&` soltos, por
+           * causa do `last`: a borda de baixo pertence ao último **visível**, e
+           * com guardas soltas ela ficaria num item escondido. E se nenhum
+           * sobrar, o cartão inteiro sai — um cartão vazio com borda é pior que
+           * cartão nenhum.
+           */
+          const temModulo = (chave: string) =>
+            !acesso || acesso.includes(chave);
+
+          const atalhos = [
+            {
+              modulo: "mod_records",
+              icone: "📈",
+              titulo: tr(lang, { en: "Pain trend", pt: "Evolução da dor" }),
+              sub: tr(lang, { en: "Track your progress over time", pt: "Acompanhe seu progresso ao longo do tempo" }),
+              direita: null as React.ReactNode,
+              ir: () => router.push("/outcome-measures"),
+            },
+            {
+              modulo: "mod_appointments",
+              icone: "🗓",
+              titulo: tr(lang, { en: "Book a new session", pt: "Agendar nova sessão" }),
+              sub: tr(lang, { en: "Schedule your next appointment", pt: "Marque sua próxima consulta" }),
+              direita: null as React.ReactNode,
+              ir: () => router.push("/appointments"),
+            },
+            {
+              modulo: "mod_clinical_notes",
+              icone: "📋",
+              titulo: tr(lang, { en: "My records", pt: "Meu prontuário" }),
+              sub: tr(lang, { en: "Notes from your sessions", pt: "Notas das suas sessões" }),
+              direita: null as React.ReactNode,
+              ir: () => router.push("/clinical-notes"),
+            },
+            {
+              /* Este link dizia "Message the clinic" e abria as notas do
+                 terapeuta, porque o canal não existia no app. Agora existe, e a
+                 marca conta o que a clínica mandou e o paciente não leu. */
+              modulo: "mod_messages",
+              icone: "💬",
+              titulo: tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" }),
+              sub: tr(lang, { en: "Send a message to your therapist", pt: "Envie uma mensagem ao seu terapeuta" }),
+              direita:
+                unreadMessages > 0 ? (
                   <Pill label={String(unreadMessages)} variant="health" />
-                )}
-                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
-              </View>
-            }
-            onPress={() => router.push("/messages")}
-            last
-          />
-        </Card>
+                ) : null,
+              ir: () => router.push("/messages"),
+            },
+          ].filter((a) => temModulo(a.modulo));
+
+          if (atalhos.length === 0) return null;
+
+          return (
+            <Card>
+              {atalhos.map((a, i) => (
+                <ListItem
+                  key={a.modulo}
+                  icon={<Avatar label={a.icone} pillar="health" size={36} />}
+                  title={a.titulo}
+                  subtitle={a.sub}
+                  right={
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {a.direita}
+                      <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+                    </View>
+                  }
+                  onPress={a.ir}
+                  last={i === atalhos.length - 1}
+                />
+              ))}
+            </Card>
+          );
+        })()}
       </View>
     </Screen>
   );

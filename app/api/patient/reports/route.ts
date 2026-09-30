@@ -16,7 +16,15 @@ import { signFileToken } from "@/lib/file-access-token";
  * saber que eles existem e de quando são.
  */
 export async function GET() {
-  const gate = await patientGate();
+  /**
+   * **O botão estava escondido e a porta aberta** (110 T-3).
+   *
+   * O item *My reports* no menu do app carrega `mod_records`; esta rota não
+   * pedia módulo nenhum. Desligar *My Records* escondia o botão e a rota
+   * continuava servindo os relatórios — e o menu do app **falha aberto**, então
+   * não era preciso nem saber o caminho: bastava a chamada de permissões falhar.
+   */
+  const gate = await patientGate({ module: "mod_records" });
   if (gate.response) return gate.response;
 
   const reports = await (prisma as any).patientReport.findMany({

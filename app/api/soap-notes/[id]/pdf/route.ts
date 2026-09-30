@@ -24,7 +24,15 @@ export async function GET(
     if (tenantAccess.response) return tenantAccess.response;
 
     if (tenantAccess.actor.role === "PATIENT") {
-      await assertModuleAccess(tenantAccess.actor.userId, "mod_records");
+      /**
+       * `mod_clinical_notes`, como a lista (110 T-2).
+       *
+       * Eu movi a rota da lista e **esqueci esta**. Por umas horas a divisão
+       * ficou pela metade: com o progresso ligado e a nota desligada, a lista
+       * respondia 403 e a nota individual — e o PDF dela — continuavam abrindo
+       * por id. Meia divisão é pior que nenhuma, porque parece fechada.
+       */
+      await assertModuleAccess(tenantAccess.actor.userId, "mod_clinical_notes");
     }
 
     const soapNote = await prisma.sOAPNote.findUnique({

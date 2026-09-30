@@ -20,8 +20,28 @@ export const dynamic = "force-dynamic";
  * patient's own screen.
  */
 export async function GET(_req: NextRequest) {
+  /**
+   * **A nota clínica tem interruptor próprio** (110 T-2, 30/09/2026).
+   *
+   * Isto guardava com `mod_records`, que governa **também** as medidas de
+   * evolução e os relatórios. Uma clínica que quisesse mostrar o progresso e
+   * guardar a nota crua tinha de escolher entre tudo e nada — e escolher "tudo"
+   * é como alguém lê uma hipótese provisória, escrita de profissional para
+   * profissional, e entra em pânico.
+   *
+   * `mod_clinical_notes` existia no catálogo desde sempre e **ninguém o lia**.
+   * Quem o criou tinha visto esta distinção; faltava ligá-lo.
+   *
+   * A web (`/api/soap-notes`) muda **no mesmo commit**, de propósito: gatear só
+   * aqui deixaria o paciente ver no app o que a web esconde, que é exatamente
+   * o que o comentário anterior protegia. A resposta certa era mover os dois,
+   * e não manter tudo amarrado.
+   *
+   * Medido antes de virar: em produção nenhum plano concede um sem o outro e
+   * nenhum paciente tem override de um sem o outro. Ninguém perdeu acesso.
+   */
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
-  const __gate = await patientGate({ module: "mod_records" });
+  const __gate = await patientGate({ module: "mod_clinical_notes" });
   if (__gate.response) return __gate.response;
 
   try {
@@ -31,9 +51,6 @@ export async function GET(_req: NextRequest) {
     }
 
     const userId = effectiveUser.userId;
-    // Same gate the web uses for these same notes: /api/soap-notes checks
-    // mod_records. Gating on mod_clinical_notes here would let a patient whose
-    // clinic hid their records see them in the app and not on the web.
 
     const me = await prisma.user.findUnique({
       where: { id: userId },
