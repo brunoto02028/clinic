@@ -147,7 +147,12 @@ describe("o classificador é um só", () => {
         }
       }
     };
-    for (const base of ["app", "lib", "components", "mobile/app", "mobile/src"]) {
+    // `scripts` entrou depois, e nao por simetria: o resto do repositorio
+    // estava limpo e o unico residuo vivo estava exatamente no diretorio que a
+    // varredura nao percorria — o script que forca `OUTBOUND_MODE=live` e
+    // entrega e-mail de verdade. Uma varredura escolhe onde olhar, e o que ela
+    // nao percorre e onde o defeito sobrevive.
+    for (const base of ["app", "lib", "components", "scripts", "mobile/app", "mobile/src"]) {
       const d = path.join(RAIZ, base);
       if (fs.existsSync(d)) anda(d);
     }

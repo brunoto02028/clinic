@@ -572,13 +572,16 @@ export default function AdminBloodPressurePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Blood Pressure Categories (Reference)</CardTitle>
+          {/* Onde as faixas sao nomeadas e onde a explicacao delas tem de
+              estar. Importada e nao usada ate o QA de 30/09 medir. */}
+          <p className="text-[11px] leading-snug text-muted-foreground">{BP_GUIDANCE_NOTE.en}</p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
             {[
-              { label: "Low", range: "<90/60", color: "bg-blue-50 text-blue-700 border-blue-200" },
-              { label: "Normal", range: "<120/80", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-              { label: "Elevated", range: "120-129/<80", color: "bg-amber-50 text-amber-700 border-amber-200" },
+              { label: BP_LABELS.LOW.en, range: "<90/60", color: "bg-blue-50 text-blue-700 border-blue-200" },
+              { label: BP_LABELS.NORMAL.en, range: "<120/80", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+              { label: BP_LABELS.ELEVATED.en, range: "120-129/<80", color: "bg-amber-50 text-amber-700 border-amber-200" },
               { label: BP_LABELS.STAGE1.en, range: "130-139/80-89", color: "bg-orange-50 text-orange-700 border-orange-200" },
               { label: BP_LABELS.STAGE2.en, range: "≥140/≥90", color: "bg-red-50 text-red-700 border-red-200" },
             ].map((cat) => (

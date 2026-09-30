@@ -1,4 +1,4 @@
-import { BP_LABELS } from "@/lib/blood-pressure";
+import { BP_LABELS, bpLabel, classifyBP, type BPClassification } from "@/lib/blood-pressure";
 
 /**
  * The blood-pressure bands, with no database in them.
@@ -113,42 +113,41 @@ export function thresholdsFromCondition(condition: unknown): BpThresholds {
   };
 }
 
-/** Which band a reading falls in, on the thresholds this clinic uses. */
+/**
+ * Duas perguntas, e **elas nao tem a mesma resposta** (105 T-6, achado do QA).
+ *
+ * 1. *Devo alertar, e com que urgencia?* — **da clinica**. Cada clinica
+ *    configura os proprios limiares, e isso e legitimo: quem decide a partir de
+ *    quando quer ser chamada e ela.
+ * 2. *Como se chama esta leitura?* — **da regua publica**, e de mais ninguem.
+ *
+ * Esta funcao respondia as duas com os mesmos numeros, e por isso o **nome** da
+ * leitura andava junto com a configuracao do alerta. Com os limiares padrao,
+ * 115/95 saia `Above UK guidance` no alerta e no e-mail, e `Well above UK
+ * guidance` na tela do paciente e no prontuario — a dois cliques de distancia.
+ *
+ * E ficou **mais dificil de ver** depois da correcao de vocabulario desta manha:
+ * os dois passaram a falar as mesmas palavras, entao pareciam concordar. O QA
+ * apanhou com as tres leituras do Bruno.
+ *
+ * Agora o nome vem sempre de `classifyBP`. Os limiares da clinica continuam a
+ * decidir `isAlert` e `isCrisis` — que e a pergunta que era mesmo dela.
+ *
+ * Isto tambem conserta, de lambuja, a hipotensao: 85/55 saia `"Normal"` aqui
+ * porque estava abaixo do limiar de alerta, e a regua chama `Low`.
+ */
 export function classify(
   systolic: number,
   diastolic: number,
   t: BpThresholds
-): { isCrisis: boolean; isAlert: boolean; classification: string } {
+): { isCrisis: boolean; isAlert: boolean; faixa: BPClassification; classification: string } {
   const isCrisis = systolic >= t.crisisSystolic || diastolic >= t.crisisDiastolic;
   const isAlert = systolic >= t.alertSystolic || diastolic >= t.alertDiastolic;
-  // Stage 2 sat at a hardcoded 140/90 while the alert band moved with the
-  // rule, so a clinic that lowered its alert to 110/70 had 115/75 reaching the
-  // therapist labelled "Stage 1 Hypertension" — a name, not a measurement, and
-  // a false one. It now sits halfway between this clinic's own two bands.
-  const stage2Systolic = Math.round((t.alertSystolic + t.crisisSystolic) / 2);
-  const stage2Diastolic = Math.round((t.alertDiastolic + t.crisisDiastolic) / 2);
-  const isStage2 = systolic >= stage2Systolic || diastolic >= stage2Diastolic;
-  return {
-    isCrisis,
-    isAlert,
-    // A reading below this clinic's own alert threshold is not hypertension of
-    // any stage. The ternary had no such branch, so a clinic with its alert at
-    // 160/100 got e-mails calling 145/95 "Stage 1 Hypertension" — a diagnosis,
-    // in a product that must not make one, about a reading that clinic does
-    // not consider high.
-    // **Isto vai no e-mail que o paciente recebe** (`BP_HIGH_ALERT`), e dizia
-    // "Stage 2 Hypertension" — o nome de uma categoria diagnóstica, chegando
-    // sozinho na caixa de entrada de quem não tem como pedir explicação. Os
-    // comentários acima já brigavam com esse nome nos limiares; faltava o
-    // vocabulário. Agora é o mesmo de `BP_LABELS` (105 T-6).
-    classification: isCrisis
-      ? BP_LABELS.CRISIS.en
-      : !isAlert
-        ? systolic < 120 && diastolic < 80
-          ? BP_LABELS.NORMAL.en
-          : "Below this clinic's alert threshold"
-        : isStage2
-          ? BP_LABELS.STAGE2.en
-          : BP_LABELS.STAGE1.en,
-  };
+  const faixa = classifyBP(systolic, diastolic);
+  return { isCrisis, isAlert, faixa, classification: BP_LABELS[faixa].en };
+}
+
+/** O mesmo nome, na lingua de quem le — o e-mail em portugues dizia-o em ingles. */
+export function classificationFor(faixa: BPClassification, isPt: boolean): string {
+  return bpLabel(faixa, isPt);
 }

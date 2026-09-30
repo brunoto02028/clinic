@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendAdminAlert } from "@/lib/admin-alert-email";
 import { escapeHtml } from "@/lib/admin-notify-email";
-import { getBpThresholds, classify } from "@/lib/automation/bp-thresholds";
+import { getBpThresholds, classify, classificationFor } from "@/lib/automation/bp-thresholds";
 import { getExerciseBpLimits, evaluateClearance } from "@/lib/automation/exercise-bp";
 import { noticeFor } from "@/lib/non-emergency-notice";
 import { createAlert } from "@/lib/alerts";
@@ -64,7 +64,7 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
     prisma.user.findUnique({ where: { id: patientId }, select: { firstName: true, lastName: true } }),
   ]);
 
-  const { isCrisis, isAlert, classification } = classify(sys, dia, thresholds);
+  const { isCrisis, isAlert, faixa, classification } = classify(sys, dia, thresholds);
   const clearance = evaluateClearance({ systolic: sys, diastolic: dia, measuredAt }, exerciseLimits);
   const blocksTraining = clearance.blocked;
 
@@ -83,6 +83,12 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
         readingDate: measuredAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
         classification,
         portalUrl: `${BASE}/dashboard/blood-pressure`,
+      },
+      // O valor de `{{classification}}` na lingua de quem le. O modelo ja era
+      // bilingue; a variavel nao era, e o e-mail em portugues dizia
+      // "Classificacao: Very high — get help now".
+      emailVarsPt: {
+        classification: classificationFor(faixa, true),
       },
       // O aviso vai junto também aqui. Uma mensagem curta que manda ir ao
       // pronto-socorro e não diz que ninguém está de plantão deste lado deixa

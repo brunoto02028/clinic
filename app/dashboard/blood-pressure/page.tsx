@@ -38,7 +38,7 @@ import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 import { NonEmergencyNotice } from "@/components/patient/non-emergency-notice";
 import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
-import { BP_LABELS } from "@/lib/blood-pressure";
+import { BP_LABELS, BP_GUIDANCE_NOTE, classifyBP as faixaDaLeitura } from "@/lib/blood-pressure";
 
 interface BPReading {
   id: string;
@@ -70,13 +70,28 @@ interface PPGAnalysis {
   timestamps: number[];
 }
 
+/**
+ * A cor, o icone e a gravidade — o **nome e os limiares vem da lib**.
+ *
+ * Esta funcao tinha os limiares escritos aqui dentro. Eram os mesmos da lib, e
+ * por isso ninguem notava; foi assim que o painel comecou tambem, ate discordar
+ * em tres leituras. O QA de hoje achou um terceiro classificador no alerta, com
+ * a mesma origem: uma copia que ninguem chamou de copia.
+ *
+ * O que e desta tela fica aqui — cor e icone sao do desenho, nao do vocabulario.
+ */
+const APARENCIA_DA_FAIXA = {
+  CRISIS: { color: "text-ba1-bad bg-ba1-bad/15 border-ba1-bad/30", icon: AlertTriangle, severity: 5 },
+  STAGE2: { color: "text-ba1-bad bg-ba1-bad/10 border-ba1-bad/20", icon: AlertTriangle, severity: 4 },
+  STAGE1: { color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: AlertTriangle, severity: 3 },
+  ELEVATED: { color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: TrendingUp, severity: 2 },
+  LOW: { color: "text-ba1-health bg-ba1-health/10 border-ba1-health/20", icon: TrendingDown, severity: 1 },
+  NORMAL: { color: "text-ba1-ok bg-ba1-ok/10 border-ba1-ok/20", icon: CheckCircle, severity: 0 },
+} as const;
+
 function classifyBP(sys: number, dia: number): { labelEn: string; labelPt: string; color: string; icon: any; severity: number } {
-  if (sys >= 180 || dia >= 120) return { labelEn: BP_LABELS.CRISIS.en, labelPt: BP_LABELS.CRISIS.pt, color: "text-ba1-bad bg-ba1-bad/15 border-ba1-bad/30", icon: AlertTriangle, severity: 5 };
-  if (sys >= 140 || dia >= 90) return { labelEn: BP_LABELS.STAGE2.en, labelPt: BP_LABELS.STAGE2.pt, color: "text-ba1-bad bg-ba1-bad/10 border-ba1-bad/20", icon: AlertTriangle, severity: 4 };
-  if (sys >= 130 || dia >= 80) return { labelEn: BP_LABELS.STAGE1.en, labelPt: BP_LABELS.STAGE1.pt, color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: AlertTriangle, severity: 3 };
-  if (sys >= 120 && dia < 80) return { labelEn: "Elevated", labelPt: "Elevada", color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: TrendingUp, severity: 2 };
-  if (sys < 90 || dia < 60) return { labelEn: "Low", labelPt: "Baixa", color: "text-ba1-health bg-ba1-health/10 border-ba1-health/20", icon: TrendingDown, severity: 1 };
-  return { labelEn: "Normal", labelPt: "Normal", color: "text-ba1-ok bg-ba1-ok/10 border-ba1-ok/20", icon: CheckCircle, severity: 0 };
+  const faixa = faixaDaLeitura(sys, dia);
+  return { labelEn: BP_LABELS[faixa].en, labelPt: BP_LABELS[faixa].pt, ...APARENCIA_DA_FAIXA[faixa] };
 }
 
 interface DeviceInfo {
@@ -1820,6 +1835,13 @@ export default function BloodPressurePage() {
               <Activity className="h-4 w-4 text-primary" />
               {T("bp.readingHistory")}
             </CardTitle>
+            {/* A frase que desfaz a leitura errada. Estava no app e nao estava
+                aqui: as etiquetas novas chegaram a esta tela, e a explicacao
+                delas nao — que e a metade que faz a etiqueta voltar a soar como
+                veredito. Achado do QA de 30/09. */}
+            <p className="text-[11px] leading-snug text-muted-foreground mt-1">
+              {isPt ? BP_GUIDANCE_NOTE.pt : BP_GUIDANCE_NOTE.en}
+            </p>
           </CardHeader>
           <CardContent>
             {loading ? (

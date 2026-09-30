@@ -301,6 +301,13 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
 
           <div>
             <h4 className="text-xs font-semibold mb-1">{t.history}</h4>
+            {/* A frase estava importada e nao desenhada — o QA mediu `nota:
+                false` nas duas linguas. O terapeuta le a mesma etiqueta que o
+                paciente, e e com ele que o paciente vai falar sobre ela: se o
+                vocabulario e um so, a explicacao tambem tem de ser. */}
+            <p className="text-[11px] leading-snug text-muted-foreground mb-2">
+              {isPt ? BP_GUIDANCE_NOTE.pt : BP_GUIDANCE_NOTE.en}
+            </p>
             <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="bg-muted/50 text-muted-foreground">

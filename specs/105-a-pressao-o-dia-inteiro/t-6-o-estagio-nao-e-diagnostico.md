@@ -1,6 +1,6 @@
 # T-6: O estágio não é diagnóstico
 
-**Status:** 🟢 concluída (30/09) — QA pendente
+**Status:** 🟢 concluída (30/09) — [QA feito](qa/report-t-6.md), com quatro ressalvas, todas corrigidas no mesmo dia
 **Origem:** eu levantei ao ver as capturas; o Bruno decidiu em 30/09/2026.
 
 ## O que a tela mostra hoje
@@ -39,10 +39,10 @@ Proposta, EN primeiro:
 | etiqueta | `Above UK guidance` / `Well above UK guidance` | `Acima do parâmetro do NHS` / `Bem acima do parâmetro do NHS` |
 | linha da tela | *"These bands come from UK blood-pressure guidance. They are not a diagnosis — only a doctor can make one. If your readings keep landing here, book with your GP."* | *"Estas faixas vêm do parâmetro britânico de pressão arterial. Não são um diagnóstico — só um médico faz isso. Se as suas leituras continuarem aqui, marque com o seu médico."* |
 
-**A alternativa é manter "Stage 1/2" e só acrescentar a frase.** É menos mudança,
-e mantém um vocabulário que o paciente pode levar ao médico. Fica para o Bruno
-escolher; a tabela acima é a minha recomendação, porque a etiqueta é o que se lê
-primeiro e a frase é o que se lê depois — ou nunca.
+**A alternativa era manter "Stage 1/2" e só acrescentar a frase.** Menos mudança,
+e mantinha um vocabulário que o paciente pode levar ao médico. O Bruno escolheu a
+tabela acima — *"aceito suas recomendações"* — pelo motivo de sempre: a etiqueta
+é o que se lê primeiro, e a frase é o que se lê depois, ou nunca.
 
 ## O que já está certo na tela, e deve ficar
 
@@ -70,11 +70,14 @@ do que se conclui sozinho.
 
 ## Critérios de aceite
 
-- [ ] A etiqueta nomeia a régua, e não emite veredito
-- [ ] A palavra "diagnóstico" aparece **negada**, e em lugar visível
-- [ ] O mesmo vocabulário na tela do paciente, na do painel e no PDF
-- [ ] A varredura não deixou nenhum lugar com o rótulo antigo
-- [ ] A leitura alta continua **parecendo** alta — a mudança é de palavra, não de
+- [x] A etiqueta nomeia a régua, e não emite veredito
+- [x] A palavra "diagnóstico" aparece **negada**, e em lugar visível — na tela do
+      app, na web do paciente, no prontuário e no painel (as três últimas
+      entraram depois do QA)
+- [x] O mesmo vocabulário na tela do paciente, na do painel e no PDF
+- [x] A varredura não deixou nenhum lugar com o rótulo antigo — **depois** de
+      passar a andar por `scripts/`, onde estava o último
+- [x] A leitura alta continua **parecendo** alta — a mudança é de palavra, não de
       sinal
 
 
@@ -147,3 +150,46 @@ continua igual.
 
 Suíte completa: **2906 testes, 196 suítes, verdes.** `tsc` em 0 nos dois lados.
 Build compilou.
+
+---
+
+# Depois do QA: quatro classificadores, não um
+
+O relatório está em [`qa/report-t-6.md`](qa/report-t-6.md). O que ele mudou de
+entendimento merece ficar aqui, porque não era o que eu pensava ter corrigido.
+
+Eu tinha encontrado **dois** classificadores e achado que o problema era
+vocabulário. Havia **quatro**, e o problema era de desenho:
+
+| onde | o que tinha |
+|---|---|
+| `lib/blood-pressure.ts` | a régua |
+| `app/admin/blood-pressure/page.tsx` | limiares próprios — achado por mim, corrigido de manhã |
+| `lib/automation/bp-bands.ts` | limiares próprios, **do alerta e do e-mail** — achado pelo QA |
+| `app/dashboard/blood-pressure/page.tsx` | limiares inline, iguais aos da lib — achado ao corrigir a frase |
+
+O terceiro é o que importa. Ele calculava o "estágio 2" como o **ponto médio
+entre o alerta e a crise daquela clínica**, então o *nome* da leitura andava com a
+configuração do alerta: 115/95 era `Above UK guidance` no e-mail e `Bem acima do
+parâmetro do NHS` no prontuário, no mesmo dia, sobre a mesma medida.
+
+E a correção da manhã **escondeu** esse defeito em vez de o revelar: ao trocar as
+palavras dele por `BP_LABELS`, os dois passaram a falar igual — e passaram a
+*parecer* de acordo.
+
+## A regra que faltava
+
+A função respondia duas perguntas com os mesmos números:
+
+- **devo alertar, e com que urgência?** — é da clínica, e é legítimo que cada uma
+  configure a sua;
+- **como se chama esta leitura?** — é da régua pública, e não varia com quem
+  pergunta.
+
+Separadas, o resto caiu sozinho. Inclusive a hipotensão: 85/55 saía `"Normal"` no
+alerta porque estava *abaixo* do limiar de alerta — o QA levantou como fora de
+escopo, e deixou de existir quando o nome passou a vir da régua.
+
+**A lição, que vale para além da pressão:** uma constante partilhada não faz duas
+implementações concordarem. Enquanto cada uma tiver a própria aritmética, o
+vocabulário comum só torna a divergência mais difícil de ver.
