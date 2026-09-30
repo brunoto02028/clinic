@@ -642,6 +642,34 @@ input:focus, textarea:focus, select:focus, [role="combobox"]:focus {
   list-style-type: decimal;
 }
 
+/* ────────────────────────────────────────────────────────────────
+   O musgo usado como TEXTO e o claro, em todo o painel (116 T-2).
+
+   O Bruno mandou uma captura do painel com duas palavras: "cores ruins".
+   Medido, o defeito nao era o que parecia: as caixas de paleta crua estao
+   bem (a legenda das faixas de pressao da 4,84 a 6,16, porque cada uma
+   junta um fundo claro com um texto escuro da mesma cor). O que falha e o
+   **verde da marca usado como texto sobre o painel escuro**: 2,78 nas
+   iniciais dos pacientes, 3,04 nos rotulos. Vinte e duas das vinte e nove
+   falhas de uma tela sao esta unica cor.
+
+   E o token certo **ja existia**. O comentario dele, escrito por quem o
+   criou, diz exatamente isto: *"--primary itself (38% L) fails WCAG AA as
+   text color here (~3:1); this clears 8:1+"*. Alguem diagnosticou, criou a
+   variavel, escreveu o porque — e as 382 chamadas continuaram em
+   `text-primary`.
+
+   Uma regra, e nao 382 trocas. E ela e segura nos dois lados porque
+   `.public-site` redefine `--accent-bright` para o valor do proprio
+   `--primary`: na area clara, o musgo escuro ja le bem, e nada muda.
+
+   So o **texto**. Fundos, bordas e preenchimentos continuam com `--primary`,
+   que e a cor da marca onde ela e superficie e nao letra.
+   ──────────────────────────────────────────────────────────────── */
+.text-primary {
+  color: hsl(var(--accent-bright));
+}
+
 .article-content li {
   margin-bottom: 0.5rem;
   padding-left: 0.25rem;

@@ -80,8 +80,8 @@ seguinte — que é como as sete chegaram aqui.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [A varredura que mede, e a trava](t-1-a-varredura-e-a-trava.md) | pendente |
-| T-2 | [As telas da pressão](t-2-as-telas-da-pressao.md) | pendente |
+| T-1 | [A varredura que mede, e a trava](t-1-a-varredura-e-a-trava.md) | ✅ concluída (30/09) |
+| T-2 | [As telas da pressão](t-2-as-telas-da-pressao.md) | ✅ concluída (30/09) — 29 falhas → 7 |
 | T-3 | [A ficha do paciente e a agenda](t-3-a-ficha-e-a-agenda.md) | pendente |
 
 ## Suposições
