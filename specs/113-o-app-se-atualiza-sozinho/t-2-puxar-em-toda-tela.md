@@ -1,6 +1,6 @@
 # T-2: Puxar para baixo, em toda tela
 
-**Status:** pendente
+**Status:** ✅ já estava feita — verificada em 30/09
 **Depende de:** T-1
 
 ## Objetivo

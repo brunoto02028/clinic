@@ -1,6 +1,6 @@
 # T-3: O que não se atualiza sozinho
 
-**Status:** pendente
+**Status:** ✅ concluída (30/09)
 **Depende de:** T-1
 
 ## Objetivo
