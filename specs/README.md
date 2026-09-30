@@ -233,3 +233,4 @@ código está inerte esperando:
 - **108** — [A clínica decide como recebe](108-a-clinica-decide-como-recebe/plan.md)
 - **109** — [O tempo entre um paciente e outro](109-o-tempo-entre-um-e-outro/plan.md)
 - **110** — [O interruptor que não acende](110-o-interruptor-que-nao-acende/plan.md) — o painel liga módulos que o app não tem
+- **111** — [O que o app faz, para contar ao mundo](111-o-que-o-app-faz/plan.md) — inventário para reescrever as páginas públicas; **não muda código**
