@@ -3,7 +3,10 @@ import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
-import { fetchWearableData } from "@/api/wearables";
+import { fetchWearableData, fetchConnections } from "@/api/wearables";
+import { Pressable } from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -52,6 +55,18 @@ function WearableDataScreen() {
     queryFn: () => fetchWearableData(7),
   });
 
+  /**
+   * Se ha aparelho ligado — e e isso que muda o texto do vazio.
+   *
+   * Sem esta pergunta, a tela so sabia dizer "conecte um wearable", que e
+   * exatamente o conselho errado para quem ja conectou.
+   */
+  const { data: ligacoes } = useQuery({
+    queryKey: ["wearable-connections"],
+    queryFn: fetchConnections,
+  });
+  const temLigacao = (ligacoes?.length ?? 0) > 0;
+
   const latest = (type: string) => data?.find((d) => d.dataType === type);
   const sleep = latest("SLEEP");
   const body = latest("BODY");
@@ -81,13 +96,52 @@ function WearableDataScreen() {
         ) : isError ? (
           <LoadFailure error={error} onRetry={() => refetch()} />
         ) : !data || data.length === 0 ? (
-          <View style={{ padding: 40, alignItems: "center", gap: 12 }}>
+          /**
+           * O vazio que **diz porque esta vazio** (114 T-4).
+           *
+           * Esta tela mostra sono, atividade e recuperacao. Um medidor de
+           * pressao e uma bracadeira: mede pressao, e mais nada. Entao, para
+           * quem so tem um deles ligado, ela mostra o conjunto vazio — com
+           * razao — e dizia *"conecte um wearable e aguarde a sincronizacao"*,
+           * que e falso duas vezes: ele ja conectou, e esperar nao vai trazer
+           * nada.
+           *
+           * Foi o que fez o Bruno concluir que a ligacao estava partida. Ela
+           * nao estava; o dado dele chegou, e esta noutra tela.
+           */
+          <View style={{ padding: 32, alignItems: "center", gap: 14 }}>
             <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
-              {tr(lang, {
-                en: "No data yet. Connect a wearable and wait for the first sync.",
-                pt: "Nenhum dado ainda. Conecte um wearable e aguarde a sincronização.",
-              })}
+              {temLigacao
+                ? tr(lang, {
+                    en: "Nothing here yet. This screen shows sleep, activity and recovery — a blood-pressure monitor does not send those.",
+                    pt: "Nada aqui ainda. Esta tela mostra sono, atividade e recuperação — um medidor de pressão não envia isso.",
+                  })
+                : tr(lang, {
+                    en: "No data yet. Connect a wearable and wait for the first sync.",
+                    pt: "Nenhum dado ainda. Conecte um wearable e aguarde a sincronização.",
+                  })}
             </Text>
+            {temLigacao && (
+              <Pressable
+                onPress={() => router.push("/(app)/(clinica)/blood-pressure")}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  backgroundColor: pressed ? t.colors.surfaceMuted : "transparent",
+                })}
+              >
+                <Text variant="label">
+                  {tr(lang, { en: "See my blood pressure", pt: "Ver minha pressão arterial" })}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={{ gap: 12 }}>
