@@ -1,6 +1,6 @@
 # T-1: Os grupos chegam ao app
 
-**Status:** 🟢 implementada (30/09) — QA pendente
+**Status:** ✅ concluída (30/09) — [QA aprovado 11/11](qa/report-t-1.md), review feito, `eas update` publicado
 **Depende de:** nenhuma
 **Decidido pelo Bruno em 30/09/2026.**
 
@@ -162,5 +162,16 @@ exceção do teste — um segundo arquivo na lista derruba a varredura.
   arquivo à lista de exceções → 1.
 - `tsc --noEmit` em 0 nos dois lados; suíte completa verde.
 
-**Ainda não chegou ao telefone:** a mudança é de JavaScript, então vai por `eas
-update` junto com o resto — e o QA da tela vem antes.
+**Chegou ao telefone em 30/09**, por `eas update --channel production`, depois do
+QA e do review — iOS `81af75f0`, Android `083df43a`.
+
+O QA apanhou uma coisa que eu não tinha pedido e que vale mais que os cenários:
+ele simulou **um servidor que conhece só parte dos grupos**, e as oito linhas
+órfãs caíram no bloco final, visíveis. O desenho aguentou o caso que ninguém
+tinha imaginado.
+
+E deixou uma ressalva de produto: ***Seu tratamento* ficou com 9 das 20 linhas**.
+Agrupar arrumou as bordas e deixou o centro como estava — dentro daquele bloco a
+busca volta a ser alfabética pelo nome, que é o problema que esta tarefa existe
+para atacar. Partir `clinical` em dois, ou tirar de lá o que é leitura de
+arquivo, é decisão do Bruno.

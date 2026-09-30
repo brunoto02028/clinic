@@ -1,6 +1,6 @@
 # T-2: A captura sai da web do paciente
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente
 **Depende de:** T-1
 
 ## Objetivo
@@ -39,3 +39,43 @@ de algo em uso. Vem depois da T-1 por esse motivo.
 - [ ] Nenhum pedido de permissão de câmera
 - [ ] `tsc --noEmit` em 0
 - [ ] Nada do que foi removido sobrou importado sem uso
+
+## O que foi feito
+
+**1.251 linhas cortadas** — de 2.015 para 573. Saíram inteiros: `getDeviceInfo`,
+`analyzePPGSignal`, `PPGWaveformChart`, `PPGReport` e `PPGCamera`, mais o estado,
+os manipuladores e as telas de ajuda no componente principal.
+
+Com eles foram, como a tarefa previa, a **estimativa de pressão**, a **análise de
+ritmo** e a **VFC**: as três vinham do mesmo sinal óptico e nenhuma tinha outra
+fonte.
+
+### Três coisas que apareceram ao cortar
+
+**Eram dois botões, e o segundo já se desmentia.** *Enter Cuff Reading* vinha
+marcado *recommended*; ao lado, *Camera Estimate* dizia *PPG — estimate only*.
+Duas portas para a mesma coisa, uma delas avisando que não servia. Ficou uma.
+
+**O crachá de ritmo dizia "AFib?" numa leitura antiga.** Era calculado dos
+intervalos entre batimentos lidos pelo telefone — a mais arriscada das três
+promessas, e a única que **nomeava uma condição**. A leitura continua na lista; o
+veredito sobre ela, não.
+
+**A forma de onda guardada saiu junto.** Leituras antigas têm o sinal gravado, e
+a tela desenhava um gráfico "tipo ECG" com ele. O dado fica no banco; a tela
+deixa de o interpretar.
+
+### Provas
+
+`__tests__/pressao/o-painel-nao-oferece-a-camera.test.ts`, alargado do painel
+para o produto inteiro. Dois cenários novos: a tela **não pede a câmera**
+(`getUserMedia`, `videoRef`, `torch`, `facingMode`) e **continua a gravar** a
+leitura digitada.
+
+Por mutação, duas — e a segunda ensinou alguma coisa: pedir a câmera de volta
+derruba 1; **quebrar a gravação da leitura não derrubou nada** na primeira
+versão, porque o teste procurava `method: "MANUAL"` no arquivo inteiro e a string
+também está na declaração do tipo. Passou a procurar **dentro** do
+`handleManualSubmit`, e aí morre.
+
+Suíte: **2956 testes, 200 suítes** verdes. `tsc` em 0 nos dois lados. Build ok.

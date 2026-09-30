@@ -42,7 +42,7 @@ novo.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [Os grupos chegam ao app](t-1-os-grupos.md) | 🟢 implementada — QA pendente |
+| T-1 | [Os grupos chegam ao app](t-1-os-grupos.md) | ✅ concluída — [QA 11/11](qa/report-t-1.md), no telefone |
 | T-2 | [A clínica arrasta, e o app obedece](t-2-a-clinica-arrasta.md) | pendente |
 | T-3 | [O paciente arruma o próprio app](t-3-o-paciente-arruma.md) | pendente |
 | T-4 | [Voltar ao alfabeto](t-4-voltar-ao-alfabeto.md) | pendente |

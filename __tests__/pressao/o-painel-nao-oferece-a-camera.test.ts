@@ -36,14 +36,16 @@ import * as path from "path";
 const RAIZ = path.join(__dirname, "..", "..");
 
 /**
- * Onde a varredura anda **hoje**.
+ * Onde a varredura anda.
  *
- * A 115 T-3 acrescenta `lib/i18n.ts` e `app/dashboard`, quando os ~40 textos e a
- * captura saírem. Alargar antes deixaria o teste vermelho por trabalho que ainda
- * não foi feito — e um teste vermelho por tarefa futura é um teste que se
- * desliga.
+ * Comecou so pelo painel (T-1) e alargou com a T-2/T-3, quando a captura e os 65
+ * textos sairam. Alargar **antes** deixaria o teste vermelho por trabalho ainda
+ * nao feito — e um teste vermelho por tarefa futura e um teste que se desliga.
+ *
+ * `app` inteiro cobre o painel **e** a web do paciente, que era onde a captura
+ * vivia de facto.
  */
-const ONDE = ["app/admin", "components/admin"];
+const ONDE = ["app", "components", "lib", "mobile/app", "mobile/src"];
 
 /** O que nenhuma tela pode dizer. */
 const PROIBIDAS = [
@@ -110,7 +112,38 @@ describe("o painel não oferece medir pela câmera", () => {
   });
 
   it("a varredura lê mesmo os arquivos — senão aprova o vazio", () => {
-    expect(arquivos().length).toBeGreaterThan(20);
+    expect(arquivos().length).toBeGreaterThan(200);
+  });
+
+  it("**a tela do paciente não pede a câmera**", () => {
+    // A captura vivia aqui: acesso à câmera, flash, análise do sinal. Mil e
+    // duzentas linhas, num arquivo de duas mil.
+    const fonte = fs.readFileSync(
+      path.join(RAIZ, "app", "dashboard", "blood-pressure", "page.tsx"),
+      "utf8"
+    );
+    const codigo = fonte
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    expect(codigo).not.toMatch(/getUserMedia|videoRef|torch|facingMode/i);
+  });
+
+  it("**e continua a aceitar a leitura de um aparelho**", () => {
+    // Tirar a câmera não podia tirar o caminho que sobrou. Se a tela deixar de
+    // gravar, isto cai — e era fácil de acontecer, cortando mil linhas.
+    const fonte = fs.readFileSync(
+      path.join(RAIZ, "app", "dashboard", "blood-pressure", "page.tsx"),
+      "utf8"
+    );
+    // Procurado **dentro** do `handleManualSubmit`, e nao no arquivo inteiro: a
+    // primeira versao deste teste passava com a gravacao quebrada, porque a
+    // string `method: "MANUAL"` tambem aparece na declaracao do tipo da leitura.
+    // Foi a mutacao que apanhou — o teste que nao morre nao mede nada.
+    const i = fonte.indexOf("const handleManualSubmit");
+    expect(i).toBeGreaterThan(0);
+    const corpo = fonte.slice(i, i + 1200);
+    expect(corpo).toContain("saveReading(");
+    expect(corpo).toContain('method: "MANUAL"');
   });
 });
 
