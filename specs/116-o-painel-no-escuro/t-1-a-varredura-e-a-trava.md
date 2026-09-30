@@ -1,6 +1,6 @@
 # T-1: A varredura que mede, e a trava
 
-**Status:** pendente
+**Status:** ✅ concluída (30/09)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -50,3 +50,44 @@ se desliga.
 - [ ] A varredura conta certo e a linha de base bate com o que existe
 - [ ] Acrescentar uma classe crua derruba o teste
 - [ ] Remover classes cruas **não** derruba o teste
+
+---
+
+# A medição, e o que ela desmentiu
+
+Medi o contraste **que sai no navegador**, com as camadas semitransparentes
+compostas — e a primeira versão da minha própria medição estava errada: ela
+comparava o texto contra um fundo de 10% de alfa sem o compor sobre o que estava
+atrás, e dava contraste **1** em vinte e quatro elementos. Um número alarmante e
+falso. Compor as camadas trocou-o por 2,78.
+
+## O que a paleta crua faz, de facto
+
+**Está largamente bem.** A legenda das faixas de pressão dá de **4,84 a 6,16**,
+porque cada célula junta um fundo claro com um texto escuro **da mesma cor**
+(`bg-blue-50 text-blue-700`).
+
+Ou seja: as 608 ocorrências que eu ia perseguir não são, na maioria, o defeito.
+A trava sobre elas continua a valer — uma classe crua **sozinha**, sem o par, é
+que faz a caixa creme com texto de token — mas não era ali que estava o que o
+Bruno viu.
+
+## O que falha mesmo
+
+`/admin/blood-pressure`, 72 elementos de texto medidos, **29 abaixo do mínimo** —
+e só **quatro pares distintos**:
+
+| par | contraste | mínimo | quantos |
+|---|---|---|---|
+| `#4F7361` sobre o cartão | 2,78 | 4,5 | 10 |
+| `#4F7361` sobre o cartão claro | 3,04 | 4,5 | 10 |
+| `#4F7361` sobre o diálogo | 2,95 | 4,5 | 2 |
+| cinza a 45% de alfa | 3,81 | 4,5 | 7 |
+
+**Vinte e duas das vinte e nove são a mesma cor**: o verde da marca usado como
+**texto** sobre o painel escuro.
+
+## Provas
+
+`__tests__/aparencia/a-paleta-crua-so-pode-descer.test.ts` — a trava, com teto
+em 608 e folga zero. Por mutação: acrescentar uma classe crua derruba.
