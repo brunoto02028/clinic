@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { AvisarMaterial } from "@/components/admin/avisar-material";
+import { EnviarMaterial } from "@/components/admin/enviar-material";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
@@ -310,6 +311,16 @@ Todos os pacientes desta clínica passam a poder ler. Nenhum telefone toca — p
                                   Atribuir nunca toca o telefone sozinho; este
                                   botão é o segundo ato, e abre a prévia antes
                                   de oferecer o disparo. */}
+                              {/* **Enviar começa aqui, no material** (096 T-6).
+                                  Antes saía-se daqui, ia-se a uma tela
+                                  separada, e lá escolhia-se o material outra
+                                  vez. As peças todas já existiam — o que
+                                  faltava era achá-las. */}
+                              <EnviarMaterial
+                                contentId={item.id}
+                                contentTitle={item.title}
+                                onEnviado={fetchContent}
+                              />
                               {item._count.assignments > 0 && (
                                 <AvisarMaterial contentId={item.id} contentTitle={item.title} />
                               )}

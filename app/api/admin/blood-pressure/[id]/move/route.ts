@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { logAudit } from "@/lib/system-logger";
+import { NOTA_DA_ATRIBUICAO_AUTOMATICA } from "@/lib/clinic-device";
 
 /**
  * Mover uma leitura de pressão para outro prontuário (114 T-5).
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       diastolic: true,
       measuredAt: true,
       autoAttributed: true,
+      notes: true,
       withingsMeasureId: true,
     },
   });
@@ -98,12 +100,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       // Deixa de ser automática no momento em que uma pessoa decide. O campo
       // existe para marcar *"ninguém disse de quem era"*, e agora alguém disse.
       autoAttributed: false,
-      // **A nota sobrevivia à mudança** (achado do QA da 114). O crachá sumia e
-      // a frase ficava: uma leitura na ficha da Ana continuava a dizer
-      // *"auto-attributed to the account owner"*, falando de um dono que já não
-      // é o dela. Limpar só a nota que a regra escreveu — uma nota de pessoa
-      // não se apaga por causa de uma mudança de dono.
-      ...(leitura.autoAttributed ? { notes: null } : {}),
+      /**
+       * **Só a nota que a regra escreveu** (114, segundo achado do QA).
+       *
+       * A primeira correção condicionou a limpeza ao **estado da leitura** —
+       * `leitura.autoAttributed ? { notes: null } : {}` — e isso apagava
+       * qualquer nota que estivesse ali. O campo `notes` de uma leitura
+       * auto-atribuída **não é propriedade da regra**: a ficha oferece o lápis
+       * em todas as linhas, e o botão de mover aparece exatamente nelas. Dois
+       * cliques do produto e a observação de uma terapeuta desaparecia, sem
+       * aviso e sem desfazer.
+       *
+       * Pior: o comentário que eu tinha escrito ali prometia, palavra por
+       * palavra, o contrário do que o código fazia.
+       *
+       * Agora a condição é sobre **o texto**, e o texto é uma constante
+       * partilhada com quem o escreve. A frase errada sai; o que uma pessoa
+       * escreveu fica.
+       */
+      ...(leitura.notes === NOTA_DA_ATRIBUICAO_AUTOMATICA ? { notes: null } : {}),
       recordedById: guard.actor.userId,
     },
   });

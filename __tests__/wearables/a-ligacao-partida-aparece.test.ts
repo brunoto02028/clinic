@@ -103,19 +103,37 @@ describe("os dois arranhões da T-5", () => {
     expect(c).toMatch(/nobody — attributed by rule|ninguém — atribuída por regra/);
   });
 
-  it("**a nota da regra não sobrevive ao mover**", () => {
-    // O crachá sumia e a frase ficava: a leitura na ficha nova continuava a
-    // falar de um dono que já não era o dela.
+  it("**a limpeza é sobre o texto, e não sobre o estado da leitura**", () => {
+    // A primeira correção condicionava ao estado — `leitura.autoAttributed` —
+    // e apagava **qualquer** nota que estivesse ali. O QA achou: a ficha
+    // oferece o lápis em todas as linhas, e o botão de mover aparece
+    // exatamente nas auto-atribuídas. Dois cliques e a observação de uma
+    // terapeuta desaparecia.
+    //
+    // E o teste anterior fixava justamente a condição defeituosa, o que o
+    // tornava incapaz de a apanhar. Era verdadeiro **por causa** do defeito.
     const c = codigo("app", "api", "admin", "blood-pressure", "[id]", "move", "route.ts");
-    expect(c).toMatch(/leitura\.autoAttributed \? \{ notes: null \}/);
+    expect(c).not.toMatch(/leitura\.autoAttributed \? \{ notes: null \}/);
+    expect(c).toMatch(/leitura\.notes === NOTA_DA_ATRIBUICAO_AUTOMATICA \? \{ notes: null \}/);
   });
 
-  it("e uma nota escrita por uma pessoa não é apagada", () => {
-    // A limpeza é condicional de propósito: só some a nota que a regra
-    // escreveu. Apagar o que um terapeuta digitou por causa de uma mudança de
-    // dono seria perder informação de verdade.
-    expect(codigo("app", "api", "admin", "blood-pressure", "[id]", "move", "route.ts"))
-      .toMatch(/\.\.\.\(leitura\.autoAttributed \?/);
+  it("**a frase é uma constante partilhada com quem a escreve**", () => {
+    // Duas cópias do mesmo texto, uma na escrita e outra na limpeza, divergem
+    // por uma vírgula — e aí a limpeza deixa de encontrar o que apagar.
+    const move = codigo("app", "api", "admin", "blood-pressure", "[id]", "move", "route.ts");
+    const device = codigo("lib", "clinic-device.ts");
+    expect(move).toContain("NOTA_DA_ATRIBUICAO_AUTOMATICA");
+    expect(device).toContain("export const NOTA_DA_ATRIBUICAO_AUTOMATICA");
+    expect(device).toContain("notes: NOTA_DA_ATRIBUICAO_AUTOMATICA");
+  });
+
+  it("**e a rota lê a nota antes de decidir**", () => {
+    // Sem `notes` no `select`, a comparação é sempre contra `undefined` e a
+    // limpeza nunca acontece — o defeito oposto, e igualmente silencioso.
+    const c = codigo("app", "api", "admin", "blood-pressure", "[id]", "move", "route.ts");
+    const i = c.indexOf("bloodPressureReading.findUnique");
+    expect(i).toBeGreaterThan(0);
+    expect(c.slice(i, i + 400)).toContain("notes: true");
   });
 });
 

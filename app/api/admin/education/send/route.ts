@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getActor } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,21 @@ export async function POST(req: NextRequest) {
     }
 
     const user = session.user as any;
-    const clinicId = user.clinicId;
+    /**
+     * A clínica vem do `getActor`, e não da sessão (096 T-6).
+     *
+     * `session.user.clinicId` é a clínica **de origem** de quem está logado.
+     * Para um superadmin que trocou de clínica pelo seletor, ela não é a que
+     * ele está a ver — o cookie `selected-clinic-id` é, e só o `getActor` o
+     * lê.
+     *
+     * Esta rota manda material a **todos** os pacientes de uma clínica. Com a
+     * clínica errada, o alcance do engano é o tamanho da lista — e esta tarefa
+     * vai dar-lhe uma porta mais visível, o que torna o acerto mais urgente,
+     * não menos.
+     */
+    const actor = await getActor(req);
+    const clinicId = actor?.clinicId;
     if (!clinicId) return NextResponse.json({ error: "No clinic context" }, { status: 400 });
 
     const body = await req.json();

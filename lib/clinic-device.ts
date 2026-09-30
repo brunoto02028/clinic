@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/db";
 import { donoDoAparelho } from "@/lib/dono-do-aparelho";
+
+/**
+ * A nota que **a regra** escreve numa leitura auto-atribuída (114 T-5).
+ *
+ * Uma constante, e não a frase solta nos dois sítios, porque ela é escrita aqui
+ * e apagada na rota de mover — e um critério que existe em dois lugares como
+ * texto acaba a divergir por uma vírgula.
+ *
+ * O que ela torna possível é a distinção que faltava: **o campo `notes` de uma
+ * leitura auto-atribuída não é propriedade da regra**. O terapeuta pode escrever
+ * ali, e escreve — a ficha oferece o lápis em todas as linhas. Ao mover, só esta
+ * frase sai; o que uma pessoa escreveu fica.
+ */
+export const NOTA_DA_ATRIBUICAO_AUTOMATICA =
+  "Withings (clinic device, auto-attributed to the account owner)";
 import { logAudit } from "@/lib/system-logger";
 import type { WithingsBpReading } from "@/lib/withings";
 import {
@@ -215,7 +230,7 @@ export async function attributeClinicReading(
           measuredAt: reading.measuredAt,
           withingsMeasureId: reading.measureId,
           autoAttributed: true,
-          notes: "Withings (clinic device, auto-attributed to the account owner)",
+          notes: NOTA_DA_ATRIBUICAO_AUTOMATICA,
         },
         select: { id: true },
       });
