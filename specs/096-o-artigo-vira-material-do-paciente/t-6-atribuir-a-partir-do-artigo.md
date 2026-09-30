@@ -9,62 +9,96 @@
 > está vazia a página. O correto seria já clicar no artigo importado ou direto no
 > artigo original e atribuir a um paciente ou a todos, e ele aparece no app."*
 
-## O que existe hoje
+E, perguntado entre atalho e gesto único, escolheu: **"importar e atribuir num
+gesto só"** — e perguntou qual seria a forma mais fácil e organizada.
 
-O caminho **funciona**, e foi medido em produção ontem (QA da 107): criar →
-atribuir → prévia → avisar responde certo, a parede de inquilino devolve 404, e
-a idempotência impede o segundo toque.
+## As peças já existem. Falta a porta.
 
-O que não funciona é **achar o caminho**. Hoje ele é:
+Isto é menor do que parece, e vale dizer antes do desenho:
+
+| o que | onde | estado |
+|---|---|---|
+| importar artigo → material, **sem duplicar** | `lib/education-from-article.ts` | pronto — procura por `sourceArticleId` antes de criar |
+| atribuir a **um** paciente | `POST /api/admin/education/assignments` | pronto |
+| enviar a **todos** da clínica | `POST /api/admin/education/send` | pronto |
+| enviar **por condição** | o mesmo `send`, com `conditionTags` | pronto |
+| prévia antes de avisar | `POST /notify` com `dryRun` | pronto, medido em produção |
+
+O caminho inteiro foi medido ao vivo ontem (QA da 107) e responde certo. O que
+não funciona é **achar**: hoje sai-se do artigo, vai-se a uma tela separada, e lá
+escolhe-se o artigo de novo.
+
+E a tela de atribuições lista o que **já foi** atribuído — numa clínica que ainda
+não atribuiu nada, ela abre **vazia**. Foi o que o Bruno viu, e ele leu certo:
+**uma tela vazia que não diz o que fazer é indistinguível de uma quebrada.**
+
+## A forma mais fácil e organizada — a proposta
+
+**Um botão no artigo, um diálogo, três destinos.**
+
+No cartão do artigo — na lista de materiais e na lista de artigos do site —
+um botão **"Enviar a pacientes"**. Ele abre **um** diálogo, não um assistente de
+três passos:
 
 ```
-/admin/education  →  "Atribuir a um paciente"  →  /admin/education/assignments
+Enviar "Tendinose do isquiotibial" a:
+
+  ( ) Um paciente          [ procurar… ]
+  ( ) Todos os pacientes   — 8 pessoas
+  ( ) Quem tem a condição  [ isquiotibial ▾ ]  — 3 pessoas
+
+  Observação para quem receber  [                    ]
+  ( ) Obrigatório      Prazo [        ]
+
+                          [ Cancelar ]  [ Ver a prévia ]
 ```
 
-Ou seja: sai-se do artigo, vai-se para uma tela separada, e **lá** se escolhe o
-artigo de novo. A tela de atribuições lista o que já foi atribuído — e numa
-clínica que ainda não atribuiu nada, ela abre **vazia**. Que é exatamente o que o
-Bruno viu, e leu, com razão, como "não funciona".
+**Por que assim:**
 
-**Uma tela vazia que não diz o que fazer é indistinguível de uma tela quebrada.**
+- **O gesto é "enviar isto a alguém"**, e ele começa onde a pessoa está: olhando
+  o artigo. Sair do artigo para escolher o artigo é o passo que sobra hoje.
+- **A importação é invisível.** Se o material ainda não existe, ele nasce ali;
+  se já existe, é reusado. A ponte já é idempotente por `sourceArticleId`, então
+  isto não cria segunda cópia — e segunda cópia é o pior desfecho possível, porque
+  cada uma teria as suas atribuições.
+- **"Quem tem a condição" é a resposta ao "mais organizado".** Mandar um artigo
+  de isquiotibial para todo mundo é ruído; mandar para quem tem a condição é o que
+  uma clínica de verdade quer. Essa capacidade **já existe no servidor e não tem
+  porta nenhuma** — é o achado desta tarefa.
+- **A contagem aparece antes de escolher.** "Todos — 8 pessoas" é o que impede
+  alguém de descobrir o tamanho depois de clicar.
+- **A prévia é o botão final**, não "enviar". Atribuir alcança gente; a casa já
+  decidiu que nada alcança ninguém sem alguém ver antes.
 
-## O que ele pediu
-
-Atribuir **de dentro do artigo** — do material importado ou do artigo original —
-para um paciente ou para todos.
+E o que **não** muda: atribuir **não toca o telefone**. Avisar continua sendo um
+segundo ato, com a sua própria prévia.
 
 ## Passos
 
-1. Um botão de atribuir **em cada artigo**, na lista e na tela do artigo. O
-   caminho curto, que é o que se procura quando se está olhando o artigo.
-2. A escolha entre **um paciente** e **todos os pacientes da clínica**, com a
-   prévia obrigatória que já existe — atribuir a todos alcança muita gente, e
-   essa é a porta que precisa de confirmação.
-3. A tela de atribuições vazia passa a dizer o que é e como se chega lá, em vez
-   de abrir em branco.
-4. Nada muda no envio: atribuir **não** toca o telefone; avisar é outro botão,
-   com prévia, e continua sendo.
+1. O botão no cartão do artigo, nos dois lugares.
+2. O diálogo, com os três destinos e a contagem.
+3. Importar-se-não-existe antes de atribuir, reusando a ponte.
+4. Unificar: hoje "um" e "todos" são rotas diferentes com regras diferentes de
+   inquilino — `send` usa `session.user.clinicId`, que é o padrão que esta casa
+   já marcou como suspeito de vazamento. **Conferir a parede de inquilino nas
+   duas** antes de dar-lhes uma porta mais visível.
+5. A tela de atribuições vazia passa a explicar o que é e como se chega lá.
 
 ## Arquivos afetados
 
 - `app/admin/education/page.tsx`
 - `app/admin/education/assignments/page.tsx`
-- possivelmente `app/api/admin/education/assignments`, se "todos" não existir
+- `app/api/admin/education/send/route.ts` (a parede de inquilino)
+- `app/api/admin/education/assignments/route.ts`
+- `lib/education-from-article.ts`
 
 ## Critérios de aceite
 
-- [ ] Dá para atribuir a partir do artigo, sem sair dele
-- [ ] Dá para atribuir a **um** e dá para atribuir a **todos**
-- [ ] "Todos" passa por prévia, e diz quantos são antes
-- [ ] Atribuir continua **não** tocando o telefone
+- [ ] Dá para enviar a partir do artigo, sem sair dele
+- [ ] Os três destinos funcionam: um, todos, e por condição
+- [ ] A contagem aparece **antes** de escolher
+- [ ] Enviar duas vezes o mesmo artigo **não** cria segundo material
+- [ ] Atribuir continua não tocando o telefone
 - [ ] A tela de atribuições vazia explica, em vez de abrir em branco
-- [ ] O material atribuído aparece no app do paciente
-
-## O que o Bruno pediu e precisa de resposta antes
-
-**"Ou direto no artigo original."** Os artigos do site e o material do paciente
-são coisas diferentes: o artigo público é do site, e a 096 T-2 criou a ponte que
-o transforma em material, lembrando de onde veio. Atribuir direto do artigo
-original pode significar **atribuir o material que veio dele** — o caminho que já
-existe, com um atalho — ou **importar e atribuir num gesto só**, que é outro
-trabalho. A T-6 não começa sem essa resposta.
+- [ ] O material aparece no app do paciente
+- [ ] `send` e `assignments` negam paciente de outra clínica com **404**

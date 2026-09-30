@@ -64,6 +64,7 @@ Nada disso é impeditivo. É prazo, e é melhor saber agora.
 | T-3 | [A clínica vê o dia, não só o ponto](t-3-a-clinica-ve-o-dia.md) | pendente |
 | T-4 | [O que fazer com o que assusta](t-4-o-que-fazer-com-o-que-assusta.md) | pendente |
 | T-5 | [A clínica não alcança a própria tela de pressão](t-5-a-clinica-nao-alcanca-a-pressao.md) | pendente — pedido do Bruno em 30/09 |
+| T-6 | [O estágio não é diagnóstico](t-6-o-estagio-nao-e-diagnostico.md) | pendente — decidido em 30/09 |
 
 ## Decisões de design
 
