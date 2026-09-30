@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ingestWithings } from "@/lib/withings-ingest";
-import { subscribeAndRecord } from "@/lib/withings-subscriptions";
+import { subscribeAndRecord, deliveryState } from "@/lib/withings-subscriptions";
+
+/**
+ * Quanto tempo uma confirmacao de assinatura vale (114 T-3).
+ *
+ * Doze horas: curto o bastante para uma assinatura caida ser reposta no mesmo
+ * dia, e longo o bastante para nao gastar chamadas — o plano gratuito da
+ * Withings vai ate 5.000, e isto custa uma por conexao por corrida.
+ */
+const CONFIRMACAO_VALE_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Se vale a pena perguntar a Withings se ela ainda esta a avisar.
+ *
+ * **O defeito que isto conserta:** a condicao aqui era `!c.notifyCheckedAt` —
+ * ou seja, a assinatura era confirmada **uma vez na vida**. Depois da primeira
+ * confirmacao bem sucedida, `notifyCheckedAt` ficava preenchido e ninguem
+ * voltava a perguntar. Se a Withings deixasse de avisar depois disso — por
+ * expiracao, por revogacao, ou porque o nosso webhook respondeu errado uma vez
+ * — o silencio durava para sempre, e a tela continuava a dizer "conectado".
+ *
+ * O Bruno, 30/09/2026: *"essa conexao eu quero ter certeza que nao vai ser
+ * perdida."* Uma confirmacao unica nao da essa certeza; uma reconfirmacao
+ * periodica da.
+ *
+ * Tres motivos para perguntar de novo:
+ *
+ * - **nunca perguntamos** — o caso original;
+ * - **a resposta esta velha** — mais de doze horas;
+ * - **a resposta era incompleta** — a Withings confirmou parte dos tipos, ou
+ *   nenhum. `deliveryState` chama a isso `partial` e `silent`, e os dois
+ *   significam que ha dado a nao chegar.
+ */
+function precisaReconfirmar(c: {
+  notifyCheckedAt?: Date | null;
+  notifyConfirmedAppli?: number[] | null;
+}): boolean {
+  if (!c.notifyCheckedAt) return true;
+  const estado = deliveryState(c);
+  if (estado !== "receiving") return true;
+  return Date.now() - new Date(c.notifyCheckedAt).getTime() > CONFIRMACAO_VALE_MS;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +98,9 @@ export async function POST(req: NextRequest) {
       lastReadingAt: true,
       lastSyncedAt: true,
       notifyCheckedAt: true,
+      // Sem isto, `deliveryState` le `undefined` e diz "silent" para toda a
+      // gente — o que faria reconfirmar em toda corrida, por uma razao falsa.
+      notifyConfirmedAppli: true,
       createdAt: true,
     },
   });
@@ -89,7 +133,7 @@ export async function POST(req: NextRequest) {
     // significa tentar refrescar com um token que eles acabaram de invalidar —
     // e a ingestão falhava justamente nas conexões que este cron existe para
     // resgatar. Por isso a conexão é relida antes de seguir.
-    if (!c.notifyCheckedAt) {
+    if (precisaReconfirmar(c)) {
       const outcome = await subscribeAndRecord(c);
       if (outcome.answered) checked++;
       const fresh = await (prisma as any).wearableConnection.findUnique({

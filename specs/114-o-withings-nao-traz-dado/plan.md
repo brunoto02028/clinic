@@ -50,7 +50,7 @@ hoje, e nenhum dado novo.
 |---|---|---|
 | T-1 | [Medir antes de consertar](t-1-medir-antes.md) | parcial — [metade medida](qa/report-t-1.md) |
 | T-2 | [O que "conectado" está dizendo](t-2-o-que-conectado-diz.md) | pendente |
-| T-3 | [A assinatura que cai em silêncio](t-3-a-assinatura-que-cai.md) | pendente |
+| T-3 | [A assinatura que cai em silêncio](t-3-a-assinatura-que-cai.md) | implementada (30/09) — QA pendente |
 | T-4 | [A tela vazia que não explica](t-4-a-tela-vazia.md) | pendente |
 
 ## Suposições

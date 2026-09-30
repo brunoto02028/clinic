@@ -1,6 +1,6 @@
 # T-3: A assinatura que cai em silêncio
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente
 **Depende de:** T-1
 
 ## Objetivo
@@ -41,3 +41,56 @@ pressão estivesse assinada, o quadro se explicaria inteiro — pressão chegou 
 - [ ] Assinatura caída vira aviso para a clínica, e não conserto mudo
 - [ ] Dado novo no aparelho aparece no app sem ninguém apertar nada
 - [ ] A contagem de chamadas num dia cheio fica longe do limite
+
+---
+
+## A causa, achada no codigo
+
+A condicao no cron era esta:
+
+```ts
+if (!c.notifyCheckedAt) {
+  const outcome = await subscribeAndRecord(c);
+```
+
+**A assinatura era confirmada uma vez na vida.** Na primeira corrida perguntava-se
+a Withings se ela ia avisar; a resposta ficava gravada em `notifyCheckedAt`, e
+ninguem voltava a perguntar.
+
+Se a assinatura caisse depois — por expiracao, por revogacao, ou porque o nosso
+webhook respondeu errado uma vez e a Withings a desativou em silencio, que e o
+comportamento documentado dela — **o silencio durava para sempre**. E a tela
+continuava a dizer *conectado*, com *last sync* de hoje, porque a varredura
+diaria continuava a correr.
+
+E exatamente o quadro que o Bruno descreveu.
+
+## O conserto
+
+`precisaReconfirmar(c)`, com tres motivos declarados:
+
+| motivo | porque |
+|---|---|
+| nunca perguntamos | o caso original |
+| a resposta era **incompleta** | `partial` ou `silent` — a Withings confirmou parte dos tipos, ou nenhum |
+| a resposta esta **velha** | mais de 12 horas |
+
+Doze horas: curto o bastante para uma assinatura caida ser reposta no mesmo dia,
+e longo o bastante para nao gastar chamadas — o plano gratuito vai ate 5.000, e
+isto custa uma por conexao por corrida.
+
+O `select` da consulta passou a trazer `notifyConfirmedAppli`. **Sem ele,
+`deliveryState` lia `undefined` e devolvia `silent` para toda a gente**: iria
+reconfirmar sempre, por uma razao falsa, e o teste passaria na mesma.
+
+## Provas
+
+`__tests__/wearables/a-assinatura-e-reconfirmada.test.ts`. Por mutacao, duas:
+voltar a `!c.notifyCheckedAt` derruba 2; tirar o ramo do `partial` derruba 1.
+
+A primeira versao do teste **acusava a propria correcao** — proibia
+`!c.notifyCheckedAt` em qualquer forma, e a funcao nova usa essa condicao como
+primeiro dos tres motivos. Passou a distinguir pela chaveta: o defeito era o `if`
+com corpo dentro do laco.
+
+Suite: **2963 testes, 12 suites de wearables** verdes. `tsc` em 0.
