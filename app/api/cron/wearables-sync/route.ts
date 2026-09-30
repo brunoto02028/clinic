@@ -39,7 +39,9 @@ const CONFIRMACAO_VALE_MS = 1 * 60 * 60 * 1000;
  * Tres motivos para perguntar de novo:
  *
  * - **nunca perguntamos** — o caso original;
- * - **a resposta esta velha** — mais de doze horas;
+ * - **a resposta esta velha** — mais do que `CONFIRMACAO_VALE_MS`, que hoje e
+ *   uma hora. O numero vive na constante, e nao aqui: um comentario com o
+ *   valor escrito a mao fica velho no primeiro ajuste, e ja tinha ficado.
  * - **a resposta era incompleta** — a Withings confirmou parte dos tipos, ou
  *   nenhum. `deliveryState` chama a isso `partial` e `silent`, e os dois
  *   significam que ha dado a nao chegar.

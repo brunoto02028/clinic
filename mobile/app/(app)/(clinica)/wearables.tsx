@@ -230,7 +230,12 @@ function WearablesScreen() {
                */
               const naoEntrega = delivery === "silent" || delivery === "partial" || delivery === "unchecked";
               const calada = conn?.silent === true;
-              const silent = isConnected && (naoEntrega || calada);
+              // A ligacao **partida** — o provedor recusou o token, ou a
+              // autorizacao caiu. Ate o QA da 114 ela nem chegava aqui: a rota
+              // filtrava por `CONNECTED` e o paciente via o convite *Connect*,
+              // como se nunca tivesse ligado nada.
+              const quebrada = conn?.status === "ERROR";
+              const silent = isConnected && (naoEntrega || calada || quebrada);
 
               return (
                 <View
@@ -269,7 +274,12 @@ function WearablesScreen() {
                       )}
                       {silent && (
                         <Text variant="caption" color={t.colors.warn} style={{ marginTop: 2, maxWidth: 190 }}>
-                          {calada && !naoEntrega
+                          {quebrada
+                            ? tr(lang, {
+                                en: "The connection stopped working. Reconnect to start receiving again.",
+                                pt: "A conexão parou de funcionar. Reconecte para voltar a receber.",
+                              })
+                            : calada && !naoEntrega
                             ? tr(lang, {
                                 en: `Nothing has arrived for ${conn?.daysSilent ?? "?"} days. Check the device, or reconnect.`,
                                 pt: `Nada chega há ${conn?.daysSilent ?? "?"} dias. Verifique o aparelho, ou reconecte.`,
