@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { HeartPulse, Inbox, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
+import { HeartPulse, Inbox, Loader2, Pencil, Trash2, Save, X, Watch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,6 +108,29 @@ function useUnassignedCount() {
   return count;
 }
 
+/**
+ * O estado da ligacao **na ficha** (114 T-6).
+ *
+ * O Bruno: *"nao podemos perder essa conexao do paciente, que isso e muito
+ * serio."* O monitor ja existia em `/admin/biohacking`, e a ficha — onde o
+ * terapeuta de facto olha — nao dizia uma palavra sobre o aparelho.
+ *
+ * Uma falha aqui nao apaga a aba: a pressao continua a ser lida e escrita sem
+ * saber nada de ligacao nenhuma.
+ */
+function useConexoes(patientId: string) {
+  const [conexoes, setConexoes] = useState<any[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    fetch(`/api/admin/patients/${patientId}/wearables`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (vivo && d?.connections) setConexoes(d.connections); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [patientId]);
+  return conexoes;
+}
+
 function useReadings(patientId: string) {
   const [items, setItems] = useState<BPReading[] | null>(null);
   const [error, setError] = useState(false);
@@ -132,6 +155,7 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
   const isPt = String(locale).toLowerCase().startsWith("pt");
   const t = T[isPt ? "pt" : "en"];
   const { items, error: loadError, reload } = useReadings(patientId);
+  const conexoes = useConexoes(patientId);
   const esperando = useUnassignedCount();
 
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -236,6 +260,47 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
           </span>
         </Link>
       )}
+      {/* O estado de cada ligacao, em uma linha.
+          **Duas datas diferentes, e e a confusao entre elas que enganava:**
+          `last sync` diz quando falamos com a Withings — e falamos com ou sem
+          dado. `ultima leitura` diz quando veio alguma coisa. Uma tela que so
+          mostra a primeira parece saudavel para sempre. */}
+      {conexoes.map((c: any) => {
+        const mal = c.silent || c.delivery === "silent" || c.delivery === "unchecked" || c.status === "ERROR";
+        const parcial = c.delivery === "partial";
+        const quando = c.lastReadingAt
+          ? new Intl.DateTimeFormat(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(c.lastReadingAt))
+          : isPt ? "nunca" : "never";
+        return (
+          <div
+            key={c.id}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+              mal
+                ? "border-ba1-bad/40 bg-ba1-bad/5 text-ba1-bad"
+                : parcial
+                  ? "border-ba1-warn/40 bg-ba1-warn/5 text-ba1-warn"
+                  : "border-border bg-muted/30 text-muted-foreground"
+            }`}
+          >
+            <Watch className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>{c.provider}</strong>
+              {c.isClinicDevice ? (isPt ? " (aparelho da clínica)" : " (clinic device)") : ""}
+              {" · "}
+              {mal
+                ? isPt
+                  ? `sem receber há ${c.daysSilent ?? "?"} dia(s) — pode ser preciso reconectar`
+                  : `nothing received for ${c.daysSilent ?? "?"} day(s) — may need reconnecting`
+                : parcial
+                  ? isPt ? "a receber só parte dos dados" : "receiving only some kinds"
+                  : isPt ? "a receber" : "receiving"}
+              {" · "}
+              {isPt ? "última leitura: " : "last reading: "}{quando}
+            </span>
+          </div>
+        );
+      })}
+
       <div>
         <h3 className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="h-4 w-4" />{t.title}</h3>
         <p className="text-xs text-muted-foreground mt-0.5">{t.subtitle}</p>
