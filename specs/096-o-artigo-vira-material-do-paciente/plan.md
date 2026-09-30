@@ -71,6 +71,7 @@ atribuições para a mesma leitura.
 | T-3 | Liberado para quem você escolher — e só | T-2 | **feita** (28/09) |
 | T-4 | A tela de escolher quais artigos atravessam | T-2 | **feita** (28/09) |
 | T-5 | O app mostra o que é dele, e o que é da clínica | T-3 | **feita** (28/09) — **precisa de build** |
+| T-6 | [Atribuir a partir do artigo](t-6-atribuir-a-partir-do-artigo.md) | T-2, T-3 | pendente — pedido do Bruno em 30/09 |
 
 **Ordem:** T-1 primeiro porque tudo que for importado antes dela nasce torto e
 teria de ser reimportado.

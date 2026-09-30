@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendAdminAlert } from "@/lib/admin-alert-email";
 import { escapeHtml } from "@/lib/admin-notify-email";
-import { getBpThresholds, classify } from "@/lib/automation/bp-thresholds";
+import { getBpThresholds, classify, classificationFor } from "@/lib/automation/bp-thresholds";
 import { getExerciseBpLimits, evaluateClearance } from "@/lib/automation/exercise-bp";
 import { noticeFor } from "@/lib/non-emergency-notice";
 import { createAlert } from "@/lib/alerts";
@@ -64,7 +64,7 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
     prisma.user.findUnique({ where: { id: patientId }, select: { firstName: true, lastName: true } }),
   ]);
 
-  const { isCrisis, isAlert, classification } = classify(sys, dia, thresholds);
+  const { isCrisis, isAlert, faixa, classification } = classify(sys, dia, thresholds);
   const clearance = evaluateClearance({ systolic: sys, diastolic: dia, measuredAt }, exerciseLimits);
   const blocksTraining = clearance.blocked;
 
@@ -84,14 +84,20 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
         classification,
         portalUrl: `${BASE}/dashboard/blood-pressure`,
       },
+      // O valor de `{{classification}}` na lingua de quem le. O modelo ja era
+      // bilingue; a variavel nao era, e o e-mail em portugues dizia
+      // "Classificacao: Very high — get help now".
+      emailVarsPt: {
+        classification: classificationFor(faixa, true),
+      },
       // O aviso vai junto também aqui. Uma mensagem curta que manda ir ao
       // pronto-socorro e não diz que ninguém está de plantão deste lado deixa
       // a pessoa esperando uma resposta nossa (T-13).
       plainMessage:
-        `🚨 HYPERTENSIVE CRISIS: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. ` +
+        `🚨 VERY HIGH READING: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. ` +
         `Call 999/112 or go to A&E now. ${noticeFor("en-GB").short}`,
       plainMessagePt:
-        `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. ` +
+        `🚨 LEITURA MUITO ALTA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. ` +
         `Ligue 999/112 ou vá ao pronto-socorro agora. ${noticeFor("pt-BR").short}`,
     }).catch((err) => console.error("[bp-alerts] patient notification error:", err));
   }
@@ -112,12 +118,12 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
       ruleCode: isCrisis ? "BP_CRISIS" : blocksTraining && !isAlert ? "BP_BLOCKS_EXERCISE" : "BP_HIGH",
       window: day,
       title: isCrisis
-        ? `Hypertensive crisis: ${sys}/${dia} mmHg`
+        ? `Very high blood pressure: ${sys}/${dia} mmHg`
         : blocksTraining && !isAlert
           ? `Session blocked by blood pressure: ${sys}/${dia} mmHg`
           : `High blood pressure: ${sys}/${dia} mmHg`,
       titlePt: isCrisis
-        ? `Crise hipertensiva: ${sys}/${dia} mmHg`
+        ? `Pressão muito alta: ${sys}/${dia} mmHg`
         : blocksTraining && !isAlert
           ? `Sessão bloqueada pela pressão: ${sys}/${dia} mmHg`
           : `Pressão alta: ${sys}/${dia} mmHg`,
@@ -137,12 +143,12 @@ export async function afterBloodPressureRecorded(r: RecordedReading): Promise<Re
   sendAdminAlert({
     clinicId,
     subject: isCrisis
-      ? `🚨 HYPERTENSIVE CRISIS: ${patientName} — ${sys}/${dia} mmHg`
+      ? `🚨 VERY HIGH READING: ${patientName} — ${sys}/${dia} mmHg`
       : blocksTraining && !isAlert
         ? `🚨 Session blocked: ${patientName} — ${sys}/${dia} mmHg`
         : `🚨 High Blood Pressure Reading: ${patientName} — ${sys}/${dia} mmHg`,
     title: isCrisis
-      ? "Hypertensive Crisis Reading"
+      ? "Very High Reading"
       : blocksTraining && !isAlert
         ? "Session Blocked by Blood Pressure"
         : "High Blood Pressure Reading",

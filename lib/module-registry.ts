@@ -632,6 +632,88 @@ export const MODULE_CATEGORIES = [
   { key: "app_areas", label: "App areas", labelPt: "Áreas do app" },
 ] as const;
 
+/**
+ * Os mesmos grupos, **com os nomes que o paciente lê** (112 T-1).
+ *
+ * O Bruno pediu o menu do app agrupado "como está na área da clinic". Os grupos
+ * são os mesmos; os **nomes** não podem ser. `Core (Always Visible)` é conceito
+ * de quem administra — diz respeito ao interruptor, não ao tratamento — e
+ * `Clinical` é como a clínica fala de si, não como alguém fala do que está a
+ * viver.
+ *
+ * E há um grupo que só existe deste lado: as linhas do menu **sem módulo**
+ * (faturas, quem eu cuido, quem tem acesso, termos, notificações). Elas não têm
+ * categoria no catálogo porque a categoria vive no módulo, e precisavam de casa.
+ */
+export const GRUPOS_NO_APP = [
+  { key: "clinical", en: "Your care", pt: "Seu tratamento" },
+  { key: "wellness", en: "Day to day", pt: "Seu dia a dia" },
+  { key: "content", en: "Learn", pt: "Aprender" },
+  { key: "account", en: "Your account", pt: "Sua conta" },
+] as const;
+
+export type GrupoNoApp = (typeof GRUPOS_NO_APP)[number]["key"];
+
+/**
+ * Onde cada módulo cai **no menu do paciente**, quando o grupo da clínica não
+ * serve para ele.
+ *
+ * Quatro módulos são `core` no painel, e "base" não diz nada a quem lê:
+ *
+ * - a **avaliação** e o **progresso** são tratamento, e vão para lá;
+ * - o **como funciona** é material de leitura, e vai para *Aprender*;
+ * - os **planos** são da conta, e não do tratamento.
+ *
+ * E um quinto, que não é `core`: a **jornada** é material no painel, mas no app
+ * ela acende o check-in diário — que é o que a pessoa faz todo dia, e não algo
+ * que ela lê.
+ *
+ * O resto segue o grupo da clínica. Isto **não** é uma segunda categorização do
+ * catálogo: é a tradução de uma taxonomia de administração para a de quem é
+ * tratado, e um teste cobra que todo módulo do menu tenha um grupo.
+ */
+export const GRUPO_NO_APP_POR_MODULO: Record<string, GrupoNoApp> = {
+  mod_screening: "clinical",
+  mod_guide: "content",
+  mod_plans: "account",
+  // `mod_journey` é `content` no painel porque a jornada é material. No app ele
+  // acende o **check-in diário**, e check-in diário não é aprender — é o que a
+  // pessoa faz todo dia. Achado ao listar o que cada grupo mostraria de facto,
+  // antes de a tela existir.
+  mod_journey: "wellness",
+};
+
+/**
+ * O que **não** é linha de menu, e por isso não tem grupo.
+ *
+ * As quatro abas, o cabeçalho do perfil e as duas áreas. Sem esta lista,
+ * `mod_appointments` e `mod_exercises` caíam no grupo `clinical` da clínica e
+ * apareceriam **duas vezes** — uma como aba e outra dentro de *Seu tratamento*.
+ * Foi o teste que apanhou, antes de a tela existir.
+ */
+const FORA_DO_MENU_DO_APP = new Set([
+  "mod_dashboard",    // aba Início
+  "mod_appointments", // aba Consultas
+  "mod_exercises",    // aba Exercícios
+  "mod_profile",      // o cabeçalho do perfil
+  "mod_lab",          // "Trocar de área"
+  "mod_clinica",      // "Trocar de área"
+]);
+
+/** O grupo do módulo no menu do paciente. */
+export function grupoNoApp(chave: string): GrupoNoApp | null {
+  if (FORA_DO_MENU_DO_APP.has(chave)) return null;
+  if (GRUPO_NO_APP_POR_MODULO[chave]) return GRUPO_NO_APP_POR_MODULO[chave];
+  const m = MODULE_REGISTRY.find((x) => x.key === chave);
+  if (!m) return null;
+  if (m.category === "clinical" || m.category === "wellness" || m.category === "content") {
+    return m.category;
+  }
+  // `core` e `app_areas` que não foram recolocados não aparecem como linha de
+  // menu: são abas, o cabeçalho do perfil, ou a troca de área.
+  return null;
+}
+
 export const PERMISSION_CATEGORIES = [
   { key: "booking", label: "Booking", labelPt: "Agendamento" },
   { key: "content", label: "Content Access", labelPt: "Acesso a Conteúdo" },

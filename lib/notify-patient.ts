@@ -20,6 +20,17 @@ interface NotifyPatientParams {
   emailTemplateSlug?: string;
   /** Template variables for email */
   emailVars?: Record<string, string>;
+  /**
+   * As mesmas variaveis, **para o paciente que le em portugues**.
+   *
+   * O modelo ja existe nas duas linguas; as variaveis nao existiam. O e-mail de
+   * pressao alta em portugues dizia `Classificacao: Very high — get help now`,
+   * com a frase em portugues e o valor em ingles — meio par EN/PT, que e o tipo
+   * de coisa que so se ve na caixa de entrada.
+   *
+   * Sobrepoe `emailVars` chave a chave, entao quem so tem uma versao passa uma.
+   */
+  emailVarsPt?: Record<string, string>;
   /** Plain text message for SMS/WhatsApp (short, no HTML) — English */
   plainMessage: string;
   /** Portuguese version of plainMessage for pt-BR patients */
@@ -81,6 +92,7 @@ export async function notifyPatient({
   patientId,
   emailTemplateSlug,
   emailVars = {},
+  emailVarsPt = {},
   plainMessage,
   plainMessagePt,
   forceChannel,
@@ -201,6 +213,7 @@ export async function notifyPatient({
         const sent = await sendTemplatedEmail(emailTemplateSlug as any, email, {
           patientName: firstName,
           ...emailVars,
+          ...(isPt ? emailVarsPt : {}),
         }, patientId, u.clinicId);
         if (sent) return { channel: "EMAIL", success: true };
         console.warn(`[notify-patient] Template ${emailTemplateSlug} unavailable — sending plain text instead.`);

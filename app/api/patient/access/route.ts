@@ -3,6 +3,28 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { computePatientAccess } from "@/lib/patient-access";
 import { patientGate } from "@/lib/patient-gate";
+import { GRUPOS_NO_APP, MODULE_REGISTRY, grupoNoApp } from "@/lib/module-registry";
+
+/**
+ * Os grupos do menu, **montados uma vez** (112 T-1).
+ *
+ * Vão na mesma resposta que já traz os módulos, e não num segundo pedido: um
+ * pedido que pode falhar sozinho deixaria o menu sem grupos justamente quando a
+ * rede está ruim — e aí a tela fica pior do que era antes de agrupar.
+ *
+ * Montado no servidor, e não no app, porque a taxonomia vive no catálogo:
+ * mandar o catálogo para o telefone seria uma segunda cópia para divergir.
+ *
+ * E **fora da função**, porque não depende do paciente nem de nada em tempo de
+ * execução — refazer esta lista a cada abertura do app é trabalho que não muda
+ * de resposta. O app abre esta rota sempre que volta ao primeiro plano.
+ */
+const GRUPOS_DO_MENU = GRUPOS_NO_APP.map((g) => ({
+  key: g.key,
+  en: g.en,
+  pt: g.pt,
+  modulos: MODULE_REGISTRY.filter((m) => grupoNoApp(m.key) === g.key).map((m) => m.key),
+}));
 
 /**
  * GET /api/patient/access
@@ -39,6 +61,7 @@ export async function GET() {
 
     return NextResponse.json({
       modules: access.modules,
+      grupos: GRUPOS_DO_MENU,
       hiddenModules: access.hiddenModules,
       permissions: access.permissions,
       role: userRole,

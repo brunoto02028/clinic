@@ -12,6 +12,7 @@ import { fetchAccess } from "@/api/access";
 import Constants from "expo-constants";
 import { runningVersion } from "@/lib/app-updates";
 import { ordenarSecoes } from "@/lib/ordenar-secoes";
+import { agruparSecoes } from "@/lib/agrupar-secoes";
 
 export interface ProfileSection {
   /** English canonical, Portuguese alongside — this menu was English-only, so
@@ -33,6 +34,19 @@ export interface ProfileSection {
    * do "como funciona", que não são módulo de ninguém.
    */
   module?: string;
+  /**
+   * O grupo do menu, **para as linhas que não têm módulo** (112 T-1).
+   *
+   * O grupo das outras vem do servidor, junto com os módulos, porque é ele que
+   * sabe a que categoria cada módulo pertence. Estas não têm módulo por decisão
+   * — faturas, termos, quem tem acesso, os avisos, a pressão — e por isso
+   * declaram o grupo aqui, onde a linha é escrita.
+   *
+   * Um valor que não exista entre os grupos não quebra nada: a linha cai no
+   * último bloco, sem cabeçalho, e continua visível. Um teste cobra a grafia,
+   * porque cair no bloco de sobra em silêncio é o tipo de defeito que ninguém vê.
+   */
+  grupo?: "clinical" | "wellness" | "content" | "account";
 }
 
 /**
@@ -84,6 +98,28 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
     lang
   );
 
+  /**
+   * Os blocos do menu — e o que sobra deles.
+   *
+   * O Bruno, 30/09/2026: *"a gente estar organizando a forma que o paciente ve
+   * as liberdades da clinica, para que ele fique debaixo das subcategorias,
+   * assim como esta nas permissoes la na area web da clinica."*
+   *
+   * O ponto delicado nao e agrupar: e **o que acontece com quem nao entra em
+   * grupo nenhum**. O laboratorio passa por este mesmo componente com quatro
+   * linhas sem modulo; um servidor antigo nao manda grupos; uma linha nova pode
+   * nascer sem chave. Em todos esses casos a lista cai no ultimo bloco, **sem
+   * cabecalho** — que e exatamente a tela de antes, e nao uma linha perdida.
+   *
+   * A ordem alfabetica continua valendo **dentro** de cada bloco: os grupos dao
+   * o lugar, e a ordem resolve o resto.
+   *
+   * A conta esta em `agrupar-secoes.ts`, e nao aqui, porque o que precisa de
+   * prova e o destino de quem nao tem grupo — e um teste de componente nao e
+   * onde se cobra isso.
+   */
+  const blocos = agruparSecoes(visiveis, acesso?.grupos ?? []);
+
   const initials = profile
     ? `${profile.firstName?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase()
     : (user?.name?.[0] ?? "?").toUpperCase();
@@ -122,20 +158,32 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
           />
         </Card>
 
-        {visiveis.length > 0 && (
-          <Card>
-            {visiveis.map((s, i) => (
-              <ListItem
-                key={s.href}
-                title={tr(lang, s.title)}
-                icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
-                right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
-                onPress={() => router.push(s.href as any)}
-                last={i === visiveis.length - 1}
-              />
-            ))}
-          </Card>
-        )}
+        {blocos.map((b) => (
+          <View key={b.chave} style={{ gap: 6 }}>
+            {b.grupo && (
+              <Text
+                variant="caption"
+                color={t.colors.textMuted}
+                style={{ marginLeft: 4 }}
+                testID={`grupo-${b.chave}`}
+              >
+                {tr(lang, b.grupo)}
+              </Text>
+            )}
+            <Card>
+              {b.itens.map((s, i) => (
+                <ListItem
+                  key={s.href}
+                  title={tr(lang, s.title)}
+                  icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
+                  right={<Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />}
+                  onPress={() => router.push(s.href as any)}
+                  last={i === b.itens.length - 1}
+                />
+              ))}
+            </Card>
+          </View>
+        ))}
 
         {/* A saída para as outras áreas da conta — laboratório, BA, o estúdio.
             Fica aqui, no menu, e não só dentro de "Minha conta", porque é onde

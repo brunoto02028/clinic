@@ -16,6 +16,58 @@ export function classifyBP(systolic: number, diastolic: number): BPClassificatio
   return "NORMAL";
 }
 
+/**
+ * O rótulo que a pessoa lê — **e ele não nomeia um diagnóstico**.
+ *
+ * As telas diziam *"Stage 1"* e *"Stage 2"*. Isso é o nome de uma **categoria
+ * diagnóstica** ("stage 2 hypertension"), e numa tela que o paciente abre
+ * sozinho lê-se como um veredito do aplicativo: *eu tenho hipertensão estágio
+ * 2*. Quem diagnostica é médico, e é também o que mantém este produto fora da
+ * definição de dispositivo médico.
+ *
+ * A saída, decidida com o Bruno em 30/09/2026, não é esconder o número — uma
+ * leitura de 171/90 **tem** de parecer diferente de 125/83. É **nomear a
+ * régua**: a tela passa a comparar com um parâmetro público em vez de julgar.
+ *
+ * `CRISIS` deixou de ser "crise" pelo mesmo motivo — *hypertensive crisis*
+ * também é nome de categoria — e ficou mais acionável, não menos: o que a
+ * pessoa precisa de saber ali é o que fazer agora.
+ *
+ * Os limiares **não mudaram**. Isto é vocabulário.
+ *
+ * Existe uma cópia disto em `mobile/src/lib/faixa-de-pressao.ts`, porque o `@/`
+ * do app aponta para outro lugar e nenhum dos dois alcança o outro. Um teste
+ * alimenta as duas e exige a mesma resposta.
+ */
+export const BP_LABELS: Record<BPClassification, { en: string; pt: string }> = {
+  LOW: { en: "Low", pt: "Baixa" },
+  NORMAL: { en: "Normal", pt: "Normal" },
+  ELEVATED: { en: "Elevated", pt: "Elevada" },
+  STAGE1: { en: "Above UK guidance", pt: "Acima do parâmetro do NHS" },
+  STAGE2: { en: "Well above UK guidance", pt: "Bem acima do parâmetro do NHS" },
+  CRISIS: { en: "Very high — get help now", pt: "Muito alta — procure ajuda agora" },
+};
+
+/** O rótulo, na língua exibida. */
+export function bpLabel(c: BPClassification, isPt: boolean): string {
+  return isPt ? BP_LABELS[c].pt : BP_LABELS[c].en;
+}
+
+/**
+ * A frase que desfaz a leitura errada, e que acompanha a etiqueta.
+ *
+ * Fica ao lado das faixas, e não escondida num rodapé: a etiqueta é o que se lê
+ * primeiro, e a explicação é o que se lê depois — ou nunca.
+ */
+export const BP_GUIDANCE_NOTE = {
+  en:
+    "These bands come from UK blood-pressure guidance. They are not a diagnosis — " +
+    "only a doctor can make one. If your readings keep landing here, book with your GP.",
+  pt:
+    "Estas faixas vêm do parâmetro britânico de pressão arterial. Não são um diagnóstico — " +
+    "só um médico faz isso. Se as suas leituras continuarem aqui, marque com o seu médico.",
+};
+
 export type BPInput = {
   systolic?: number;
   diastolic?: number;

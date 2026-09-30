@@ -40,9 +40,19 @@ describe("a decisão tem onde ser tomada", () => {
   });
 
   it("e a tela de permissões renderiza essa categoria", () => {
-    // Sem a linha aqui, a entrada existe no registro e não aparece em lugar
-    // nenhum — que era exatamente o estado anterior.
-    expect(tela).toMatch(/key: "app_areas"/);
+    // Sem isto, a entrada existe no registro e não aparece em lugar nenhum —
+    // que era exatamente o estado anterior.
+    //
+    // A prova mudou de forma em 30/09: a tela tinha um **catálogo próprio** de
+    // categorias, e este teste procurava `key: "app_areas"` dentro dela. O
+    // catálogo local saiu (ele já divergia do verdadeiro, e não tinha
+    // português), então o que se cobra agora é o que passou a ser verdade: a
+    // tela lê o catálogo, e o catálogo tem a categoria. O teste continua a cair
+    // se a categoria deixar de chegar à tela — só não exige mais que ela seja
+    // escrita duas vezes.
+    expect(tela).toMatch(/import\s*\{[^}]*MODULE_CATEGORIES[^}]*\}\s*from\s*"@\/lib\/module-registry"/s);
+    expect(tela).toContain("MODULE_CATEGORIES.filter(");
+    expect(registro).toMatch(/\{ key: "app_areas"/);
   });
 
   it("a categoria também existe no registro, para quem mais o consome", () => {

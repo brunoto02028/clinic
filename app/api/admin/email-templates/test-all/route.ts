@@ -134,7 +134,7 @@ const TEST_CASES: { slug: string; vars: Record<string, string>; locale: string }
     locale: 'en-GB',
     vars: {
       patientName: 'John Smith', bpReading: '165/105 mmHg',
-      readingDate: '18 February 2026', classification: 'Stage 2 Hypertension',
+      readingDate: '18 February 2026', classification: 'Well above UK guidance',
       portalUrl: `${BASE}/dashboard/blood-pressure`, locale: 'en-GB',
     },
   },

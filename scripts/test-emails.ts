@@ -1,14 +1,22 @@
 // Run: npx tsx scripts/test-emails.ts
 import { renderTemplate, seedDefaultTemplates } from '../lib/email-templates';
 import { sendEmail } from '../lib/email';
+import { BP_LABELS } from '../lib/blood-pressure';
 
+// **Este e o unico caminho que forca `live` e entrega na caixa real.** Por isso
+// os valores daqui nao sao decorativos: enquanto o irmao deste script — a rota
+// /api/admin/email-templates/test-all, barrada pelo guarda — ja tinha sido
+// corrigida, este continuava a mandar "Stage 2 Hypertension" para o Bruno. O
+// que atravessa a porta ficou para tras; o que e barrado foi arrumado (achado
+// do QA de 30/09). Os rotulos passam a vir da lib, como em todo o resto.
+//
 // This script exists to deliver real mail for a manual check. The outbound
 // guard (lib/outbound-guard.ts) drops mail outside production, which would
 // make every template below report "Sent" without anything leaving.
 process.env.OUTBOUND_MODE = "live";
 
 const TEST_EMAIL = 'brunotoaz@gmail.com';
-const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 const TEST_CASES: { slug: string; locale: string; vars: Record<string, string> }[] = [
   { slug: 'WELCOME', locale: 'en-GB', vars: { patientName: 'John Smith', portalUrl: `${BASE}/dashboard`, locale: 'en-GB' } },
@@ -111,11 +119,11 @@ const TEST_CASES: { slug: string; locale: string; vars: Record<string, string> }
   },
   {
     slug: 'BP_HIGH_ALERT', locale: 'en-GB',
-    vars: { patientName: 'John Smith', bpReading: '165/105 mmHg', readingDate: '18 February 2026', classification: 'Stage 2 Hypertension', portalUrl: `${BASE}/dashboard/blood-pressure`, locale: 'en-GB' },
+    vars: { patientName: 'John Smith', bpReading: '165/105 mmHg', readingDate: '18 February 2026', classification: BP_LABELS.STAGE2.en, portalUrl: `${BASE}/dashboard/blood-pressure`, locale: 'en-GB' },
   },
   {
     slug: 'BP_HIGH_ALERT', locale: 'pt-BR',
-    vars: { patientName: 'João Silva', bpReading: '165/105 mmHg', readingDate: '18 de Fevereiro de 2026', classification: 'Hipertensão Estágio 2', portalUrl: `${BASE}/dashboard/blood-pressure`, locale: 'pt-BR' },
+    vars: { patientName: 'João Silva', bpReading: '165/105 mmHg', readingDate: '18 de Fevereiro de 2026', classification: BP_LABELS.STAGE2.pt, portalUrl: `${BASE}/dashboard/blood-pressure`, locale: 'pt-BR' },
   },
 ];
 

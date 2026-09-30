@@ -5,9 +5,13 @@ import { ModuleProfile, type ProfileSection } from "@/components/ModuleProfile";
  * and nine screens that had no entry point anywhere: they existed as route
  * files and opened only by typed URL. This is where the patient reaches them.
  *
- * Ordering follows the web's curated menu (`lib/patient-sections.ts`): the
- * clinical record first, then what the patient does between sessions, then
- * reference material.
+ * A ordem e alfabetica **dentro de cada grupo** (112 T-1): os grupos dizem onde
+ * a linha fica, e a ordem resolve o resto. As linhas com `module` herdam o grupo
+ * do servidor; as seis **sem** modulo declaram o `grupo` aqui, porque nao ha de
+ * onde herdar — e sem ele cairiam no bloco sem cabecalho, visiveis mas soltas.
+ *
+ * A pressao vai para *Seu dia a dia* e nao para a conta: e medida diaria, e a
+ * conta e onde vivem faturas, termos, avisos e quem tem acesso.
  */
 const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "Messages", pt: "Mensagens" }, icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages", module: "mod_messages" },
@@ -34,7 +38,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
    * lançamento. Fica ao lado dos documentos porque é o que é: papel da clínica
    * que pertence ao paciente.
    */
-  { title: { en: "Invoices", pt: "Faturas" }, icon: "receipt-outline", href: "/(app)/(clinica)/invoices" },
+  { title: { en: "Invoices", pt: "Faturas" }, icon: "receipt-outline", href: "/(app)/(clinica)/invoices", grupo: "account" },
   /**
    * Quem eu cuido (089/091).
    *
@@ -45,7 +49,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
    * O caminho continua o mesmo arquivo, de propósito: duas telas para a mesma
    * lista seriam duas listas em duas semanas.
    */
-  { title: { en: "People I look after", pt: "Quem eu cuido" }, icon: "people-outline", href: "/(app)/(lab)/dependents" },
+  { title: { en: "People I look after", pt: "Quem eu cuido" }, icon: "people-outline", href: "/(app)/(lab)/dependents", grupo: "account" },
   { title: { en: "Treatment plan", pt: "Plano de tratamento" }, icon: "heart-outline", href: "/(app)/(clinica)/treatment-protocol", module: "mod_treatment" },
   // Os planos que a clínica oferece a este paciente (082, T-3). A API já
   // filtrava por paciente; faltava a porta.
@@ -62,7 +66,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   // The server, the web and a reminder cron all handled blood pressure; the
   // app had no screen for it, so a patient who uses the phone could not record
   // the one number the clinic wants a daily series of.
-  { title: { en: "Blood pressure", pt: "Pressão arterial" }, icon: "pulse-outline", href: "/(app)/(clinica)/blood-pressure" },
+  { title: { en: "Blood pressure", pt: "Pressão arterial" }, icon: "pulse-outline", href: "/(app)/(clinica)/blood-pressure", grupo: "wellness" },
   // "Conteúdo" não dizia o que tem lá dentro: o Bruno procurou os artigos
   // no app e não achou esta linha. São os artigos do site virados material
   // clínico (096), e o nome passa a dizer isso.
@@ -84,7 +88,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
    * resto legítimo, e pô-lo atrás de um interruptor deixaria alguém sem poder
    * rever o que autorizou. Mesma razão de "Quem tem acesso" e "Notificações".
    */
-  { title: { en: "Terms & consent", pt: "Termos & consentimento" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
+  { title: { en: "Terms & consent", pt: "Termos & consentimento" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent", grupo: "account" },
   /**
    * Quem tem acesso aos meus dados (102 T-3).
    *
@@ -96,7 +100,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
    * Ao lado de "Termos & consentimento" porque e a mesma pergunta: o que eu
    * autorizei, e para quem.
    */
-  { title: { en: "Who has access", pt: "Quem tem acesso" }, icon: "people-outline", href: "/(app)/(clinica)/quem-tem-acesso" },
+  { title: { en: "Who has access", pt: "Quem tem acesso" }, icon: "people-outline", href: "/(app)/(clinica)/quem-tem-acesso", grupo: "account" },
   /**
    * Os avisos, **a um toque** (29/09/2026).
    *
@@ -108,7 +112,7 @@ const CLINIC_SECTIONS: ProfileSection[] = [
    * **Sem `module`**, como "Quem tem acesso": poder ser alcancado pelo proprio
    * telefone nao e funcionalidade que uma clinica desligue.
    */
-  { title: { en: "Notifications", pt: "Notificações" }, icon: "notifications-circle-outline", href: "/(app)/notifications" },
+  { title: { en: "Notifications", pt: "Notificações" }, icon: "notifications-circle-outline", href: "/(app)/notifications", grupo: "account" },
 ];
 
 export default function Profile() {

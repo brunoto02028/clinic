@@ -1,6 +1,8 @@
 // Lightweight i18n system for PT-BR / EN-GB toggle
 // Usage: const t = useTranslation(); t('key')
 
+import { BP_LABELS } from "@/lib/blood-pressure";
+
 type Locale = "en-GB" | "pt-BR";
 
 const translations: Record<string, Record<Locale, string>> = {
@@ -724,11 +726,18 @@ const translations: Record<string, Record<Locale, string>> = {
   "bp.noReadingsDesc": { "en-GB": "Start by taking a measurement above", "pt-BR": "Comece fazendo uma medição acima" },
   "bp.howItWorks": { "en-GB": "How PPG Camera Measurement Works", "pt-BR": "Como Funciona a Medição PPG por Câmera" },
   "bp.categories": { "en-GB": "Blood Pressure Categories", "pt-BR": "Categorias de Pressão Arterial" },
-  "bp.low": { "en-GB": "Low", "pt-BR": "Baixa" },
-  "bp.normal": { "en-GB": "Normal", "pt-BR": "Normal" },
-  "bp.elevated": { "en-GB": "Elevated", "pt-BR": "Elevada" },
-  "bp.stage1": { "en-GB": "High (Stage 1)", "pt-BR": "Alta (Estágio 1)" },
-  "bp.stage2": { "en-GB": "High (Stage 2)", "pt-BR": "Alta (Estágio 2)" },
+  // As cinco faixas **derivam** de `BP_LABELS`, e nao sao copiadas.
+  //
+  // Elas eram a quinta copia do mesmo vocabulario. O comentario que estava aqui
+  // dizia que "um teste cobra que nao divirjam" — e o teste nao existia. Derivar
+  // e melhor do que testar a copia: nao ha o que divergir.
+  "bp.low": { "en-GB": BP_LABELS.LOW.en, "pt-BR": BP_LABELS.LOW.pt },
+  "bp.normal": { "en-GB": BP_LABELS.NORMAL.en, "pt-BR": BP_LABELS.NORMAL.pt },
+  "bp.elevated": { "en-GB": BP_LABELS.ELEVATED.en, "pt-BR": BP_LABELS.ELEVATED.pt },
+  // Não nomeiam diagnóstico (105 T-6): "stage 2 hypertension" é categoria
+  // diagnóstica, e numa tela que o paciente abre sozinho lê-se como veredito.
+  "bp.stage1": { "en-GB": BP_LABELS.STAGE1.en, "pt-BR": BP_LABELS.STAGE1.pt },
+  "bp.stage2": { "en-GB": BP_LABELS.STAGE2.en, "pt-BR": BP_LABELS.STAGE2.pt },
   "bp.report": { "en-GB": "Measurement Report", "pt-BR": "Relatório da Medição" },
   "bp.rhythmAnalysis": { "en-GB": "Cardiac Rhythm Analysis", "pt-BR": "Análise do Ritmo Cardíaco" },
   "bp.waveform": { "en-GB": "PPG Waveform (ECG-like)", "pt-BR": "Forma de Onda PPG (tipo ECG)" },

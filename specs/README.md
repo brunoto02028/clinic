@@ -234,3 +234,8 @@ código está inerte esperando:
 - **109** — [O tempo entre um paciente e outro](109-o-tempo-entre-um-e-outro/plan.md)
 - **110** — [O interruptor que não acende](110-o-interruptor-que-nao-acende/plan.md) — o painel liga módulos que o app não tem
 - **111** — [O que o app faz, para contar ao mundo](111-o-que-o-app-faz/plan.md) — inventário para reescrever as páginas públicas; **não muda código**
+- **112** — [A ordem é de quem?](112-a-ordem-e-de-quem/plan.md) — arrastar no painel, personalizar no app, e quem ganha do alfabeto
+- **113** — [O app se atualiza sozinho](113-o-app-se-atualiza-sozinho/plan.md) — voltar ao app traz dado novo; puxar para baixo em toda tela
+- **114** — [O Withings não traz dado](114-o-withings-nao-traz-dado/plan.md) — conectado, `last sync` de hoje, e a tela vazia
+- **115** — [A pressão vem do aparelho](115-a-pressao-vem-do-aparelho/plan.md) — sai a medição por câmera; fica o BPM Connect e a digitação
+- **116** — [O painel no escuro](116-o-painel-no-escuro/plan.md) — paleta clara crua sobre tema escuro; o conserto é token, não `dark:`
