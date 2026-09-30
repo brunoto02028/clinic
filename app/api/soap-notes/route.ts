@@ -26,7 +26,15 @@ export async function GET(request: NextRequest) {
 
     if (userRole === "PATIENT") {
       try {
-        await assertModuleAccess(userId, "mod_records");
+        /**
+         * A mesma chave que o app usa para estas mesmas notas (110 T-2).
+         *
+         * Era `mod_records`, que governa também as medidas de evolução e os
+         * relatórios. As duas rotas mudam no mesmo commit: se só uma mudasse,
+         * o paciente veria de um lado o que o outro esconde — um critério só,
+         * lido pelos dois lados.
+         */
+        await assertModuleAccess(userId, "mod_clinical_notes");
       } catch (err) {
         return accessErrorResponse(err);
       }

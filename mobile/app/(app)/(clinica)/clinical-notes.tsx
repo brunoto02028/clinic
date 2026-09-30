@@ -88,12 +88,17 @@ function ClinicalNotesScreen() {
 }
 
 /**
- * Gated on `mod_records` — the same module the web checks before it renders the
- * matching page. Without this the app showed what the web had just refused.
+ * Gated on `mod_clinical_notes` — a mesma chave que a web e a API usam para
+ * estas notas desde a 110 T-2.
+ *
+ * Era `mod_records`, que governa também as medidas de evolução e os relatórios.
+ * Deixá-la aqui faria a tela renderizar com o progresso ligado e a API responder
+ * 403 — o paciente entrava e encontrava um erro, que é a maçaneta na parede de
+ * uma porta fechada.
  */
 export default function ClinicalNotes() {
   return (
-    <PlanGate module="mod_records">
+    <PlanGate module="mod_clinical_notes">
       <ClinicalNotesScreen />
     </PlanGate>
   );

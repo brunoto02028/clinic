@@ -31,7 +31,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   let userId = assinado;
   if (!userId) {
-    const gate = await patientGate();
+    /**
+     * **`mod_records`, como a lista** (110 T-3, achado do QA).
+     *
+     * A lista pedia o módulo e esta não pedia nada: com *My Records* desligado,
+     * `/api/patient/reports` respondia 403 e `/api/patient/reports/<id>`
+     * devolvia o HTML do relatório. O botão sumia do menu e a porta ficava
+     * aberta — e é a **segunda vez no mesmo dia** que eu fechei a lista e
+     * esqueci o detalhe, depois do PDF da nota clínica.
+     *
+     * O link **assinado** continua passando por cima, de propósito: ele é
+     * emitido pela clínica para um relatório específico, e morre sozinho. O
+     * portão de módulo governa quem chega por sessão.
+     */
+    const gate = await patientGate({ module: "mod_records" });
     if (gate.response) return gate.response;
     userId = gate.gate!.userId;
   }

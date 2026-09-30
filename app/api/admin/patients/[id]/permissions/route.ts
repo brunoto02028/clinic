@@ -100,6 +100,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       // patient can plainly use.
       defaultGranted: m.defaultGranted || false,
       appOnly: m.appOnly || false,
+      semTelaNoApp: m.semTelaNoApp || false,
+      mostraNoApp: m.mostraNoApp || [],
       grantedByPlan: planModules.has(m.key),
       adminOverride: overrides[m.key] !== undefined ? overrides[m.key] : null, // null = no override
       effectiveAccess: effectiveModules.has(m.key),

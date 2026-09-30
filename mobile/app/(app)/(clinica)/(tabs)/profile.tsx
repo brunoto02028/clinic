@@ -10,9 +10,21 @@ import { ModuleProfile, type ProfileSection } from "@/components/ModuleProfile";
  * reference material.
  */
 const CLINIC_SECTIONS: ProfileSection[] = [
-  { title: { en: "Messages", pt: "Mensagens" }, icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages" },
-  { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
-  { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents" },
+  { title: { en: "Messages", pt: "Mensagens" }, icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages", module: "mod_messages" },
+  /**
+   * **O prontuário obedece ao interruptor** (110 T-2).
+   *
+   * Esta linha não tinha `module`, então aparecia sempre — enquanto a API já
+   * negava. O paciente via o botão, tocava, e caía num erro: a porta estava
+   * fechada e sobrou a maçaneta na parede.
+   *
+   * `mod_clinical_notes` e não `mod_records`: a nota clínica ganhou interruptor
+   * próprio, separado das medidas de evolução e dos relatórios, que são escritos
+   * **para** o paciente. A mesma chave que a API do app, a da web e a página da
+   * web usam — um critério só, lido por todos os lados.
+   */
+  { title: { en: "My records", pt: "Meu prontuário" }, icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes", module: "mod_clinical_notes" },
+  { title: { en: "My documents", pt: "Meus documentos" }, icon: "folder-outline", href: "/(app)/(clinica)/documents", module: "mod_documents" },
   /**
    * Faturas.
    *
@@ -64,6 +76,14 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   // no onPress and there is no detail screen, so the entry led to a list where
   // nothing opens. It returns with the quiz screen (T-4 family).
   { title: { en: "How it works", pt: "Como funciona" }, icon: "book-outline", href: "/(app)/(clinica)/guide", module: "mod_guide" },
+  /**
+   * **Sem `module`, de propósito** — e isto não é esquecimento (110 T-2).
+   *
+   * As linhas vizinhas ganharam chave nesta mesma tarefa; esta não. Aceitar os
+   * termos não é funcionalidade que uma clínica desligue: é o ato que torna o
+   * resto legítimo, e pô-lo atrás de um interruptor deixaria alguém sem poder
+   * rever o que autorizou. Mesma razão de "Quem tem acesso" e "Notificações".
+   */
   { title: { en: "Terms & consent", pt: "Termos & consentimento" }, icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
   /**
    * Quem tem acesso aos meus dados (102 T-3).
