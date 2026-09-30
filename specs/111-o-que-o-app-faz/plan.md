@@ -8,6 +8,27 @@ os serviços novos. Pediu o inventário do que temos e do que vem.
 noutra branch. O que está aqui foi **lido do código**, não da memória — cada
 linha tem onde conferir.
 
+## A condição da divulgação, decidida em 30/09/2026
+
+O Bruno:
+
+> *"Tudo vai ficar pronto, só iremos divulgar com laboratório funcionando e o
+> app 100% aprovado."*
+
+**Duas travas, e elas mudam como estas páginas se escrevem.**
+
+Nada sai enquanto o **laboratório** não estiver funcionando e o app não estiver
+**aprovado nas lojas**. Isso simplifica tudo: as páginas podem ser escritas no
+**presente**, sem "em breve", sem data prometida, sem hedge. No dia em que
+saírem, tudo o que elas disserem já é verdade.
+
+Também resolve três das perguntas que estavam abertas no fim deste documento: o
+laboratório **entra**, a aprovação nas lojas é **pré-requisito**, e não há data a
+prometer porque a divulgação é que espera, não o produto.
+
+O que continua valendo de aviso: 🔴 continua fora. Estar pronto não é o mesmo que
+existir, e os quatro interruptores sem tela seguem sem tela.
+
 ## Como ler isto
 
 Três estados, e eles importam mais que a lista:
@@ -199,8 +220,14 @@ começou.
 
 # 3. O que existe e está fechado 🟡
 
-Coisas prontas que uma chave segura. **Podem entrar no site como "em breve" com
-data, ou ficar de fora — não como disponíveis.**
+Coisas prontas que uma chave segura.
+
+**Depois da decisão de 30/09, estas não precisam de "em breve":** a divulgação
+espera o laboratório funcionar, então no dia em que as páginas saírem ele já é
+presente do indicativo. O que tem de ser conferido, uma a uma, é se a chave está
+**de facto** aberta quando o texto for publicado — uma página que promete o que
+uma variável de ambiente ainda segura é a mesma promessa vazia do 🔴, com outro
+mecanismo.
 
 | o quê | o que falta |
 |---|---|
@@ -230,6 +257,18 @@ Há interruptor no painel de permissões e **nenhuma tela no app**:
 
 Desde 30/09/2026 esses quatro carregam no painel o selo *"Not in the app yet"*.
 Foi assim que se descobriu o problema: ligar não acendia nada.
+
+**Quando eles são feitos — decidido em 30/09/2026.** O Bruno: *"só vamos mexer
+nelas depois de todas as outras coisas prontas e revisadas."*
+
+São os **últimos** da fila, depois do laboratório e da aprovação nas lojas. Isso
+fecha a pergunta que a 110 T-1 tinha deixado aberta — marcar ou construir: marcar
+agora, construir por último.
+
+Para quem escrever as páginas, a consequência é simples e não muda com o tempo:
+**eles não entram no texto**, nem como "em breve". Uma funcionalidade que é a
+última da fila não tem data, e prometer sem data é como se cria a primeira
+reclamação.
 
 **A jornada (BPR Journey)** é caso à parte: o interruptor existe e hoje acende o
 **check-in diário**, não uma tela de jornada. O conteúdo dela ainda vai ser
@@ -264,8 +303,15 @@ Sugestão de por onde o conteúdo entra — **a executar noutra branch**:
 
 **19 links de e-mail apontam para `/dashboard/*` na web.** Quando a área do
 paciente na web perder acesso, esses e-mails passam a mandar a pessoa para uma
-porta fechada. Isso tem de ser resolvido **antes** da divulgação, senão a
-primeira campanha leva gente para o lugar errado.
+porta fechada.
+
+**Decisão do Bruno (30/09/2026): resolver no momento de publicar o app**, não
+antes. Vira item de lançamento, junto com a decisão de bloquear ou não a web do
+paciente.
+
+O que fica dito, para quem executar: tem de sair **antes da primeira campanha**.
+Publicar o app e divulgar são dois momentos, e é entre eles que estes links têm
+de mudar — senão a campanha leva gente para o lugar errado no primeiro dia.
 
 ---
 
@@ -273,17 +319,30 @@ primeira campanha leva gente para o lugar errado.
 
 Suposições minhas, que precisam de validação antes de virar texto público:
 
-- **A data do lançamento** e quando a web do paciente é desligada. O tom das
-  páginas depende disso — "em breve" e "já disponível" são páginas diferentes.
-- **O laboratório entra na divulgação?** Ele está pronto e fechado. Se entrar
-  como "em breve", precisa de data; se não, sai do texto.
+~~**A data do lançamento.**~~ Respondida em 30/09: não há data a prometer — a
+divulgação espera o laboratório e a aprovação nas lojas. O que **continua** em
+aberto é quando a web do paciente é desligada, e os 19 e-mails saem junto.
+
+~~**O laboratório entra?**~~ Entra, e é trava: sem ele funcionando, não se
+divulga.
+
+~~**iOS e Android.**~~ Aprovação nas lojas é pré-requisito. Fica o registro de
+que o **TestFlight nunca saiu para testador externo** — é etapa antes da
+aprovação, não depois.
+
+Continua em aberto:
+
 - **Preço e planos no site.** Existe *Plans & Membership* no app e não sei o que
   pode ser dito publicamente.
-- **iOS e Android.** O app está no Google Play como *BPR Clinic*; o TestFlight
-  **nunca saiu para testador externo**. Uma página que diga "baixe na App Store"
-  antes disso manda gente para o vazio.
 - **As capturas.** Uma página de app se vende por imagem. As do QA servem de
-  rascunho, mas são de paciente de teste e ambiente local.
+  rascunho, mas são de paciente de teste e ambiente local — as de verdade têm de
+  sair do app aprovado, com dado que possa ser mostrado.
+- **O laboratório está sem tradução.** As dez telas dele não usam `useLang`/`tr`,
+  enquanto a clínica é traduzida inteira. A decisão de 24/09 foi não traduzir
+  antes da API do parceiro existir, porque nome de exame, preço e método de
+  coleta vêm do catálogo deles. **Se o laboratório é trava da divulgação, a
+  tradução dele entra no caminho crítico** — e um site bilíngue apontando para um
+  app com dez telas só em inglês é uma emenda visível.
 
 ## Tarefas
 

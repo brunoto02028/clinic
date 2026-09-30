@@ -1,4 +1,21 @@
-.git
+# Do `.git`, só o que diz **qual commit está sendo construído** — e nada da
+# história.
+#
+# Isto era `.git` inteiro, e o `public/version.json` saía com `"commit": null`
+# em produção por causa disso: o script procura o `git` como fonte e não havia
+# nem `.git` nem binário dentro do build. O log do build dizia exatamente isso,
+# e eu só fui ler depois de errar duas vezes.
+#
+# Não se usa `!` para reabrir o que foi excluído — excluir um diretório e
+# reincluir um filho dele é justamente onde o `.dockerignore` tem pegadinha.
+# Aqui a exclusão é **estreita**: sai o pesado e o que tem história, ficam
+# `HEAD`, `refs/` e `packed-refs`, que somam alguns bytes.
+.git/objects
+.git/logs
+.git/hooks
+.git/modules
+.git/index
+.git/lfs
 .gitignore
 .next
 node_modules

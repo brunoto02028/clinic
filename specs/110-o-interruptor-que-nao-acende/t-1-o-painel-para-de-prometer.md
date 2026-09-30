@@ -16,6 +16,11 @@ apareceu.
 Decisão dele: **ficam no painel**, com selo dizendo que a tela ainda não existe.
 Tirar faria a gente esquecer que existiam.
 
+**E quando serão feitos (30/09/2026):** *"só vamos mexer nelas depois de todas as
+outras coisas prontas e revisadas."* São os últimos da fila, depois do
+laboratório e da aprovação nas lojas — o que torna o selo a escolha certa por
+mais tempo do que parecia quando foi feito.
+
 ## Passos
 
 1. Marcar os quatro no `lib/module-registry.ts` com algo como `semTelaNoApp: true`.
