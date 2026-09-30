@@ -242,22 +242,23 @@ describe("o caminho que produção usa de verdade", () => {
   const RAIZ = path.join(__dirname, "..", "..");
   const dockerfile = () => fs.readFileSync(path.join(RAIZ, "Dockerfile"), "utf8");
 
-  it("**o `.dockerignore` deixa passar o `HEAD` e barra a história**", () => {
-    // A troca que fez o campo funcionar: era `.git` inteiro e agora é estreita.
-    // Se alguém voltar a excluir o `.git` de uma vez, o campo volta a `null` —
-    // e este teste cai antes de isso chegar a produção.
+  it("**o `.git` inteiro fica fora da imagem**", () => {
+    // Cheguei a estreitar esta exclusão para o `.git` passar e o build saber
+    // qual commit era. Não serviu de nada — o Coolify apaga o `.git` antes do
+    // build —, e enfraquecer uma proteção deliberada por nada é pior que não
+    // ter o campo. Voltou ao simples, e este teste guarda a volta.
     const linhas = fs
       .readFileSync(path.join(RAIZ, ".dockerignore"), "utf8")
       .split("\n")
       .map((l: string) => l.trim())
       .filter((l: string) => l && !l.startsWith("#"));
 
-    for (const largo of [".git", ".git/", ".git/**", ".git/*"]) {
-      expect(linhas).not.toContain(largo);
+    expect(linhas).toContain(".git");
+    // E nenhum resto da tentativa: linhas estreitas aqui dariam a impressão de
+    // que alguma parte do `.git` chega ao build, e nenhuma chega.
+    for (const resto of [".git/objects", ".git/logs", ".git/hooks", ".git/index"]) {
+      expect(linhas).not.toContain(resto);
     }
-    // E a história continua fora da imagem, que é o motivo de a exclusão existir.
-    expect(linhas).toContain(".git/objects");
-    expect(linhas).toContain(".git/logs");
   });
 
   it("**o Dockerfile declara e exporta `SOURCE_COMMIT`**", () => {

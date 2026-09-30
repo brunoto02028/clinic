@@ -1,21 +1,9 @@
-# Do `.git`, só o que diz **qual commit está sendo construído** — e nada da
-# história.
-#
-# Isto era `.git` inteiro, e o `public/version.json` saía com `"commit": null`
-# em produção por causa disso: o script procura o `git` como fonte e não havia
-# nem `.git` nem binário dentro do build. O log do build dizia exatamente isso,
-# e eu só fui ler depois de errar duas vezes.
-#
-# Não se usa `!` para reabrir o que foi excluído — excluir um diretório e
-# reincluir um filho dele é justamente onde o `.dockerignore` tem pegadinha.
-# Aqui a exclusão é **estreita**: sai o pesado e o que tem história, ficam
-# `HEAD`, `refs/` e `packed-refs`, que somam alguns bytes.
-.git/objects
-.git/logs
-.git/hooks
-.git/modules
-.git/index
-.git/lfs
+# O `.git` inteiro fica fora da imagem: ela não tem por que carregar
+# histórico. Uma tentativa de estreitar isto para o build saber qual commit
+# está construindo não serviu de nada — o Coolify apaga o `.git` entre o
+# checkout e o build, então não há o que deixar passar. Ver
+# `scripts/update-version.js`.
+.git
 .gitignore
 .next
 node_modules

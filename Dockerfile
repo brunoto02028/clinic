@@ -22,13 +22,14 @@ ARG STRIPE_SECRET_KEY
 ARG NEXT_OUTPUT_MODE=standalone
 # Qual commit está sendo construído, para o `public/version.json`.
 #
-# `scripts/update-version.js` procura esta variável primeiro e cai no `git`
-# depois — e **o git não existe aqui**: o `.dockerignore` exclui o `.git` na
-# primeira linha, de propósito, para a imagem não carregar o histórico. Sem
-# declarar o `ARG`, o build arg que o Coolify passa não chega ao ambiente do
-# `RUN`, e o campo saía `null` em produção.
+# **O Coolify não passa isto** — o log do deploy mostra os build args, e são
+# `COOLIFY_URL`, `COOLIFY_FQDN`, `COOLIFY_BRANCH` e `COOLIFY_RESOURCE_UUID`.
+# Ele também apaga o `.git` entre o checkout e o build, então o script não tem
+# de onde ler: em produção o campo sai `null`, e o aviso no log diz por quê.
 #
-# Sem valor, o script avisa e o campo fica `null` — nunca derruba o build.
+# A linha fica porque **serve noutros lugares**: um build por GitHub Actions ou
+# à mão pode passar `--build-arg SOURCE_COMMIT=$(git rev-parse HEAD)` e o campo
+# se preenche. Sem valor, não derruba nada.
 ARG SOURCE_COMMIT
 ENV DATABASE_URL=${DATABASE_URL}
 ENV STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
