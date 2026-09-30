@@ -235,15 +235,34 @@ function WearablesScreen() {
               // filtrava por `CONNECTED` e o paciente via o convite *Connect*,
               // como se nunca tivesse ligado nada.
               const quebrada = conn?.status === "ERROR";
-              const silent = isConnected && (naoEntrega || calada || quebrada);
+              // A pressao desta conta entra pela ligacao da clinica: esta e
+              // muda para pressao de proposito, e um medidor so mede pressao.
+              // Sem isto a tela mandava reconectar um aparelho que nao tem
+              // nada de errado — achado do Bruno na propria tela, 30/09.
+              const pelaClinica = conn?.pressaoPelaClinica === true;
+              const silent = isConnected && !pelaClinica && (naoEntrega || calada || quebrada);
 
               return (
                 <View
                   key={p.key}
+                  /**
+                   * **Em coluna, e nao em linha** (achado do Bruno, 30/09).
+                   *
+                   * Era `flexDirection: "row"` com o texto a esquerda e tres
+                   * botoes a direita. Enquanto a linha de estado era curta,
+                   * coube; quando ela passou a dizer *"Nada chega ha 6 dias.
+                   * Verifique o aparelho, ou reconecte."*, o **Remover saiu da
+                   * tela** — cortado pela margem direita, no telefone dele.
+                   *
+                   * O texto que explica o problema e os botoes que o resolvem
+                   * disputavam a mesma largura, e quanto pior o problema, mais
+                   * longo o texto e menos espaco sobrava para a solucao. Agora
+                   * a informacao ocupa a largura toda e os botoes vem por
+                   * baixo, quebrando linha quando precisam.
+                   */
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    flexDirection: "column",
+                    gap: 12,
                     padding: 16,
                     backgroundColor: silent
                       ? t.colors.warnSoft
@@ -257,7 +276,7 @@ function WearablesScreen() {
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <Text style={{ fontSize: 28 }}>{p.icon}</Text>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>
                         {p.name}
                       </Text>
@@ -265,7 +284,15 @@ function WearablesScreen() {
                           que e quando falamos com o provedor — com ou sem
                           medicao. Era a linha que fazia sete dias de silencio
                           parecerem um dia normal. */}
-                      {isConnected && (
+                      {isConnected && pelaClinica && (
+                        <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                          {tr(lang, {
+                            en: "Your blood pressure comes in through the clinic's device.",
+                            pt: "Sua pressão arterial entra pelo aparelho da clínica.",
+                          })}
+                        </Text>
+                      )}
+                      {isConnected && !pelaClinica && (
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
                           {conn?.lastReadingAt
                             ? `${tr(lang, { en: "Last reading", pt: "Última leitura" })}: ${formatDate(conn.lastReadingAt, lang)}`
@@ -273,7 +300,12 @@ function WearablesScreen() {
                         </Text>
                       )}
                       {silent && (
-                        <Text variant="caption" color={t.colors.warn} style={{ marginTop: 2, maxWidth: 190 }}>
+                        /* Sem `maxWidth` cravado: ele existia para a frase nao
+                           empurrar os botoes que ficavam ao lado, e agora eles
+                           estao por baixo. Uma largura fixa numa frase que muda
+                           de tamanho conforme o defeito e um limite que aperta
+                           justamente quando ha mais a dizer. */
+                        <Text variant="caption" color={t.colors.warn} style={{ marginTop: 2 }}>
                           {quebrada
                             ? tr(lang, {
                                 en: "The connection stopped working. Reconnect to start receiving again.",
@@ -309,7 +341,7 @@ function WearablesScreen() {
                   </View>
 
                   {isConnected ? (
-                    <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                       {silent && p.key === "withings" && (
                         <Pressable
                           onPress={() => resubMut.mutate()}

@@ -29,6 +29,14 @@ export interface WearableConnection {
   daysSilent?: number | null;
   /** Calado alem do limiar da clinica — autorizado, a entregar, e mudo. */
   silent?: boolean;
+  /**
+   * A pressao desta conta entra pela ligacao da **clinica**, e nao por esta.
+   *
+   * Acontece quando o mesmo aparelho esta ligado duas vezes. A pessoal fica
+   * muda para pressao de proposito, e por isso nunca recebe nada de um medidor
+   * que so mede pressao — o silencio dela e desenho, nao defeito.
+   */
+  pressaoPelaClinica?: boolean;
   createdAt: string;
   delivery?: WearableDelivery;
   /** Se o que falta é justamente a pressão — a medida que esta clínica trata. */
