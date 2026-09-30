@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ingestWithings } from "@/lib/withings-ingest";
 import { subscribeAndRecord, deliveryState } from "@/lib/withings-subscriptions";
+import { avisarSeCaiu } from "@/lib/wearable-caiu";
 
 /**
  * Quanto tempo uma confirmacao de assinatura vale (114 T-3).
@@ -187,6 +188,43 @@ export async function POST(req: NextRequest) {
       failed++;
       // One patient's expired token must not stop the other patients' sync.
       console.error(`[cron/wearables-sync] connection ${c.id}:`, err?.message);
+    }
+
+    /**
+     * Quando a ligacao cai, **a clinica fica a saber** (114 T-7).
+     *
+     * O Bruno: *"se cair a conexao na conta do paciente, precisa aparecer uma
+     * notificacao para o paciente e para a clinica dizendo que a conexao foi
+     * perdida e que ele precisa reconectar."*
+     *
+     * Ate aqui nada acontecia. A ligacao emudecia e a unica forma de descobrir
+     * era alguem abrir a tela e reparar — o que costuma ser quando ja se
+     * precisava das leituras.
+     *
+     * Vai pela maquina que ja existe: uma linha em `Alert`, deduplicada pelo
+     * dia, na tela que a clinica ja tem para isto. `createAlert` devolve
+     * `created: false` quando o alerta do dia ja existia, e e isso que impede o
+     * e-mail diario de virar ruido.
+     *
+     * **A releitura e deliberada.** `ingestWithings` acabou de escrever
+     * `lastReadingAt`, e o objeto em memoria ficou velho — julgar o silencio
+     * pelo valor antigo marcaria como muda uma ligacao que acabou de entregar.
+     */
+    try {
+      const atual = await (prisma as any).wearableConnection.findUnique({
+        where: { id: c.id },
+        select: {
+          status: true,
+          lastReadingAt: true,
+          createdAt: true,
+          notifyCheckedAt: true,
+          notifyConfirmedAppli: true,
+        },
+      });
+      if (atual) await avisarSeCaiu(c.id, c.userId, atual);
+    } catch (err: any) {
+      // Um aviso que falha nao pode derrubar a sincronia — ela e o trabalho.
+      console.error(`[cron/wearables-sync] aviso ${c.id}:`, err?.message);
     }
   }
 

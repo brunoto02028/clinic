@@ -54,7 +54,7 @@ hoje, e nenhum dado novo.
 | T-4 | [A tela vazia que não explica](t-4-a-tela-vazia.md) | implementada (30/09) — QA pendente |
 | T-5 | [O aparelho serve os dois papéis](t-5-os-dois-papeis.md) | pendente — decidido pelo Bruno em 30/09 |
 | T-6 | [A ficha mostra o estado da ligação](t-6-a-ficha-mostra.md) | implementada (30/09) — QA pendente |
-| T-7 | [Quando a ligação cai, os dois sabem](t-7-quando-cai-os-dois-sabem.md) | pendente |
+| T-7 | [Quando a ligação cai, os dois sabem](t-7-quando-cai-os-dois-sabem.md) | metade feita (30/09) — falta o aviso no app |
 
 ## Suposições
 
