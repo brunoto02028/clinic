@@ -1,6 +1,6 @@
 # T-3: Os textos, o crachá e o enum
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente
 **Depende de:** T-2
 
 ## Objetivo
@@ -54,3 +54,30 @@ barata por uma cara.
 - [ ] Leituras antigas continuam a aparecer, com a origem certa
 - [ ] O teste cai se alguém voltar a escrever `CAMERA_PPG`
 - [ ] Nenhuma migração apagou ou reescreveu leitura
+
+## O que foi feito
+
+**65 chaves removidas** de `lib/i18n.ts`, nas duas línguas — as que só existiam
+para a câmera, e só depois de confirmar que nenhuma era referenciada em lugar
+nenhum (web, painel **e** app).
+
+Ficaram fora do corte 39 chaves `bp.*` que também estão órfãs mas **não são da
+câmera** (`bp.latest`, `bp.avg`, `bp.cancel`, as faixas). Apagá-las seria outro
+trabalho — recolher lixo de tradução — e não é o que esta tarefa é.
+
+Entre as que saíram estão as duas que motivaram a atividade:
+
+> *"Blood pressure estimation, heart rate, cardiac rhythm analysis (arrhythmia
+> detection), and HRV metrics — all from your phone camera using PPG technology."*
+
+> *"Esta análise baseada em PPG é apenas para fins informativos. NÃO é um
+> dispositivo médico…"*
+
+A segunda protegia a primeira. Removida a primeira, ela não tinha o que proteger.
+
+### O crachá, em três telas
+
+A sigla `PPG` aparecia na ficha do paciente e na tela do paciente; no painel de
+pressão já dizia `Camera`. Agora as três dizem o mesmo, e a do paciente diz
+*Câmera* em português. **O enum não foi tocado** — a leitura antiga continua a
+saber dizer de onde veio.
