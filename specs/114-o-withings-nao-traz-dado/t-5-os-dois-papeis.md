@@ -1,6 +1,6 @@
 # T-5: O aparelho serve os dois papéis
 
-**Status:** pendente
+**Status:** implementada (30/09) — QA pendente; falta a tela de limpar
 **Decidido pelo Bruno em 30/09/2026** — e é uma **reversão consciente** de uma
 decisão de 27/09.
 
@@ -54,3 +54,64 @@ Sem essa metade a regra nova seria irreversível, e aí eu não a faria.
 - [ ] Toda leitura auto-atribuída é **reconhecível** como tal
 - [ ] Dá para mover uma leitura arquivada, e fica registrado quem moveu
 - [ ] Um teste prova que mover não apaga a leitura — só lhe muda o dono
+
+---
+
+## O que foi feito
+
+### Quem e o dono nao e adivinhado
+
+`lib/dono-do-aparelho.ts`. O dono so existe quando **a mesma conta do provedor**
+esta ligada duas vezes: uma como aparelho da clinica, outra como ligacao pessoal
+de um paciente daquela clinica. A segunda foi criada **pelo proprio paciente**,
+no app — ou seja, alguem disse *"esta conta e minha"*, e e nessa afirmacao que
+tudo isto se apoia.
+
+Devolve `null` a qualquer duvida: sem conta do provedor gravada; sem ligacao
+pessoal; **mais do que uma** (volta a ser ambiguo); dono que nao e paciente;
+dono de outra clinica — este ultimo seria vazamento, e nao atribuicao errada.
+
+### A leitura sem sessao
+
+Vai para o prontuario do dono, com tres cuidados:
+
+| cuidado | porque |
+|---|---|
+| `autoAttributed: true` | e a marca que permite encontra-la depois. Sem ela a regra seria irreversivel na pratica |
+| `context: "OTHER"` | ninguem disse **onde** foi medida. `HOME` seria inventar um facto |
+| desfecho `owner`, e nao `assigned` | `assigned` quer dizer *alguem disse de quem era*; isto quer dizer *a regra decidiu, e pode estar errado*. Um `sessionId: ""` faria as duas parecerem iguais |
+
+**A ambiguidade continua a ir para a caixa.** Mais de uma sessao aberta nunca
+vira palpite, nem com dono.
+
+### Mover — a metade que torna a regra aceitavel
+
+`POST /api/admin/blood-pressure/[id]/move`.
+
+**Move, nao apaga.** Apagar e recriar perderia o rasto, e a deduplicacao da
+sincronia seguinte traria a mesma medida de volta. A leitura muda de dono,
+deixa de ser automatica — porque agora **alguem decidiu** — e fica registado
+quem moveu.
+
+Duas guardas diferentes: `staffPatientAccess` sobre o paciente **de destino**,
+e a leitura de origem tem de ser da clinica de quem move. Sem a segunda, um id
+adivinhado deixaria mexer numa leitura alheia.
+
+## Provas
+
+`__tests__/pressao/o-aparelho-serve-os-dois-papeis.test.ts`, 14 cenarios. Por
+mutacao, tres: o dono poder ser de outra clinica derruba 1; duas pessoas na
+mesma conta deixarem de ser ambiguas derruba 1; a leitura auto deixar de ser
+marcada derruba 1.
+
+Suite: **2999 testes**, `tsc` em 0, build ok.
+
+## O que falta
+
+**A tela de limpar.** A rota de mover existe e tem teste; falta a lista das
+auto-atribuidas por confirmar, que e por onde o Bruno vai limpar o que for de
+paciente. Sem ela, mover existe e nao tem porta.
+
+**O `db push` do campo novo.** `autoAttributed` entra no deploy — e o log do
+contentor tem de dizer *in sync*, senao a coluna nao existe e a gravacao falha
+em silencio.

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { donoDoAparelho } from "@/lib/dono-do-aparelho";
 import { logAudit } from "@/lib/system-logger";
 import type { WithingsBpReading } from "@/lib/withings";
 import {
@@ -39,6 +40,15 @@ export { SESSION_GRACE_MS } from "@/lib/clinic-session-match";
 
 export type AttributionOutcome =
   | { kind: "assigned"; patientId: string; readingId: string; sessionId: string }
+  /**
+   * Arquivada no prontuário do **dono do aparelho**, sem sessão (114 T-5).
+   *
+   * Um desfecho próprio, e não `assigned` com um `sessionId` vazio: são coisas
+   * diferentes. `assigned` quer dizer *alguém disse de quem era*; isto quer
+   * dizer *a regra decidiu, e pode estar errado*. Um `sessionId: ""` faria as
+   * duas parecerem a mesma no lugar onde a diferença importa.
+   */
+  | { kind: "owner"; patientId: string; readingId: string }
   | { kind: "unassigned"; reason: "no-session" | "ambiguous"; id: string }
   | { kind: "duplicate" };
 
@@ -173,6 +183,46 @@ export async function attributeClinicReading(
    * compartilhado, **toda leitura precisa dizer de quem é**, e isso vale para
    * o dono como vale para qualquer um.
    */
+  /**
+   * Sem janela aberta, a leitura vai para **o dono do aparelho** — quando ele
+   * existe (114 T-5, decidido pelo Bruno em 30/09/2026).
+   *
+   * O parágrafo abaixo explica porque isto tinha sido derrubado a 27/09, e o
+   * argumento continua de pé. O que mudou foi a decisão de quem é dono do
+   * risco, mais a metade que a torna reversível: a leitura fica marcada como
+   * `autoAttributed` e pode ser movida.
+   *
+   * "Dono" não é adivinhado — ver `dono-do-aparelho.ts`. Ele só existe quando a
+   * **mesma conta do provedor** está ligada duas vezes, uma delas pelo próprio
+   * paciente, no app. Sem isso, a leitura continua a ir para a caixa.
+   */
+  if (sessions.length === 0 && reading.measureId) {
+    const dono = await donoDoAparelho(connection.id, clinicId);
+    if (dono) {
+      const auto = await (prisma as any).bloodPressureReading.create({
+        data: {
+          patientId: dono.patientId,
+          clinicId,
+          systolic: reading.systolic,
+          diastolic: reading.diastolic,
+          heartRate: reading.heartRate ?? null,
+          method: "CLINIC_DEVICE",
+          source: "CLINIC_DEVICE",
+          // `OTHER`, e não `HOME`: ninguém disse onde foi medida. Dizer "em
+          // casa" seria inventar um facto sobre uma leitura que já está a ser
+          // atribuída por regra, e não por alguém.
+          context: "OTHER",
+          measuredAt: reading.measuredAt,
+          withingsMeasureId: reading.measureId,
+          autoAttributed: true,
+          notes: "Withings (clinic device, auto-attributed to the account owner)",
+        },
+        select: { id: true },
+      });
+      return { kind: "owner", patientId: dono.patientId, readingId: auto.id };
+    }
+  }
+
   if (sessions.length !== 1 || !reading.measureId) {
     const row = await (prisma as any).unassignedMeasurement.create({
       data: {

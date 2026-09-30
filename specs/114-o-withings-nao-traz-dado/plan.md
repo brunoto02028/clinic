@@ -52,7 +52,7 @@ hoje, e nenhum dado novo.
 | T-2 | [O que "conectado" está dizendo](t-2-o-que-conectado-diz.md) | implementada (30/09) — QA pendente |
 | T-3 | [A assinatura que cai em silêncio](t-3-a-assinatura-que-cai.md) | implementada (30/09) — QA pendente |
 | T-4 | [A tela vazia que não explica](t-4-a-tela-vazia.md) | implementada (30/09) — QA pendente |
-| T-5 | [O aparelho serve os dois papéis](t-5-os-dois-papeis.md) | pendente — decidido pelo Bruno em 30/09 |
+| T-5 | [O aparelho serve os dois papéis](t-5-os-dois-papeis.md) | implementada (30/09) — falta a tela de limpar |
 | T-6 | [A ficha mostra o estado da ligação](t-6-a-ficha-mostra.md) | implementada (30/09) — QA pendente |
 | T-7 | [Quando a ligação cai, os dois sabem](t-7-quando-cai-os-dois-sabem.md) | metade feita (30/09) — falta o aviso no app |
 
