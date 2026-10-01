@@ -361,19 +361,41 @@ export async function ingestWithings(
         const fimDoDia = new Date(dia);
         fimDoDia.setHours(23, 59, 59, 999);
 
-        const pontos = await intradayDoDia(token, inicioDoDia, fimDoDia);
-        if (pontos.length === 0) continue;
-        await upsertSeries(userId, connection.id, "INTRADAY", ymd(inicioDoDia), pontos);
-        intradayDays++;
+        /*
+         * **Cada chamada falha sozinha.**
+         *
+         * Antes as três partilhavam um `try`, e em 01/10 um campo inválido no
+         * pedido do sono (`data_fields [spo2]`) derrubou o bloco inteiro: o
+         * intraday e os treinos nem chegaram a ser tentados. Um parâmetro
+         * errado custou três funcionalidades, e o log só falava de um.
+         *
+         * Agora o que falha é o que falha, e diz qual foi.
+         */
+        try {
+          const pontos = await intradayDoDia(token, inicioDoDia, fimDoDia);
+          if (pontos.length > 0) {
+            await upsertSeries(userId, connection.id, "INTRADAY", ymd(inicioDoDia), pontos);
+            intradayDays++;
+          }
+        } catch (e: any) {
+          console.warn(`[withings-ingest] intraday de ${ymd(inicioDoDia)}: ${e?.message ?? e}`);
+        }
 
-        const noite = await hipnogramaDaNoite(token, inicioDoDia, fimDoDia);
-        if (noite.length > 0) {
-          await upsertSeries(userId, connection.id, "HYPNOGRAM", ymd(inicioDoDia), noite);
-          hypnogramNights++;
+        try {
+          const noite = await hipnogramaDaNoite(token, inicioDoDia, fimDoDia);
+          if (noite.length > 0) {
+            await upsertSeries(userId, connection.id, "HYPNOGRAM", ymd(inicioDoDia), noite);
+            hypnogramNights++;
+          }
+        } catch (e: any) {
+          console.warn(`[withings-ingest] hipnograma de ${ymd(inicioDoDia)}: ${e?.message ?? e}`);
         }
       }
 
-      const treinos = await treinosDoPeriodo(token, since, fim);
+      const treinos = await treinosDoPeriodo(token, since, fim).catch((e: any) => {
+        console.warn(`[withings-ingest] treinos: ${e?.message ?? e}`);
+        return [] as Awaited<ReturnType<typeof treinosDoPeriodo>>;
+      });
       workouts = treinos.length;
       if (treinos.length > 0) {
         /*

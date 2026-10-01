@@ -11,15 +11,19 @@
 
 ## A resposta, levantada em 01/10/2026
 
-**Não é preciso assinatura, e não é preciso contrato de clínica** para os dados.
-Há três coisas diferentes com nomes parecidos, e confundi-las é o que faz
-alguém pagar por algo que já tem:
+**Não é preciso contrato de clínica, e o Withings+ não entra nisto** — mas
+**há plano de API**, e isso eu afirmei errado primeiro; a correção está logo
+abaixo da tabela.
+
+São quatro coisas com nomes parecidos, e confundi-las é o que faz alguém pagar
+pelo que já tem, ou contar com o que não tem:
 
 | | o que é | precisamos? |
 |---|---|---|
 | **Withings+** | assinatura de **consumidor**, dentro do app deles — insights, relatórios | **não**. Não governa a API |
 | **Public API** | o que usamos. Qualquer empresa, com o consentimento do utilizador, **sem contrato** | **é o nosso caminho** |
 | **Health Solutions / RPM** e **Advanced Research API** | programas para equipas de cuidados e investigação, **com contrato assinado** | **não, para dados** — ver abaixo |
+| **Plano da API** | o escalão da própria Public API: teto de utilizadores ativos e **pacotes de biomarcadores** | **sim, e eu não tinha visto** |
 
 E a lista de dados do próprio documento *Available Health Data* deles diz o que
 a Public API expõe para um **ScanWatch 2**:
@@ -34,10 +38,31 @@ a Public API expõe para um **ScanWatch 2**:
 | respiração | **frequência respiratória** |
 | ECG | **intervalos QR, PR, QT, QTC**, o **sinal**, **fibrilhação por PPG** e **por ECG** |
 
-**Está tudo lá.** O contrato de clínica (RPM) compra gestão de frota, aparelhos
-com SIM e configuração sem telemóvel — não compra tipos de dado que a Public API
-não dê. Se um dia a BPR entregar aparelhos a pacientes em lote, aí o RPM passa a
-fazer sentido; para ler o relógio de alguém que o ligou, não.
+**Correção de uma afirmação minha, no mesmo dia.** Escrevi aqui *"está tudo
+lá"* e disse isso ao Bruno. **Era forte demais.**
+
+O que continua verdadeiro: a **Public API não precisa de contrato**, e o contrato
+de clínica (RPM) compra gestão de frota, aparelhos com SIM e configuração sem
+telemóvel — não compra a permissão de ler o relógio de quem o ligou.
+
+O que eu não sabia: **existem planos de API, com "pacotes de biomarcadores".** O
+plano grátis cobre só o *Basic Biomarker Pack* e tem teto de **1.000
+utilizadores ativos**; há métricas marcadas como pagas. Ou seja, a pergunta do
+Bruno — *"talvez eles peçam assinatura"* — tinha razão de ser, e a minha
+resposta tratou "sem contrato" como se fosse "sem plano".
+
+**O que fazer com isso: medir, não discutir.** Temos ligação viva e as três
+chamadas novas no ar. O que o nosso plano devolver é a resposta — e é melhor que
+qualquer tabela, porque é sobre a nossa conta e o relógio dele. O resultado
+entra aqui quando a medição voltar.
+
+Duas coisas que já se sabem e mudam o desenho:
+
+- **1.000 utilizadores ativos** é muito acima do que a clínica tem, e deixa de
+  ser preocupação até lá.
+- **O webhook é o caminho que escala**, não a varredura: a sincronização puxa
+  quatro endpoints por pessoa por rodada, e isso multiplica-se por paciente. Com
+  muitos pacientes, puxar deixa de caber e receber passa a ser a única forma.
 
 ## O que nós pedimos hoje, e o que deixamos na mesa
 
