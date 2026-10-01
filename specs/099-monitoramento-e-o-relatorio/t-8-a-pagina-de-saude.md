@@ -1,6 +1,6 @@
 # T-8: A página de saúde — o dia, a noite, e o período
 
-**Status:** pendente
+**Status:** implementada em 01/10/2026 — espera QA e a medição do que a Withings devolve
 **Depende de:** T-7
 
 ## O pedido
@@ -78,3 +78,54 @@ desenhar por minuto é ilegível e lento. A tela agrega, e diz que agregou.
 - [ ] A tela diz de que aparelho veio cada coisa
 - [ ] EN e PT
 - [ ] Abre em menos de um segundo com 90 dias carregados
+
+
+---
+
+## Implementado em 01/10/2026
+
+| peça | o que é |
+|---|---|
+| `app/api/wearables/series/route.ts` | serve a série do dia, da noite e dos treinos; **agrega o intraday no servidor** e diz o tamanho do balde |
+| `mobile/src/lib/dia-e-noite-calculo.ts` | as contas, sem JSX, para o jest as alcançar |
+| `mobile/src/components/ODiaEANoite.tsx` | os dois desenhos |
+| `mobile/app/(app)/(clinica)/wearable-data.tsx` | o dia e a noite **acima** da tendência |
+| `__tests__/wearables/o-dia-e-a-noite.test.ts` | 13 testes |
+
+### A distinção que só existe dentro do dia
+
+O período já tinha ensinado que **buraco é buraco**. Dentro do dia aparece uma
+terceira categoria: **"ainda não aconteceu"**.
+
+Às nove da manhã, o resto do dia está vazio porque ainda não chegou. Às nove da
+noite, um vazio às três da tarde é o relógio fora do pulso. **Desenhar os dois
+iguais faz a pessoa procurar um defeito que não existe — ou ignorar um que
+existe.** O futuro não desenha nada; a hora não medida desenha o mesmo traço
+fino que a tendência usa.
+
+### A noite
+
+A forma, não só o total. "6h30 de sono" não distingue uma noite inteira de seis
+blocos partidos, e é a diferença que a pessoa sente ao acordar.
+
+Dois cuidados que deram teste: **acordado é uma fase** (a fase 0 conta, e um
+`if (fase)` perdê-la-ia); e **deitar-se acordado e acordar no fim não são
+despertares** — contá-los somaria dois a toda a gente, todas as noites, um
+número que parece informação e é artefacto.
+
+### A cópia que eu quase deixei entrar
+
+O componente tinha a sua própria versão das contas, e o teste exercia o módulo.
+Uma divergência entre os dois passaria verde. É o mesmo erro do seed dos exames,
+apanhado desta vez **antes** de subir: o componente importa, não copia.
+
+### Critérios de aceite
+
+- [x] O dia tem eixo de 24h, e "ainda não aconteceu" parece diferente de "não medido"
+- [x] O hipnograma mostra as fases ao longo da noite, com hora de deitar e acordar
+- [x] Nenhuma faixa de referência, nenhum semáforo, nenhuma pontuação nossa
+- [x] A tela diz a resolução em que desenha
+- [x] EN e PT
+- [ ] **As métricas novas da T-7 aparecem com número e série** — depende de a
+      Withings devolver; ver a medição
+- [ ] Abre em menos de um segundo com 90 dias carregados — falta medir
