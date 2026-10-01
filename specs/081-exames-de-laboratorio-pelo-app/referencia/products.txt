@@ -1,0 +1,217 @@
+Products | LML API 
+ API Docs 
+ Swagger UI
+ Products
+ Retrieve test products with pricing, biomarkers, images, shipping options, and more.
+ List all products
+ GET 
+ /api/product/ 
+ Returns a paginated list of products available for your brand. By default, only products marked for external display are returned.
+ Query parameters
+ Parameter 
+ Type 
+ Description 
+ search 
+ string 
+ Full-text search across product name 
+ slug 
+ string 
+ Filter by product slug 
+ sku 
+ string 
+ Filter by SKU 
+ category_slug 
+ string 
+ Filter by category slug 
+ collection_slug 
+ string 
+ Filter by product collection slug 
+ biomarker_slug 
+ string 
+ Filter products that include a specific biomarker 
+ shipping_type_in[] 
+ array 
+ Filter by shipping types (e.g. home_kit , walk_in ) 
+ product_categories[] 
+ array 
+ Filter by one or more product category IDs 
+ all_products 
+ boolean 
+ If true , returns all products including those not normally exposed externally 
+ affiliate_code 
+ string 
+ Apply affiliate discount pricing 
+ page 
+ integer 
+ Page number (default: 1, max: 50) 
+ results_per_page 
+ integer 
+ Items per page (default: 100, max: 100) 
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/product/?category_slug=hormone-tests" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response
+ {
+ "nr_of_results": 24,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "a1b2c3d4-e5f6-...",
+ "name": "Advanced Thyroid Function Test",
+ "sku": "LML-THY-ADV",
+ "preview_image_url": null,
+ "price": {
+ "amount_minor": 5900,
+ "currency": "GBP",
+ "formatted_value": "59.00"
+ },
+ "appointment_only": false
+ }
+ ]
+} 
+ The list endpoint returns a compact representation of each product. To get full details including description, images, and slug, use the single product endpoint below.
+ Get a single product
+ GET 
+ /api/product/{id} 
+ GET 
+ /api/product/slug/{slug} 
+ Retrieve a single product by its UUID or slug. This returns the full product representation including description, images, discounted pricing, turnaround time, and sample collection instructions.
+ Example response
+ {
+ "id": "a1b2c3d4-e5f6-...",
+ "name": "Advanced Thyroid Function Test",
+ "sku": "LML-THY-ADV",
+ "slug": "advanced-thyroid-function-test",
+ "description": "<p>A comprehensive thyroid panel...</p>",
+ "short_description": "Tests TSH, Free T3, Free T4, and more.",
+ "preview_image_url": "https://cdn.example.com/.../image_lg.jpg",
+ "price": {
+ "amount_minor": 5900,
+ "currency": "GBP",
+ "formatted_value": "59.00"
+ },
+ "discounted_price": null,
+ "turnaround_time": "2-3 working days",
+ "sample_collection_instructions": "Collect sample in the morning...",
+ "appointment_only": false
+} 
+ Sample collection method
+ Every product carries an appointment_only boolean, returned by both the list and single product endpoints. Use it to tell whether a product can be sold as a self-collected postal kit or whether the sample has to be taken by a professional.
+ Value 
+ Meaning 
+ false 
+ The product can be fulfilled as a posted home kit. It can also be booked as an appointment if a suitable shipping method is chosen. 
+ true 
+ The sample must be collected at an appointment by a professional (e.g. a venous blood draw). The product cannot be posted out as a kit. 
+ Adding an appointment_only product to POST /api/order/ is rejected with
+ "Product '…' not available for postage. Available for appointment only." Check this flag before
+ offering a product for postal fulfilment, and book an appointment for it instead — see
+ Booking appointments .
+ To find out which delivery or appointment options a specific product supports, call the /api/product/{id}/shipping sub-resource documented below — it lists the shipping methods (postal, onsite, courier, at-home phlebotomist) available for that product.
+ Product sub-resources
+ Each product has several related resources available as separate endpoints. All sub-resource endpoints return paginated responses.
+ Biomarkers
+ GET 
+ /api/product/{id}/biomarkers 
+ Returns the biomarkers (analytes) tested by this product.
+ {
+ "nr_of_results": 5,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "...",
+ "name": "Thyroid Stimulating Hormone (TSH)",
+ "code": "TSH",
+ "slug": "tsh",
+ "description": "TSH is produced by the pituitary gland...",
+ "category_id": "..."
+ }
+ ]
+} 
+ Images
+ GET 
+ /api/product/{id}/files 
+ Returns the images associated with this product. Each file includes the original URL and generated thumbnail URLs in multiple sizes.
+ {
+ "items": [
+ {
+ "id": "...",
+ "filename": "thyroid-test.jpg",
+ "url": "https://cdn.example.com/uploads/thyroid-test.jpg",
+ "is_primary": true,
+ "thumbnails": {
+ "sm": "https://cdn.example.com/.../thyroid-test_sm.jpg",
+ "md": "https://cdn.example.com/.../thyroid-test_md.jpg",
+ "lg": "https://cdn.example.com/.../thyroid-test_lg.jpg"
+ }
+ }
+ ]
+} 
+ Shipping methods
+ GET 
+ /api/product/{id}/shipping 
+ Returns the available shipping methods and their prices for this product.
+ {
+ "items": [
+ {
+ "id": "...",
+ "name": "Standard Royal Mail",
+ "type": "home_kit",
+ "description": "Delivered within 2-3 working days",
+ "price": {
+ "amount_minor": 0,
+ "currency": "GBP",
+ "formatted_value": "0.00"
+ }
+ }
+ ]
+} 
+ Categories
+ GET 
+ /api/product/{id}/categories 
+ Returns the categories this product belongs to.
+ FAQs
+ GET 
+ /api/product/{id}/faqs 
+ Returns the frequently asked questions for this product.
+ Video
+ GET 
+ /api/product/{id}/video 
+ Returns the video associated with this product, or null if none exists. This endpoint returns a single object, not a paginated response.
+ Endpoint summary
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/product/ 
+ List all products (paginated) 
+ GET 
+ /api/product/{id} 
+ Get product by ID 
+ GET 
+ /api/product/slug/{slug} 
+ Get product by slug 
+ GET 
+ /api/product/{id}/biomarkers 
+ Get product biomarkers 
+ GET 
+ /api/product/{id}/files 
+ Get product images 
+ GET 
+ /api/product/{id}/shipping 
+ Get shipping methods 
+ GET 
+ /api/product/{id}/categories 
+ Get product categories 
+ GET 
+ /api/product/{id}/faqs 
+ Get product FAQs 
+ GET 
+ /api/product/{id}/video 
+ Get product video

@@ -1,0 +1,150 @@
+Test Locations | LML API 
+ API Docs 
+ Swagger UI
+ Test Locations
+ Find test locations, check availability, and browse appointment slots.
+ List test locations
+ GET 
+ /api/test_location/ 
+ Returns a paginated list of test locations available for your brand.
+ Get a test location
+ GET 
+ /api/test_location/{id} 
+ Retrieve a single test location by UUID.
+ Example response
+ {
+ "id": "d4e5f6a7-...",
+ "name": "London Central Lab",
+ "code": "LOC-001",
+ "url": "https://londonmedicallaboratory.com/locations/central",
+ "full_address": "10 Harley Street, London, W1G 9PF",
+ "city": "London",
+ "postal_code": "W1G 9PF",
+ "nearest_bus_station": "Harley Street",
+ "nearest_train_station": "Regent's Park",
+ "healthcare_professionals": [],
+ "working_hours": [
+ {
+ "id": "a1b2c3d4-...",
+ "day_of_week": 1,
+ "starts_at": "09:00:00",
+ "ends_at": "17:00:00"
+ },
+ {
+ "id": "b2c3d4e5-...",
+ "day_of_week": 2,
+ "starts_at": "09:00:00",
+ "ends_at": "17:00:00"
+ }
+ ],
+ "next_available_slot": "2024-04-15T10:00:00"
+} 
+ Get current location
+ GET 
+ /api/test_location/current 
+ Returns the test location associated with your authenticated brand.
+ Find nearest locations
+ GET 
+ /api/test_location/nearest/{lat}/{long} 
+ Find the nearest test locations to a set of geographic coordinates.
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/test_location/nearest/51.5074/-0.1278" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response
+ {
+ "nr_of_results": 3,
+ "items": [
+ {
+ "id": "d4e5f6a7-...",
+ "name": "London Central Lab",
+ "distance": 0.8,
+ "latitude": 51.5188,
+ "longitude": -0.1487
+ }
+ ]
+} 
+ Availability calendar
+ GET 
+ /api/test_location/calendar/{year}/{month} 
+ Get a monthly view of appointment availability. Each day is marked as available or unavailable. Optionally pass test_location_id as a query parameter to check a specific location.
+ Example response
+ {
+ "id": "2024-04",
+ "availability": {
+ "2024-04-01": true,
+ "2024-04-02": true,
+ "2024-04-03": false,
+ "2024-04-04": true,
+ "..."
+ }
+} 
+ Get daily slots
+ GET 
+ /api/test_location/slots/{year}/{month}/{day} 
+ Get all available appointment slots for a specific day. Optionally pass test_location_id as a query parameter. Use the id from a slot when creating an appointment.
+ Example response
+ [
+ {
+ "id": "a1b2c3d4-...",
+ "time": "2024-04-15T09:00:00",
+ "is_available": true
+ },
+ {
+ "id": "b2c3d4e5-...",
+ "time": "2024-04-15T09:15:00",
+ "is_available": true
+ },
+ {
+ "id": "c3d4e5f6-...",
+ "time": "2024-04-15T09:30:00",
+ "is_available": false
+ }
+] 
+ Get a slot
+ GET 
+ /api/test_location/slots/{id} 
+ GET 
+ /api/test_location/slot/{year}/{month}/{day}/{hour}/{minute} 
+ Retrieve a specific slot by its UUID, or look up a slot at an exact date and time.
+ Next available slot
+ GET 
+ /api/test_location/next_available_slot/{id} 
+ Get the next available appointment slot for a specific test location.
+ Working hours
+ GET 
+ /api/test_location/{id}/workhours 
+ Get the working hours for a test location. The day_of_week field uses ISO-8601 numbering (1 = Monday, 7 = Sunday).
+ Endpoint summary
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/test_location/ 
+ List all test locations 
+ GET 
+ /api/test_location/{id} 
+ Get a test location 
+ GET 
+ /api/test_location/current 
+ Get your brand's location 
+ GET 
+ /api/test_location/nearest/{lat}/{long} 
+ Find nearest locations 
+ GET 
+ /api/test_location/calendar/{year}/{month} 
+ Monthly availability calendar 
+ GET 
+ /api/test_location/slots/{year}/{month}/{day} 
+ Daily appointment slots 
+ GET 
+ /api/test_location/slots/{id} 
+ Get a specific slot 
+ GET 
+ /api/test_location/slot/{y}/{m}/{d}/{h}/{min} 
+ Get slot at exact time 
+ GET 
+ /api/test_location/next_available_slot/{id} 
+ Next available slot 
+ GET 
+ /api/test_location/{id}/workhours 
+ Location working hours

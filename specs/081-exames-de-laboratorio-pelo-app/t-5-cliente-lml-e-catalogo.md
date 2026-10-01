@@ -1,6 +1,6 @@
 # T-5: Cliente da API LML e sincronização do catálogo
 
-**Status:** pendente
+**Status:** parcial — cliente escrito e testado (01/10); a sincronização do catálogo espera o token
 **Depende de:** nenhuma (mas precisa do token da sandbox)
 
 ## Objetivo
@@ -47,3 +47,49 @@ porque são os que o app entrega sozinho — sem punção venosa, sem agendament
 - [ ] Produto ausente do catálogo fica inativo, não some
 - [ ] Só produto de amostra capilar entra
 - [ ] Staff de outra clínica e paciente recebem 403
+
+---
+
+## 01/10/2026 — o cliente está escrito; o catálogo não
+
+O Bruno passou a documentação. Ela está guardada em
+[`referencia/`](referencia/) e o que mudou está em
+[`lml-api-map.md`](lml-api-map.md#segunda-varredura--01102026-com-a-documentação-na-mão).
+
+### Feito
+
+- `lib/lml.ts` reescrito contra a documentação: host `.com`, prefixo `/api/`,
+  recurso singular, e o resultado pendurado no **registo de teste**, não no
+  pedido — eram os três erros do palpite anterior.
+- Tabela de rotas exportada (`ROTAS`), com as 17 rotas que as T-5 a T-9 usam.
+- `204` devolve `null` em vez de lançar: no `lab_results` dele significa **ainda
+  não ficou pronto**, e tratar como erro faria a tela mentir para o paciente.
+- Sem token, falha com `LmlSemToken` — tipo próprio, não 401 do outro lado.
+- `__tests__/labs/o-cliente-fala-a-api-que-existe.test.ts`: compara cada rota do
+  cliente com a documentação guardada. Provado por mutação — devolver o caminho
+  velho derruba 4 testes, o host velho 1, o 204-como-erro 1.
+
+### Desvio do passo 1, de propósito
+
+O passo 1 dizia **apagar** `lib/lml.ts` e criar `lib/lml/client.ts`. Isso foi
+escrito em 25/09; em 26/09 as T-11 e T-12 puseram `nearestTestLocations()` deste
+mesmo arquivo em produção, servindo `/api/mobile/labs/collection-points` e com
+dois arquivos de teste. **Apagar hoje quebraria tela que já está no ar.**
+
+Então o arquivo ficou, com o conteúdo trocado e a função dos pontos intacta. Se
+a divisão em `lib/lml/client.ts` + `lib/lml/catalog.ts` ainda fizer sentido, é
+uma mudança de arrumação para quando a sincronização entrar — não antes.
+
+### O que continua bloqueado, e por quê
+
+A sincronização do catálogo (passos 3 a 7) precisa de chamar
+`GET /api/product/` — **e o filtro não sai da folha de preços**. O `appointment_only`
+e os métodos de entrega (`home_kit`, `walk_in`) vêm da API, produto a produto.
+A folha tem código, nome, custo, RRP, prazo e composição; não tem como a amostra
+é colhida. Dá para pré-carregar preço e prazo, mas não dá para decidir **quais**
+exames o app entrega sozinho sem a API.
+
+Por isso a sincronização fica para o token em vez de ser meia-feita agora: um
+catálogo que não sabe distinguir kit de punção venosa volta a prometer envelope
+para quem terá de ir ao ponto de coleta, que é o defeito que a varredura de
+26/09 encontrou.

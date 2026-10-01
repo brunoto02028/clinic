@@ -1,0 +1,286 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API",
+        "description": "## Sandbox environment\n\nThe sandbox (`https://api.sandbox.londonmedicallaboratory.com`) mirrors production but\nis **fully self-contained** \u2014 no real laboratory is involved. Every test registration is\n**resulted automatically**, with no manual lab or clinician step.\n\n### Automatic result lifecycle\n\nWhen you create a test registration in the sandbox (`POST /api/test_registration/`):\n\n1. It is created with `status: \"pending\"` and `results_ready: false`.\n2. A **mocked lab** returns results after a short delay (~30s). Values are grounded in\n   real historical data \u2014 realistic per-biomarker reference ranges, correct units, and\n   **sex-aware** where it matters (e.g. testosterone, ferritin) \u2014 and are **deterministic**\n   per (patient, product, scenario), so you can write reproducible assertions.\n3. A **simulated doctor sign-off** authenticates the results.\n4. The registration reaches `status: \"success\"`, `results_ready: true`, `completed_at`.\n   End to end this normally completes within **1\u20132 minutes**.\n\n### Forcing specific outcomes\n\nSet the `foreign_id` to `test:<scenario>[+<timing>][@<biomarkers>]:<your-ref>` to force a\nknown result (like Stripe test cards): e.g. `test:all_failed:ref-1`,\n`test:abnormal_high@LDL,CHO:ref-2`, `test:partial+instant:ref-3`. Scenarios include\n`success`, `abnormal_high`/`abnormal_low`, `all_failed`, `partial`, `one_failed`,\n`pending_forever`, `awaiting_auth`, `processing_error`. Call **`GET /api/sandbox/scenarios`**\nfor the full machine-readable catalogue. The resolved scenario is echoed back as\n`sandbox_scenario`.\n\n### Webhooks & error simulation\n\nPoint lifecycle webhooks at your own endpoint with **`PUT /api/webhook`** to receive the\nreal events (sample received, results complete, registration complete, ...). Force any\nHTTP error from any endpoint with `?force_status=<code>` (e.g. `401`, `429`, `500`).\n\n### Fetching results\n\nPoll the registration (`GET /api/test_registration/{id}` \u2014 watch `results_ready` /\n`status`) or the results (`GET /api/test_registration/{id}/lab_results`, which returns\n`204` until ready then `200`). Print the TRF and sample label with\n`GET /api/test_registration/{id}/trf` and `/label`.\n\n> These sandbox behaviours are **sandbox-only**. In production, registrations require\n> real laboratory processing and clinician authentication.\n",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/appointment/": {
+            "get": {
+                "tags": [
+                    "Appointment"
+                ],
+                "operationId": "get_app_api_appointmentaction_appointment_listpaginated",
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "description": "Only results created after this value",
+                        "required": false,
+                        "example": "2020-12-30"
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "description": "Only results created before this value",
+                        "required": false,
+                        "example": "2025-12-30"
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Appointment"
+                ],
+                "description": "Create new appointment. Pass 'override_availability': true to book outside published working hours or into an unavailable slot, the way location portal staff can. Outside published hours no slot exists, so pass 'starts_at' (and 'test_location_id' when booking at another of your locations) instead of 'slot_id'.",
+                "operationId": "post_app_api_appointmentaction_appointment_create",
+                "requestBody": {
+                    "description": "Create new appointment",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "patient_id": {
+                                        "type": "string",
+                                        "example": null,
+                                        "nullable": true
+                                    },
+                                    "slot_id": {
+                                        "type": "string",
+                                        "example": "1234-5678",
+                                        "nullable": true
+                                    },
+                                    "starts_at": {
+                                        "description": "Used when no slot_id is given, and required when overriding availability outside published hours",
+                                        "type": "string",
+                                        "example": "2025-04-12T15:00:00+00:00",
+                                        "nullable": true
+                                    },
+                                    "test_location_id": {
+                                        "description": "Location to book at, when it is not the authenticated brand. Must belong to the same organization",
+                                        "type": "string",
+                                        "example": null,
+                                        "nullable": true
+                                    },
+                                    "confirmed": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": false
+                                    },
+                                    "override_availability": {
+                                        "description": "Book into a slot the calendar reports as closed, blocked or already taken",
+                                        "type": "boolean",
+                                        "example": false,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/appointment/{id}": {
+            "get": {
+                "tags": [
+                    "Appointment"
+                ],
+                "operationId": "get_app_api_appointmentaction_appointment_getone",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Appointment"
+                ],
+                "description": "Cancel an appointment. The appointment is kept for the record with status 'cancelled', and its slot is released for someone else to book.",
+                "operationId": "delete_app_api_appointmentaction_appointment_cancel",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The cancelled appointment"
+                    },
+                    "422": {
+                        "description": "The appointment is not in a state that can be cancelled"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Appointment"
+                ],
+                "description": "Appointment time will strip seconds. Fetch available slots at `/api/test_location/slots/{year}/{month}/{day}`. To cancel, use DELETE instead.",
+                "operationId": "patch_app_api_appointmentaction_appointment_patch",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "patient_id": {
+                                        "type": "string",
+                                        "example": null,
+                                        "nullable": true
+                                    },
+                                    "appointment_time": {
+                                        "type": "string",
+                                        "example": "2025-04-12T15:00:00+00:00",
+                                        "nullable": true
+                                    },
+                                    "test_location_id": {
+                                        "type": "string",
+                                        "example": null,
+                                        "nullable": true
+                                    },
+                                    "confirmed": {
+                                        "type": "boolean",
+                                        "example": true,
+                                        "nullable": true
+                                    },
+                                    "override_availability": {
+                                        "description": "Apply the change even when the calendar reports the time as unavailable",
+                                        "type": "boolean",
+                                        "example": false,
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/phlebotomy/": {
+            "get": {
+                "tags": [
+                    "Phlebotomy"
+                ],
+                "operationId": "get_app_api_phlebotomy_phlebotomyapi_listpaginated",
+                "parameters": [
+                    {
+                        "name": "postal_code",
+                        "in": "query",
+                        "description": "Postal code to search in",
+                        "required": true,
+                        "example": "SS7 1QT"
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/phlebotomy/{id}": {
+            "get": {
+                "tags": [
+                    "Phlebotomy"
+                ],
+                "operationId": "get_app_api_phlebotomy_phlebotomyapi_getone",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/test_location/": {
+            "get": {
+                "tags": [
+                    "Test location"
+                ],
+                "operationId": "get_app_api_testlocation_testlocations_list",
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "Bearer": {
+                "type": "http",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "security": [
+        {
+            "Bearer": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Appointment"
+        },
+        {
+            "name": "Phlebotomy"
+        },
+        {
+            "name": "Test location"
+        }
+    ]
+}

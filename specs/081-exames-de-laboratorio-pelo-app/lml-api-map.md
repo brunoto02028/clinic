@@ -128,3 +128,115 @@ O que foi feito:
 - `lib/postcode.ts` normaliza para a forma do Reino Unido e resolve a coordenada pelo postcodes.io;
 - quem se cadastrou **antes** disto não precisa de migração de dado: `postcodeDoCadastro()` lê o
   campo próprio primeiro e cai para o fim do `address` antigo.
+
+---
+
+# Segunda varredura — 01/10/2026, com a documentação na mão
+
+O Bruno passou três coisas no mesmo dia: a **lista de preços 2026** (folha do
+Google), o **endereço da documentação** e o **e-mail de parceria** deles. Com
+isso a API deixou de ser palpite. A documentação está guardada em
+[`referencia/`](referencia/) — baixada, convertida para texto e **versionada no
+repo**, para os formatos serem verificáveis sem rede e sem token.
+
+## O que o nosso cliente errava
+
+`lib/lml.ts` foi escrito a partir da varredura de 26/09, sem documentação. Errava
+três coisas, e todas teriam falhado na primeira chamada real:
+
+| antes | medido em 01/10 |
+|---|---|
+| `api.londonmedicallaboratory.co.uk` | o `.co.uk` **não resolve** (erro de conexão); é `.com`, que devolve 401 sem token |
+| `/v1/products`, `/v1/orders` | o prefixo é `/api/` e o recurso é **singular**: `/api/product/`, `/api/order/` |
+| `/v1/orders/{ref}/results` | **não existe** |
+
+A terceira não é erro de grafia, é de estrutura: **um pedido gera N registos de
+teste**, e é o *registo* que tem paciente, formulário, etiqueta e resultado. O
+pedido tem transportadora e rastreio. Descobrir isto no dia do token custaria
+uma reescrita; descobrir hoje custou uma tarde.
+
+Corrigido, com a tabela de rotas exportada (`ROTAS`) e um teste que compara cada
+caminho com a documentação guardada — as três mutações (caminho velho, host
+velho, 204 como erro) derrubam o teste.
+
+## Os dois caminhos, e o nosso é o segundo
+
+A página `workflow` deles separa duas integrações:
+
+1. **Quem vende exame online** — cria pedido (`POST /api/order/`), recebe os
+   `test_registrations[].id`, e depois atribui o paciente a cada um
+   (`PATCH /api/test_registration/{id}`).
+2. **Quem colhe a própria amostra** — GP, clínica: registra o exame direto
+   (`POST /api/test_registration/`) e espera o resultado. Sem pedido, sem kit.
+
+O e-mail de parceria confirma que a BPR pode fazer os dois, e lista **três
+formas de coleta**: na clínica, kit para casa, e flebotomista em casa — os
+mesmos três caminhos que a T-12 já explica ao paciente.
+
+## Autenticação
+
+`Authorization: Bearer <token>`, token fixo, **emitido pelo gestor de conta**.
+Não há fluxo de OAuth nem rotação pela API: se vazar, só eles trocam.
+
+| ambiente | host |
+|---|---|
+| produção | `https://api.londonmedicallaboratory.com` |
+| sandbox | `https://api.sandbox.londonmedicallaboratory.com` |
+
+## O sandbox resolve o QA inteiro
+
+É auto-contido: **cada registo criado é resultado automaticamente**, sem
+laboratório e sem médico. Cria `pending`, gera valores falsos em ~30 segundos,
+simula a assinatura do médico, e termina em `success` com `results_ready: true`.
+Um ciclo completo em 1–2 minutos.
+
+E força desfechos por um valor mágico no `foreign_id`, como os cartões de teste
+do Stripe — `test:<cenário>:<a nossa referência>`:
+
+| cenário | o que dá |
+|---|---|
+| `test:abnormal_high` / `abnormal_low` | tudo fora de faixa, para cima ou para baixo |
+| `test:all_failed` | amostra rejeitada |
+| `test:partial` | parte pendente |
+| `test:one_failed` | um falhou, o resto passou (e é retestável) |
+| `test:pending_forever` | amostra recebida, resultado nunca chega |
+| `test:awaiting_auth` | esperando assinatura |
+| `test:processing_error` | erro de processamento |
+| `?force_status=<código>` | o HTTP que se quiser: 401, 429, 500 |
+
+Com modificador de tempo (`test:<cenário>+instant`, `+slow`) e alvo por
+biomarcador (`test:abnormal_high@LDL,CHO:ref`). **Os valores são
+determinísticos** — mesmo paciente + produto + cenário dão sempre o mesmo
+resultado, e as faixas respeitam o sexo do paciente.
+
+Isto é mais do que eu esperava: dá para escrever o QA das T-7 a T-9 com
+asserções reprodutíveis, incluindo os casos que em produção levariam semanas
+para aparecer (amostra rejeitada, resultado que não chega).
+
+## A lista de preços 2026
+
+421 exames (as 422 linhas da folha contam o cabeçalho), códigos únicos, nenhum
+preço em falta. Colunas: `Code`, `Product name`, `2026 WholesalePrice`,
+`2026 RRP`, `TAT`, `Tests`. Guardada em
+[`referencia/precos-2026.csv`](referencia/precos-2026.csv).
+
+| | |
+|---|---|
+| margem do RRP sobre o custo | mediana **39,8%**, máxima 67,5% |
+| mais barato | Cholesterol Total, £21 |
+| mais caro | Breast Cancer NGS Panel, £2.866 |
+| prazo | 219 dos 421 em **1 dia**; 26 em duas semanas; o maior, 3 semanas |
+
+**Um exame sai no prejuízo:** `LEM` — Leptospirosis (Weil's Disease), custo
+£132,44 e RRP £129,00. Margem de **−2,7%**. É o único da lista, e ou o RRP está
+errado ou é isca deliberada; vender por engano é perder £3,44 por pedido.
+
+## O que ainda falta, e é só uma coisa
+
+**O token.** O e-mail deles diz que a BPR precisa de **abrir conta nova, com
+e-mail diferente do da primeira empresa** — é outra pessoa jurídica. O link de
+registo está no e-mail, o cadastro é gratuito, e o token vem no *onboarding*
+depois. É ação do Bruno; não dá para fazer por ele.
+
+Quando chegar: `LML_API_KEY` no Coolify, e `LML_API_URL` apontando para o
+sandbox enquanto se testa. O cliente já sabe o caminho.

@@ -1,0 +1,68 @@
+Test Registration Webhooks | LML API 
+ API Docs 
+ Swagger UI
+ Test Registration Webhooks
+ Events related to test registrations and lab results.
+ lab_results.complete
+ Triggered when lab results have been successfully processed for a test registration.
+ {
+ "event": "lab_results.complete",
+ "data": {
+ "testregistration_id": "1234-5678",
+ "url": "https://example.com/api/test_registration/1234-5678/lab_results/"
+ }
+} 
+ Use the provided URL to fetch the full lab results.
+ test_registration.complete
+ Triggered when a test registration receives patient details and is considered complete.
+ {
+ "event": "test_registration.complete",
+ "data": {
+ "testregistration_id": "1234-5678",
+ "url": "https://example.com/api/test_registration/1234-5678/"
+ }
+} 
+ Use the provided URL to fetch the full test registration details.
+ test_registration.lml_lab_id_created
+ Triggered when a lab ID has been assigned to the test registration. This process is asynchronous and may be retried if it initially fails.
+ {
+ "event": "test_registration.lml_lab_id_created",
+ "data": {
+ "testregistration_id": "1234-5678",
+ "lab_id": "123-456"
+ }
+} 
+ test_registration.sample_received
+ Triggered when the lab has received the sample for processing.
+ {
+ "event": "test_registration.sample_received",
+ "data": {
+ "testregistration_id": "1234-5678",
+ "url": "https://example.com/api/test_registration/1234-5678/",
+ "sample_received_at": "2023-06-01T14:52:32+01:00"
+ }
+} 
+ test_registration.retest
+ Triggered when a retest is created for an existing test registration.
+ {
+ "event": "test_registration.retest",
+ "data": {
+ "testregistration_id": "1234-5678",
+ "retest_testregistration_id": "5555-6666"
+ }
+} 
+ The data object contains both the original test registration ID and the newly created retest ID.
+ Retry schedule
+ If your server does not respond with a 200 status, the webhook delivery will be retried with the following delays (shown in days:hours:minutes format):
+ 0:00:00
+ 0:00:05
+ 0:00:10
+ 0:00:30
+ 0:01:00
+ 0:04:00
+ 0:12:00
+ 1:00:00
+ 1:12:00
+ 2:00:00
+ 3:00:00
+ After all retry attempts are exhausted, the webhook will not be attempted again.
