@@ -108,6 +108,12 @@ COPY --from=builder /app/scripts/seed-automation-rules.js ./scripts/seed-automat
 # Home-kit catalogue of the laboratory partner (081). The guard below fails the
 # build when start.sh runs a script this image does not carry — it just did.
 COPY --from=builder /app/scripts/seed-lab-products.js ./scripts/seed-lab-products.js
+# O seed dos exames faz `require('./lab-categories')` desde 01/10/2026. Esta
+# imagem copia os scripts **um a um**, então um `require` novo precisa da sua
+# própria linha aqui — senão o script morre com MODULE_NOT_FOUND no boot, e o
+# `start.sh` engole a falha num aviso que ninguém lê. Foi o que aconteceu:
+# `Error: Cannot find module './lab-categories'` apareceu em produção.
+COPY --from=builder /app/scripts/lab-categories.js ./scripts/lab-categories.js
 COPY --from=builder /app/scripts/backfill-clinic-patient-flag.js ./scripts/backfill-clinic-patient-flag.js
 COPY --from=builder /app/scripts/backfill-message-screening-clinicid.js ./scripts/backfill-message-screening-clinicid.js
 COPY --from=builder /app/scripts/backfill-consent-accepted-at.js ./scripts/backfill-consent-accepted-at.js
