@@ -44,13 +44,19 @@ const FAMILIAS = [
   { chave: "corpo", icone: "body-outline", en: "Body", pt: "Corpo" },
 ] as const;
 
-/** Para onde cada família leva, enquanto as páginas novas não existem todas. */
+/**
+ * Para onde cada família leva: a página própria dela (118 T-3).
+ *
+ * A pressão é a exceção, e de propósito — ela já tem tela, com a atribuição da
+ * braçadeira partilhada e o histórico. A página de família redireciona para lá
+ * em vez de manter uma segunda versão a divergir da primeira.
+ */
 const DESTINO: Record<string, string> = {
-  coracao: "/(app)/(clinica)/wearable-data",
-  sono: "/(app)/(clinica)/wearable-data",
-  atividade: "/(app)/(clinica)/wearable-data",
+  coracao: "/(app)/(clinica)/familia/coracao",
+  sono: "/(app)/(clinica)/familia/sono",
+  atividade: "/(app)/(clinica)/familia/atividade",
   pressao: "/(app)/(clinica)/blood-pressure",
-  corpo: "/(app)/(clinica)/wearable-data",
+  corpo: "/(app)/(clinica)/familia/corpo",
 };
 
 const ROTULO: Record<Destaque["chave"], { en: string; pt: string; unidade: string }> = {

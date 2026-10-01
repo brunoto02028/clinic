@@ -125,9 +125,9 @@ some ensina à pessoa que o produto está estragado.
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | A aba, e o que deixa de estar no Menu | — | pendente |
-| T-2 | O resumo: o que mudou desde ontem | T-1 | pendente |
-| T-3 | As cinco páginas de família | T-1 | pendente |
+| T-1 | A aba, e o que deixa de estar no Menu | — | **feito** (01/10) |
+| T-2 | O resumo: o que mudou desde ontem | T-1 | **feito** (01/10) |
+| T-3 | As cinco páginas de família | T-1 | **feito** (01/10) — uma tela parametrizada, não cinco |
 | T-4 | O visual: o que cabe num update | T-2, T-3 | pendente |
 | T-5 | O relatório preso ao plano, com a trava no servidor | T-1 | pendente |
 | T-6 | Os anéis e as linhas — **só com build autorizado** | T-4 | pendente |
