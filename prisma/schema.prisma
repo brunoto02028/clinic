@@ -7378,6 +7378,26 @@ model WearableConnection {
   scopes       String?   @db.Text // JSON array of authorised scopes
   lastSyncedAt DateTime?
 
+  /**
+   * **Porque a ultima sincronia falhou** — e quando.
+   *
+   * O cron apanha o erro por ligacao para que o token vencido de um paciente
+   * nao pare os outros, e escreve a mensagem na consola. **A consola do
+   * contentor devolve 13 linhas de arranque**, entao na pratica a falha nao
+   * existe para ninguem: a tela diz "conectado", o alerta nao dispara, e o
+   * terapeuta descobre quando foi procurar a leitura.
+   *
+   * Foi exatamente o que aconteceu com o manguito do Bruno: assinatura
+   * confirmada, caixa de atribuicao vazia, e nada a chegar ha seis dias — tres
+   * factos que, juntos, nao apontam para lado nenhum sem saber se a chamada
+   * sequer foi feita, e com que resposta.
+   *
+   * Limpo no sucesso: um erro que fica depois de resolvido mente tanto quanto
+   * um que nunca aparece.
+   */
+  lastSyncError   String?   @db.Text
+  lastSyncErrorAt DateTime?
+
   // Direct OAuth2 providers (Withings) hold their own tokens here rather than
   // delegating to an aggregator. Encrypted at rest: these grant read access to
   // a patient's health record at the provider, and a database dump should not

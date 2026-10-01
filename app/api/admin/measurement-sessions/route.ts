@@ -71,6 +71,21 @@ export async function GET(req: NextRequest) {
       lastReadingAt: device.lastReadingAt ?? null,
       checkedAt: device.notifyCheckedAt ?? null,
       confirmedAppli: device.notifyConfirmedAppli ?? [],
+      /**
+       * **Falavamos com a Withings?** — e, se sim, com que resposta.
+       *
+       * Faltava a quarta pergunta, e era a que ficava sem resposta no caso do
+       * Bruno: assinatura confirmada, caixa vazia, nada ha seis dias. Tres
+       * factos que nao apontam para lado nenhum sem saber se a chamada sequer
+       * foi feita.
+       *
+       * `lastSyncedAt` diz quando falamos; `lastSyncError` diz o que eles
+       * responderam quando correu mal. Juntos separam *"nao pedimos"* de
+       * *"pedimos e nao veio"* — que exigem consertos opostos.
+       */
+      lastSyncedAt: device.lastSyncedAt ?? null,
+      lastSyncError: device.lastSyncError ?? null,
+      lastSyncErrorAt: device.lastSyncErrorAt ?? null,
     },
     open,
   });

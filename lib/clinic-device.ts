@@ -360,6 +360,11 @@ export async function clinicDevice(clinicId: string) {
       // pertence a quem autorizou (atividade 075, T-10).
       notifyConfirmedAppli: true, notifyCheckedAt: true,
       lastReadingAt: true, createdAt: true, status: true,
+      // **Falamos com a Withings, e com que resposta.** Sem estes dois, a tela
+      // da caixa mostra "assinatura confirmada" e "nada ha N dias" lado a lado,
+      // e nao ha como saber se a chamada sequer foi feita — foi o beco em que o
+      // manguito do Bruno ficou durante seis dias.
+      lastSyncedAt: true, lastSyncError: true, lastSyncErrorAt: true,
       accessToken: true, refreshToken: true, tokenExpiresAt: true,
     },
   });

@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
       lastReadingAt: true,
       lastSyncedAt: true,
       notifyCheckedAt: true,
+      // Para saber se ha um erro anterior a limpar quando esta correr bem.
+      lastSyncError: true,
       // Sem isto, `deliveryState` le `undefined` e diz "silent" para toda a
       // gente — o que faria reconfirmar em toda corrida, por uma razao falsa.
       notifyConfirmedAppli: true,
@@ -186,10 +188,38 @@ export async function POST(req: NextRequest) {
 
       // `lastSyncedAt` e `lastReadingAt` são escritos dentro de
       // `ingestWithings`, com a data da leitura mais nova — aqui só contamos.
+      /**
+       * O sucesso **apaga** o erro anterior.
+       *
+       * Um erro que fica depois de resolvido mente tanto quanto um que nunca
+       * aparece — e seria pior, porque manda procurar o que ja nao existe.
+       */
+      if (c.lastSyncError) {
+        await (prisma as any).wearableConnection
+          .update({ where: { id: c.id }, data: { lastSyncError: null, lastSyncErrorAt: null } })
+          .catch(() => {});
+      }
     } catch (err: any) {
       failed++;
       // One patient's expired token must not stop the other patients' sync.
       console.error(`[cron/wearables-sync] connection ${c.id}:`, err?.message);
+      /**
+       * **E grava, porque a consola nao e lida por ninguem.**
+       *
+       * A consola do contentor devolve as linhas do arranque e mais nada. Uma
+       * falha que so existe la e uma falha que nao existe: a tela continua a
+       * dizer "conectado", nenhum alerta dispara, e quem procura a leitura
+       * descobre o problema dias depois — que foi o caso do manguito do Bruno.
+       */
+      await (prisma as any).wearableConnection
+        .update({
+          where: { id: c.id },
+          data: {
+            lastSyncError: String(err?.message ?? err).slice(0, 500),
+            lastSyncErrorAt: new Date(),
+          },
+        })
+        .catch(() => {});
     }
 
     /**
