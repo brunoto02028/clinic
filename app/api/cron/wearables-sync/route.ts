@@ -82,6 +82,44 @@ const SLACK_DAYS = 3;
 const MAX_WINDOW_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * A Withings recusa a mesma chamada duas vezes em dez segundos.
+ *
+ * `601: Same arguments in less than 10 seconds`. Não é limite de quantidade —
+ * é dedupe: a mesma chamada, com os mesmos argumentos, no mesmo intervalo.
+ *
+ * **Duas ligações da mesma conta caem nisso sempre.** A braçadeira da clínica e
+ * o relógio do Bruno estão na mesma conta Withings; o laço sincronizava uma a
+ * seguir à outra, com a mesma janela de datas, e a segunda levava 601 em todas
+ * as rodadas. O efeito não era cosmético: a ligação da clínica é a **única
+ * autorizada a ler pressão** (a pessoal cala-se de propósito, para a leitura
+ * não ser atribuída a quem carrega o aparelho), então o 601 dela significava
+ * que a pressão medida não chegava a ninguém.
+ *
+ * Então espera-se, por conta — e não por ligação: contas diferentes não se
+ * atrapalham, e dormir entre elas seria desperdiçar o orçamento da rodada.
+ */
+const INTERVALO_MINIMO_POR_CONTA_MS = 11_000;
+
+async function esperarAVezDaConta(
+  ultimaChamadaPorConta: Map<string, number>,
+  conta: string | null | undefined
+): Promise<number> {
+  if (!conta) return 0;
+  const anterior = ultimaChamadaPorConta.get(conta);
+  const agora = Date.now();
+  let esperou = 0;
+  if (anterior !== undefined) {
+    const falta = INTERVALO_MINIMO_POR_CONTA_MS - (agora - anterior);
+    if (falta > 0) {
+      await new Promise((r) => setTimeout(r, falta));
+      esperou = falta;
+    }
+  }
+  ultimaChamadaPorConta.set(conta, Date.now());
+  return esperou;
+}
+
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
@@ -132,6 +170,10 @@ export async function POST(req: NextRequest) {
   const deadline = Date.now() + 240_000;
   let ranOut = false;
 
+  /** Quando cada conta Withings foi chamada pela última vez nesta rodada. */
+  const ultimaChamadaPorConta = new Map<string, number>();
+  let esperaTotalMs = 0;
+
   for (const c of connections) {
     if (Date.now() > deadline) {
       ranOut = true;
@@ -170,6 +212,10 @@ export async function POST(req: NextRequest) {
     );
 
     try {
+      // Duas ligações da mesma conta não podem fazer a mesma chamada em menos
+      // de dez segundos — ver `INTERVALO_MINIMO_POR_CONTA_MS`.
+      esperaTotalMs += await esperarAVezDaConta(ultimaChamadaPorConta, (c as any).providerUserId);
+
       const counts = await ingestWithings(c.userId, c, { since });
       synced++;
       totals.bloodPressure += counts.bloodPressure;
