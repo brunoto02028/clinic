@@ -114,11 +114,13 @@ ScanWatch 2 não mede pressão.
 | T-N | nome | depende de | status |
 |---|---|---|---|
 | T-1 | O que o ScanWatch traz e ninguém mostra — ECG e a conta certa | — | **concluído** |
-| T-2 | A tela de monitoramento do paciente: tendência, não só ontem | T-1 | pendente |
+| T-2 | A tela de monitoramento do paciente: tendência, não só ontem | T-1 | **concluído** (01/10) |
 | T-3 | O quadro do paciente no painel, ao longo do tempo | T-1 | **concluído** |
 | T-4 | O relatório passa a incluir o histórico inteiro | — | **concluído** |
 | T-5 | A automação: cadência da clínica, e o aviso que é escolha | T-4 | **concluído** |
 | T-6 | O desvio que a clínica precisa ver | T-1 | **concluído** |
+| T-7 | [Tudo o que o relógio manda, e nós não pedimos](t-7-tudo-o-que-o-relogio-manda.md) | T-1 | pendente |
+| T-8 | [A página de saúde: o dia, a noite, e o período](t-8-a-pagina-de-saude.md) | T-7 | pendente |
 
 **Ordem:** T-1 e T-4 primeiro — são servidor e painel, sobem sem build e você vê
 resultado no mesmo dia. T-2 espera build.
