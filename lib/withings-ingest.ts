@@ -289,6 +289,34 @@ export async function ingestWithings(
     try {
       const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
       const vitals = await withingsVitals(token, since, opts.until);
+
+      /*
+       * **O que o aparelho manda e nós ainda não sabemos nomear.**
+       *
+       * A chamada passou a pedir todos os tipos de medida em vez de quatro
+       * escolhidos (099 T-7). Um tipo que não pedíamos não vinha, e a API não
+       * dava erro nenhum — devolvia menos, em silêncio. Isto imprime os números
+       * que chegaram sem nome, que é como se descobre o que um ScanWatch 2
+       * produz de facto: os intervalos de ECG e a fibrilhação por PPG vêm por
+       * aqui, e os números deles são recentes demais para estarem nos clientes
+       * abertos que consultei.
+       *
+       * É diagnóstico de desenvolvimento, não dado de paciente: só o número do
+       * tipo e quantas vezes apareceu.
+       */
+      const contagemPorTipo: Record<string, number> = {};
+      for (const v of vitals) {
+        for (const tipo of Object.keys(v.naoNomeados ?? {})) {
+          contagemPorTipo[tipo] = (contagemPorTipo[tipo] ?? 0) + 1;
+        }
+      }
+      if (Object.keys(contagemPorTipo).length) {
+        console.log(
+          `[withings-ingest] tipos de medida sem nome: ${Object.entries(contagemPorTipo)
+            .map(([tipo, n]) => `${tipo}×${n}`)
+            .join(", ")}`
+        );
+      }
       for (const day of vitalsByDay(vitals)) {
         const fields: Record<string, unknown> = { rawPayload: JSON.stringify({ samples: day.samples }) };
         if (day.spo2 !== undefined) fields.spo2 = day.spo2;

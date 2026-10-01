@@ -20,12 +20,27 @@
 
 import { withingsRawCall } from "@/lib/withings";
 
-/** Withings measure types, from their `getmeas` documentation. */
+/**
+ * Os tipos de medida da Withings, do `getmeas` deles.
+ *
+ * **Esta lista é o que sabemos ler, não o que pedimos.** Pedir só estes quatro
+ * era o defeito: um tipo que não está aqui simplesmente não vem, e a API **não
+ * dá erro** — devolve menos, em silêncio. Foi assim que o VO2 máx, a frequência
+ * respiratória e os intervalos de ECG ficaram de fora sem ninguém reparar.
+ *
+ * Agora a chamada pede **tudo** (sem o parâmetro `meastypes`) e esta tabela
+ * serve só para dar nome ao que chega. O que chegar e não estiver aqui é
+ * contado em `tiposDesconhecidos` — que é como se descobre o que o aparelho de
+ * facto produz, em vez de se adivinhar pelo número na documentação.
+ */
 export const MEASTYPE = {
   HEART_RATE: 11,
+  TEMPERATURE: 12,
   SPO2: 54,
   BODY_TEMPERATURE: 71,
   SKIN_TEMPERATURE: 73,
+  /** ml/min/kg. Confirmado na documentação deles e em clientes mantidos. */
+  VO2_MAX: 123,
 } as const;
 
 export interface WithingsVital {
@@ -33,9 +48,20 @@ export interface WithingsVital {
   /** Withings' `grpid`, or null when they did not send one. */
   measureId: string | null;
   heartRate?: number;
+  temperature?: number;
   spo2?: number;
   bodyTemperature?: number;
   skinTemperature?: number;
+  vo2Max?: number;
+  /**
+   * Os valores que chegaram com um tipo que ainda não sabemos nomear.
+   *
+   * Guardados pelo número, para a primeira sincronização real dizer o que o
+   * relógio produz. Um ScanWatch 2 manda intervalos de ECG e fibrilhação por
+   * PPG como tipos de medida, e os números deles são recentes demais para
+   * estarem nos clientes abertos que consultei.
+   */
+  naoNomeados?: Record<number, number>;
 }
 
 /**
@@ -50,7 +76,6 @@ export async function withingsVitals(
   const body = await withingsRawCall("/measure", {
     action: "getmeas",
     access_token: accessToken,
-    meastypes: Object.values(MEASTYPE).join(","),
     category: "1", // real measurements, not user objectives
     startdate: String(Math.floor(since.getTime() / 1000)),
     enddate: String(Math.floor((until ?? new Date()).getTime() / 1000)),
@@ -65,21 +90,41 @@ export async function withingsVitals(
       return Number.isFinite(n) ? n : undefined;
     };
 
+    const conhecidos = new Set<number>(Object.values(MEASTYPE));
+    const naoNomeados: Record<number, number> = {};
+    for (const m of group.measures ?? []) {
+      if (typeof m?.type === "number" && !conhecidos.has(m.type)) {
+        const n = m.value * Math.pow(10, m.unit);
+        if (Number.isFinite(n)) naoNomeados[m.type] = n;
+      }
+    }
+
     const vital: WithingsVital = {
       measuredAt: new Date(Number(group.date) * 1000),
       measureId: group.grpid != null ? String(group.grpid) : null,
       heartRate: val(MEASTYPE.HEART_RATE),
+      temperature: val(MEASTYPE.TEMPERATURE),
       spo2: val(MEASTYPE.SPO2),
       bodyTemperature: val(MEASTYPE.BODY_TEMPERATURE),
       skinTemperature: val(MEASTYPE.SKIN_TEMPERATURE),
+      vo2Max: val(MEASTYPE.VO2_MAX),
+      ...(Object.keys(naoNomeados).length ? { naoNomeados } : {}),
     };
 
-    const hasSomething =
+    /*
+     * Um grupo entra se trouxe **alguma coisa** — inclusive um tipo que ainda
+     * não sabemos nomear. Descartá-lo por não reconhecer os seus números era
+     * garantir que nunca descobriríamos que ele existe.
+     */
+    const trouxeAlgo =
       vital.heartRate !== undefined ||
+      vital.temperature !== undefined ||
       vital.spo2 !== undefined ||
       vital.bodyTemperature !== undefined ||
-      vital.skinTemperature !== undefined;
-    if (hasSomething) out.push(vital);
+      vital.skinTemperature !== undefined ||
+      vital.vo2Max !== undefined ||
+      vital.naoNomeados !== undefined;
+    if (trouxeAlgo) out.push(vital);
   }
   return out;
 }
