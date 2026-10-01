@@ -459,6 +459,7 @@ export async function ingestWithings(
       // The fact that an ECG happened and what the device concluded — never the
       // trace, and never our reading of it.
       const ecg = await withingsEcg(token, since, opts.until);
+      let sinalTentado = false;
       for (const rec of ecg) {
         const dataDate = rec.recordedAt.toISOString().split("T")[0];
         await upsertPoint(userId, connection.id, "ECG", dataDate, {
@@ -470,6 +471,39 @@ export async function ingestWithings(
           }),
         });
         ecgRecords++;
+
+        /*
+         * **O traçado — e, antes disso, a medição.** (099 T-9)
+         *
+         * A lista dá a conclusão e um `signalid`; as amostras são uma segunda
+         * chamada que nunca fizemos. E não dá para saber pela documentação se o
+         * nosso plano a inclui: a divisão publicada põe o sinal no escalão
+         * pago, e **dado fora do plano não dá erro** — o campo só não vem.
+         *
+         * Então o log distingue os três desfechos, porque "vazio" e "sem
+         * direito" são a mesma resposta e levam a ações opostas. Só o registo
+         * **mais recente** é buscado: a pergunta é se dá, não encher o banco.
+         */
+        if (rec.signalId && !sinalTentado) {
+          sinalTentado = true;
+          try {
+            const { sinalDoEcg } = await import("@/lib/withings-series");
+            const sinal = await sinalDoEcg(token, rec.signalId);
+            if (sinal.amostras.length > 0) {
+              await upsertSeries(userId, connection.id, "ECG_SIGNAL", dataDate, sinal.amostras);
+              console.log(
+                `[withings-ingest] ECG: ${sinal.amostras.length} amostras a ${sinal.frequencia ?? "?"} Hz — O PLANO INCLUI`
+              );
+            } else {
+              console.log(
+                `[withings-ingest] ECG: VAZIO SEM ERRO (ambiguo — tratar como NAO LIDO). ` +
+                  `chaves do corpo: ${Object.keys(sinal.bruto).join(",") || "nenhuma"}`
+              );
+            }
+          } catch (e: any) {
+            console.log(`[withings-ingest] ECG: ERRO EXPLICITO — ${e?.message ?? e}`);
+          }
+        }
       }
     } catch (e: any) {
       // An account without these metrics must not cost the patient their blood
