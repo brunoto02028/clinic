@@ -97,6 +97,21 @@ propósito**, porque a diferença é entre ele ver hoje ou daqui a uma submissã
 | barras arredondadas no lugar dos anéis | **linhas suaves** |
 | tudo o que é `View` e `Text` | vidro desfocado de verdade (`expo-blur`) |
 
+### Duas coisas medidas em 01/10, que mudam esta tabela
+
+**O escuro já existe.** O tema tem `light` e `dark`, e o padrão é `system` — o
+app segue o telemóvel. Não havia nada a construir aí; o que faltava era o
+**tratamento** dentro do escuro, não o escuro.
+
+**Os anéis não entram, e não é por causa da biblioteca.** Os da referência medem
+progresso **contra metas**, e nós não temos metas guardadas. Inventar "8.000
+passos" seria pôr um alvo que o paciente não escolheu — a mesma classe de coisa
+que a faixa de referência que saiu na 099 T-2.
+
+Então os anéis dependem de uma decisão que vem antes do desenho: **o paciente
+define metas, ou a clínica define com ele?** Enquanto isso não existir, os
+números de hoje aparecem grandes e sem barra a dizer se são pouco.
+
 `react-native-svg` e `expo-blur` são módulos **nativos**: mudam o *fingerprint*,
 e os updates param de chegar ao binário antigo até toda a gente trocar.
 
@@ -128,7 +143,7 @@ some ensina à pessoa que o produto está estragado.
 | T-1 | A aba, e o que deixa de estar no Menu | — | **feito** (01/10) |
 | T-2 | O resumo: o que mudou desde ontem | T-1 | **feito** (01/10) |
 | T-3 | As cinco páginas de família | T-1 | **feito** (01/10) — uma tela parametrizada, não cinco |
-| T-4 | O visual: o que cabe num update | T-2, T-3 | pendente |
+| T-4 | O visual: o que cabe num update | T-2, T-3 | **parcial** (01/10) — cabeçalho e tipografia; os anéis exigem metas que não existem |
 | T-5 | O relatório preso ao plano, com a trava no servidor | T-1 | pendente |
 | T-6 | Os anéis e as linhas — **só com build autorizado** | T-4 | pendente |
 
