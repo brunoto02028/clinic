@@ -53,17 +53,35 @@ export default function LabTestDetail() {
   const p = data.product;
   const price = `£${p.price.toFixed(2)}`;
   const description = lang === "pt" ? p.description.pt || p.description.en : p.description.en;
-  const swab = p.sampleType.includes("swab");
+  /**
+   * **O método de coleta pode ser desconhecido, e então não se afirma nada.**
+   *
+   * Os exames que vieram da lista de parceiro entram sem `sampleType`: a
+   * planilha não traz a coluna, e quem a sabe é a API da LML. Antes, a API
+   * devolvia `"capillary"` por omissão e esta tela dizia "picada no dedo, em
+   * casa" para todos — incluindo cariótipo e painel NGS, que são punção venosa.
+   *
+   * Agora `sampleType` é `null` quando não se sabe, e a tela diz isso em vez de
+   * escolher uma das três formas por nós. É menos satisfatório e é verdade.
+   */
+  const metodoConhecido = typeof p.sampleType === "string" && p.sampleType.length > 0;
+  const swab = metodoConhecido && p.sampleType.includes("swab");
 
-  const steps = [
-    { en: "The kit arrives by post. You register it in the app when it lands.", pt: "O kit chega pelo correio. Você o registra no app quando chegar." },
-    swab
-      ? { en: "A finger-prick and a swab at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo e swab em casa, seguindo os passos do app. Poste no mesmo dia." }
-      : { en: "A finger-prick at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo em casa, seguindo os passos do app. Poste no mesmo dia." },
-    // Ninguém da clínica lê antes (26/09/2026) — e os termos publicados
-    // prometem isso em duas línguas.
-    { en: "The laboratory sends the result, and it appears here. It is yours to share with whichever doctor you prefer.", pt: "O laboratório envia o resultado, e ele aparece aqui. Ele é seu, para compartilhar com o médico que preferir." },
-  ];
+  const steps = metodoConhecido
+    ? [
+        { en: "The kit arrives by post. You register it in the app when it lands.", pt: "O kit chega pelo correio. Você o registra no app quando chegar." },
+        swab
+          ? { en: "A finger-prick and a swab at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo e swab em casa, seguindo os passos do app. Poste no mesmo dia." }
+          : { en: "A finger-prick at home, following the steps in the app. Post it back the same day.", pt: "Picada no dedo em casa, seguindo os passos do app. Poste no mesmo dia." },
+        // Ninguém da clínica lê antes (26/09/2026) — e os termos publicados
+        // prometem isso em duas línguas.
+        { en: "The laboratory sends the result, and it appears here. It is yours to share with whichever doctor you prefer.", pt: "O laboratório envia o resultado, e ele aparece aqui. Ele é seu, para compartilhar com o médico que preferir." },
+      ]
+    : [
+        { en: "This test has more than one way of taking the sample: a kit at home, a collection point, or a nurse at your address.", pt: "Este exame tem mais de uma forma de coletar a amostra: kit em casa, ponto de coleta, ou um profissional no seu endereço." },
+        { en: "We confirm which one applies before anything is sent to you. Tap “How it works” to see the three.", pt: "Confirmamos qual se aplica antes de qualquer coisa ser enviada. Toque em “Como funciona” para ver as três." },
+        { en: "The laboratory sends the result, and it appears here. It is yours to share with whichever doctor you prefer.", pt: "O laboratório envia o resultado, e ele aparece aqui. Ele é seu, para compartilhar com o médico que preferir." },
+      ];
 
   return (
     <Screen scroll testID="lab-detail-screen">
@@ -89,9 +107,11 @@ export default function LabTestDetail() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
             <Ionicons name="water-outline" size={14} color={t.colors.lab} />
             <Text variant="caption" color={t.colors.lab} testID="lab-sample-type">
-              {swab
-                ? tr(lang, { en: "Finger-prick and swab, at home", pt: "Picada no dedo e swab, em casa" })
-                : tr(lang, { en: "Finger-prick, at home", pt: "Picada no dedo, em casa" })}
+              {!metodoConhecido
+                ? tr(lang, { en: "Collection confirmed before dispatch", pt: "Coleta confirmada antes do envio" })
+                : swab
+                  ? tr(lang, { en: "Finger-prick and swab, at home", pt: "Picada no dedo e swab, em casa" })
+                  : tr(lang, { en: "Finger-prick, at home", pt: "Picada no dedo, em casa" })}
             </Text>
           </View>
         </Card>

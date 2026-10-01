@@ -217,3 +217,54 @@ recebem dado de paciente hoje**, 12 deles categoria especial.
 2. **A chave da MiniMax pode continuar no banco.** O código já não a lê, então
    nada sai. Mas a linha `MINIMAX_API_KEY` na tabela `systemConfig` só sai pelo
    painel de administração — chave parada é porta sem porteiro.
+
+
+---
+
+## Correção: eu estava errado sobre o que a política nomeia (01/10/2026)
+
+O QA online mediu o HTML que produção serve em `/privacy` e contou os
+processadores nomeados. O número não era o meu. **Fui verificar, e o erro é
+meu.**
+
+Esta atividade nasceu da frase *"a política nomeia dois, e o produto usa dez"*.
+O "dez" eu já tinha corrigido para 31. **O "dois" também estava errado**, e de
+um jeito que muda a tarefa seguinte.
+
+### O que cada documento nomeia, medido
+
+Há **dois documentos legais** com listas diferentes, e eu tratei-os como um:
+
+| | nomeia |
+|---|---|
+| **`app/privacy/page.tsx`** — a política no site | Anthropic, Groq, Google Gemini, AssemblyAI, Stripe |
+| **`lib/terms-content.ts`** — os termos versionados (v1.3) que o paciente aceita | AssemblyAI, Google Gemini, MediaPipe, Stripe, WhatsApp |
+
+Então são **cinco** num e **cinco** no outro — não dois. E o achado real é melhor
+que o que eu tinha:
+
+1. **Os dois documentos discordam entre si.** Os termos que a paciente **aceitou**
+   não nomeiam a Anthropic nem a Groq; a política do site nomeia as duas. Quem lê
+   o que assinou recebe uma lista diferente de quem lê o site.
+2. **O OpenRouter não está em nenhum dos dois** — e é ele que recebe o prompt
+   primeiro, tanto no texto clínico como nas fotos. O processador que de facto
+   trata o dado é o único que nenhum documento menciona.
+3. Os termos nomeiam o **MediaPipe**. Verifiquei antes de chamar isso de erro:
+   `@mediapipe/tasks-vision` **é** dependência e o vocabulário de marcos
+   posturais é usado nos prompts. É biblioteca de visão que corre no aparelho,
+   então pode nem ser "processador" no sentido da lista — mas isso é pergunta
+   para quem redige, não defeito a corrigir às cegas.
+
+### Por que eu errei
+
+Li um documento e falei dos dois. Não procurei se havia mais de um sítio onde a
+lista vive — o mesmo erro de método do `process.env`, outra vez: **concluí a
+partir da primeira fonte que encontrei.** A contagem certa precisava de uma
+varredura por ficheiro, que é o que o QA fez e eu não tinha feito.
+
+### O que isto muda na T-2
+
+Não muda o trabalho; muda o alvo. Não é "acrescentar 13 nomes a uma política que
+tem 2" — é **reconciliar dois documentos que se contradizem** e fazer os dois
+saírem do mesmo registo (`lib/terceiros.ts`). E o teste da T-2 tem de olhar para
+**os dois ficheiros**, senão um deles continua a envelhecer sozinho.

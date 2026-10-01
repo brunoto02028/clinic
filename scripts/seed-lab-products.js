@@ -14,6 +14,7 @@
 // clinic switches a kit on — a deploy that put twenty-two tests on sale by
 // itself would be selling before anyone decided to.
 const { PrismaClient } = require('@prisma/client');
+const { categorizar } = require('./lab-categories');
 const prisma = new PrismaClient();
 
 const HOME_KITS = [
@@ -50,6 +51,14 @@ async function main() {
     const shared = {
       name: k.name,
       shortName: k.code,
+      // A categoria sai das **mesmas regras** dos 421 da planilha
+      // (`lab-categories.js`), e não da que está escrita na linha acima.
+      //
+      // As duas listas tinham vocabulários diferentes — `Hormones` aqui e
+      // `hormones` ali — e os chips da tela mostrariam as duas como categorias
+      // distintas. A categoria escrita em `HOME_KITS` fica como registo do que
+      // foi pensado à mão; quem decide é a regra, para haver uma só lista.
+      category: categorizar(k.name, k.biomarkers),
       // O mesmo código, na chave que a API da LML entende (`product_sku`).
       //
       // Sem isto a coluna nasce `NULL` em todo ambiente novo — o `db push` cria
@@ -58,7 +67,6 @@ async function main() {
       // o defeito que a T-13 fechou para os 421, transferido para os 22 que já
       // podem ter pedidos a apontar para eles. Achado pelo QA da T-13.
       lmlSku: k.code,
-      category: k.category,
       biomarkers: k.biomarkers,
       sampleType: k.sampleType,
       turnaroundDays: k.turnaroundDays,

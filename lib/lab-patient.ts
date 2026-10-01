@@ -26,7 +26,22 @@ export function patientProduct(p: {
     name: p.name,
     category: p.category,
     biomarkers: p.biomarkers,
-    sampleType: p.sampleType ?? kit?.sampleType ?? "capillary",
+    /**
+     * `null` quando não se sabe — e **não** `"capillary"`, que era o que estava
+     * aqui.
+     *
+     * Os 421 exames da planilha de 2026 entram sem método de coleta: a planilha
+     * não traz essa coluna, e quem a sabe é a API deles (`appointment_only` e os
+     * métodos de entrega). Com o default anterior, cada um deles chegava ao app
+     * declarado como **picada no dedo em casa** — incluindo cariótipo e painel
+     * NGS, que são punção venosa. A tela então prometia um envelope pelo correio
+     * a quem teria de ir a um ponto de coleta.
+     *
+     * É o mesmo defeito que a varredura de 26/09 encontrou, re-armado por um
+     * `??` que parecia inofensivo. Um default que inventa um fato é pior que a
+     * ausência dele: a ausência a tela sabe tratar.
+     */
+    sampleType: p.sampleType ?? kit?.sampleType ?? null,
     turnaroundDays: p.turnaroundDays ?? kit?.turnaroundDays ?? null,
     price: p.retailPrice,
     currency: p.currency,
