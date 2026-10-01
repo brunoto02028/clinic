@@ -28,6 +28,8 @@ import {
   horasDoDia,
   totaisPorFase,
   despertares,
+  escalaDasBarras,
+  alturaDaBarra,
   PontoDoDia,
   TrechoDaNoite,
 } from "@/lib/dia-e-noite-calculo";
@@ -80,10 +82,7 @@ export function ODia({
    * informação verdadeira sobre o dia; a altura é que passa a ser coerente
    * com o que está desenhado.
    */
-  const mediasHorarias = horas.map((h) => h.hr).filter((x): x is number => x !== null);
-  const maxBarra = mediasHorarias.length ? Math.max(...mediasHorarias) : 0;
-  const minBarra = mediasHorarias.length ? Math.min(...mediasHorarias) : 0;
-  const faixa = maxBarra - minBarra || 1;
+  const escala = escalaDasBarras(horas);
 
   const hrs = pontos.map((p) => p.hr).filter((x): x is number => x !== null);
   const maxHr = hrs.length ? Math.max(...hrs) : 0;
@@ -108,7 +107,7 @@ export function ODia({
               />
             );
           }
-          const altura = 8 + ((h.hr - minBarra) / faixa) * 46;
+          const altura = alturaDaBarra(h.hr, escala);
           return (
             <View
               key={h.hora}

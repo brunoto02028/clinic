@@ -1,6 +1,6 @@
 # T-8: A página de saúde — o dia, a noite, e o período
 
-**Status:** implementada em 01/10/2026 — espera QA e a medição do que a Withings devolve
+**Status:** concluído (01/10/2026) — [QA](qa/report-t-8.md) reprovou uma vez, as seis coisas fechadas com teste, review feito; a métrica da T-7 na tela espera a medição do plano
 **Depende de:** T-7
 
 ## O pedido

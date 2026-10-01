@@ -188,28 +188,41 @@ describe("a data é a local, não a UTC", () => {
 
 describe("a escala do gráfico do dia", () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const path = require("path");
-  const DESENHO = path.join(
-    __dirname, "..", "..", "mobile", "src", "components", "ODiaEANoite.tsx"
-  );
+  const { escalaDasBarras, alturaDaBarra } = require("../../mobile/src/lib/dia-e-noite-calculo");
 
-  it("**a altura da barra sai das médias horárias, não dos pontos crus**", () => {
-    // As barras são médias por hora. Escalá-las pelo mínimo e máximo dos pontos
-    // de cinco minutos aperta-as todas no meio da altura, e o gráfico
-    // subestima a variação do dia — um erro silencioso, porque o desenho
-    // continua plausível.
-    const src = fs.readFileSync(DESENHO, "utf8");
-    expect(src).toMatch(/const altura = [^\n]*minBarra/);
-    expect(src).not.toMatch(/const altura = [^\n]*\bminHr\b/);
+  it("**um pico isolado de cinco minutos não aperta as barras no meio**", () => {
+    // Era o defeito: a escala vinha dos pontos crus. Uma hora com um ponto a
+    // 140 e os outros a 60 tem média 73 — e com a escala nos pontos, a barra
+    // mais alta do dia ficava a meio da altura, e o dia parecia plano.
+    const pontos: PontoDoDia[] = [
+      naHora(8, 60), naHora(8, 60), naHora(8, 60), naHora(8, 140),
+      naHora(9, 58), naHora(10, 62), naHora(11, 65),
+    ];
+    const horas = horasDoDia(pontos, { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    // A barra mais alta é a hora de maior **média**, e usa a altura toda.
+    const maisAlta = Math.max(...horas.filter((h) => h.hr !== null).map((h) => alturaDaBarra(h.hr as number, escala)));
+    expect(maisAlta).toBe(8 + 46);
+    // E o máximo da escala é a média, nunca o pico cru.
+    expect(escala.max).toBeLessThan(140);
+    expect(escala.max).toBe(80); // (60+60+60+140)/4
   });
 
-  it("e a frase continua a citar os extremos medidos", () => {
-    // A altura passa a ser coerente com o desenho; a frase continua a dizer a
-    // verdade sobre o dia, que é o extremo que o aparelho mediu.
-    const src = fs.readFileSync(DESENHO, "utf8");
-    expect(src).toMatch(/Math\.round\(minHr\)/);
-    expect(src).toMatch(/Math\.round\(maxHr\)/);
+  it("a barra mais baixa fica no mínimo, não no chão", () => {
+    const horas = horasDoDia([naHora(8, 60), naHora(9, 80)], { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    expect(alturaDaBarra(60, escala)).toBe(8);
+    expect(alturaDaBarra(80, escala)).toBe(54);
+  });
+
+  it("um dia constante não divide por zero", () => {
+    const horas = horasDoDia([naHora(8, 62), naHora(9, 62)], { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    expect(escala.faixa).toBe(1);
+    expect(Number.isFinite(alturaDaBarra(62, escala))).toBe(true);
+  });
+
+  it("sem batimento nenhum, a escala é inofensiva", () => {
+    expect(escalaDasBarras([])).toEqual({ min: 0, max: 0, faixa: 1 });
   });
 });

@@ -105,3 +105,32 @@ export function diaLocal(d: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+/**
+ * A escala das barras do dia: o mínimo e o máximo **do que é desenhado**.
+ *
+ * As barras são médias por hora. Escalá-las pelo mínimo e máximo dos pontos de
+ * cinco minutos aperta-as todas no meio da altura — uma média nunca alcança o
+ * extremo de um ponto isolado — e o gráfico subestima a variação do dia. Um
+ * erro silencioso, porque o desenho continua plausível.
+ *
+ * Vive aqui, e não dentro do componente, para o teste a exercer por
+ * comportamento em vez de ler a grafia do fonte (QA da T-8, R5).
+ */
+export function escalaDasBarras(horas: HoraDoDia[]): { min: number; max: number; faixa: number } {
+  const medias = horas.map((h) => h.hr).filter((x): x is number => x !== null);
+  if (medias.length === 0) return { min: 0, max: 0, faixa: 1 };
+  const min = Math.min(...medias);
+  const max = Math.max(...medias);
+  return { min, max, faixa: max - min || 1 };
+}
+
+/** A altura de uma barra, de `minimo` a `minimo + amplitude`, pela escala dada. */
+export function alturaDaBarra(
+  hr: number,
+  escala: { min: number; faixa: number },
+  minimo = 8,
+  amplitude = 46
+): number {
+  return minimo + ((hr - escala.min) / escala.faixa) * amplitude;
+}
