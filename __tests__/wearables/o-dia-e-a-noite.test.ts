@@ -134,3 +134,95 @@ describe("os totais da noite", () => {
     expect(despertares([{ inicio: 0, fim: 10, fase: 0 }, { inicio: 10, fim: 20, fase: 1 }])).toBe(0);
   });
 });
+
+describe("a data é a local, não a UTC", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { diaLocal } = require("../../mobile/src/lib/dia-e-noite-calculo");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require("fs");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require("path");
+
+  const TELA = path.join(
+    __dirname, "..", "..", "mobile", "app", "(app)", "(clinica)", "wearable-data.tsx"
+  );
+
+  function semComentarios(p: string): string {
+    return fs
+      .readFileSync(p, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l: string) => {
+        const s = l.trim();
+        return !s.startsWith("//") && !s.startsWith("*");
+      })
+      .join("\n");
+  }
+
+  it("devolve `YYYY-MM-DD`", () => {
+    expect(diaLocal(new Date(2026, 9, 5, 0, 30))).toBe("2026-10-05");
+    expect(diaLocal(new Date(2026, 0, 1, 23, 59))).toBe("2026-01-01");
+  });
+
+  it("**usa os campos locais, não os UTC**", () => {
+    // Este teste é de leitura de código de propósito: o jest corre com
+    // `TZ=UTC`, e sob UTC as duas versões dão o mesmo resultado. Um teste de
+    // comportamento aqui passaria verde com o defeito dentro — que é
+    // exatamente o que o fuso de Londres esconde.
+    const src = fs.readFileSync(
+      path.join(__dirname, "..", "..", "mobile", "src", "lib", "dia-e-noite-calculo.ts"),
+      "utf8"
+    );
+    const i = src.indexOf("export function diaLocal");
+    const corpo = src.slice(i, i + 400);
+    expect(corpo).toContain("getFullYear");
+    expect(corpo).not.toContain("getUTC");
+    expect(corpo).not.toContain("toISOString");
+  });
+
+  it("**a tela não monta data com `toISOString`**", () => {
+    // Eram três sítios. Um auxiliar com nome evita o quarto.
+    expect(semComentarios(TELA)).not.toMatch(/toISOString\(\)\.slice\(0,\s*10\)/);
+  });
+});
+
+describe("a escala do gráfico do dia", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { escalaDasBarras, alturaDaBarra } = require("../../mobile/src/lib/dia-e-noite-calculo");
+
+  it("**um pico isolado de cinco minutos não aperta as barras no meio**", () => {
+    // Era o defeito: a escala vinha dos pontos crus. Uma hora com um ponto a
+    // 140 e os outros a 60 tem média 73 — e com a escala nos pontos, a barra
+    // mais alta do dia ficava a meio da altura, e o dia parecia plano.
+    const pontos: PontoDoDia[] = [
+      naHora(8, 60), naHora(8, 60), naHora(8, 60), naHora(8, 140),
+      naHora(9, 58), naHora(10, 62), naHora(11, 65),
+    ];
+    const horas = horasDoDia(pontos, { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    // A barra mais alta é a hora de maior **média**, e usa a altura toda.
+    const maisAlta = Math.max(...horas.filter((h) => h.hr !== null).map((h) => alturaDaBarra(h.hr as number, escala)));
+    expect(maisAlta).toBe(8 + 46);
+    // E o máximo da escala é a média, nunca o pico cru.
+    expect(escala.max).toBeLessThan(140);
+    expect(escala.max).toBe(80); // (60+60+60+140)/4
+  });
+
+  it("a barra mais baixa fica no mínimo, não no chão", () => {
+    const horas = horasDoDia([naHora(8, 60), naHora(9, 80)], { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    expect(alturaDaBarra(60, escala)).toBe(8);
+    expect(alturaDaBarra(80, escala)).toBe(54);
+  });
+
+  it("um dia constante não divide por zero", () => {
+    const horas = horasDoDia([naHora(8, 62), naHora(9, 62)], { ehHoje: false, horaAgora: 23 });
+    const escala = escalaDasBarras(horas);
+    expect(escala.faixa).toBe(1);
+    expect(Number.isFinite(alturaDaBarra(62, escala))).toBe(true);
+  });
+
+  it("sem batimento nenhum, a escala é inofensiva", () => {
+    expect(escalaDasBarras([])).toEqual({ min: 0, max: 0, faixa: 1 });
+  });
+});

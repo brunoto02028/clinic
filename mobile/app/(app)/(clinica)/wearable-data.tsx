@@ -13,6 +13,7 @@ import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
 import { Tendencia, PontoDaSerie } from "@/components/Tendencia";
 import { ODia, ANoite } from "@/components/ODiaEANoite";
+import { diaLocal } from "@/lib/dia-e-noite-calculo";
 import { fetchSerie } from "@/api/wearables";
 
 function MetricCard({ title, metrics }: { title: string; metrics: { label: string; value: string; color?: string }[] }) {
@@ -180,7 +181,16 @@ function WearableDataScreen() {
     for (let i = janela - 1; i >= 0; i--) {
       const dia = new Date(hoje);
       dia.setDate(dia.getDate() - i);
-      const chave = dia.toISOString().slice(0, 10);
+      /*
+       * **Data local, não `toISOString()`.**
+       *
+       * O `toISOString` devolve UTC, e a ingestão grava o `dataDate` na data
+       * **local** — o dia que a pessoa viveu. No horário de verão britânico os
+       * dois divergem entre a meia-noite e a uma da manhã, e a série passaria a
+       * procurar o dia anterior: buraco na tela com dado no banco, e nada a
+       * dizer porquê.
+       */
+      const chave = diaLocal(dia);
       pontos.push({ dia: chave, valor: porDia.has(chave) ? (porDia.get(chave) as number) : null });
     }
     return pontos;
@@ -339,6 +349,21 @@ function WearableDataScreen() {
               * imediata — *"o que aconteceu comigo hoje"* — e o período
               * responde a outra, que é *"como tenho andado"*.
               */}
+            {/*
+              * A razão do vazio, que a rota calcula e ninguém lia (QA da T-8, R3).
+              * Há ligação e ainda não há série: é o estado em que o relógio está
+              * ligado e o minuto a minuto ainda não chegou — ou o plano não o
+              * devolve. Esconder o cartão deixava a pessoa sem saber qual.
+              */}
+            {dia.data && dia.data.points.length === 0 && dia.data.reason === "no_series_for_day" && (
+              <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 12 }}>
+                {tr(lang, {
+                  en: "The hour-by-hour of the day has not arrived yet. It comes with the next sync.",
+                  pt: "O hora a hora do dia ainda não chegou. Vem com a próxima sincronização.",
+                })}
+              </Text>
+            )}
+
             {(dia.data?.points?.length ?? 0) > 0 && (
               <View
                 style={{
@@ -361,12 +386,14 @@ function WearableDataScreen() {
                   </Text>
                   <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
                     {dia.data?.dataDate ?? ""}
+                    {/* "Segundo o seu ScanWatch" — o critério que eu tinha trocado por outro (QA da T-8, R4). */}
+                    {dia.data?.provider ? ` · ${tr(lang, { en: "from your", pt: "do seu" })} ${dia.data.provider}` : ""}
                   </Text>
                 </View>
                 <ODia
                   pontos={dia.data!.points as any}
                   minutosPorPonto={dia.data?.bucketMinutes ?? 5}
-                  ehHoje={dia.data?.dataDate === new Date().toISOString().slice(0, 10)}
+                  ehHoje={dia.data?.dataDate === diaLocal()}
                 />
               </View>
             )}
@@ -393,6 +420,7 @@ function WearableDataScreen() {
                   </Text>
                   <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
                     {noite.data?.dataDate ?? ""}
+                    {noite.data?.provider ? ` · ${tr(lang, { en: "from your", pt: "do seu" })} ${noite.data.provider}` : ""}
                   </Text>
                 </View>
                 <ANoite trechos={noite.data!.points as any} />
@@ -488,7 +516,14 @@ function WearableDataScreen() {
                   const grave = e.conclusao === "fibrilacao";
                   const frase =
                     e.conclusao === "normal"
-                      ? tr(lang, { en: "Normal rhythm", pt: "Ritmo normal" })
+                      /*
+                       * **Sem a palavra "normal".** O QA da T-8 reprovou esta
+                       * linha: a conclusão é do aparelho, mas a regra da tela
+                       * do paciente é categórica sobre vocabulário — nem
+                       * "normal", nem "alterado". Dizer o que o relógio **não
+                       * assinalou** é relato; dizer que está "normal" é nota.
+                       */
+                      ? tr(lang, { en: "The watch flagged nothing", pt: "O relógio não assinalou nada" })
                       : grave
                         ? tr(lang, { en: "Atrial fibrillation detected", pt: "Fibrilação atrial detectada" })
                         : e.conclusao === "sem_sinal"
@@ -518,7 +553,8 @@ function WearableDataScreen() {
             )}
 
             <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", marginTop: 8 }}>
-              {tr(lang, { en: "Last 7 days", pt: "Dados dos últimos 7 dias" })} • {sleep?.provider || body?.provider || activity?.provider || ""}
+              {/* A janela real, não "7 dias" fixo: a tela abria em 30 a dizer 7 (QA da T-8). */}
+              {tr(lang, { en: `Last ${janela} days`, pt: `Dados dos últimos ${janela} dias` })} • {sleep?.provider || body?.provider || activity?.provider || ""}
             </Text>
           </View>
         )}
