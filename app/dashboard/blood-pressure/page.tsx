@@ -558,7 +558,13 @@ export default function BloodPressurePage() {
                 { label: locale === "pt-BR" ? "Elevada" : "Elevated", range: "120-129/<80", color: "bg-ba1-warn/10 text-ba1-warn border-ba1-warn/20" },
                 { label: locale === "pt-BR" ? BP_LABELS.STAGE1.pt : BP_LABELS.STAGE1.en, range: "130-139/80-89", color: "bg-ba1-warn/10 text-ba1-warn border-ba1-warn/20" },
                 { label: locale === "pt-BR" ? BP_LABELS.STAGE2.pt : BP_LABELS.STAGE2.en, range: "≥140/≥90", color: "bg-ba1-bad/10 text-ba1-bad border-ba1-bad/20" },
-                { label: locale === "pt-BR" ? "Crise" : "Crisis", range: "≥180/≥120", color: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/30 font-bold" },
+                /* **A unica da lista que nao tinha migrado** (achado do QA
+                   online, 01/10). As faixas vizinhas ja vinham de `BP_LABELS`;
+                   esta ficou com a palavra literal. E *crise* e o nome curto de
+                   *crise hipertensiva* — categoria diagnostica, na tela que o
+                   paciente abre sozinho, que e exatamente o que a 105 T-6 foi
+                   corrigir. */
+                { label: locale === "pt-BR" ? BP_LABELS.CRISIS.pt : BP_LABELS.CRISIS.en, range: "≥180/≥120", color: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/30 font-bold" },
               ].map((cat) => (
                 <div key={cat.label} className={`p-1.5 rounded border text-center ${cat.color}`}>
                   <p className="font-semibold">{cat.label}</p>
