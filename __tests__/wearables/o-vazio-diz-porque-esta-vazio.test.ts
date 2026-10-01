@@ -58,8 +58,16 @@ describe("o vazio de quem já tem aparelho ligado", () => {
     // O conselho errado é pior que nenhum: manda a pessoa repetir uma coisa
     // que ela já fez, e deixa-a a concluir que falhou.
     const c = codigo();
-    const i = c.indexOf("temLigacao");
-    const bloco = c.slice(i, i + 1800);
+    // **Ancorado no ternário, não na distância.** A primeira versão fatiava
+    // 1800 caracteres a partir da *declaração* de `temLigacao`, e qualquer
+    // coisa acrescentada entre a declaração e o vazio empurrava a frase para
+    // fora da fatia — foi o que aconteceu em 01/10, quando o seletor de
+    // período entrou no meio e este teste caiu sem que a tela tivesse mudado
+    // de comportamento. Distância em bytes não é a relação que importa; o que
+    // importa é que a frase esteja **dentro do ramo guardado pela pergunta**.
+    const ternario = c.search(/temLigacao\s*\?/);
+    expect(ternario).toBeGreaterThan(0);
+    const bloco = c.slice(ternario, ternario + 900);
     expect(bloco).toMatch(/sleep, activity and recovery|sono, atividade e recupera/);
   });
 
