@@ -108,6 +108,23 @@ const config: Config = {
           bad: '#A85A4B',
         },
       },
+      /**
+       * Os degraus de opacidade que o codigo pede e a escala padrao nao tem.
+       *
+       * **O defeito que isto conserta, achado pelo QA online de 01/10:** a
+       * grade de faixas de pressao pede `bg-ba1-bad/15` na celula de `>=180/120`
+       * — a mais grave de todas. A escala padrao do Tailwind tem 10 e 20 e
+       * **nao tem 15**, entao essa classe nunca e emitida: o navegador calcula
+       * `rgba(0,0,0,0)` e a celula sai **branca**, mais palida que a vizinha
+       * menos grave.
+       *
+       * A escada de gravidade quebrava no ultimo degrau, que e o unico que nao
+       * pode falhar.
+       *
+       * Sao **71 usos de `/15`** e 2 de `/8` em todo o produto, todos
+       * silenciosos: uma classe que o Tailwind nao gera nao da erro de build,
+       * nao da aviso, e nao aparece em teste de rotulo — so na tela.
+       */
       fontFamily: {
         sora: ['var(--font-sora)', 'Sora', 'sans-serif'],
       },

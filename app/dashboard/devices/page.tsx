@@ -213,7 +213,7 @@ export default function DevicesPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-ba1-health/15 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-ba1-health/20 flex items-center justify-center shrink-0">
           <Watch className="h-5 w-5 text-ba1-health" />
         </div>
         <div>

@@ -79,7 +79,7 @@ interface BPReading {
  * O que e desta tela fica aqui — cor e icone sao do desenho, nao do vocabulario.
  */
 const APARENCIA_DA_FAIXA = {
-  CRISIS: { color: "text-ba1-bad bg-ba1-bad/15 border-ba1-bad/30", icon: AlertTriangle, severity: 5 },
+  CRISIS: { color: "text-ba1-bad bg-ba1-bad/20 border-ba1-bad/30", icon: AlertTriangle, severity: 5 },
   STAGE2: { color: "text-ba1-bad bg-ba1-bad/10 border-ba1-bad/20", icon: AlertTriangle, severity: 4 },
   STAGE1: { color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: AlertTriangle, severity: 3 },
   ELEVATED: { color: "text-ba1-warn bg-ba1-warn/10 border-ba1-warn/20", icon: TrendingUp, severity: 2 },
@@ -564,7 +564,7 @@ export default function BloodPressurePage() {
                    *crise hipertensiva* — categoria diagnostica, na tela que o
                    paciente abre sozinho, que e exatamente o que a 105 T-6 foi
                    corrigir. */
-                { label: locale === "pt-BR" ? BP_LABELS.CRISIS.pt : BP_LABELS.CRISIS.en, range: "≥180/≥120", color: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/30 font-bold" },
+                { label: locale === "pt-BR" ? BP_LABELS.CRISIS.pt : BP_LABELS.CRISIS.en, range: "≥180/≥120", color: "bg-ba1-bad/20 text-ba1-bad border-ba1-bad/30 font-bold" },
               ].map((cat) => (
                 <div key={cat.label} className={`p-1.5 rounded border text-center ${cat.color}`}>
                   <p className="font-semibold">{cat.label}</p>

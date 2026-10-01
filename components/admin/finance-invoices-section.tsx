@@ -50,8 +50,8 @@ interface InvoiceDetail extends InvoiceListRow {
 const STATUS_STYLE: Record<InvoiceStatus, string> = {
   DRAFT: "bg-muted text-muted-foreground",
   SENT: "bg-blue-100 text-blue-700",
-  PAID: "bg-ba1-ok/15 text-ba1-ok",
-  OVERDUE: "bg-ba1-bad/15 text-ba1-bad",
+  PAID: "bg-ba1-ok/20 text-ba1-ok",
+  OVERDUE: "bg-ba1-bad/20 text-ba1-bad",
   VOID: "bg-muted text-muted-foreground line-through",
   PARTIALLY_PAID: "bg-amber-100 text-amber-700",
 };

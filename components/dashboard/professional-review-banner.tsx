@@ -17,7 +17,7 @@ export default function ProfessionalReviewBanner({ descriptionKey = "review.desc
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-ba1-ok/20 bg-ba1-ok/10 p-3 sm:p-4">
-      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ba1-ok/15 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-ba1-ok/20 flex items-center justify-center flex-shrink-0">
         <UserCheck className="h-4 w-4 sm:h-[18px] sm:w-[18px] text-ba1-ok" />
       </div>
       <div className="min-w-0">

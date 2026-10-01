@@ -48,10 +48,10 @@ const STEP_ICONS: Record<string, any> = {
 };
 
 const STEP_COLORS: Record<string, string> = {
-  completed: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/30",
-  processing: "bg-ba1-health/15 text-ba1-health border-ba1-health/30",
-  in_progress: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/30",
-  partial: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/30",
+  completed: "bg-ba1-ok/20 text-ba1-ok border-ba1-ok/30",
+  processing: "bg-ba1-health/20 text-ba1-health border-ba1-health/30",
+  in_progress: "bg-ba1-warn/20 text-ba1-warn border-ba1-warn/30",
+  partial: "bg-ba1-warn/20 text-ba1-warn border-ba1-warn/30",
   pending: "bg-muted text-muted-foreground border-border",
 };
 
@@ -246,7 +246,7 @@ export default function AssessmentFlowPage() {
                   {/* Step Number & Icon */}
                   <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${
                     step.status === "completed"
-                      ? "bg-ba1-ok/15 text-ba1-ok"
+                      ? "bg-ba1-ok/20 text-ba1-ok"
                       : isNext
                         ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"

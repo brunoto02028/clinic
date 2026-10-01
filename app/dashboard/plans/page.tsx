@@ -42,9 +42,9 @@ const SERVICE_ICONS: Record<string, any> = {
 };
 
 const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
-  CONSULTATION: { bg: "bg-ba1-health/5", border: "border-ba1-health/20", text: "text-ba1-health", badge: "bg-ba1-health/15 text-ba1-health" },
-  FOOT_SCAN: { bg: "bg-ba1-ok/5", border: "border-ba1-ok/20", text: "text-ba1-ok", badge: "bg-ba1-ok/15 text-ba1-ok" },
-  BODY_ASSESSMENT: { bg: "bg-ba1-warn/5", border: "border-ba1-warn/20", text: "text-ba1-warn", badge: "bg-ba1-warn/15 text-ba1-warn" },
+  CONSULTATION: { bg: "bg-ba1-health/5", border: "border-ba1-health/20", text: "text-ba1-health", badge: "bg-ba1-health/20 text-ba1-health" },
+  FOOT_SCAN: { bg: "bg-ba1-ok/5", border: "border-ba1-ok/20", text: "text-ba1-ok", badge: "bg-ba1-ok/20 text-ba1-ok" },
+  BODY_ASSESSMENT: { bg: "bg-ba1-warn/5", border: "border-ba1-warn/20", text: "text-ba1-warn", badge: "bg-ba1-warn/20 text-ba1-warn" },
 };
 
 export default function PatientPlansPage() {
@@ -86,7 +86,7 @@ export default function PatientPlansPage() {
       <div className="max-w-lg mx-auto mt-12">
         <Card className="border-ba1-warn/20 bg-ba1-warn/5">
           <CardContent className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-ba1-warn/15 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-ba1-warn/20 flex items-center justify-center mx-auto">
               <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-ba1-warn" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground">{T("plans.completeFirst")}</h2>
@@ -132,7 +132,7 @@ export default function PatientPlansPage() {
               <Card key={sp.id} className={`relative overflow-hidden transition-shadow hover:shadow-lg ${colors.border}`}>
                 {hasAccess && (
                   <div className="absolute top-3 right-3">
-                    <Badge className="bg-ba1-ok/15 text-ba1-ok gap-1">
+                    <Badge className="bg-ba1-ok/20 text-ba1-ok gap-1">
                       <CheckCircle className="h-3 w-3" /> {T("plans.active")}
                     </Badge>
                   </div>

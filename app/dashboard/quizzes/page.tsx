@@ -161,10 +161,10 @@ export default function PatientQuizzesPage() {
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <Badge variant="outline" className="text-[10px]">{q._count.questions} {isPt ? "perguntas" : "questions"}</Badge>
                           <Badge variant="secondary" className="text-[10px]">{q.difficulty}</Badge>
-                          <Badge className="text-[10px] bg-ba1-warn/15 text-ba1-warn">{q.xpReward} XP</Badge>
-                          {q.condition && <Badge className="text-[10px] bg-ba1-health/15 text-ba1-health">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
+                          <Badge className="text-[10px] bg-ba1-warn/20 text-ba1-warn">{q.xpReward} XP</Badge>
+                          {q.condition && <Badge className="text-[10px] bg-ba1-health/20 text-ba1-health">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
                           {bestAttempt && (
-                            <Badge className={`text-[10px] ${isPerfect ? "bg-ba1-ok/15 text-ba1-ok" : "bg-muted text-muted-foreground"}`}>
+                            <Badge className={`text-[10px] ${isPerfect ? "bg-ba1-ok/20 text-ba1-ok" : "bg-muted text-muted-foreground"}`}>
                               {isPerfect ? "✅ " : ""}{bestAttempt.score}/{bestAttempt.totalQuestions}
                             </Badge>
                           )}

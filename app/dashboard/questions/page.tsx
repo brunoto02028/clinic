@@ -217,7 +217,7 @@ export default function QuestionsPage() {
           </p>
         </div>
         {pendingCount > 0 && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-ba1-warn/15 border border-ba1-warn/30 rounded-full text-xs font-semibold text-ba1-warn">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-ba1-warn/20 border border-ba1-warn/30 rounded-full text-xs font-semibold text-ba1-warn">
             <span className="w-1.5 h-1.5 rounded-full bg-ba1-warn animate-pulse" />
             {pendingCount} {isPt ? "pendente" : "pending"}{pendingCount > 1 ? "s" : ""}
           </span>
@@ -397,7 +397,7 @@ export default function QuestionsPage() {
 
                               {/* Existing answer (already submitted) */}
                               {!isPending && existingAnswer && (
-                                <div className="ml-7 bg-ba1-ok/8 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
+                                <div className="ml-7 bg-ba1-ok/10 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
                                   <p className="text-[10px] font-semibold text-ba1-ok/70 mb-1">{isPt ? "Sua resposta" : "Your reply"}</p>
                                   <p className="text-sm text-foreground leading-relaxed">{existingAnswer}</p>
                                 </div>
@@ -421,7 +421,7 @@ export default function QuestionsPage() {
 
                               {/* Submitted draft */}
                               {isPending && isSubmitted && draftAnswer && (
-                                <div className="ml-7 bg-ba1-ok/8 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
+                                <div className="ml-7 bg-ba1-ok/10 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
                                   <p className="text-sm text-foreground leading-relaxed">{draftAnswer}</p>
                                 </div>
                               )}

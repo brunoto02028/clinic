@@ -172,7 +172,7 @@ export default function PatientMembershipPage() {
                 <Crown className="h-5 w-5 text-ba1-health" />
                 {isPt ? "Seu Plano Atual" : "Your Current Plan"}
               </CardTitle>
-              <Badge className="bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20">
+              <Badge className="bg-ba1-ok/20 text-ba1-ok border-ba1-ok/20">
                 <CheckCircle className="h-3 w-3 mr-1" /> {isPt ? "Ativo" : "Active"}
               </Badge>
             </div>

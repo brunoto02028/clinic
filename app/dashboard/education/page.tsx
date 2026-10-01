@@ -288,7 +288,7 @@ export default function PatientEducationPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-sm truncate">{a.content.title}</p>
-                              {a.isRequired && <Badge className="text-[10px] bg-ba1-bad/15 text-ba1-bad">{isPt ? "Obrigatório" : "Required"}</Badge>}
+                              {a.isRequired && <Badge className="text-[10px] bg-ba1-bad/20 text-ba1-bad">{isPt ? "Obrigatório" : "Required"}</Badge>}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               <Badge variant="outline" className="text-[10px] capitalize">{a.content.contentType}</Badge>
@@ -348,7 +348,7 @@ export default function PatientEducationPage() {
                           )}
                           {item.isFeatured && (
                             <div className="absolute top-2 left-2">
-                              <Badge className="text-[10px] bg-ba1-warn/15 text-ba1-warn"><Star className="h-2.5 w-2.5 mr-0.5" />{isPt ? "Destaque" : "Featured"}</Badge>
+                              <Badge className="text-[10px] bg-ba1-warn/20 text-ba1-warn"><Star className="h-2.5 w-2.5 mr-0.5" />{isPt ? "Destaque" : "Featured"}</Badge>
                             </div>
                           )}
                         </div>
@@ -383,7 +383,7 @@ export default function PatientEducationPage() {
                   <Card key={a.id} className="opacity-80">
                     <CardContent className="pt-4 pb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-ba1-ok/15 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-ba1-ok/20 flex items-center justify-center">
                           <CheckCircle className="h-5 w-5 text-ba1-ok" />
                         </div>
                         <div>

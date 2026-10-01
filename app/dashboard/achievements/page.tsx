@@ -68,7 +68,7 @@ export default function PatientAchievementsPage() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-ba1-warn/15 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-ba1-warn/20 flex items-center justify-center">
                 <Trophy className="h-6 w-6 text-ba1-warn" />
               </div>
               <div>
@@ -115,8 +115,8 @@ export default function PatientAchievementsPage() {
                             {isPt ? (a.descriptionPt || a.descriptionEn) : (a.descriptionEn || a.descriptionPt)}
                           </p>
                           <div className="flex gap-1.5 mt-1.5">
-                            <Badge className="text-[10px] bg-ba1-warn/15 text-ba1-warn">{a.xpReward} XP</Badge>
-                            {a.condition && <Badge className="text-[10px] bg-ba1-health/15 text-ba1-health">{a.condition.iconEmoji} {isPt ? a.condition.namePt : a.condition.nameEn}</Badge>}
+                            <Badge className="text-[10px] bg-ba1-warn/20 text-ba1-warn">{a.xpReward} XP</Badge>
+                            {a.condition && <Badge className="text-[10px] bg-ba1-health/20 text-ba1-health">{a.condition.iconEmoji} {isPt ? a.condition.namePt : a.condition.nameEn}</Badge>}
                           </div>
                         </div>
                       </div>
