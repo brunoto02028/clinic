@@ -78,6 +78,7 @@ function valorFormatado(d: Destaque): string {
 }
 
 export default function SaudeScreen() {
+  /* Declaradas dentro para apanharem o idioma do hook sem o passar por todo o lado. */
   const t = useTheme();
   const lang = useLang();
 
@@ -89,6 +90,27 @@ export default function SaudeScreen() {
     queryKey: ["wearable-connections"],
     queryFn: fetchConnections,
   });
+
+  const saudacao = (): string => {
+    const h = new Date().getHours();
+    if (h < 12) return tr(lang, { en: "Good morning", pt: "Bom dia" });
+    if (h < 19) return tr(lang, { en: "Good afternoon", pt: "Boa tarde" });
+    return tr(lang, { en: "Good evening", pt: "Boa noite" });
+  };
+
+  const dataPorExtenso = (): string => {
+    const d = new Date();
+    try {
+      return d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+    } catch {
+      /* Um `Intl` em falta não pode derrubar a primeira tela da aba. */
+      return d.toISOString().slice(0, 10);
+    }
+  };
 
   const lista = destaques((dados.data ?? []) as any);
   const faltas = pendencias((ligacoes.data ?? []) as any);
@@ -149,12 +171,28 @@ export default function SaudeScreen() {
           />
         }
       >
-        <View style={{ gap: 4, paddingTop: 6 }}>
-          <Text variant="title" style={{ fontWeight: "700" }}>
-            {tr(lang, { en: "Health", pt: "Saúde" })}
+        {/*
+          * O cabeçalho (118 T-4).
+          *
+          * A saudação e a data vêm da referência, e servem para a tela parecer
+          * **de hoje** em vez de um painel sem tempo — é o que faz alguém abrir
+          * de manhã.
+          *
+          * **O que não tem aqui: anéis de progresso.** Os da referência medem
+          * contra metas, e nós não temos metas guardadas. Inventar "8.000
+          * passos" seria pôr um alvo que o paciente não escolheu — a mesma
+          * classe de coisa que a faixa de referência que saiu na 099 T-2. Os
+          * números de hoje aparecem grandes, sem barra a dizer se são pouco.
+          */}
+        <View style={{ gap: 3, paddingTop: 6 }}>
+          <Text
+            variant="title"
+            style={{ fontWeight: "700", fontSize: 26, letterSpacing: -0.4 }}
+          >
+            {saudacao()}
           </Text>
-          <Text variant="caption" color={t.colors.textSecondary}>
-            {tr(lang, { en: "What changed since yesterday", pt: "O que mudou desde ontem" })}
+          <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 13 }}>
+            {dataPorExtenso()}
           </Text>
         </View>
 
@@ -231,7 +269,10 @@ export default function SaudeScreen() {
                       <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
                         {tr(lang, ROTULO[d.chave])}
                       </Text>
-                      <Text variant="subtitle" style={{ fontWeight: "700" }}>
+                      <Text
+                        variant="subtitle"
+                        style={{ fontWeight: "700", fontSize: 24, letterSpacing: -0.5, marginTop: 2 }}
+                      >
                         {valorFormatado(d)}
                         {ROTULO[d.chave].unidade ? (
                           <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
