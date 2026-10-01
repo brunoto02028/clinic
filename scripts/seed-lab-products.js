@@ -50,6 +50,14 @@ async function main() {
     const shared = {
       name: k.name,
       shortName: k.code,
+      // O mesmo código, na chave que a API da LML entende (`product_sku`).
+      //
+      // Sem isto a coluna nasce `NULL` em todo ambiente novo — o `db push` cria
+      // a coluna, e nada a preenche para estes 22. A sincronização da T-5 casa
+      // por SKU, não os encontraria, e criaria um segundo registo para cada um:
+      // o defeito que a T-13 fechou para os 421, transferido para os 22 que já
+      // podem ter pedidos a apontar para eles. Achado pelo QA da T-13.
+      lmlSku: k.code,
       category: k.category,
       biomarkers: k.biomarkers,
       sampleType: k.sampleType,

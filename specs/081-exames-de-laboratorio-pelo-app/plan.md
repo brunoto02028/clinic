@@ -1,6 +1,6 @@
 # Atividade 081 — Exames de laboratório pelo app (London Medical Laboratory)
 
-**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 parcial; T-6 a T-9 esperam o token da LML
+**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 parcial; T-6 a T-9 esperam o token da LML; T-13 a T-15 abertas em 01/10 (os 421 exames no app) e **não** precisam do token
 **Data:** 25/09/2026
 
 ## Objetivo
@@ -186,6 +186,9 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 | T-10 | Código postal como campo próprio, editável no perfil | T-1 | não | **concluído** (26/09) |
 | T-11 | Código postal → coordenada (postcodes.io) | T-10 | não | **concluído** (26/09) |
 | T-12 | "Como funciona": os três caminhos da amostra, e os pontos perto de casa | T-11 | parcial | **concluído** (26/09) — a lista de pontos espera o token |
+| T-13 | [Os 421 exames no banco, da planilha](t-13-os-421-no-banco.md) | T-1 | **não** | **concluído** (01/10) — 421 carregados inativos, 443 no total |
+| T-14 | [Categoria para 421, sem inventar medicina](t-14-categoria-sem-inventar-medicina.md) | T-13 | parcial | pendente |
+| T-15 | [A descoberta: como o paciente sabe tudo o que temos](t-15-a-descoberta-de-421-exames.md) | T-13, T-14 | **não** | pendente |
 
 > Os arquivos `t-N-*.md` foram escritos na ordem anterior (API primeiro). A renumeração acompanha
 > esta tabela quando o plano for aprovado — o conteúdo de cada tarefa não muda, só a ordem.
