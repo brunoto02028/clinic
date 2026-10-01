@@ -17,14 +17,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   // Only 4 semantic tokens exist in the brand palette (ok/warn/bad/health) for
   // 8 categories that need to stay visually tell-apart-able — cycled rather
   // than collapsed to one color, since a real semantic match doesn't exist.
-  SLEEP: "bg-ba1-health/15 text-ba1-health border-ba1-health/20",
-  NUTRITION: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20",
-  EXERCISE: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20",
-  LIGHT: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/20",
-  COLD: "bg-ba1-health/15 text-ba1-health border-ba1-health/20",
-  BREATHWORK: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20",
-  SUPPLEMENT: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20",
-  HRV: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/20",
+  SLEEP: "bg-ba1-health/20 text-ba1-health border-ba1-health/20",
+  NUTRITION: "bg-ba1-warn/20 text-ba1-warn border-ba1-warn/20",
+  EXERCISE: "bg-ba1-ok/20 text-ba1-ok border-ba1-ok/20",
+  LIGHT: "bg-ba1-bad/20 text-ba1-bad border-ba1-bad/20",
+  COLD: "bg-ba1-health/20 text-ba1-health border-ba1-health/20",
+  BREATHWORK: "bg-ba1-warn/20 text-ba1-warn border-ba1-warn/20",
+  SUPPLEMENT: "bg-ba1-ok/20 text-ba1-ok border-ba1-ok/20",
+  HRV: "bg-ba1-bad/20 text-ba1-bad border-ba1-bad/20",
 };
 
 function Slider({ label, value, onChange, min = 1, max = 10, color = "emerald" }: any) {
@@ -141,7 +141,7 @@ export default function BiohackingDashboardPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-ba1-ok/15 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-ba1-ok/20 flex items-center justify-center shrink-0">
           <Brain className="h-5 w-5 text-ba1-ok" />
         </div>
         <div>
@@ -172,7 +172,7 @@ export default function BiohackingDashboardPage() {
               {isPt ? "Check-In de Hoje" : "Today's Check-In"}
             </CardTitle>
             {saved && (
-              <Badge className="bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20 text-xs">
+              <Badge className="bg-ba1-ok/20 text-ba1-ok border-ba1-ok/20 text-xs">
                 <CheckCircle2 className="h-3 w-3 mr-1" /> {isPt ? "Salvo" : "Saved"}
               </Badge>
             )}

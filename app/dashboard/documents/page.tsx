@@ -44,13 +44,13 @@ const DOC_TYPES = [
 // share a color rather than collapsing further, since no real semantic match
 // exists for most of these categories.
 const DOC_TYPE_COLORS: Record<string, string> = {
-  MEDICAL_REFERRAL: "bg-ba1-health/15 text-ba1-health",
-  MEDICAL_REPORT: "bg-ba1-warn/15 text-ba1-warn",
-  PRESCRIPTION: "bg-ba1-ok/15 text-ba1-ok",
-  IMAGING: "bg-ba1-bad/15 text-ba1-bad",
-  INSURANCE: "bg-ba1-health/15 text-ba1-health",
+  MEDICAL_REFERRAL: "bg-ba1-health/20 text-ba1-health",
+  MEDICAL_REPORT: "bg-ba1-warn/20 text-ba1-warn",
+  PRESCRIPTION: "bg-ba1-ok/20 text-ba1-ok",
+  IMAGING: "bg-ba1-bad/20 text-ba1-bad",
+  INSURANCE: "bg-ba1-health/20 text-ba1-health",
   CONSENT_FORM: "bg-muted text-foreground",
-  PREVIOUS_TREATMENT: "bg-ba1-warn/15 text-ba1-warn",
+  PREVIOUS_TREATMENT: "bg-ba1-warn/20 text-ba1-warn",
   OTHER: "bg-muted text-muted-foreground",
 };
 
@@ -421,7 +421,7 @@ export default function PatientDocumentsPage() {
                     <Badge className={`text-[9px] ${DOC_TYPE_COLORS[doc.documentType] || ""}`}>
                       {isPt ? DOC_TYPES.find(t => t.value === doc.documentType)?.labelPt : DOC_TYPES.find(t => t.value === doc.documentType)?.labelEn || doc.documentType}
                     </Badge>
-                    {doc.isVerified && <Badge className="text-[9px] bg-ba1-ok/15 text-ba1-ok"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
+                    {doc.isVerified && <Badge className="text-[9px] bg-ba1-ok/20 text-ba1-ok"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
                   </div>
                   <h3 className="font-medium text-sm truncate">{doc.title || doc.fileName}</h3>
                   {doc.doctorName && <p className="text-[10px] text-muted-foreground">Dr. {doc.doctorName}</p>}

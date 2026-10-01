@@ -186,7 +186,7 @@ export default function PatientGuidePage() {
       <Card className="border-ba1-warn/30 bg-ba1-warn/5">
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-ba1-warn/15 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-ba1-warn/20 flex items-center justify-center flex-shrink-0">
               <AlertTriangle className="h-5 w-5 text-ba1-warn" />
             </div>
             <div>

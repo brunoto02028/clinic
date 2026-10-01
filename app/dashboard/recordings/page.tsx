@@ -134,10 +134,10 @@ export default function PatientRecordingsPage() {
 
   const statusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="secondary" className="bg-ba1-warn/15 text-ba1-warn"><Clock className="h-3 w-3 mr-1" />{isPt ? "Processando" : "Processing"}</Badge>;
-      case "transcribed": return <Badge variant="secondary" className="bg-ba1-health/15 text-ba1-health"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Pronto" : "Ready"}</Badge>;
-      case "reviewed": return <Badge variant="secondary" className="bg-ba1-ok/15 text-ba1-ok"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Revisado" : "Reviewed"}</Badge>;
-      case "used_in_soap": return <Badge variant="secondary" className="bg-ba1-health/15 text-ba1-health"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Usado nas Notas" : "Used in Notes"}</Badge>;
+      case "pending": return <Badge variant="secondary" className="bg-ba1-warn/20 text-ba1-warn"><Clock className="h-3 w-3 mr-1" />{isPt ? "Processando" : "Processing"}</Badge>;
+      case "transcribed": return <Badge variant="secondary" className="bg-ba1-health/20 text-ba1-health"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Pronto" : "Ready"}</Badge>;
+      case "reviewed": return <Badge variant="secondary" className="bg-ba1-ok/20 text-ba1-ok"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Revisado" : "Reviewed"}</Badge>;
+      case "used_in_soap": return <Badge variant="secondary" className="bg-ba1-health/20 text-ba1-health"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Usado nas Notas" : "Used in Notes"}</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };

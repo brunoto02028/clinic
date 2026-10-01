@@ -111,7 +111,7 @@ export default function PatientTasksPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-ba1-health/15 mt-0.5">
+                      <div className="p-2 rounded-lg bg-ba1-health/20 mt-0.5">
                         <Icon className="h-5 w-5 text-ba1-health" />
                       </div>
                       <div>

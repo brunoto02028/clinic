@@ -553,7 +553,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                   </div>
                 ) : !isTherapist && hasActivePackage ? (
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-ba1-health/15 flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-full bg-ba1-health/20 flex items-center justify-center mx-auto mb-3">
                       <CheckCircle className="h-6 w-6 text-ba1-health" />
                     </div>
                     <p className="font-medium text-ba1-health">{isPt ? "Coberto pelo seu pacote" : "Covered by your package"}</p>

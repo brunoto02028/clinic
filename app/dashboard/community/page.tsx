@@ -141,7 +141,7 @@ export default function CommunityPage() {
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <Badge className="bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20 mb-2">
+                  <Badge className="bg-ba1-warn/20 text-ba1-warn border-ba1-warn/20 mb-2">
                     <Trophy className="h-3 w-3 mr-1" /> {isPt ? "Desafio Semanal" : "Weekly Challenge"}
                   </Badge>
                   <h3 className="font-bold text-foreground">{challenge.title}</h3>
@@ -195,7 +195,7 @@ export default function CommunityPage() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="border-ba1-health/20 bg-ba1-health/5">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-ba1-health/15 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-ba1-health/20 flex items-center justify-center">
                 <Medal className="h-5 w-5 text-ba1-health" />
               </div>
               <div className="flex-1">

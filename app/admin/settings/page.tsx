@@ -2109,7 +2109,7 @@ export default function AdminSettingsPage() {
                   <Input id="whatsappMessage" value={settings.whatsappMessage} onChange={(e) => setSettings({ ...settings, whatsappMessage: e.target.value })} placeholder="Hello, I'd like to book an appointment at BPR Ipswich" />
                 </div>
                 {settings.whatsappEnabled && settings.whatsappNumber && (
-                  <div className="flex items-center gap-2 text-xs text-ba1-ok bg-ba1-ok/15 rounded px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs text-ba1-ok bg-ba1-ok/20 rounded px-3 py-2">
                     <span className="w-2 h-2 rounded-full bg-ba1-ok animate-pulse" />
                     WhatsApp button is <strong>active</strong> — visible in the site header and contact section
                   </div>

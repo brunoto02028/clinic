@@ -91,14 +91,14 @@ export default function JourneyPage() {
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200 }}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-ba1-health/15 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-ba1-health/10"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-ba1-health/20 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-ba1-health/10"
               >
                 {avatarStage.emoji}
               </motion.div>
 
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                  <Badge className="bg-ba1-health/15 text-ba1-health border-ba1-health/20">
+                  <Badge className="bg-ba1-health/20 text-ba1-health border-ba1-health/20">
                     <Trophy className="h-3 w-3 mr-1" /> {isPt ? "Nível" : "Level"} {p.level}
                   </Badge>
                   <Badge variant="outline" className="text-ba1-warn border-ba1-warn/20">
@@ -204,7 +204,7 @@ export default function JourneyPage() {
             <CardContent>
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                  prediction.trend === "up" ? "bg-ba1-ok/15" : prediction.trend === "down" ? "bg-ba1-bad/15" : "bg-ba1-warn/15"
+                  prediction.trend === "up" ? "bg-ba1-ok/20" : prediction.trend === "down" ? "bg-ba1-bad/20" : "bg-ba1-warn/20"
                 }`}>
                   {prediction.trend === "up" ? (
                     <TrendingUp className="h-6 w-6 text-ba1-ok" />
@@ -324,7 +324,7 @@ export default function JourneyPage() {
                   <div key={mission.id} className={`p-3 rounded-lg border ${mission.completedAt ? "bg-ba1-ok/10 border-ba1-ok/20" : "bg-card border-border"}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {mission.isBonusMission && <Badge className="bg-ba1-health/15 text-ba1-health text-[10px]">{isPt ? "Bônus" : "Bonus"}</Badge>}
+                        {mission.isBonusMission && <Badge className="bg-ba1-health/20 text-ba1-health text-[10px]">{isPt ? "Bônus" : "Bonus"}</Badge>}
                         <span className="text-xs text-muted-foreground">{done}/{total} {isPt ? "tarefas" : "tasks"}</span>
                       </div>
                       <span className="text-[10px] font-bold text-ba1-warn">+{mission.xpReward} XP</span>

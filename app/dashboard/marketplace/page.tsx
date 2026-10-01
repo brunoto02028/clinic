@@ -42,12 +42,12 @@ const CATEGORY_CONFIG: Record<string, { labelEn: string; labelPt: string; icon: 
   // Only 4 semantic tokens exist in the brand palette (ok/warn/bad/health) for
   // 6 categories that need to stay visually tell-apart-able — cycled rather
   // than collapsed further, since no real semantic match exists for most.
-  digital_program: { labelEn: "Digital Programs", labelPt: "Programas Digitais", icon: Video, color: "bg-ba1-health/15 text-ba1-health" },
-  physical_product: { labelEn: "Physical Products", labelPt: "Produtos Físicos", icon: Package, color: "bg-ba1-ok/15 text-ba1-ok" },
-  equipment: { labelEn: "Equipment", labelPt: "Equipamentos", icon: Box, color: "bg-ba1-warn/15 text-ba1-warn" },
-  supplement: { labelEn: "Supplements", labelPt: "Suplementos", icon: Plus, color: "bg-ba1-bad/15 text-ba1-bad" },
-  special_session: { labelEn: "Special Sessions", labelPt: "Sessões Especiais", icon: Zap, color: "bg-ba1-warn/15 text-ba1-warn" },
-  subscription: { labelEn: "Subscriptions", labelPt: "Assinaturas", icon: Crown, color: "bg-ba1-health/15 text-ba1-health" },
+  digital_program: { labelEn: "Digital Programs", labelPt: "Programas Digitais", icon: Video, color: "bg-ba1-health/20 text-ba1-health" },
+  physical_product: { labelEn: "Physical Products", labelPt: "Produtos Físicos", icon: Package, color: "bg-ba1-ok/20 text-ba1-ok" },
+  equipment: { labelEn: "Equipment", labelPt: "Equipamentos", icon: Box, color: "bg-ba1-warn/20 text-ba1-warn" },
+  supplement: { labelEn: "Supplements", labelPt: "Suplementos", icon: Plus, color: "bg-ba1-bad/20 text-ba1-bad" },
+  special_session: { labelEn: "Special Sessions", labelPt: "Sessões Especiais", icon: Zap, color: "bg-ba1-warn/20 text-ba1-warn" },
+  subscription: { labelEn: "Subscriptions", labelPt: "Assinaturas", icon: Crown, color: "bg-ba1-health/20 text-ba1-health" },
 };
 
 export default function MarketplacePage() {
@@ -430,7 +430,7 @@ export default function MarketplacePage() {
                         {isPt ? (config?.labelPt || product.category) : (config?.labelEn || product.category)}
                       </Badge>
                       {recommended.some((r: any) => r.id === product.id) && (
-                        <Badge className="bg-ba1-warn/15 text-ba1-warn text-[10px]">⭐ {isPt ? "Para Você" : "For You"}</Badge>
+                        <Badge className="bg-ba1-warn/20 text-ba1-warn text-[10px]">⭐ {isPt ? "Para Você" : "For You"}</Badge>
                       )}
                     </div>
 
@@ -448,7 +448,7 @@ export default function MarketplacePage() {
                           <>
                             <span className="text-lg font-bold text-primary">£{discountedPrice.toFixed(2)}</span>
                             <span className="text-xs text-muted-foreground line-through">£{product.price.toFixed(2)}</span>
-                            <Badge className="bg-ba1-bad/15 text-ba1-bad text-[10px]">-{levelDiscount}%</Badge>
+                            <Badge className="bg-ba1-bad/20 text-ba1-bad text-[10px]">-{levelDiscount}%</Badge>
                           </>
                         ) : product.compareAtPrice ? (
                           <>
