@@ -183,3 +183,38 @@ export async function fetchMonitoringConsent(): Promise<MonitoringConsent> {
 export async function acceptMonitoringConsent(): Promise<MonitoringConsent> {
   return apiFetch<MonitoringConsent>("/api/patient/monitoring-consent", { method: "POST" });
 }
+
+/**
+ * As séries do dia e da noite (099 T-8).
+ *
+ * O `fetchWearableData` acima devolve **um ponto por dia**, que responde "como
+ * tem andado". Isto responde "o que aconteceu comigo hoje", que precisa da
+ * hora.
+ *
+ * `bucketMinutes` vem na resposta de propósito: o servidor agrega 1440 pontos
+ * para caber no ecrã, e a tela diz em que resolução está a desenhar. Esconder
+ * isso seria dizer mais precisão do que existe.
+ */
+export interface SerieDoDia {
+  kind: "INTRADAY" | "HYPNOGRAM" | "WORKOUTS";
+  dataDate: string | null;
+  provider?: string;
+  updatedAt?: string;
+  /** Só no intraday: quantos minutos cada ponto agrega. */
+  bucketMinutes?: number;
+  /** Só no intraday: quantos pontos o servidor tinha antes de agregar. */
+  rawPointCount?: number;
+  points: any[];
+  pointCount: number;
+  hasConnection: boolean;
+  /** `no_series_for_day` ou `no_connection` — só quando vem vazia. */
+  reason?: string;
+}
+
+export async function fetchSerie(
+  kind: "INTRADAY" | "HYPNOGRAM" | "WORKOUTS",
+  date?: string
+): Promise<SerieDoDia> {
+  const q = date ? `&date=${encodeURIComponent(date)}` : "";
+  return apiFetch<SerieDoDia>(`/api/wearables/series?kind=${kind}${q}`);
+}

@@ -12,6 +12,8 @@ import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
 import { Tendencia, PontoDaSerie } from "@/components/Tendencia";
+import { ODia, ANoite } from "@/components/ODiaEANoite";
+import { fetchSerie } from "@/api/wearables";
 
 function MetricCard({ title, metrics }: { title: string; metrics: { label: string; value: string; color?: string }[] }) {
   const t = useTheme();
@@ -121,6 +123,22 @@ function WearableDataScreen() {
    * Sem esta pergunta, a tela so sabia dizer "conecte um wearable", que e
    * exatamente o conselho errado para quem ja conectou.
    */
+  /**
+   * O dia e a noite (099 T-8).
+   *
+   * Sem data: o servidor devolve o dia mais recente que tem. **Pedir "hoje"
+   * mostraria vazio às nove da manhã**, antes de a sincronização correr, e a
+   * pessoa concluiria que o relógio parou.
+   */
+  const dia = useQuery({
+    queryKey: ["wearable-serie", "INTRADAY"],
+    queryFn: () => fetchSerie("INTRADAY"),
+  });
+  const noite = useQuery({
+    queryKey: ["wearable-serie", "HYPNOGRAM"],
+    queryFn: () => fetchSerie("HYPNOGRAM"),
+  });
+
   const { data: ligacoes } = useQuery({
     queryKey: ["wearable-connections"],
     queryFn: fetchConnections,
@@ -314,6 +332,71 @@ function WearableDataScreen() {
                   { label: tr(lang, { en: "Active min", pt: "Min ativos" }), value: activity.activeMinutes != null ? `${activity.activeMinutes} min` : "—" },
                 ]}
               />
+            )}
+
+            {/*
+              * O dia e a noite (T-8), antes do período: é a pergunta mais
+              * imediata — *"o que aconteceu comigo hoje"* — e o período
+              * responde a outra, que é *"como tenho andado"*.
+              */}
+            {(dia.data?.points?.length ?? 0) > 0 && (
+              <View
+                style={{
+                  padding: 16,
+                  backgroundColor: t.colors.surface,
+                  borderRadius: t.radius.lg,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  gap: 12,
+                }}
+                testID="o-dia"
+              >
+                <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+                  <Text
+                    variant="caption"
+                    color={t.colors.textSecondary}
+                    style={{ textTransform: "uppercase", letterSpacing: 1, fontSize: 11, fontWeight: "700" }}
+                  >
+                    {tr(lang, { en: "The day", pt: "O dia" })}
+                  </Text>
+                  <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
+                    {dia.data?.dataDate ?? ""}
+                  </Text>
+                </View>
+                <ODia
+                  pontos={dia.data!.points as any}
+                  minutosPorPonto={dia.data?.bucketMinutes ?? 5}
+                  ehHoje={dia.data?.dataDate === new Date().toISOString().slice(0, 10)}
+                />
+              </View>
+            )}
+
+            {(noite.data?.points?.length ?? 0) > 0 && (
+              <View
+                style={{
+                  padding: 16,
+                  backgroundColor: t.colors.surface,
+                  borderRadius: t.radius.lg,
+                  borderWidth: 1,
+                  borderColor: t.colors.border,
+                  gap: 12,
+                }}
+                testID="a-noite"
+              >
+                <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+                  <Text
+                    variant="caption"
+                    color={t.colors.textSecondary}
+                    style={{ textTransform: "uppercase", letterSpacing: 1, fontSize: 11, fontWeight: "700" }}
+                  >
+                    {tr(lang, { en: "The night", pt: "A noite" })}
+                  </Text>
+                  <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
+                    {noite.data?.dataDate ?? ""}
+                  </Text>
+                </View>
+                <ANoite trechos={noite.data!.points as any} />
+              </View>
             )}
 
             {/*
