@@ -81,3 +81,42 @@ verificada olhando o log de envio, não a tela.
 | 6.4 | fibrilação detectada | aparece sem depender de média |
 | 6.5 | o paciente | **não recebe nada** |
 | 6.6 | marcar como visto | guarda quem viu e quando |
+
+## T-7 — Tudo o que o relógio manda (acrescentada em 01/10/2026)
+
+**Nota de ambiente:** a conta do Bruno tem **duas ligações** — a braçadeira da
+clínica e o relógio. Elas partilham a conta, e foi isso que causou o `601` que
+esta tarefa conserta. Qualquer QA aqui tem de olhar as duas.
+
+| # | cenário | esperado |
+|---|---|---|
+| 7.1 | rodar a sincronização duas vezes seguidas | **nenhum `601`** no log; `failed: 0` |
+| 7.2 | o log depois de uma rodada | se houver tipo de medida sem nome, ele aparece com número e contagem |
+| 7.3 | forçar erro numa das três séries (ex.: campo inválido) | **as outras duas entram na mesma** — o log nomeia só a que falhou |
+| 7.4 | `WearableSeries` depois da rodada | um registo por dia e tipo, `pointCount` batendo com a série |
+| 7.5 | rodar duas vezes | o registo do mesmo dia é **substituído**, não duplicado |
+| 7.6 | pressão medida na braçadeira | chega ao sistema (é o que o `601` impedia) |
+
+## T-8 — A página de saúde
+
+| # | cenário | esperado |
+|---|---|---|
+| 8.1 | abrir a tela com dados do dia | o gráfico de 24h aparece, com as horas no eixo |
+| 8.2 | **hora sem leitura** | traço fino na base — **nunca** barra de altura zero |
+| 8.3 | **hora que ainda não chegou** (ver hoje de manhã) | espaço vazio, **visivelmente diferente** de 8.2 |
+| 8.4 | ver um dia passado | nenhuma hora marcada como futuro |
+| 8.5 | a legenda do gráfico do dia | diz que a barra é por hora e a leitura é de 5 em 5 minutos |
+| 8.6 | a noite | as fases aparecem ao longo do tempo, com hora de deitar e acordar |
+| 8.7 | os totais da noite | profundo/REM/leve/acordado somados, e **acordado conta** |
+| 8.8 | despertares | deitar e acordar **não** contam |
+| 8.9 | **nenhuma cor de nota** | nenhum valor em verde/âmbar por faixa de referência |
+| 8.10 | nenhuma palavra proibida | sem "normal", "alterado", "diagnóstico" |
+| 8.11 | paciente sem aparelho | tela que explica, não gráfico vazio |
+| 8.12 | EN e PT | os dois, inglês primeiro |
+| 8.13 | 90 dias carregados | a tela abre sem travar |
+
+**O que não dá para testar sem dado real:** se a Withings não devolver intraday
+ou hipnograma para a conta, 8.1 a 8.8 ficam **não executados** — e isso tem de
+ser dito como "não executado", não como "passou". A diferença entre *"a API não
+devolveu"* e *"o nosso plano não inclui"* só se vê no erro, e o erro deles para
+dado fora do plano é **ausência silenciosa**.

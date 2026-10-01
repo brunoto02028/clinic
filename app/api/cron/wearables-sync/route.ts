@@ -161,7 +161,24 @@ export async function POST(req: NextRequest) {
   let withData = 0;
   let failed = 0;
   let checked = 0;
-  const totals = { bloodPressure: 0, activityDays: 0, sleepNights: 0, vitalsDays: 0 };
+  /*
+   * **Os contadores das séries entram aqui também.**
+   *
+   * Eu acrescentei-os ao `ingestWithings` e esqueci-me deste objeto — e o
+   * resultado foi ficar cego exatamente na coisa que estava a tentar medir: a
+   * resposta dizia `activityDays` e `vitalsDays` e não dizia uma palavra sobre
+   * o intraday, o hipnograma ou os treinos. Um contador que não é devolvido é
+   * um contador que não existe.
+   */
+  const totals = {
+    bloodPressure: 0,
+    activityDays: 0,
+    sleepNights: 0,
+    vitalsDays: 0,
+    intradayDays: 0,
+    hypnogramNights: 0,
+    workouts: 0,
+  };
 
   // O scheduled task do Coolify corta em 300s. Parar por conta própria antes
   // disso deixa o trabalho pela metade **de propósito**, com a ordem acima
@@ -231,6 +248,9 @@ export async function POST(req: NextRequest) {
       totals.activityDays += counts.activityDays;
       totals.sleepNights += counts.sleepNights;
       totals.vitalsDays += counts.vitalsDays;
+      totals.intradayDays += counts.intradayDays ?? 0;
+      totals.hypnogramNights += counts.hypnogramNights ?? 0;
+      totals.workouts += counts.workouts ?? 0;
 
       const arrived =
         counts.bloodPressure +
@@ -316,7 +336,7 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(
-    `[cron/wearables-sync]${ranOut ? " (orcamento esgotado)" : ""} connections=${connections.length} synced=${synced} withData=${withData} failed=${failed} subscriptionsChecked=${checked} bp=${totals.bloodPressure}`
+    `[cron/wearables-sync]${ranOut ? " (orcamento esgotado)" : ""} connections=${connections.length} synced=${synced} withData=${withData} failed=${failed} subscriptionsChecked=${checked} bp=${totals.bloodPressure} intraday=${totals.intradayDays} hipnograma=${totals.hypnogramNights} treinos=${totals.workouts}`
   );
 
   return NextResponse.json({

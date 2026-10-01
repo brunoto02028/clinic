@@ -44,6 +44,8 @@ const UI = {
     deviceNone: "No clinic device connected yet.",
     deviceNoneHint: "Connect the clinic's Withings account once, and readings taken on it will file themselves.",
     connect: "Connect the clinic device",
+    reconnect: "Reconnect",
+    tokenDead: "The authorisation to this Withings account has expired. Nothing can be read until it is granted again — reconnecting is the only fix, and only the account owner can do it.",
     deviceOn: "Clinic device connected",
     deviceSilent: "Connected, but Withings has not confirmed it will send readings.",
     deviceQuiet: "Nothing has arrived from this device in {d} days.",
@@ -81,6 +83,8 @@ const UI = {
     deviceNone: "Nenhum aparelho da clínica conectado ainda.",
     deviceNoneHint: "Conecte a conta Withings da clínica uma vez, e as medidas feitas nele se arquivam sozinhas.",
     connect: "Conectar o aparelho da clínica",
+    reconnect: "Reconectar",
+    tokenDead: "A autorização para esta conta Withings expirou. Nada pode ser lido até ser dada de novo — reconectar é o único conserto, e só o dono da conta o pode fazer.",
     deviceOn: "Aparelho da clínica conectado",
     deviceSilent: "Conectado, mas a Withings não confirmou que vai enviar as leituras.",
     deviceQuiet: "Nada chega deste aparelho há {d} dias.",
@@ -308,12 +312,41 @@ export default function MeasurementInboxPage() {
             /* O erro que o cron apanhava e escrevia **só na consola** — que
                devolve as linhas do arranque e mais nada. Uma falha que só
                existe lá é uma falha que não existe. */
-            <p className="text-xs text-ba1-bad" data-testid="device-sync-error">
-              {ui.syncFailed} {device.lastSyncError}
-              {device.lastSyncErrorAt
-                ? ` (${new Date(device.lastSyncErrorAt).toLocaleString(isPt ? "pt-BR" : "en-GB")})`
-                : ""}
-            </p>
+            <div className="space-y-2" data-testid="device-sync-error-block">
+              <p className="text-xs text-ba1-bad" data-testid="device-sync-error">
+                {ui.syncFailed} {device.lastSyncError}
+                {device.lastSyncErrorAt
+                  ? ` (${new Date(device.lastSyncErrorAt).toLocaleString(isPt ? "pt-BR" : "en-GB")})`
+                  : ""}
+              </p>
+
+              {/*
+                * **O conserto, ao lado do defeito.**
+                *
+                * O botão de conectar só aparecia quando **não havia aparelho
+                * nenhum** (`device === null`). Um aparelho que existe e está
+                * partido não tinha caminho de reparo na interface: a tela
+                * dizia o que estava errado e não oferecia nada.
+                *
+                * Um token de refrescamento inválido não se resolve do nosso
+                * lado — não há como refrescar o que eles invalidaram. Só a
+                * autorização de novo, pelo dono da conta. Dizer isso é parte
+                * do conserto: sem a frase, a pessoa fica a tentar o botão de
+                * sincronizar, que vai falhar sempre.
+                */}
+              {/refresh_token|invalid_grant|unauthor/i.test(device.lastSyncError) && (
+                <div className="space-y-2" data-testid="device-token-dead">
+                  <p className="text-xs text-muted-foreground">{ui.tokenDead}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { window.location.href = "/api/wearables/connect/withings?clinic=1"; }}
+                  >
+                    {ui.reconnect}
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
           {device.delivery === "unchecked" && (
             <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400" data-testid="device-delivery-unchecked">
