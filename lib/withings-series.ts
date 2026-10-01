@@ -123,7 +123,18 @@ export async function hipnogramaDaNoite(
     access_token: accessToken,
     startdate: String(Math.floor(inicio.getTime() / 1000)),
     enddate: String(Math.floor(fim.getTime() / 1000)),
-    data_fields: "hr,rr,snoring,sdnn_1,rmssd,spo2",
+    /*
+     * **Sem `spo2`.** A primeira versão pedia-o e a API recusou a chamada
+     * inteira com `Invalid Params: incorrect value in data_fields [spo2]` —
+     * medido em produção, 01/10. O `spo2` existe no `getsummary`, não aqui, e
+     * a diferença não está onde se procura: o erro não diz "este campo é de
+     * outro endpoint", diz que o valor é incorreto.
+     *
+     * E o custo foi maior que a chamada perdida: um parâmetro errado derrubou
+     * o bloco inteiro das séries, então o intraday e os treinos também não
+     * entraram. Um campo a mais custou três funcionalidades.
+     */
+    data_fields: "hr,rr,snoring,sdnn_1,rmssd",
   });
 
   const trechos: TrechoDeSono[] = [];

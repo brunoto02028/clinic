@@ -190,6 +190,15 @@ export async function POST(req: NextRequest) {
     // e a ingestão falhava justamente nas conexões que este cron existe para
     // resgatar. Por isso a conexão é relida antes de seguir.
     if (precisaReconfirmar(c)) {
+      /*
+       * **A espera cobre esta chamada também.**
+       *
+       * A primeira versão deste conserto espaçava só a ingestão, e o `601`
+       * continuou a aparecer em produção — porque a confirmação de subscrição é
+       * outra chamada à mesma conta, e gastava a janela de dez segundos antes de
+       * a ingestão chegar. Espaçar metade das chamadas é não espaçar.
+       */
+      esperaTotalMs += await esperarAVezDaConta(ultimaChamadaPorConta, (c as any).providerUserId);
       const outcome = await subscribeAndRecord(c);
       if (outcome.answered) checked++;
       const fresh = await (prisma as any).wearableConnection.findUnique({

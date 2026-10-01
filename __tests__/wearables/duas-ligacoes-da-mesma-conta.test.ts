@@ -71,6 +71,24 @@ describe("a rodada espera entre ligações da mesma conta", () => {
     expect(src).toMatch(/ultimaChamadaPorConta/);
   });
 
+  it("**a espera cobre todas as chamadas da rodada, não só a ingestão**", () => {
+    // A primeira versão espaçava só `ingestWithings`, e o 601 continuou em
+    // produção: a confirmação de subscrição é outra chamada à mesma conta e
+    // gastava a janela antes de a ingestão chegar. Espaçar metade das chamadas
+    // é não espaçar.
+    const src = codigo();
+    const esperas = src.match(/esperarAVezDaConta\(/g) ?? [];
+    expect(esperas.length).toBeGreaterThanOrEqual(2);
+
+    const iSub = src.indexOf("await subscribeAndRecord(");
+    const iIng = src.indexOf("await ingestWithings(");
+    expect(iSub).toBeGreaterThan(0);
+    expect(iIng).toBeGreaterThan(0);
+    // Cada uma tem uma espera antes de si.
+    expect(src.lastIndexOf("esperarAVezDaConta(", iSub)).toBeGreaterThan(0);
+    expect(src.lastIndexOf("esperarAVezDaConta(", iIng)).toBeGreaterThan(0);
+  });
+
   it("a espera acontece **antes** da chamada, não depois", () => {
     const src = codigo();
     const iEspera = src.indexOf("esperarAVezDaConta(ultimaChamadaPorConta");

@@ -81,7 +81,7 @@ dentro, não.
 | T-N | nome | status |
 |---|---|---|
 | T-1 | [O inventário do que sai, e para onde](t-1-o-inventario.md) | **parcial** (01/10) — [inventário](inventario.md) feito e com guarda; falta o país real de processamento e quais chaves estão ligadas em produção |
-| T-2 | [A política diz o que o produto faz](t-2-a-politica-diz-o-que-o-produto-faz.md) | pendente |
+| T-2 | [A política diz o que o produto faz](t-2-a-politica-diz-o-que-o-produto-faz.md) | pendente — **escopo cresceu em 01/10**: monitorização contínua pelo relógio |
 | T-3 | [O paciente leva os dados dele](t-3-o-paciente-leva-os-dados.md) | pendente |
 
 A quarta tarefa que eu ia escrever — preencher as fichas da Apple e do Google —

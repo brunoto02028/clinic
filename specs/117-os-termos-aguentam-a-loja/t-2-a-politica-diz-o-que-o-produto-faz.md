@@ -79,3 +79,59 @@ política não a promete — ou sai junto com a T-3, ou não se menciona.
 - [ ] A versão subiu, e o registo de consentimento distingue as versões
 - [ ] A política não promete nada que o produto não faça
 - [ ] Um terceiro novo sem entrada na política derruba o teste
+
+
+---
+
+## O escopo cresceu: monitorização contínua (01/10/2026)
+
+O Bruno decidiu ligar o relógio de cada paciente ao sistema (099 T-7/T-8), e
+perguntou se a política aguenta. **Medi antes de responder**, procurando nos dois
+documentos legais por *Withings*, *wearable*, *heart rate*, *frequência
+cardíaca*, *sono*, *sleep*, *ECG* e *monitoriz*:
+
+**Zero ocorrências, em nenhum dos dois.**
+
+A política descreve uma clínica que marca consultas e guarda prontuário. O que
+passa a existir é outra coisa: **dado fisiológico contínuo**, recolhido do
+aparelho do paciente **todos os dias, sem ele fazer nada**, incluindo ECG e
+deteção de fibrilhação.
+
+### Porque isto não é "mais um processador na lista"
+
+| | consulta | monitorização contínua |
+|---|---|---|
+| quando o dado nasce | num ato do paciente | **sozinho, 1440 vezes por dia** |
+| o que é | o que ele contou e o terapeuta escreveu | **sinal fisiológico bruto** |
+| volume | linhas | **séries** |
+| apagar | apagar um registo | apagar o histórico e **parar a recolha** |
+
+E há um item que muda a categoria do produto: **ECG e fibrilhação atrial**. Isso
+é o terreno onde um texto mal escrito transforma "a BPR regista" em "a BPR
+deteta" — e essa frase é a diferença entre uma clínica e um dispositivo médico.
+É a mesma linha que a 105 T-6 e a 115 defenderam para a pressão.
+
+### O que a política tem de ganhar, além do que já estava escrito acima
+
+1. **Que existe recolha contínua, e de quê.** Nomeando: frequência cardíaca,
+   sono e as suas fases, oxigenação, temperatura, atividade, ECG, fibrilhação.
+   E **com que frequência** — "continuamente" é uma palavra, "a cada minuto" é
+   um facto.
+2. **Que é o paciente que liga, e que pode desligar.** Com o que acontece ao
+   desligar: para de recolher, e o que já veio fica ou sai — **é decisão a tomar,
+   não a descrever depois**.
+3. **Quanto tempo se guarda a série.** Uma série minuto a minuto não tem o mesmo
+   prazo que um recibo, e guardar "para sempre" é uma escolha que precisa de
+   razão escrita.
+4. **Quem vê.** O terapeuta vê; e dizer isso é o que separa "monitorização" de
+   "vigilância".
+5. **Que a Withings é a fonte**, e que o dado passa por ela — que é facto, e é
+   um processador a nomear como os outros.
+6. **Que nós não diagnosticamos**, aqui com todas as letras: registamos o que o
+   aparelho mediu e o que o fabricante dele concluiu.
+
+### O que isto não muda
+
+Continua a ser verdade que há **dois documentos que se contradizem** e que o
+**OpenRouter não está em nenhum**. A monitorização acrescenta escopo; não
+substitui a reconciliação que esta tarefa já tinha.
