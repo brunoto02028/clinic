@@ -66,10 +66,28 @@ export function ODia({
   }
 
   const horas = horasDoDia(pontos, { ehHoje, horaAgora: new Date().getHours() });
+
+  /*
+   * **A escala sai do que é desenhado, não do que foi medido.**
+   *
+   * As barras são médias por hora; o mínimo e o máximo vinham dos pontos de
+   * cinco minutos. Uma média horária nunca alcança o extremo de um ponto
+   * isolado, então todas as barras ficavam apertadas no meio da altura e o
+   * gráfico subestimava a variação do dia — um erro silencioso, porque o
+   * desenho continua plausível.
+   *
+   * A frase por baixo continua a citar os extremos **medidos**, que é a
+   * informação verdadeira sobre o dia; a altura é que passa a ser coerente
+   * com o que está desenhado.
+   */
+  const mediasHorarias = horas.map((h) => h.hr).filter((x): x is number => x !== null);
+  const maxBarra = mediasHorarias.length ? Math.max(...mediasHorarias) : 0;
+  const minBarra = mediasHorarias.length ? Math.min(...mediasHorarias) : 0;
+  const faixa = maxBarra - minBarra || 1;
+
   const hrs = pontos.map((p) => p.hr).filter((x): x is number => x !== null);
   const maxHr = hrs.length ? Math.max(...hrs) : 0;
   const minHr = hrs.length ? Math.min(...hrs) : 0;
-  const faixa = maxHr - minHr || 1;
 
   const passosTotal = pontos.reduce((s, p) => s + (p.steps ?? 0), 0);
 
@@ -90,7 +108,7 @@ export function ODia({
               />
             );
           }
-          const altura = 8 + ((h.hr - minHr) / faixa) * 46;
+          const altura = 8 + ((h.hr - minBarra) / faixa) * 46;
           return (
             <View
               key={h.hora}

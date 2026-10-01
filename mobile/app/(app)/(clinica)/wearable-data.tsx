@@ -13,6 +13,7 @@ import { PlanGate } from "@/components/PlanGate";
 import { LoadFailure } from "@/components/LoadFailure";
 import { Tendencia, PontoDaSerie } from "@/components/Tendencia";
 import { ODia, ANoite } from "@/components/ODiaEANoite";
+import { diaLocal } from "@/lib/dia-e-noite-calculo";
 import { fetchSerie } from "@/api/wearables";
 
 function MetricCard({ title, metrics }: { title: string; metrics: { label: string; value: string; color?: string }[] }) {
@@ -180,7 +181,16 @@ function WearableDataScreen() {
     for (let i = janela - 1; i >= 0; i--) {
       const dia = new Date(hoje);
       dia.setDate(dia.getDate() - i);
-      const chave = dia.toISOString().slice(0, 10);
+      /*
+       * **Data local, não `toISOString()`.**
+       *
+       * O `toISOString` devolve UTC, e a ingestão grava o `dataDate` na data
+       * **local** — o dia que a pessoa viveu. No horário de verão britânico os
+       * dois divergem entre a meia-noite e a uma da manhã, e a série passaria a
+       * procurar o dia anterior: buraco na tela com dado no banco, e nada a
+       * dizer porquê.
+       */
+      const chave = diaLocal(dia);
       pontos.push({ dia: chave, valor: porDia.has(chave) ? (porDia.get(chave) as number) : null });
     }
     return pontos;
@@ -366,7 +376,7 @@ function WearableDataScreen() {
                 <ODia
                   pontos={dia.data!.points as any}
                   minutosPorPonto={dia.data?.bucketMinutes ?? 5}
-                  ehHoje={dia.data?.dataDate === new Date().toISOString().slice(0, 10)}
+                  ehHoje={dia.data?.dataDate === diaLocal()}
                 />
               </View>
             )}

@@ -134,3 +134,82 @@ describe("os totais da noite", () => {
     expect(despertares([{ inicio: 0, fim: 10, fase: 0 }, { inicio: 10, fim: 20, fase: 1 }])).toBe(0);
   });
 });
+
+describe("a data é a local, não a UTC", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { diaLocal } = require("../../mobile/src/lib/dia-e-noite-calculo");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require("fs");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require("path");
+
+  const TELA = path.join(
+    __dirname, "..", "..", "mobile", "app", "(app)", "(clinica)", "wearable-data.tsx"
+  );
+
+  function semComentarios(p: string): string {
+    return fs
+      .readFileSync(p, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l: string) => {
+        const s = l.trim();
+        return !s.startsWith("//") && !s.startsWith("*");
+      })
+      .join("\n");
+  }
+
+  it("devolve `YYYY-MM-DD`", () => {
+    expect(diaLocal(new Date(2026, 9, 5, 0, 30))).toBe("2026-10-05");
+    expect(diaLocal(new Date(2026, 0, 1, 23, 59))).toBe("2026-01-01");
+  });
+
+  it("**usa os campos locais, não os UTC**", () => {
+    // Este teste é de leitura de código de propósito: o jest corre com
+    // `TZ=UTC`, e sob UTC as duas versões dão o mesmo resultado. Um teste de
+    // comportamento aqui passaria verde com o defeito dentro — que é
+    // exatamente o que o fuso de Londres esconde.
+    const src = fs.readFileSync(
+      path.join(__dirname, "..", "..", "mobile", "src", "lib", "dia-e-noite-calculo.ts"),
+      "utf8"
+    );
+    const i = src.indexOf("export function diaLocal");
+    const corpo = src.slice(i, i + 400);
+    expect(corpo).toContain("getFullYear");
+    expect(corpo).not.toContain("getUTC");
+    expect(corpo).not.toContain("toISOString");
+  });
+
+  it("**a tela não monta data com `toISOString`**", () => {
+    // Eram três sítios. Um auxiliar com nome evita o quarto.
+    expect(semComentarios(TELA)).not.toMatch(/toISOString\(\)\.slice\(0,\s*10\)/);
+  });
+});
+
+describe("a escala do gráfico do dia", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require("fs");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require("path");
+  const DESENHO = path.join(
+    __dirname, "..", "..", "mobile", "src", "components", "ODiaEANoite.tsx"
+  );
+
+  it("**a altura da barra sai das médias horárias, não dos pontos crus**", () => {
+    // As barras são médias por hora. Escalá-las pelo mínimo e máximo dos pontos
+    // de cinco minutos aperta-as todas no meio da altura, e o gráfico
+    // subestima a variação do dia — um erro silencioso, porque o desenho
+    // continua plausível.
+    const src = fs.readFileSync(DESENHO, "utf8");
+    expect(src).toMatch(/const altura = [^\n]*minBarra/);
+    expect(src).not.toMatch(/const altura = [^\n]*\bminHr\b/);
+  });
+
+  it("e a frase continua a citar os extremos medidos", () => {
+    // A altura passa a ser coerente com o desenho; a frase continua a dizer a
+    // verdade sobre o dia, que é o extremo que o aparelho mediu.
+    const src = fs.readFileSync(DESENHO, "utf8");
+    expect(src).toMatch(/Math\.round\(minHr\)/);
+    expect(src).toMatch(/Math\.round\(maxHr\)/);
+  });
+});

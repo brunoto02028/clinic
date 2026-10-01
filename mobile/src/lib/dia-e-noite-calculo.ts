@@ -89,3 +89,19 @@ export function despertares(trechos: TrechoDaNoite[]): number {
   if (trechos.length <= 2) return 0;
   return trechos.slice(1, -1).filter((t) => t.fase === 0).length;
 }
+
+/**
+ * `YYYY-MM-DD` na data **local** — o dia que a pessoa viveu.
+ *
+ * `toISOString().slice(0,10)` devolve UTC, e a ingestão grava a data local.
+ * Entre a meia-noite e a uma da manhã do horário de verão britânico os dois
+ * divergem, e a tela passa a procurar o dia anterior: buraco no ecrã com dado
+ * no banco, e nada a dizer porquê.
+ *
+ * Três sítios usavam `toISOString` nesta tela. Um auxiliar com nome evita o
+ * quarto.
+ */
+export function diaLocal(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
