@@ -1,6 +1,6 @@
 # T-1: O inventário do que sai, e para onde
 
-**Status:** pendente
+**Status:** parcial — inventário e guarda feitos (01/10); falta o país real de processamento e quais chaves estão ligadas em produção
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -52,3 +52,37 @@ opostas.
 - [ ] Os de categoria especial estão marcados
 - [ ] As chaves não usadas estão identificadas
 - [ ] Um terceiro novo sem declaração derruba o teste
+
+---
+
+## 01/10/2026 — o que ficou feito, e o que não
+
+O rastreio está em [`inventario.md`](inventario.md), com arquivo e linha de cada
+chamada. O que ele produziu de durável:
+
+- **`lib/terceiros.ts`** — 32 terceiros declarados, por 37 hosts: o que cada um
+  recebe, se é categoria especial, a sede e o estado (em uso / sem credencial /
+  só link). **15 recebem categoria especial.** É daqui que a T-2 escreve a
+  política.
+- **`__tests__/privacidade/nenhum-terceiro-indeclarado.test.ts`** — varre `app/`
+  e `lib/` e cai quando aparece host não declarado, nomeando arquivo e linha.
+  Cai também no inverso: declaração órfã que ninguém mais alcança.
+
+### Critérios de aceite
+
+- [x] Cada terceiro tem o que recebe e de que rota
+- [x] Os de categoria especial estão marcados
+- [x] Um terceiro novo sem declaração derruba o teste — **provado por mutação**
+- [ ] **O país de processamento.** O que está declarado é a **sede conhecida**,
+      que não é a mesma coisa. Onde o dado é tratado está no DPA de cada um e
+      tem de ser lido — e para a China a diferença é decisiva, porque não há
+      decisão de adequação do Reino Unido.
+- [ ] **Quais chaves estão ligadas em produção.** Está na tabela `systemConfig`
+      do banco, não no repo. O estado "em uso" aqui significa *o código chama e
+      há caminho para a chave*, não *medi que a chave existe em produção*. A
+      diferença importa: um fornecedor sem chave não recebe nada, e declarar que
+      recebe é tão errado quanto o contrário.
+
+As duas que faltam não se fecham lendo código — uma é leitura de contrato, a
+outra é leitura do banco de produção. Ficam para o Bruno decidir se fecham antes
+da T-2 ou junto com ela.

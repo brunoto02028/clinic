@@ -1,5 +1,5 @@
 /**
- * Ensemble Biomechanical Analysis (GDPR-compliant — no Minimax for patient data)
+ * Ensemble Biomechanical Analysis
  * Combines Groq + Claude Opus + Gemini for maximum precision
  * 
  * Strategy:

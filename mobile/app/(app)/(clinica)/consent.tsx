@@ -20,10 +20,23 @@ import { useTheme } from "@/theme/useTheme";
  * analysis and reports". That was wrong in the one direction a consent notice
  * must never be wrong: it named a provider the clinic's own policy forbids for
  * patient data ("NEVER send patient data to Minimax — Chinese jurisdiction, UK
- * GDPR risk"). What actually happens, with AI_STRICT_MODE on, is that clinical
- * text and images go to Anthropic via OpenRouter and the call fails rather than
- * falling back; recordings are transcribed by Groq with Google as fallback.
- * If AI_STRICT_MODE is ever turned off, this sentence stops being true.
+ * GDPR risk").
+ *
+ * **The warning this comment used to end with came true.** It said that the
+ * no-fallback guarantee held "with AI_STRICT_MODE on", and that the sentence
+ * stopped being true if the flag was ever turned off. On 01/10/2026 the
+ * production environment was read: `AI_STRICT_MODE` **is not set there at all**
+ * — it exists only in the local `.env`. So the guarantee never held in
+ * production, and every fallback chain ran, Minimax included.
+ *
+ * Minimax was removed from the code the same day (activity 117), which settles
+ * this one by deletion rather than by a flag. The chains are now OpenRouter →
+ * Groq → Gemini for text and OpenRouter → Gemini for images.
+ *
+ * The lesson is the general one, and it outlives Minimax: **a promise to a
+ * patient must not depend on an environment variable that nobody checked.**
+ * What a consent notice says has to be true of the deployment the patient is
+ * using, not of the developer's machine.
  *
  * These are the CLINIC's terms. A studio's students are not clinic patients and
  * never reach this screen — the clinic module is not theirs.

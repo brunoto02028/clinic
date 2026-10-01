@@ -23,25 +23,41 @@ final é de quem assina por ele.
 | sem promessa de diagnóstico | o trabalho de 30/09 (105 T-6, 115) |
 | sem medição por câmera | 115, encerrada em 30/09 |
 
-## O achado: a política nomeia dois, e o produto usa dez
+## O achado: a política nomeia dois, e o produto alcança trinta e dois
 
-Levantado do próprio código — `process.env.*` chamado em `app/` e `lib/`:
+**Corrigido em 01/10/2026 pelo rastreio.** Esta seção dizia "dez empresas",
+levantadas de `process.env.*`. Estava errada, e o método é que estava errado —
+o levantamento verificado, chamada a chamada, está em
+[`inventario.md`](inventario.md), e o registo que o código mantém honesto está
+em `lib/terceiros.ts`.
 
-| terceiro | o que recebe | na política? |
+O que mudou:
+
+| | antes | medido |
 |---|---|---|
-| **Groq** | **áudio/texto da consulta** (`clinical-scribe/transcribe`) | ❌ |
-| **AssemblyAI** | **áudio ambiente da consulta** (`ambient-recording`) | ❌ |
-| **Daily** | **vídeo da teleconsulta** | ❌ |
-| **Vapi** | **chamadas de voz com o paciente** | ❌ |
-| **Withings** | **dado de saúde** — pressão, sono, atividade | ❌ |
-| **ElevenLabs** | voz sintetizada | ❌ |
-| **MiniMax** | provedor de IA | ❌ |
-| **Resend** | e-mail: nome, consulta, leitura de pressão | ❌ |
-| **Anthropic** | IA clínica (`lib/claude.ts`) | ✅ |
-| **Stripe** | pagamento | ✅ |
+| terceiros alcançados | 10 | **31 declarados**, por 36 hosts |
+| recebem dado de paciente | 8 | **15 hoje**, mais 2 quando ganharem credencial |
+| recebem **categoria especial** | 4 | **14** (12 em uso) |
+| na política | 2 | 2 |
 
-**Oito em dez não estão declarados** — e os quatro primeiros recebem dado de
-saúde ou gravação de consulta, que no Reino Unido é categoria especial.
+Os três erros de método, que valem mais que a contagem:
+
+1. **`process.env` não é a lista.** `getConfigValue()` lê a tabela
+   `systemConfig` do **banco** primeiro (`lib/system-config.ts:79`). Oito
+   fornecedores entram por aí e não aparecem no `.env` — podem ser ligados pelo
+   painel, sem tocar no código.
+2. **O OpenRouter não tem "zero chamadas"** — é o **primeiro da fila** do texto
+   clínico e das fotos do paciente.
+3. **A MiniMax não tinha sido removida.** Saíra de uma rota, com comentário de
+   GDPR, e continuava segunda na fila da visão: **a foto do corpo de uma
+   paciente ia para a China** quando o OpenRouter falhava — contra a política
+   escrita no próprio ecrã de consentimento, e com a proteção
+   (`AI_STRICT_MODE`) **desligada em produção**. **Removida do código em
+   01/10**, a pedido do Bruno, com teste que a mantém fora.
+
+E a varredura por `fetch` achou dois que nenhum dos métodos anteriores veria: o
+**push da Expo** (que carrega o título e o corpo da notificação — a frase que
+diz ao paciente o que aconteceu) e o **Telegram**.
 
 Isto é, ao mesmo tempo:
 
@@ -59,7 +75,7 @@ dentro, não.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | [O inventário do que sai, e para onde](t-1-o-inventario.md) | pendente |
+| T-1 | [O inventário do que sai, e para onde](t-1-o-inventario.md) | **parcial** (01/10) — [inventário](inventario.md) feito e com guarda; falta o país real de processamento e quais chaves estão ligadas em produção |
 | T-2 | [A política diz o que o produto faz](t-2-a-politica-diz-o-que-o-produto-faz.md) | pendente |
 | T-3 | [O paciente leva os dados dele](t-3-o-paciente-leva-os-dados.md) | pendente |
 

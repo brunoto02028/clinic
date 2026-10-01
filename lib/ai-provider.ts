@@ -1,4 +1,5 @@
-// Unified AI Provider — Minimax M3 (primary), Groq llama-3.3-70b (secondary), Gemini 2.5-flash (fallback)
+// Unified AI Provider — OpenRouter/Claude Sonnet 5 (primary), Groq (secondary), Gemini (fallback).
+// A MiniMax saiu em 01/10/2026: ver specs/117-os-termos-aguentam-a-loja/inventario.md
 // Claude Sonnet 5 via OpenRouter for high-quality clinical/study/marketing tasks (lib/claude.ts)
 // All AI calls in the system should go through this layer.
 
@@ -12,7 +13,7 @@ export const CLAUDE_SONNET_MODEL = 'claude-sonnet';
 
 // ─── Types ───
 
-export type AIProvider = "groq" | "minimax" | "gemini" | "openai";
+export type AIProvider = "groq" | "gemini" | "openai";
 
 export interface AICallOptions {
   provider?: AIProvider;
@@ -48,9 +49,6 @@ export interface AIStreamOptions {
 
 // ─── Config helpers ───
 
-async function getMinimaxKey(): Promise<string | null> {
-  return getConfigValue("MINIMAX_API_KEY");
-}
 
 async function getGeminiKey(): Promise<string | null> {
   return getConfigValue("GEMINI_API_KEY");
@@ -158,119 +156,6 @@ async function callGroqChat(
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || "";
-}
-
-// ─── Minimax AI calls ───
-
-async function callMinimaxDirect(
-  prompt: string,
-  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
-): Promise<string> {
-  const apiKey = await getMinimaxKey();
-  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
-  
-  const url = "https://api.minimaxi.chat/v1/chat/completions";
-  
-  const messages: any[] = [];
-  if (opts.systemPrompt) {
-    messages.push({ role: "system", content: opts.systemPrompt });
-  }
-  messages.push({ role: "user", content: prompt });
-  
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "MiniMax-M3",
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: opts.maxTokens ?? 4096,
-    }),
-  });
-  
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Minimax API error (${res.status}): ${err}`);
-  }
-  
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content;
-  if (!raw) throw new Error("No response from Minimax");
-  // Strip <think>...</think> reasoning blocks (MiniMax-M3 chain-of-thought)
-  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-}
-
-// ─── Minimax Vision (image analysis via M3 multimodal) ───
-
-async function callMinimaxVision(
-  images: Array<{ url: string; base64?: string; mimeType?: string }>,
-  prompt: string,
-  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
-): Promise<string> {
-  const apiKey = await getMinimaxKey();
-  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
-
-  const url = "https://api.minimaxi.chat/v1/chat/completions";
-
-  // Build content array with images + text
-  const contentParts: any[] = [];
-
-  for (const img of images) {
-    if (img.base64) {
-      // Send as data URI
-      const mime = img.mimeType || "image/jpeg";
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: `data:${mime};base64,${img.base64}` },
-      });
-    } else if (img.url.startsWith("data:image")) {
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: img.url },
-      });
-    } else if (img.url.startsWith("http")) {
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: img.url },
-      });
-    }
-  }
-
-  contentParts.push({ type: "text", text: prompt });
-
-  const messages: any[] = [];
-  if (opts.systemPrompt) {
-    messages.push({ role: "system", content: opts.systemPrompt });
-  }
-  messages.push({ role: "user", content: contentParts });
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "MiniMax-M3",
-      thinking: { type: "disabled" },
-      messages,
-      max_completion_tokens: opts.maxTokens ?? 8192,
-      temperature: opts.temperature ?? 0.3,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Minimax vision error (${res.status}): ${err}`);
-  }
-
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content;
-  if (!raw) throw new Error("No response from Minimax vision");
-  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 // ─── Gemini direct call (text generation) ───
@@ -509,7 +394,7 @@ async function analyzeImageGemini(
 /**
  * Generate text using AI.
  * OpenRouter (Claude Sonnet 5) is first when OPENROUTER_API_KEY is configured.
- * Fallback chain: Minimax M3 → Groq → Gemini
+ * Fallback chain: OpenRouter → Groq → Gemini
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
   const callOpts = {
@@ -534,15 +419,6 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     }
   }
 
-  // 1. Try Minimax M3 (primary fallback)
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
-    try {
-      return await callMinimaxDirect(prompt, callOpts);
-    } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 failed, trying Groq:", err.message);
-    }
-  }
 
   // 2. Try Groq (fast fallback)
   const groqKey = await getGroqKey();
@@ -576,7 +452,7 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
 
 /**
  * Analyze an image using AI vision capabilities.
- * Priority chain: OpenRouter vision (primary) → Minimax M3 → Gemini (fallback)
+ * Priority chain: OpenRouter vision (primary) → Gemini (fallback)
  * In AI_STRICT_MODE: only OpenRouter is used; fails hard if unavailable.
  */
 export async function analyzeImage(
@@ -603,19 +479,6 @@ export async function analyzeImage(
     }
   }
 
-  // 1. Try Minimax M3 vision
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
-    try {
-      return await callMinimaxVision(
-        [{ url: imageUrl }],
-        prompt,
-        callOpts
-      );
-    } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 vision failed, falling back to Gemini:", err.message);
-    }
-  }
 
   // 2. Fallback to Gemini
   return analyzeImageGemini(imageUrl, prompt, callOpts);
@@ -623,7 +486,7 @@ export async function analyzeImage(
 
 /**
  * Analyze multiple images using AI vision capabilities.
- * Priority chain: OpenRouter vision (primary) → Minimax M3 → Gemini (fallback, first image only)
+ * Priority chain: OpenRouter vision (primary) → Gemini (fallback, first image only)
  * In AI_STRICT_MODE: only OpenRouter is used; fails hard if unavailable.
  */
 export async function analyzeMultipleImages(
@@ -650,15 +513,6 @@ export async function analyzeMultipleImages(
     }
   }
 
-  // 1. Try Minimax M3 — supports multiple images natively
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
-    try {
-      return await callMinimaxVision(images, prompt, callOpts);
-    } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 multi-vision failed, falling back to Gemini:", err.message);
-    }
-  }
 
   // 2. Fallback to Gemini (use first image)
   const firstImage = images[0];
@@ -669,7 +523,7 @@ export async function analyzeMultipleImages(
 }
 
 /**
- * Stream AI response. Uses the callAI chain (Groq → Minimax → Gemini).
+ * Stream AI response. Uses the callAI chain (OpenRouter → Groq → Gemini).
  */
 export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<ReadableStream<Uint8Array>> {
   const text = await callAI(prompt, {
@@ -688,7 +542,7 @@ export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<
 /**
  * Multi-turn chat using AI.
  * OpenRouter (Claude Sonnet 5) is first when OPENROUTER_API_KEY is configured.
- * Fallback chain: Minimax M3 → Groq → Gemini
+ * Fallback chain: OpenRouter → Groq → Gemini
  */
 export async function callAIChat(
   messages: Array<{ role: string; content: string }>,
@@ -721,15 +575,6 @@ export async function callAIChat(
     }
   }
 
-  // 1. Try Minimax M3 first (primary fallback)
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
-    try {
-      return await callMinimaxChat(messages, chatOpts);
-    } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 chat failed, trying Groq:", err.message);
-    }
-  }
 
   // 2. Try Groq (fast fallback)
   const groqKey = await getGroqKey();
@@ -743,82 +588,6 @@ export async function callAIChat(
 
   // 3. Fallback to Gemini
   return callGeminiChat(messages, opts);
-}
-
-// ─── Minimax Chat ───
-
-async function callMinimaxChat(
-  messages: Array<{ role: string; content: string }>,
-  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
-): Promise<string> {
-  const apiKey = await getMinimaxKey();
-  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
-
-  const apiMessages: any[] = [];
-  if (opts.systemPrompt) {
-    apiMessages.push({ role: "system", content: opts.systemPrompt });
-  }
-  for (const m of messages) {
-    if (m.role === "system" && opts.systemPrompt) continue;
-    apiMessages.push({
-      role: m.role === "model" ? "assistant" : m.role,
-      content: m.content,
-    });
-  }
-
-  const res = await fetch("https://api.minimaxi.chat/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "MiniMax-M3",
-      messages: apiMessages,
-      temperature: opts.temperature ?? 0.7,
-      max_tokens: opts.maxTokens ?? 4096,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Minimax chat error (${res.status}): ${err}`);
-  }
-
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content || "";
-  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-}
-
-// ─── Minimax Audio Transcription ───
-
-export async function transcribeAudioMinimax(
-  audioBuffer: Buffer,
-  mimeType: string,
-  language = "en"
-): Promise<string> {
-  const apiKey = await getMinimaxKey();
-  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
-
-  const formData = new FormData();
-  const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
-  formData.append("file", blob, `audio.${mimeType.split("/")[1] || "webm"}`);
-  formData.append("model", "speech-01-hd");
-  if (language) formData.append("language", language);
-
-  const res = await fetch("https://api.minimaxi.chat/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Minimax transcription error (${res.status}): ${err}`);
-  }
-
-  const data = await res.json();
-  return data.text?.trim() || "";
 }
 
 // ─── Gemini Chat ───
@@ -915,7 +684,6 @@ export function parseAIJson<T = any>(raw: string): T {
 export async function getActiveProviderInfo(): Promise<{
   provider: string;
   hasGroq: boolean;
-  hasMinimax: boolean;
   hasGemini: boolean;
   hasOpenAI: boolean;
   defaultProvider: string;
@@ -923,29 +691,25 @@ export async function getActiveProviderInfo(): Promise<{
 }> {
   const openRouterKey = await getOpenRouterKey();
   const groqKey = await getGroqKey();
-  const minimaxKey = await getMinimaxKey();
   const geminiKey = await getGeminiKey();
   const openaiKey = await getOpenAIKey();
 
   let provider = "none";
-  if (minimaxKey) provider = "minimax";
-  else if (groqKey) provider = "groq";
+  if (groqKey) provider = "groq";
   else if (geminiKey) provider = "gemini";
   else if (openaiKey) provider = "openai";
 
   const chain: string[] = [];
   if (openRouterKey) chain.push("openrouter (claude-sonnet-5 → gemini-2.5-flash)");
-  if (minimaxKey) chain.push("minimax (MiniMax-M3)");
   if (groqKey) chain.push("groq");
   if (geminiKey) chain.push("gemini");
 
   return {
     provider,
     hasGroq: !!groqKey,
-    hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
     hasOpenAI: !!openaiKey,
-    defaultProvider: openRouterKey ? "openrouter" : "minimax",
+    defaultProvider: openRouterKey ? "openrouter" : "groq",
     fallbackChain: chain,
   };
 }
