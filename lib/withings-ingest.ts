@@ -141,6 +141,54 @@ export async function saveBloodPressure(
   return saved;
 }
 
+/**
+ * Quantos dias de minuto a minuto se busca por sincronização.
+ *
+ * **Três, e não trinta.** A API devolve 24 horas por chamada; trinta dias são
+ * trinta chamadas por pessoa por rodada, e o limite deles é por minuto. O
+ * período longo é servido pelo ponto diário, que já está lá — isto existe para
+ * a pergunta *"o que aconteceu comigo hoje"*.
+ */
+const DIAS_DE_INTRADAY = 3;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** `YYYY-MM-DD` no fuso local, que é o dia que a pessoa viveu. */
+function ymd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Guarda a série de um dia, substituindo a que lá estiver.
+ *
+ * Substitui em vez de acumular: a série de um dia é a melhor versão que a
+ * Withings tem dele, e um dia que ainda está a decorrer melhora a cada
+ * sincronização. Juntar as versões duplicaria os minutos.
+ */
+async function upsertSeries(
+  userId: string,
+  connectionId: string,
+  kind: string,
+  dataDate: string,
+  pontos: unknown[]
+) {
+  const dados = {
+    userId,
+    connectionId,
+    kind,
+    dataDate,
+    provider: "WITHINGS",
+    series: JSON.stringify(pontos),
+    pointCount: pontos.length,
+  };
+  await (prisma as any).wearableSeries.upsert({
+    where: { connectionId_dataDate_kind: { connectionId, dataDate, kind } },
+    create: dados,
+    update: { series: dados.series, pointCount: dados.pointCount },
+  });
+}
+
 async function upsertPoint(
   userId: string,
   connectionId: string,
@@ -198,11 +246,11 @@ function newestMoment(
 export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
-  opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals"> } = {}
-): Promise<{ bloodPressure: number; bloodPressureRead: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number }> {
+  opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series"> } = {}
+): Promise<{ bloodPressure: number; bloodPressureRead: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number; intradayDays: number; hypnogramNights: number; workouts: number }> {
   const token = await withingsAccessToken(connection);
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals"];
+  const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals", "series"];
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
 
   // A clinic device measures patients, not its owner: steps and sleep from it
@@ -235,7 +283,7 @@ export async function ingestWithings(
     contaTambemEhDaClinica: await contaTambemEhDaClinica(connection),
   });
 
-  const wanted: Array<"bp" | "activity" | "sleep" | "vitals"> = forClinic
+  const wanted: Array<"bp" | "activity" | "sleep" | "vitals" | "series"> = forClinic
     ? ["bp"]
     : pulaPressaoDaClinica
       ? kinds.filter((k) => k !== "bp")
@@ -285,6 +333,61 @@ export async function ingestWithings(
   // with SpO2 and no temperature does not overwrite anything with a zero.
   let vitalsDays = 0;
   let ecgRecords = 0;
+  /**
+   * As séries do dia e da noite (099 T-7).
+   *
+   * **A janela do intraday é curta de propósito.** A API devolve 24 horas por
+   * chamada: noventa dias seriam noventa chamadas por pessoa, e o limite deles
+   * é por minuto. O período longo continua a ser servido pelo ponto diário; o
+   * minuto a minuto existe para a pergunta *"o que aconteceu comigo hoje"*, e
+   * essa pergunta não é sobre Abril.
+   */
+  let intradayDays = 0;
+  let hypnogramNights = 0;
+  let workouts = 0;
+
+  if (wanted.includes("series")) {
+    try {
+      const { intradayDoDia, hipnogramaDaNoite, treinosDoPeriodo } = await import("@/lib/withings-series");
+
+      const fim = opts.until ?? new Date();
+      const diasDeIntraday = Math.min(DIAS_DE_INTRADAY, Math.ceil((fim.getTime() - since.getTime()) / DAY_MS) || 1);
+
+      for (let i = 0; i < diasDeIntraday; i++) {
+        const dia = new Date(fim);
+        dia.setDate(dia.getDate() - i);
+        const inicioDoDia = new Date(dia);
+        inicioDoDia.setHours(0, 0, 0, 0);
+        const fimDoDia = new Date(dia);
+        fimDoDia.setHours(23, 59, 59, 999);
+
+        const pontos = await intradayDoDia(token, inicioDoDia, fimDoDia);
+        if (pontos.length === 0) continue;
+        await upsertSeries(userId, connection.id, "INTRADAY", ymd(inicioDoDia), pontos);
+        intradayDays++;
+
+        const noite = await hipnogramaDaNoite(token, inicioDoDia, fimDoDia);
+        if (noite.length > 0) {
+          await upsertSeries(userId, connection.id, "HYPNOGRAM", ymd(inicioDoDia), noite);
+          hypnogramNights++;
+        }
+      }
+
+      const treinos = await treinosDoPeriodo(token, since, fim);
+      workouts = treinos.length;
+      if (treinos.length > 0) {
+        /*
+         * Os treinos são poucos e atravessam dias; guardam-se como uma série do
+         * período, na data do fim, em vez de um registo por treino. Quando
+         * forem muitos, a tabela certa é outra.
+         */
+        await upsertSeries(userId, connection.id, "WORKOUTS", ymd(fim), treinos);
+      }
+    } catch (e: any) {
+      console.warn(`[withings-ingest] séries falharam: ${e?.message ?? e}`);
+    }
+  }
+
   if (wanted.includes("vitals")) {
     try {
       const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
@@ -394,6 +497,9 @@ export async function ingestWithings(
     activityDays: activity.length,
     sleepNights: sleep.length,
     vitalsDays,
+    intradayDays,
+    hypnogramNights,
+    workouts,
     ecgRecords,
   };
 }

@@ -1040,6 +1040,7 @@ model User {
   biohackingProtocols        PatientBiohackingProtocol[] @relation("PatientBiohackingProtocols")
   wearableConnections        WearableConnection[]        @relation("UserWearableConnections")
   wearableDataPoints         WearableDataPoint[]         @relation("UserWearableData")
+  wearableSeries             WearableSeries[]            @relation("UserWearableSeries")
 
   // Study Assistant (AI tutor for coursework)
   studyProjects StudyProject[] @relation("StudyProjectOwner")
@@ -7444,6 +7445,7 @@ model WearableConnection {
   deviceLabel    String? // "BPM Connect — reception"
 
   dataPoints             WearableDataPoint[]
+  series                 WearableSeries[]
   measurementSessions    ClinicMeasurementSession[]
   unassignedMeasurements UnassignedMeasurement[]
 
@@ -7690,6 +7692,52 @@ model WearableDataPoint {
   @@index([userId])
   @@index([dataDate])
   @@index([connectionId])
+}
+
+/**
+ * A série de um dia — minuto a minuto, ou fase a fase (099 T-7).
+ *
+ * O `WearableDataPoint` acima é **um ponto por dia**: o total de passos, a
+ * média da frequência. Serve para a tendência de 90 dias e não serve para a
+ * pergunta "o que aconteceu comigo hoje", que precisa da hora.
+ *
+ * ## Porque a série vive num campo, e não em mil linhas
+ *
+ * O intraday da Withings devolve até **1440 pontos por dia** por pessoa. Uma
+ * linha por ponto são 129 mil linhas por paciente por trimestre, e a consulta
+ * que a tela faz — *"a série de hoje"* — passaria a varrer um índice para
+ * remontar o que já veio junto. Aqui o dia é **um registo**, e a tela lê um.
+ *
+ * Isto é escolha, não preguiça: a série não é consultada por valor ("todos os
+ * minutos acima de 120 bpm"), é consultada por dia e desenhada inteira. Se um
+ * dia for preciso consultar por valor, a tabela certa é outra, e esta continua
+ * a ser a fonte para a reconstruir.
+ */
+model WearableSeries {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation("UserWearableSeries", fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   WearableConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  /// `YYYY-MM-DD` — o dia a que a série pertence.
+  dataDate String
+  /// `INTRADAY` (passos e frequência ao longo do dia) ou `HYPNOGRAM` (as fases da noite).
+  kind     String
+  provider String
+
+  /// A série, como a API a devolveu, já normalizada: `[{ t, ...valores }]`.
+  series String @db.Text
+
+  /// Quantos pontos tem — para a tela saber o tamanho sem fazer o parse.
+  pointCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([connectionId, dataDate, kind])
+  @@index([userId, kind])
+  @@index([dataDate])
 }
 
 // ─── Clinical Rehabilitation Agent ───────────────────────────────────────────
