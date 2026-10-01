@@ -121,6 +121,7 @@ ScanWatch 2 não mede pressão.
 | T-6 | O desvio que a clínica precisa ver | T-1 | **concluído** |
 | T-7 | [Tudo o que o relógio manda, e nós não pedimos](t-7-tudo-o-que-o-relogio-manda.md) | T-1 | **implementada** (01/10), espera medição |
 | T-8 | [A página de saúde: o dia, a noite, e o período](t-8-a-pagina-de-saude.md) | T-7 | **concluído** (01/10) — QA reprovou uma vez, seis coisas fechadas com teste |
+| T-9 | [O traçado do ECG, e o *play*](t-9-o-tracado-do-ecg.md) | T-1 | pendente — **medir primeiro** se o sinal vem no nosso plano |
 
 **Ordem:** T-1 e T-4 primeiro — são servidor e painel, sobem sem build e você vê
 resultado no mesmo dia. T-2 espera build.
