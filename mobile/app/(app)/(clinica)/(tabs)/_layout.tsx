@@ -38,6 +38,27 @@ export default function ClinicaTabsLayout() {
           ),
         }}
       />
+      {/*
+        * A aba Saúde, em segundo (118 T-1).
+        *
+        * Antes disto, **todas as medições viviam dentro do Menu**, numa lista
+        * de dezoito entradas — e a tela dos dados do relógio não estava nem
+        * nessa lista: chegava-se a ela por Menu → Aparelhos → "ver os meus
+        * dados", três toques, enterrada dentro da tela de *ligação*.
+        *
+        * Para o que a clínica mede todos os dias, isso é o lugar errado. A
+        * segunda posição é a da referência, e é a que diz que medir faz parte
+        * do tratamento, não é uma definição.
+        */}
+      <Tabs.Screen
+        name="saude"
+        options={{
+          title: tr(lang, { en: "Health", pt: "Saúde" }),
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "pulse" : "pulse-outline"} size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="appointments"
         options={{
