@@ -31,6 +31,7 @@ const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { lerCsv, dinheiro, prazoEmDias, composicao, nomeLimpo } = require('./lml-price-list-parse');
+const { categorizar } = require('./lab-categories');
 const prisma = new PrismaClient();
 
 const CSV = path.join(
@@ -80,10 +81,16 @@ async function main() {
       continue;
     }
 
+    const biomarcadores = composicao(r['Tests']);
+
     const comuns = {
       name: nome,
       shortName: sku,
-      biomarkers: composicao(r['Tests']),
+      biomarkers: biomarcadores,
+      // Derivada das nossas regras, não decidida pela clínica — por isso é
+      // atualizada em toda carga, como o custo e o prazo. Quando o token
+      // chegar, a categoria da API vence esta (T-14).
+      category: categorizar(nome, biomarcadores),
       turnaroundDays: dias,
       costPrice: custo,
       currency: 'GBP',
