@@ -206,3 +206,51 @@ describe("agrupar para desenhar", () => {
     expect(() => agruparPorIntervalo(pontos, 0)).toThrow();
   });
 });
+
+describe("o sinal do ECG: os três desfechos", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { sinalDoEcg } = require("@/lib/withings-series");
+
+  it("**as amostras vêm, e com a frequência** — o plano inclui", async () => {
+    resposta = { signal: [12, -4, 30, 128, -9], sampling_frequency: 300 };
+    const s = await sinalDoEcg("tok", "99");
+    expect(s.amostras).toEqual([12, -4, 30, 128, -9]);
+    expect(s.frequencia).toBe(300);
+  });
+
+  it("aceita o sinal aninhado, porque o formato real ainda não foi visto", async () => {
+    resposta = { ecg: { signal: [1, 2, 3], sampling_frequency: 500 } };
+    const s = await sinalDoEcg("tok", "99");
+    expect(s.amostras).toEqual([1, 2, 3]);
+    expect(s.frequencia).toBe(500);
+  });
+
+  it("**vazio sem erro guarda o corpo** — é o caso ambíguo, não 'sem ECG'", async () => {
+    // Dado fora do plano não falha: o campo só não vem. Achatar isto num array
+    // vazio apagaria a diferença entre "o paciente não mediu" e "nós não temos
+    // acesso" — duas frases que levam a ações opostas.
+    resposta = { status: 0, body: {} };
+    const s = await sinalDoEcg("tok", "99");
+    expect(s.amostras).toEqual([]);
+    expect(s.bruto).toEqual({ status: 0, body: {} });
+  });
+
+  it("manda o `signalid` e a ação certa", async () => {
+    resposta = { signal: [1] };
+    await sinalDoEcg("tok", "4242");
+    expect(chamadas[0].path).toBe("/v2/heart");
+    expect(chamadas[0].body.action).toBe("get");
+    expect(chamadas[0].body.signalid).toBe("4242");
+  });
+
+  it("um erro da API sobe, não vira vazio", async () => {
+    const { withingsRawCall } = require("@/lib/withings");
+    (withingsRawCall as jest.Mock).mockRejectedValueOnce(new Error("Withings status 503"));
+    await expect(sinalDoEcg("tok", "1")).rejects.toThrow("503");
+  });
+
+  it("descarta valores que não são número, sem descartar o zero", async () => {
+    resposta = { signal: [0, null, 5, "x", -3] };
+    expect((await sinalDoEcg("tok", "1")).amostras).toEqual([0, 5, -3]);
+  });
+});

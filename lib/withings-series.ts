@@ -242,3 +242,64 @@ export function agruparPorIntervalo(
       steps: b.steps > 0 ? b.steps : null,
     }));
 }
+
+/* ───────────────────────────── o traçado do ECG ───────────────────────────── */
+
+export interface SinalDeEcg {
+  /** As amostras do traçado, na unidade que eles mandarem. */
+  amostras: number[];
+  /** Hz. Sem isto o traçado não tem escala de tempo, e sem escala não é um ECG. */
+  frequencia: number | null;
+  /** O que mais veio no corpo, para o primeiro contato real não perder nada. */
+  bruto: Record<string, unknown>;
+}
+
+/**
+ * O que o `v2/heart list` **não** traz: as amostras.
+ *
+ * A lista dá a data, a conclusão do aparelho e um `signalid`. O traçado em si
+ * é uma segunda chamada, com esse id — e nós nunca a fizemos.
+ *
+ * ## Esta função existe primeiro para medir, não para desenhar
+ *
+ * A divisão de pacotes publicada põe **o sinal de ECG no escalão pago**. E o
+ * comportamento deles para dado fora do plano é o pior possível para quem
+ * diagnostica à distância: **não dá erro — o campo simplesmente não vem**,
+ * indistinguível de "este utilizador não tem ECG".
+ *
+ * Por isso o retorno distingue os três desfechos em vez de os achatar num
+ * array vazio:
+ *
+ * | volta | significa |
+ * |---|---|
+ * | `amostras.length > 0` | o nosso plano inclui |
+ * | lança | erro explícito — permissão, ou outra coisa, e a mensagem diz |
+ * | `amostras.length === 0` com `bruto` preenchido | **ambíguo**, e é o caso traiçoeiro |
+ *
+ * Quem chama **tem de tratar o terceiro como "não lido"**, nunca como "sem
+ * ECG". A diferença é a que separa "o paciente não mediu" de "nós não temos
+ * acesso", e as duas frases levam a ações opostas.
+ */
+export async function sinalDoEcg(accessToken: string, signalid: string): Promise<SinalDeEcg> {
+  const body = await withingsRawCall("/v2/heart", {
+    action: "get",
+    access_token: accessToken,
+    signalid: String(signalid),
+  });
+
+  /*
+   * O nome do campo não é certo: a documentação fala de `signal`, e há relatos
+   * de `ecg.signal`. Como esta é a primeira chamada real, aceita-se os dois e
+   * guarda-se o corpo inteiro — descobrir o formato é metade do objetivo.
+   */
+  const cru = body?.signal ?? body?.ecg?.signal ?? body?.series?.signal ?? null;
+  const amostras = Array.isArray(cru) ? cru.filter((x: unknown) => typeof x === "number") : [];
+  const frequencia =
+    typeof body?.sampling_frequency === "number"
+      ? body.sampling_frequency
+      : typeof body?.ecg?.sampling_frequency === "number"
+        ? body.ecg.sampling_frequency
+        : null;
+
+  return { amostras, frequencia, bruto: body ?? {} };
+}
