@@ -52,6 +52,9 @@ const UI = {
     deliveryOk: "Withings has confirmed it will send blood pressure.",
     deliveryUnchecked: "We have not yet confirmed with Withings that it will send readings.",
     lastReading: "Last reading received:",
+    lastSync: "We last asked Withings:",
+    neverSynced: "We have never completed a sync for this device.",
+    syncFailed: "The last attempt failed:",
     lastReadingNever: "No reading has ever arrived from this device.",
     checkNow: "Check now",
     deviceStillSilent: "Withings still has not confirmed.",
@@ -86,6 +89,9 @@ const UI = {
     deliveryOk: "A Withings confirmou que vai enviar a pressão.",
     deliveryUnchecked: "Ainda não confirmamos com a Withings que ela vai enviar as leituras.",
     lastReading: "Última leitura recebida:",
+    lastSync: "Perguntámos à Withings pela última vez:",
+    neverSynced: "Nunca completámos uma sincronização para este aparelho.",
+    syncFailed: "A última tentativa falhou:",
     lastReadingNever: "Nenhuma leitura chegou deste aparelho até hoje.",
     checkNow: "Conferir agora",
     deviceStillSilent: "A Withings ainda não confirmou.",
@@ -113,6 +119,9 @@ export default function MeasurementInboxPage() {
       /** 092 T-3: os dados que respondem "por que nada chega?". */
       lastReadingAt?: string | null;
       checkedAt?: string | null;
+      lastSyncedAt?: string | null;
+      lastSyncError?: string | null;
+      lastSyncErrorAt?: string | null;
       confirmedAppli?: number[];
     } | null | undefined
   >(undefined);
@@ -282,6 +291,28 @@ export default function MeasurementInboxPage() {
           {device.delivery === "receiving" && (
             <p className="text-xs text-muted-foreground" data-testid="device-delivery-ok">
               {ui.deliveryOk}
+            </p>
+          )}
+          {/* **A quarta pergunta**, e era a que faltava.
+              A tela dizia "assinatura confirmada" e "nada há seis dias" lado a
+              lado — dois factos verdadeiros que, juntos, não apontam para lado
+              nenhum. Falta saber se a chamada sequer foi feita, e com que
+              resposta: "não pedimos" e "pedimos e não veio" exigem consertos
+              opostos, e eram indistinguíveis daqui. */}
+          <p className="text-xs text-muted-foreground" data-testid="device-last-sync">
+            {device.lastSyncedAt
+              ? `${ui.lastSync} ${new Date(device.lastSyncedAt).toLocaleString(isPt ? "pt-BR" : "en-GB")}`
+              : ui.neverSynced}
+          </p>
+          {device.lastSyncError && (
+            /* O erro que o cron apanhava e escrevia **só na consola** — que
+               devolve as linhas do arranque e mais nada. Uma falha que só
+               existe lá é uma falha que não existe. */
+            <p className="text-xs text-ba1-bad" data-testid="device-sync-error">
+              {ui.syncFailed} {device.lastSyncError}
+              {device.lastSyncErrorAt
+                ? ` (${new Date(device.lastSyncErrorAt).toLocaleString(isPt ? "pt-BR" : "en-GB")})`
+                : ""}
             </p>
           )}
           {device.delivery === "unchecked" && (

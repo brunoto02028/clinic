@@ -127,7 +127,34 @@ describe("o classificador é um só", () => {
   it("**a varredura**: nenhum lugar vivo escreve o rótulo antigo", () => {
     // O rótulo aparecia em nove arquivos. Corrigir a tela do app e esquecer o
     // e-mail é o mesmo defeito de sempre — a lista fechada e o detalhe aberto.
+    /**
+     * **A palavra sozinha também conta** (achado do QA online, 01/10).
+     *
+     * A lista proibia `hypertensive crisis` e `crise hipertensiva`, e por isso
+     * passou verde por cima de uma grade de faixas que dizia apenas
+     * `Crisis` / `Crise` — a única da lista que não tinha migrado para
+     * `BP_LABELS`, em produção, na tela que o paciente abre sozinho.
+     *
+     * *Crise* é o nome curto de *crise hipertensiva*. Exigir as duas palavras
+     * juntas era pedir que o defeito se identificasse por extenso.
+     */
     const proibidas = /stage [12]|está?gio [12]|hypertensive crisis|crise hipertensiva/i;
+    /**
+     * **A palavra sozinha também conta** (achado do QA online, 01/10).
+     *
+     * A lista acima proibia `hypertensive crisis` e `crise hipertensiva`, e por
+     * isso passou verde por cima de uma grade de faixas que dizia apenas
+     * `Crisis` / `Crise` — a única da lista que não tinha migrado para
+     * `BP_LABELS`, em produção, na tela que o paciente abre sozinho. *Crise* é
+     * o nome curto de *crise hipertensiva*; exigir as duas palavras juntas era
+     * pedir que o defeito se identificasse por extenso.
+     *
+     * **Com distinção de maiúsculas, de propósito.** `CRISIS` é a chave da
+     * faixa — identificador, não texto —, e proibi-la obrigaria a renomear o
+     * enum inteiro para resolver um problema de rótulo. O que não pode aparecer
+     * é a palavra **escrita como se lê**.
+     */
+    const rotuloDeCrise = /["'`>\s](Crisis|Crise)["'`<\s.,]/;
     const culpadas: string[] = [];
 
     const anda = (dir: string) => {
@@ -142,7 +169,7 @@ describe("o classificador é um só", () => {
         const codigo = fonte
           .replace(/\/\*[\s\S]*?\*\//g, "")
           .replace(/(^|[^:])\/\/.*$/gm, "$1");
-        if (proibidas.test(codigo)) {
+        if (proibidas.test(codigo) || rotuloDeCrise.test(codigo)) {
           culpadas.push(p.slice(RAIZ.length + 1).split(path.sep).join("/"));
         }
       }
