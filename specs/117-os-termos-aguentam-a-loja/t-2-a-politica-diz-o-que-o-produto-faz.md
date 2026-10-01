@@ -10,7 +10,20 @@ dele com dois fornecedores.
 
 ## O achado
 
-A política nomeia **Anthropic e Stripe**. O rastreio da T-1 encontrou **32
+**Corrigido em 01/10/2026** — ver [`inventario.md`](inventario.md). São **dois
+documentos** e eles **discordam**:
+
+| | nomeia |
+|---|---|
+| `app/privacy/page.tsx` | Anthropic, Groq, Google Gemini, AssemblyAI, Stripe |
+| `lib/terms-content.ts` v1.3 (o que o paciente aceita) | AssemblyAI, Google Gemini, MediaPipe, Stripe, WhatsApp |
+
+Os termos aceites **não** nomeiam a Anthropic nem a Groq. E o **OpenRouter**, que
+recebe o prompt primeiro, não está em nenhum dos dois.
+
+Então esta tarefa não é acrescentar nomes a uma lista: é **reconciliar dois
+documentos** e fazer os dois saírem do mesmo registo, com um teste que olhe para
+os dois ficheiros. O que estava escrito aqui antes: O rastreio da T-1 encontrou **32
 terceiros** que o código alcança, dos quais **16 recebem dado de paciente hoje**
 e **15 recebem categoria especial** — saúde ou gravação de consulta.
 

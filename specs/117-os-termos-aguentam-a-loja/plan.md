@@ -23,7 +23,12 @@ final é de quem assina por ele.
 | sem promessa de diagnóstico | o trabalho de 30/09 (105 T-6, 115) |
 | sem medição por câmera | 115, encerrada em 30/09 |
 
-## O achado: a política nomeia dois, e o produto alcança trinta e dois
+## O achado: a política não descreve o produto — e os dois documentos não concordam entre si
+
+> **Corrigido duas vezes.** Primeiro o "dez" (são 31). Depois o "dois": a
+> política do site nomeia **cinco** e os termos versionados nomeiam **cinco
+> diferentes** — e o OpenRouter, que recebe o prompt primeiro, não está em
+> nenhum. Medição e razão do erro em [`inventario.md`](inventario.md#correção-eu-estava-errado-sobre-o-que-a-política-nomeia-01102026).
 
 **Corrigido em 01/10/2026 pelo rastreio.** Esta seção dizia "dez empresas",
 levantadas de `process.env.*`. Estava errada, e o método é que estava errado —
@@ -38,7 +43,7 @@ O que mudou:
 | terceiros alcançados | 10 | **31 declarados**, por 36 hosts |
 | recebem dado de paciente | 8 | **15 hoje**, mais 2 quando ganharem credencial |
 | recebem **categoria especial** | 4 | **14** (12 em uso) |
-| na política | 2 | 2 |
+| na política | 2 | **ver a correção abaixo** — são dois documentos, com 5 nomes cada e listas diferentes |
 
 Os três erros de método, que valem mais que a contagem:
 
