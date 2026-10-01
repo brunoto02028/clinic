@@ -8235,6 +8235,13 @@ enum LabOrderStatus {
 model LabProduct {
   id             String    @id @default(cuid())
   lmlProductId   String    @unique
+  /// O código da LML (`CHO`, `VTD`, `XVD`) — o `product_sku` da API deles.
+  ///
+  /// Existe separado do `lmlProductId` porque a API casa por **UUID**, que só
+  /// ela conhece, e a nossa carga da planilha só tem o código. Sem esta coluna
+  /// a primeira sincronização criaria um segundo registo para cada um dos 421
+  /// (081 T-13). A sincronização casa por SKU primeiro e preenche o UUID.
+  lmlSku         String?   @unique
   name           String
   shortName      String?
   category       String?
