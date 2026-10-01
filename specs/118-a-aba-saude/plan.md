@@ -56,6 +56,35 @@ minutos de REM"*, pensa *"o meu sono"*.
 As telas antigas continuam a existir para quem chegar por link; deixam de ser o
 caminho.
 
+### As cinco páginas cobrem a gama inteira da Withings, não só o relógio
+
+Pedido do Bruno: *"vamos prever tudo para todos os equipamentos da Withings"*.
+A divisão por família aguenta isso sem página nova — é a segunda razão para ela
+existir, além de ninguém pensar em "minutos de REM":
+
+| aparelho | onde cai |
+|---|---|
+| **ScanWatch / ScanWatch 2 / Pulse** | Coração, Sono, Atividade, Corpo |
+| **BPM Connect / Core / Vision** | **Pressão** — e o ECG do BPM Core cai em Coração |
+| **Body / Body Scan / Body Comp** (balanças) | **Corpo** — peso, massa gorda/magra, água, osso, gordura visceral, metabolismo basal; e **velocidade de onda de pulso e idade vascular** caem em Coração |
+| **Sleep / Sleep Analyzer** (tapete) | **Sono** — e traz o que o relógio não tem: **ronco, índice de apneia, movimento** |
+| **Thermo** | **Corpo** — temperatura |
+| **BeamO** | atravessa quatro: temperatura e SpO₂ em Corpo, FC e **ECG** em Coração, e o **estetoscópio** não tem casa ainda |
+
+**Duas coisas que isto deixa à vista, e é melhor saber agora:**
+
+1. **O estetoscópio do BeamO não cabe em nenhuma das cinco.** Se um dia entrar,
+   é página nova — e provavelmente outra conversa, porque som de ausculta é
+   outro patamar de dado clínico.
+2. **A apneia do tapete é diagnóstico em potência.** O índice de apneia (AHI) é
+   o tipo de número que uma tela mal escrita transforma em "você tem apneia".
+   Se esse aparelho entrar, a frase precisa de ser escrita antes do gráfico.
+
+**O que não muda:** a ingestão já pede **todos** os tipos de medida desde a
+099 T-7 — não há lista a ampliar por aparelho novo. Um aparelho que a conta
+ganhe passa a mandar, e o que chegar com um tipo que não sabemos nomear é
+**contado no log** em vez de descartado. A página é que decide onde mostrar.
+
 ### O visual
 
 Escuro, cartões de vidro, hierarquia tipográfica — a prévia que o Bruno aprovou.
