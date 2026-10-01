@@ -62,7 +62,30 @@ dentro, não.
 | T-1 | [O inventário do que sai, e para onde](t-1-o-inventario.md) | pendente |
 | T-2 | [A política diz o que o produto faz](t-2-a-politica-diz-o-que-o-produto-faz.md) | pendente |
 | T-3 | [O paciente leva os dados dele](t-3-o-paciente-leva-os-dados.md) | pendente |
-| T-4 | [O que a loja vai perguntar](t-4-o-que-a-loja-pergunta.md) | pendente |
+
+A quarta tarefa que eu ia escrever — preencher as fichas da Apple e do Google —
+**já existe**, na [090](../090-pronto-para-a-apple/prontidao.md), desde 26/09.
+Apaguei-a daqui em vez de a duplicar.
+
+## A 090 já existe, e o que esta acrescenta
+
+Fui escrever isto sem procurar primeiro — e a
+[090 — Pronto para a Apple](../090-pronto-para-a-apple/prontidao.md) já auditava
+a loja desde 26/09: os cinco bloqueios, a classificação etária, e a ficha de
+privacidade com **a lista do que o app recolhe**.
+
+O que ela **não** cobre, e é o que esta atividade traz:
+
+| | 090 | 117 |
+|---|---|---|
+| o que o app **recolhe** | ✅ listado | — |
+| para **quem** isso vai | — | **o achado** |
+| o paciente **levar** os dados | — | T-3 |
+| as fichas das lojas | ✅ | aponta para lá |
+
+A diferença entre as duas colunas do meio é a que importa: *recolher* dado de
+saúde é uma coisa; *mandá-lo para oito empresas que a política não nomeia* é
+outra.
 
 ## Suposições
 
