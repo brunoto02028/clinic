@@ -1,0 +1,30 @@
+Authentication | LML API 
+ API Docs 
+ Swagger UI
+ Authentication
+ All API requests require a Bearer token in the Authorization header.
+ Bearer token
+ Your API token is linked to your brand and is provided by your account manager. Include it in every request using the Authorization header:
+ Authorization: Bearer YOUR_API_TOKEN 
+ Example request
+ curl -X GET https://api.londonmedicallaboratory.com/api/product/ \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Accept: application/json" 
+ Error responses
+ If authentication fails, the API returns a 401 Unauthorized response:
+ {
+ "message": "Token is not valid."
+} 
+ Common causes
+ Issue 
+ Solution 
+ Missing Authorization header 
+ Ensure the header is included in every request 
+ Missing Bearer prefix 
+ The header value must start with Bearer followed by a space and your token 
+ Invalid or revoked token 
+ Contact your account manager for a new token 
+ Security best practices
+ Keep your API token secret. Do not expose it in client-side code or public repositories.
+ Use HTTPS for all API requests. HTTP requests will be rejected.
+ If you suspect your token has been compromised, contact your account manager immediately to have it rotated.

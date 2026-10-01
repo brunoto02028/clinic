@@ -1,0 +1,189 @@
+Patients | LML API 
+ API Docs 
+ Swagger UI
+ Patients
+ Create and manage patient records for test registrations.
+ Patients are deduplicated by first name + last name + date of birth . If a matching patient already exists, the existing record is returned instead of creating a duplicate.
+ Create a patient
+ POST 
+ /api/patient/ 
+ Create a new patient record. A Medical Record Number (MRN) is automatically generated.
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ first_name 
+ string 
+ Yes 
+ Patient's first name 
+ last_name 
+ string 
+ Yes 
+ Patient's last name 
+ email 
+ string 
+ Yes 
+ Valid email address 
+ date_of_birth 
+ string 
+ Yes 
+ Format: YYYY-MM-DD 
+ gender 
+ string 
+ Yes 
+ male , female , or other 
+ ethnicity 
+ string 
+ No 
+ Ethnicity code (see values below) 
+ phone_number 
+ string 
+ No 
+ Contact phone number 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID (must be unique per brand) 
+ address 
+ object 
+ No 
+ Patient's address (see address object below) 
+ Address object
+ Field 
+ Type 
+ Required 
+ Description 
+ line1 
+ string 
+ Yes 
+ First line of address 
+ line2 
+ string 
+ No 
+ Second line 
+ line3 
+ string 
+ No 
+ Third line 
+ city 
+ string 
+ Yes 
+ City 
+ postal_code 
+ string 
+ Yes 
+ Postal code 
+ country_code 
+ string 
+ Yes 
+ ISO country code (e.g. GB ) 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/patient/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "email": "jane@example.com",
+ "date_of_birth": "1990-05-15",
+ "gender": "female",
+ "phone_number": "+447700900000",
+ "address": {
+ "line1": "10 Harley Street",
+ "city": "London",
+ "postal_code": "W1G 9PF",
+ "country_code": "GB"
+ }
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "a1b2c3d4-...",
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "email": "jane@example.com",
+ "date_of_birth": "1990-05-15",
+ "gender": "female",
+ "ethnicity": null,
+ "phone_number": "+447700900000",
+ "foreign_id": null,
+ "address_id": "c3d4e5f6-..."
+} 
+ Get a patient
+ GET 
+ /api/patient/{id} 
+ Retrieve a single patient by UUID.
+ List patients
+ GET 
+ /api/patient/ 
+ Returns a paginated list of patients for your brand.
+ Update a patient
+ PATCH 
+ /api/patient/{id} 
+ Update an existing patient. The {id} parameter accepts either a UUID or a foreign ID. All fields are optional — only include the fields you want to change.
+ Patchable fields
+ Field 
+ Type 
+ Description 
+ first_name 
+ string 
+ Patient's first name 
+ last_name 
+ string 
+ Patient's last name 
+ email 
+ string 
+ Valid email address 
+ date_of_birth 
+ string 
+ Format: YYYY-MM-DD 
+ gender 
+ string 
+ male , female , or other 
+ ethnicity 
+ string|null 
+ Set to null to clear 
+ phone_number 
+ string|null 
+ Contact phone number 
+ foreign_id 
+ string 
+ Must be unique per brand 
+ address 
+ object 
+ Create new or reference existing by id 
+ Sub-resources
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/patient/{id}/address 
+ Get patient's address (returns 204 if none) 
+ GET 
+ /api/patient/{id}/test_registrations 
+ Get all test registrations for this patient 
+ Ethnicity values
+ The following values are accepted for the ethnicity field:
+ white_english 
+ white_scottish 
+ white_welsh 
+ white_northern_irish 
+ white_british 
+ white_irish 
+ white_any_other_white_background 
+ mixed_white_and_black_caribbean 
+ mixed_white_and_black_african 
+ mixed_white_and_asian 
+ mixed_any_other_mixed_background 
+ asian_or_asian_british_indian 
+ asian_or_asian_british_pakistani 
+ asian_or_asian_british_bangladeshi 
+ asian_or_asian_british_chinese 
+ asian_or_asian_british_any_other_asian_background 
+ black_or_black_british_caribbean 
+ black_or_black_british_african 
+ black_or_black_british_any_other_black_background 
+ other_ethnic_groups_arab 
+ other_ethnic_groups_any_other_ethnic_group 
+ prefer_not_to_say

@@ -1,0 +1,498 @@
+Placing an Order | LML API 
+ API Docs 
+ Swagger UI
+ Placing an Order
+ A step-by-step guide to creating an order, shipping a test kit to a customer, registering a patient, and receiving results.
+ When you create an order, test registrations are automatically created for each product in the order. You'll then assign a patient to each test registration so you can receive lab results. This guide walks through the full flow.
+ 1 
+ Find a product
+ Start by finding the product(s) you want to order. If you don't already have a list, fetch them from the Products API . You can filter by category, SKU, or search by name.
+ GET 
+ /api/product/ 
+ Example response (truncated) 
+ {
+ "nr_of_results": 32,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "73d1f6c9-dd60-4f78-bc10-7898d9c66d80",
+ "name": "Allergy Complete - 295 allergens",
+ "sku": "AL2",
+ "preview_image_url": null,
+ "price": {
+ "amount_minor": 4900,
+ "currency": "GBP",
+ "formatted_value": "49.00"
+ }
+ },
+ ...
+ ]
+} 
+ Note the id or sku of the product(s) you want. For this guide we'll use 73d1f6c9-dd60-4f78-bc10-7898d9c66d80 .
+ 2 
+ Get shipping methods
+ Fetch the available shipping methods for your product. Different products may support different shipping types (home kit, walk-in, etc.).
+ GET 
+ /api/product/{id}/shipping 
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/product/73d1f6c9-dd60-4f78-bc10-7898d9c66d80/shipping" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response
+ {
+ "items": [
+ {
+ "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ "name": "Standard Royal Mail",
+ "type": "home_kit",
+ "description": "Delivered within 2-3 working days",
+ "price": {
+ "amount_minor": 0,
+ "currency": "GBP",
+ "formatted_value": "0.00"
+ }
+ },
+ {
+ "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+ "name": "Next Day Delivery",
+ "type": "home_kit",
+ "description": "Delivered next working day",
+ "price": {
+ "amount_minor": 599,
+ "currency": "GBP",
+ "formatted_value": "5.99"
+ }
+ }
+ ]
+} 
+ Note the id of the shipping method. For this guide we'll use a1b2c3d4-e5f6-7890-abcd-ef1234567890 (Standard Royal Mail).
+ 3 
+ Create the order
+ Now create the order with the product, shipping method, customer details, and shipping address. A test registration is automatically created for each product in the order.
+ POST 
+ /api/order/ 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ items 
+ array 
+ Yes 
+ Array of order items (see below) 
+ shipping_id 
+ string 
+ Yes 
+ UUID of the shipping method from step 2 
+ customer 
+ object 
+ No* 
+ Customer details (see below) 
+ customer_id 
+ string 
+ No* 
+ UUID of an existing customer (alternative to customer object) 
+ address 
+ object 
+ No 
+ Shipping address (see below) — required for home kit delivery 
+ shipping_date 
+ string 
+ No 
+ Preferred shipping date ( YYYY-MM-DD ) 
+ initial_appointment 
+ object 
+ No 
+ For walk-in or phlebotomy shipping types (see below) 
+ * Provide either customer or customer_id , not both. 
+ You cannot provide both customer and customer_id in the same request. Use one or the other.
+ Item object
+ Field 
+ Type 
+ Required 
+ Description 
+ product_id 
+ string 
+ One of* 
+ UUID of the product 
+ product_sku 
+ string 
+ One of* 
+ SKU of the product (alternative to product_id ) 
+ quantity 
+ integer 
+ Yes 
+ Quantity to order (must be at least 1) 
+ * Provide either product_id or product_sku for each item. 
+ Products returned with appointment_only: true require a professional sample collection and
+ cannot be posted out as a kit — including one in items is rejected with
+ "Product '…' not available for postage. Available for appointment only." Check the flag on the
+ Products endpoint first.
+ Customer object
+ Field 
+ Type 
+ Required 
+ Description 
+ email 
+ string 
+ Yes 
+ Valid email address 
+ first_name 
+ string 
+ Yes 
+ Customer's first name 
+ last_name 
+ string 
+ Yes 
+ Customer's last name 
+ phone_number 
+ string 
+ No 
+ Contact phone number 
+ foreign_id 
+ string 
+ No 
+ Your own external reference (must be unique) 
+ nhs_number 
+ string 
+ No 
+ NHS number 
+ Customer vs Patient: A customer is the person placing and paying for the order. A patient is the person being tested. They may be the same person, but they are separate records in the system.
+ Address object
+ Field 
+ Type 
+ Required 
+ Description 
+ line1 
+ string 
+ Yes 
+ First line of address 
+ line2 
+ string 
+ No 
+ Second line 
+ line3 
+ string 
+ No 
+ Third line 
+ city 
+ string 
+ Yes 
+ City 
+ postal_code 
+ string 
+ Yes 
+ Postal code 
+ country_code 
+ string 
+ Yes 
+ ISO country code (e.g. GB , DE , IT ) 
+ company 
+ string 
+ No 
+ Company name 
+ Initial appointment object (optional) 
+ If the shipping type requires an appointment (e.g. walk-in or phlebotomy), provide an initial appointment:
+ Field 
+ Type 
+ Required 
+ Description 
+ test_location_id 
+ string 
+ Yes 
+ UUID of the test location 
+ appointment_time 
+ string 
+ Yes 
+ ISO 8601 datetime (e.g. 2024-04-15T10:00:00+00:00 ) 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/order/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "shipping_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ "customer": {
+ "email": "jane@example.com",
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "phone_number": "+447700900000"
+ },
+ "address": {
+ "line1": "10 Harley Street",
+ "city": "London",
+ "postal_code": "W1G 9PF",
+ "country_code": "GB"
+ },
+ "items": [
+ {
+ "product_id": "73d1f6c9-dd60-4f78-bc10-7898d9c66d80",
+ "quantity": 1
+ }
+ ]
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "d4e5f6a7-b8c9-0d1e-2f3a-456789abcdef",
+ "test_registrations": [
+ {
+ "id": "f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c",
+ "trf_code": "LML-AB1234",
+ "product": {
+ "id": "73d1f6c9-dd60-4f78-bc10-7898d9c66d80",
+ "sku": "AL2",
+ "biomarkers": [
+ "b1c2d3e4-...",
+ "c2d3e4f5-..."
+ ]
+ }
+ }
+ ]
+} 
+ Save the test registration IDs. The test_registrations[].id values are essential — you'll need them to assign a patient and retrieve lab results later.
+ 4 
+ Create a patient
+ If you don't already have a patient record, create one now. This should be the person being tested , which may be different from the customer who placed the order.
+ POST 
+ /api/patient/ 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ first_name 
+ string 
+ Yes 
+ Patient's first name 
+ last_name 
+ string 
+ Yes 
+ Patient's last name 
+ email 
+ string 
+ Yes 
+ Valid email address 
+ date_of_birth 
+ string 
+ Yes 
+ Format: YYYY-MM-DD 
+ gender 
+ string 
+ Yes 
+ male , female , or other 
+ phone_number 
+ string 
+ No 
+ Contact phone number 
+ ethnicity 
+ string 
+ No 
+ See Patients API for accepted values 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID (must be unique per brand) 
+ address 
+ object 
+ No 
+ Patient's address — see Patients API 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/patient/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "email": "jane@example.com",
+ "date_of_birth": "1990-05-15",
+ "gender": "female",
+ "phone_number": "+447700900000"
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "gender": "female",
+ "date_of_birth": "1990-05-15",
+ "ethnicity": null,
+ "email": "jane@example.com",
+ "foreign_id": null,
+ "phone_number": "+447700900000",
+ "address_id": null
+} 
+ Patients are deduplicated by first name + last name + date of birth . If a matching patient already exists, the existing record is returned instead of creating a duplicate. If you already have the patient ID, skip this step.
+ 5 
+ Assign the patient to the test registration
+ Now link the patient to the test registration that was automatically created when you placed the order. This is essential — without a patient assigned, results cannot be processed.
+ If the order contained multiple products, you'll have multiple test registrations. Repeat this step for each one.
+ PATCH 
+ /api/test_registration/{id} 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ patient_id 
+ string 
+ Yes 
+ UUID of the patient from step 4 
+ mobile_phone_number 
+ string 
+ No 
+ Patient's mobile number for SMS result delivery 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID for future lookups 
+ Example request
+ curl -X PATCH "https://api.londonmedicallaboratory.com/api/test_registration/f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "patient_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ "mobile_phone_number": "+447700900000"
+}' 
+ Example response
+ {
+ "id": "f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c",
+ "trf_code": "LML-AB1234",
+ "short_code": "AB1234",
+ "status": "pending",
+ "results_ready": false,
+ "patient_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+ "product_ids": ["73d1f6c9-dd60-4f78-bc10-7898d9c66d80"],
+ "product_skus": ["AL2"],
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "email": "jane@example.com",
+ "date_of_birth": "1990-05-15",
+ "gender": "female",
+ "ethnicity": null,
+ "created_at": "2024-03-15",
+ "completed_at": null,
+ "patient_registered_at": "2024-03-15",
+ "foreign_id": null,
+ "lab_id": null,
+ "parent_id": null,
+ "uk_address": null,
+ "doctors_note": null,
+ "doctors_name": null,
+ "download_url": null,
+ "appointment_id": null,
+ "clinical_details": null
+} 
+ Alternative: Instead of assigning the patient yourself, you can direct the patient to register through the LML patient portal at patient.londonmedicallaboratory.com using their TRF code. See the Workflow page for more details.
+ 6 
+ Receive results
+ Once the patient's sample has been returned to the lab and processed, you'll be notified via a webhook . You can then fetch the lab results:
+ GET 
+ /api/test_registration/{id}/lab_results 
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/test_registration/f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c/lab_results" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response
+ {
+ "nr_of_results": 3,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "c1d2e3f4-...",
+ "name": "IgE Total",
+ "code": "IGE",
+ "value": "45.2",
+ "min_range": "0",
+ "max_range": "100",
+ "unit_type": "kU/L",
+ "out_of_range": null,
+ "successful": true,
+ "status": "success",
+ "biomarker_id": "b1c2d3e4-...",
+ "comment": null,
+ "human_readable_value": "45.2 kU/L",
+ "error_reason": null,
+ "fallback_range_applied": false
+ },
+ ...
+ ]
+} 
+ If results are not yet available, this endpoint returns 204 No Content . You can also download the results as a PDF:
+ GET 
+ /api/test_registration/{id}/download_pdf 
+ See the Test Registrations API for full details on result fields and statuses.
+ Managing orders after creation
+ Once an order is created you can retrieve its details, check related resources, or cancel/refund it.
+ Retrieve order details
+ GET 
+ /api/order/{id} 
+ Returns full order details including customer, address, shipping, items, and payment/shipping status.
+ Order sub-resources
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/order/{id}/test_registrations 
+ Get test registrations created by this order 
+ GET 
+ /api/order/{id}/items 
+ Get order line items 
+ GET 
+ /api/order/{id}/customer 
+ Get the customer who placed the order 
+ GET 
+ /api/order/{id}/address 
+ Get the shipping address 
+ GET 
+ /api/order/{id}/shipping 
+ Get the shipping method used 
+ GET 
+ /api/order/{id}/appointments 
+ Get appointments linked to this order 
+ Cancel or refund an order
+ PATCH 
+ /api/order/{id} 
+ Field 
+ Type 
+ Description 
+ cancel 
+ boolean 
+ Set to true to cancel the order. This also cancels all associated appointments and test registrations. 
+ refund 
+ boolean 
+ Set to true to request a refund 
+ Reship an order
+ PUT 
+ /api/order/{id}/reship 
+ Triggers a reship. The shipping status is reset to AWAITING_SHIPPING and a new shipment is prepared.
+ Webhook notifications
+ If you have a webhook URL configured, you'll receive notifications at key points in the order lifecycle:
+ Event 
+ Description 
+ order.shipped 
+ The order has been dispatched 
+ order.delivered 
+ The order has been delivered to the customer 
+ test_registration.complete 
+ A patient has been registered against a test registration 
+ lab_results.complete 
+ Lab results are ready to retrieve 
+ See the Webhooks documentation for full payload details and retry schedules.
+ Summary
+ 1 
+ Find a product — GET /api/product/ 
+ 2 
+ Get shipping methods — GET /api/product/{id}/shipping 
+ 3 
+ Create the order — POST /api/order/ (test registrations are created automatically) 
+ 4 
+ Create a patient — POST /api/patient/ 
+ 5 
+ Assign patient to test registration — PATCH /api/test_registration/{id} 
+ 6 
+ Receive results — webhook notification, then GET /api/test_registration/{id}/lab_results

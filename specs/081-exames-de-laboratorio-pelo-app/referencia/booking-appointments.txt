@@ -1,0 +1,419 @@
+Booking Appointments | LML API 
+ API Docs 
+ Swagger UI
+ Booking Appointments
+ A step-by-step guide to finding an available time at a test location, booking an appointment, and linking it to a test registration.
+ An appointment must be attached to a test registration so the testing location can associate it with the correct patient and you can receive results. This guide walks through the full flow.
+ 1 
+ Find a product to test
+ First, find the product(s) you want tested. If you don't already have a list of available products, fetch them from the Products API .
+ GET 
+ /api/product/ 
+ Example response (truncated) 
+ {
+ "nr_of_results": 32,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "73d1f6c9-dd60-4f78-bc10-7898d9c66d80",
+ "name": "Allergy Complete - 295 allergens",
+ "sku": "AL2",
+ "preview_image_url": null,
+ "price": {
+ "amount_minor": 4900,
+ "currency": "GBP",
+ "formatted_value": "49.00"
+ }
+ },
+ ...
+ ]
+} 
+ Note the id of the product you want. For this guide we'll use 73d1f6c9-dd60-4f78-bc10-7898d9c66d80 .
+ 2 
+ Find a test location
+ Next, find a suitable test location to send your patient to. See the Test Locations API for full details.
+ You can also use the nearest locations endpoint to find locations closest to the patient by coordinates — see Find nearest locations .
+ GET 
+ /api/test_location/ 
+ Example response (truncated) 
+ {
+ "nr_of_results": 174,
+ "current_page": 1,
+ "nr_of_pages": 2,
+ "results_per_page": 100,
+ "next_page": 2,
+ "items": [
+ {
+ "id": "fbd9c622-6d77-4b84-a2cd-bae0c0b76153",
+ "name": "Central London Clinic",
+ "full_address": "10 Harley Street, London, W1G 9PF",
+ "city": "London",
+ "postal_code": "W1G 9PF",
+ "nearest_bus_station": null,
+ "nearest_train_station": null,
+ "latitude": 51.521799,
+ "longitude": -0.078065
+ },
+ ...
+ ]
+} 
+ Note the id of the location. For this guide we'll use fbd9c622-6d77-4b84-a2cd-bae0c0b76153 .
+ 3 
+ Get available days
+ With the location ID, fetch the monthly availability calendar. Use this to build a date picker showing which days have available slots.
+ GET 
+ /api/test_location/calendar/{year}/{month}?test_location_id={id} 
+ Path parameters
+ Parameter 
+ Type 
+ Description 
+ year 
+ integer 
+ Year in YYYY format (e.g. 2024 ) 
+ month 
+ integer 
+ Month as 1 - 12 (e.g. 3 for March) 
+ Query parameters
+ Parameter 
+ Type 
+ Description 
+ test_location_id 
+ string 
+ UUID of the test location 
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/test_location/calendar/2024/3?test_location_id=fbd9c622-6d77-4b84-a2cd-bae0c0b76153" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response
+ {
+ "id": "2024-03",
+ "availability": {
+ "2024-03-01": false,
+ "2024-03-02": false,
+ "2024-03-03": true,
+ "2024-03-04": true,
+ "2024-03-05": true,
+ "2024-03-06": true,
+ "2024-03-07": true,
+ "2024-03-08": false,
+ "2024-03-09": false,
+ "2024-03-10": true,
+ "...": "..."
+ }
+} 
+ Days marked true have at least one available slot. Days marked false are fully booked or the location is closed.
+ 4 
+ Get time slots
+ Once the patient selects a day, fetch the available time slots for that date.
+ GET 
+ /api/test_location/slots/{year}/{month}/{day}?test_location_id={id} 
+ Path parameters
+ Parameter 
+ Type 
+ Description 
+ year 
+ integer 
+ Year in YYYY format 
+ month 
+ integer 
+ Month as 1 - 12 
+ day 
+ integer 
+ Day as 1 - 31 
+ Example request
+ curl -X GET "https://api.londonmedicallaboratory.com/api/test_location/slots/2024/3/11?test_location_id=fbd9c622-6d77-4b84-a2cd-bae0c0b76153" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Example response (truncated) 
+ [
+ {
+ "id": "261f070b-0c71-4430-ba3c-74d94936b04e",
+ "preview": "09:00",
+ "available": false,
+ "time": "2024-03-11 09:00",
+ "is_past": false
+ },
+ {
+ "id": "67685d89-d223-4cc9-be6f-669feb24ab71",
+ "preview": "09:05",
+ "available": true,
+ "time": "2024-03-11 09:05",
+ "is_past": false
+ },
+ {
+ "id": "17544018-5685-468f-85d9-d84d3ebadde4",
+ "preview": "09:10",
+ "available": true,
+ "time": "2024-03-11 09:10",
+ "is_past": false
+ },
+ {
+ "id": "bcbc52cb-5e83-4a01-bbc4-088ca68be58b",
+ "preview": "09:15",
+ "available": true,
+ "time": "2024-03-11 09:15",
+ "is_past": false
+ }
+] 
+ Slot fields
+ Field 
+ Type 
+ Description 
+ id 
+ string 
+ Slot UUID — use this when creating the appointment 
+ preview 
+ string 
+ Human-readable time (e.g. 09:05 ) 
+ available 
+ boolean 
+ Whether the slot can be booked 
+ time 
+ string 
+ Date and time of the slot 
+ is_past 
+ boolean 
+ Whether the slot time has already passed 
+ Only show slots where available is true and is_past is false . Note the id of the selected slot — for this guide we'll use 67685d89-d223-4cc9-be6f-669feb24ab71 .
+ 5 
+ Create a provisional appointment
+ With the selected slot_id you can now create a provisional appointment. This holds the time for 10 minutes while you confirm details with the patient and take payment.
+ If you don't confirm within 10 minutes, the hold expires at the expires_at time and the slot becomes available to others. If you're certain you want the time, you can pass confirmed: true immediately — but be aware that cancelling a confirmed appointment may incur a charge depending on how close it is to the appointment time.
+ POST 
+ /api/appointment/ 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ slot_id 
+ string 
+ Yes* 
+ The slot ID from the previous step 
+ confirmed 
+ boolean 
+ Yes 
+ false for provisional (recommended), true to confirm immediately 
+ patient_id 
+ string 
+ No 
+ UUID of the patient (can be assigned later) 
+ override_availability 
+ boolean 
+ No 
+ Book a time the calendar reports as closed or taken. See Booking outside published availability 
+ * If slot_id is not provided, you can use starts_at (ISO 8601 datetime) as a fallback. 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/appointment/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "slot_id": "67685d89-d223-4cc9-be6f-669feb24ab71",
+ "confirmed": false
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "d6fcc74b-3664-4d8d-954f-694a8714bf1e",
+ "type": "brand_location",
+ "test_location_id": "fbd9c622-6d77-4b84-a2cd-bae0c0b76153",
+ "starts_at": "2024-03-11T09:05:00+00:00",
+ "ends_at": "2024-03-11T09:20:00+00:00",
+ "patient_id": null,
+ "confirmed": false,
+ "expires_at": "2024-03-11T08:45:00+00:00",
+ "full_address": "10 Harley Street, London, W1G 9PF",
+ "point": {
+ "latitude": 51.521799,
+ "longitude": -0.078065
+ }
+} 
+ Note the appointment id — you'll need it for the next steps. The expires_at field tells you when the provisional hold will be released.
+ 6 
+ Confirm the appointment
+ Once payment is taken or details are confirmed, update the appointment to confirm it.
+ PATCH 
+ /api/appointment/{id} 
+ Example request
+ curl -X PATCH "https://api.londonmedicallaboratory.com/api/appointment/d6fcc74b-3664-4d8d-954f-694a8714bf1e" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "confirmed": true
+}' 
+ Example response
+ {
+ "id": "d6fcc74b-3664-4d8d-954f-694a8714bf1e",
+ "type": "brand_location",
+ "test_location_id": "fbd9c622-6d77-4b84-a2cd-bae0c0b76153",
+ "starts_at": "2024-03-11T09:05:00+00:00",
+ "ends_at": "2024-03-11T09:20:00+00:00",
+ "patient_id": null,
+ "confirmed": true,
+ "expires_at": null,
+ "full_address": "10 Harley Street, London, W1G 9PF",
+ "point": {
+ "latitude": 51.521799,
+ "longitude": -0.078065
+ }
+} 
+ You can also use PATCH to reschedule ( appointment_time ), change the location ( test_location_id ), or assign a patient ( patient_id ). See the Appointments API for all patchable fields.
+ To release a booking, send DELETE /api/appointment/{id} . It cancels the appointment and frees the slot. Note that confirmed: false does not cancel anything — see Cancel an appointment .
+ 7 
+ Create a patient
+ If you don't already have a patient record, create one now. This should be the person attending the appointment , not the purchaser.
+ POST 
+ /api/patient/ 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ first_name 
+ string 
+ Yes 
+ Patient's first name 
+ last_name 
+ string 
+ Yes 
+ Patient's last name 
+ email 
+ string 
+ Yes 
+ Valid email address 
+ date_of_birth 
+ string 
+ Yes 
+ Format: YYYY-MM-DD 
+ gender 
+ string 
+ Yes 
+ male , female , or other 
+ phone_number 
+ string 
+ No 
+ Contact phone number 
+ ethnicity 
+ string 
+ No 
+ See Patients API for accepted values 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID (must be unique per brand) 
+ address 
+ object 
+ No 
+ Patient's address — see Patients API 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/patient/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "first_name": "John",
+ "last_name": "Smith",
+ "email": "john@example.com",
+ "date_of_birth": "1980-02-01",
+ "gender": "male",
+ "phone_number": "+447429123456"
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "12b46474-9f92-40b6-8ba9-0d1730a7917f",
+ "first_name": "John",
+ "last_name": "Smith",
+ "gender": "male",
+ "date_of_birth": "1980-02-01",
+ "ethnicity": null,
+ "email": "john@example.com",
+ "foreign_id": null,
+ "phone_number": "+447429123456",
+ "address_id": null
+} 
+ Patients are deduplicated by first name + last name + date of birth . If a matching patient already exists, the existing record is returned instead of creating a duplicate. If you already have the patient ID, skip this step.
+ 8 
+ Create the test registration
+ Now bring it all together — create a test registration linking the product, patient, and appointment. Without this step, the location won't know who the appointment is for and you won't receive results.
+ POST 
+ /api/test_registration/ 
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ product_ids 
+ array 
+ Yes* 
+ Array of product UUIDs to include in the test 
+ patient_id 
+ string 
+ Yes 
+ Patient UUID from the previous step 
+ appointment_id 
+ string 
+ Yes 
+ Appointment UUID from step 5/6 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID for future lookups 
+ * You can use product_skus (array of SKUs) instead of product_ids . 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/test_registration/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "product_ids": ["73d1f6c9-dd60-4f78-bc10-7898d9c66d80"],
+ "patient_id": "12b46474-9f92-40b6-8ba9-0d1730a7917f",
+ "appointment_id": "d6fcc74b-3664-4d8d-954f-694a8714bf1e"
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "317adb14-bc83-40af-9db0-b6a86de56694",
+ "trf_code": "LML-AB1234",
+ "short_code": "AB1234",
+ "status": "pending",
+ "results_ready": false,
+ "patient_id": "12b46474-9f92-40b6-8ba9-0d1730a7917f",
+ "product_ids": ["73d1f6c9-dd60-4f78-bc10-7898d9c66d80"],
+ "product_skus": ["AL2"],
+ "first_name": "John",
+ "last_name": "Smith",
+ "email": "john@example.com",
+ "date_of_birth": "1980-02-01",
+ "gender": "male",
+ "ethnicity": null,
+ "created_at": "2024-03-11",
+ "completed_at": null,
+ "patient_registered_at": "2024-03-11",
+ "foreign_id": null,
+ "lab_id": null,
+ "parent_id": null,
+ "uk_address": null,
+ "doctors_note": null,
+ "doctors_name": null,
+ "download_url": null,
+ "appointment_id": "d6fcc74b-3664-4d8d-954f-694a8714bf1e",
+ "clinical_details": null
+} 
+ Save the test registration id — you'll use it to retrieve lab results once the test is complete. You'll also receive a webhook notification when results are ready.
+ Summary
+ 1 
+ Find a product — GET /api/product/ 
+ 2 
+ Find a test location — GET /api/test_location/ 
+ 3 
+ Get available days — GET /api/test_location/calendar/{year}/{month} 
+ 4 
+ Get time slots — GET /api/test_location/slots/{year}/{month}/{day} 
+ 5 
+ Create provisional appointment — POST /api/appointment/ 
+ 6 
+ Confirm the appointment — PATCH /api/appointment/{id} 
+ 7 
+ Create a patient — POST /api/patient/ 
+ 8 
+ Create the test registration — POST /api/test_registration/

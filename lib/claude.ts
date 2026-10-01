@@ -33,7 +33,7 @@ async function resolveClaudeConfig(): Promise<{
   }
 }
 
-// AI_STRICT_MODE: when true, never fall back to direct Minimax/Groq/Gemini calls.
+// AI_STRICT_MODE: when true, never fall back to direct Groq/Gemini calls.
 // Only OpenRouter is used for text + vision. STT/image-gen fail hard if their
 // dedicated providers are unavailable.
 export const AI_STRICT_MODE = process.env.AI_STRICT_MODE === 'true'

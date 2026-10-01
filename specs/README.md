@@ -239,3 +239,4 @@ código está inerte esperando:
 - **114** — [O Withings não traz dado](114-o-withings-nao-traz-dado/plan.md) — conectado, `last sync` de hoje, e a tela vazia
 - **115** — [A pressão vem do aparelho](115-a-pressao-vem-do-aparelho/plan.md) — sai a medição por câmera; fica o BPM Connect e a digitação
 - **116** — [O painel no escuro](116-o-painel-no-escuro/plan.md) — paleta clara crua sobre tema escuro; o conserto é token, não `dark:`
+- **117** — [Os termos aguentam a loja, e o paciente](117-os-termos-aguentam-a-loja/plan.md) — a política nomeia 2 processadores; o produto usa 10

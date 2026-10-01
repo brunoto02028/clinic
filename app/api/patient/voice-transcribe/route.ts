@@ -9,13 +9,13 @@ import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
 
-// Pricing estimates (GDPR-safe providers only — no Minimax for patient audio)
+// Estimativa de custo por provedor
 const GROQ_CLAUDE_COST_PER_MINUTE_USD = 0.005; // Groq Whisper (free tier) + Claude Haiku
 const GEMINI_COST_PER_MINUTE_USD = 0.075;       // Gemini Flash fallback
 const MARGIN_PERCENT = 20;
 
 // ─── Primary: Groq Whisper (STT) + Claude Haiku (extraction) ─────────────────
-// Patient audio never sent to Minimax (Chinese jurisdiction — UK GDPR risk)
+// O áudio do paciente vai para o Groq, com o Gemini como reserva.
 
 async function transcribeWithGroqAndClaude(
   audioBuffer: ArrayBuffer,

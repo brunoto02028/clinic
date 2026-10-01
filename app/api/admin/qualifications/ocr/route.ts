@@ -46,7 +46,7 @@ Return a JSON object with these fields (use null if not found):
 
 Return ONLY the JSON object, no markdown, no explanation.`;
 
-    // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+    // Provedor unificado: visão pelo OpenRouter (primário) → Gemini (reserva)
     const { analyzeMultipleImages } = await import("@/lib/ai-provider");
     const responseText = await analyzeMultipleImages(
       [{ url: "", base64, mimeType }],

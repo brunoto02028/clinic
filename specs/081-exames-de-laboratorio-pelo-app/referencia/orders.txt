@@ -1,0 +1,206 @@
+Orders | LML API 
+ API Docs 
+ Swagger UI
+ Orders
+ Create and manage orders for test kits, including shipping, appointments, and customer details.
+ Create an order
+ POST 
+ /api/order/ 
+ Creates a new order and returns the order ID along with the test registration IDs that were generated for each item.
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ items 
+ array 
+ Yes 
+ Array of order items (see below) 
+ shipping_id 
+ string 
+ Yes 
+ UUID of the shipping method (from /api/product/{id}/shipping ) 
+ customer 
+ object 
+ No 
+ Customer details: email , first_name , last_name , phone_number 
+ customer_id 
+ string 
+ No 
+ UUID of an existing customer (alternative to customer object) 
+ address 
+ object 
+ No 
+ Shipping address (required for home kit shipping) 
+ shipping_date 
+ string 
+ No 
+ Preferred shipping date ( YYYY-MM-DD ) 
+ initial_appointment 
+ object 
+ No 
+ Appointment details for walk-in or phlebotomy shipping types 
+ Item object
+ Field 
+ Type 
+ Required 
+ Description 
+ product_id 
+ string 
+ One of 
+ UUID of the product 
+ product_sku 
+ string 
+ One of 
+ SKU of the product (alternative to product_id ) 
+ quantity 
+ integer 
+ Yes 
+ Quantity to order (must be greater than 0) 
+ Address object
+ Field 
+ Type 
+ Required 
+ Description 
+ line1 
+ string 
+ Yes 
+ First line of address 
+ line2 
+ string 
+ No 
+ Second line of address 
+ line3 
+ string 
+ No 
+ Third line of address 
+ city 
+ string 
+ Yes 
+ City 
+ postal_code 
+ string 
+ Yes 
+ Postal code 
+ country_code 
+ string 
+ Yes 
+ ISO country code (e.g. GB , DE , IT ) 
+ company 
+ string 
+ No 
+ Company name 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/order/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "shipping_id": "a1b2c3d4-...",
+ "customer": {
+ "email": "jane@example.com",
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "phone_number": "+447700900000"
+ },
+ "address": {
+ "line1": "10 Harley Street",
+ "city": "London",
+ "postal_code": "W1G 9PF",
+ "country_code": "GB"
+ },
+ "items": [
+ {
+ "product_id": "e5f6a7b8-...",
+ "quantity": 1
+ }
+ ]
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "d4e5f6a7-...",
+ "test_registrations": [
+ {
+ "id": "f8a9b0c1-...",
+ "trf_code": "LML-AB1234",
+ "product": {
+ "id": "e5f6a7b8-...",
+ "sku": "LML-THY-ADV",
+ "biomarkers": [
+ "b1c2d3e4-...",
+ "c2d3e4f5-..."
+ ]
+ }
+ }
+ ]
+} 
+ Save the test_registrations[].id values — you will need them to register patients and retrieve lab results later.
+ Get an order
+ GET 
+ /api/order/{id} 
+ Retrieve a single order by its UUID.
+ {
+ "id": "d4e5f6a7-...",
+ "carrier": "royal_mail",
+ "tracking_number": "AB123456789GB",
+ "shipping_id": "a1b2c3d4-...",
+ "shipping_date": "2024-03-15",
+ "address_id": "c3d4e5f6-...",
+ "customer_id": "b2c3d4e5-...",
+ "price": {
+ "amount_minor": 5900,
+ "currency": "GBP",
+ "formatted_value": "59.00"
+ },
+ "items": [
+ {
+ "product_id": "e5f6a7b8-...",
+ "product_sku": "LML-THY-ADV",
+ "quantity": 1
+ }
+ ]
+} 
+ List orders
+ GET 
+ /api/order/ 
+ Returns a paginated list of orders for your brand.
+ Update an order
+ PATCH 
+ /api/order/{id} 
+ Cancel or refund an existing order.
+ Field 
+ Type 
+ Description 
+ cancel 
+ boolean 
+ Set to true to cancel the order 
+ refund 
+ boolean 
+ Set to true to refund the order 
+ Reship an order
+ PUT 
+ /api/order/{id}/reship 
+ Triggers a reship of the order. The shipping status will be reset to AWAITING_SHIPPING and a new shipment will be prepared.
+ Order sub-resources
+ Each order has related resources available as separate endpoints.
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/order/{id}/test_registrations 
+ Get test registrations created by this order 
+ GET 
+ /api/order/{id}/items 
+ Get order line items 
+ GET 
+ /api/order/{id}/customer 
+ Get the customer for this order 
+ GET 
+ /api/order/{id}/address 
+ Get the shipping address 
+ GET 
+ /api/order/{id}/shipping 
+ Get the shipping method used 
+ GET 
+ /api/order/{id}/appointments 
+ Get appointments linked to this order

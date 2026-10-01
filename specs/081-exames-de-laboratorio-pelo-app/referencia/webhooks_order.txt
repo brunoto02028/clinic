@@ -1,0 +1,51 @@
+Order Webhooks | LML API 
+ API Docs 
+ Swagger UI
+ Order Webhooks
+ Events related to order shipping and delivery.
+ order.shipped
+ Triggered when an order has been shipped.
+ {
+ "event": "order.shipped",
+ "data": {
+ "order_id": "1234-5678",
+ "url": "https://example.com/api/order/1234-5678"
+ }
+} 
+ Use the provided URL to fetch the full order details.
+ Retry schedule
+ Failed deliveries are retried with the following delays ( days:hours:minutes ):
+ 0:00:00
+ 0:00:05
+ 0:00:10
+ 0:00:30
+ 0:01:00
+ 0:04:00
+ 0:12:00
+ 1:00:00
+ 1:12:00
+ 2:00:00
+ 3:00:00
+ order.delivered
+ Triggered when an order has been delivered to the customer.
+ {
+ "event": "order.delivered",
+ "data": {
+ "order_id": "1234-5678",
+ "url": "https://example.com/api/order/1234-5678"
+ }
+} 
+ Use the provided URL to fetch the full order details.
+ Retry schedule
+ Failed deliveries are retried with the following delays ( days:hours:minutes ):
+ 0:00:00
+ 0:00:05
+ 0:00:10
+ 0:00:30
+ 0:01:00
+ 0:04:00
+ 0:12:00
+ 1:00:00
+ 1:12:00
+ 2:00:00
+ 3:00:00

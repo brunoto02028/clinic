@@ -1,0 +1,281 @@
+Test Registrations | LML API 
+ API Docs 
+ Swagger UI
+ Test Registrations
+ Register tests, assign patients, and retrieve lab results.
+ Test registrations can be looked up by their UUID , TRF code (e.g. LML-AB1234 ), or your own foreign ID if you set one. All {id} parameters accept any of these identifiers.
+ Create a test registration
+ POST 
+ /api/test_registration/ 
+ Register a test directly without creating an order. This is useful for GPs and doctors integrating with their own systems.
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ patient_id 
+ string 
+ Yes 
+ UUID of the patient 
+ product_ids 
+ array 
+ One of 
+ Array of product UUIDs to include 
+ product_skus 
+ array 
+ One of 
+ Array of product SKUs (alternative to product_ids ) 
+ biomarker_codes 
+ array 
+ No 
+ Array of specific biomarker codes to test 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID for future lookups 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/test_registration/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "patient_id": "a1b2c3d4-...",
+ "product_ids": ["e5f6a7b8-..."],
+ "foreign_id": "YOUR-INTERNAL-REF-123"
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "f8a9b0c1-...",
+ "trf_code": "LML-AB1234",
+ "short_code": "AB1234",
+ "status": "awaiting_patient",
+ "results_ready": false,
+ "patient_id": "a1b2c3d4-...",
+ "product_ids": ["e5f6a7b8-..."],
+ "product_skus": ["LML-THY-ADV"],
+ "first_name": "Jane",
+ "last_name": "Smith",
+ "email": "jane@example.com",
+ "date_of_birth": "1990-05-15",
+ "gender": "female",
+ "ethnicity": null,
+ "created_at": "2024-03-15",
+ "completed_at": null,
+ "patient_registered_at": null,
+ "foreign_id": "YOUR-INTERNAL-REF-123",
+ "lab_id": null,
+ "label_sample_id": "LML1021",
+ "sandbox_scenario": null,
+ "parent_id": null,
+ "uk_address": null,
+ "doctors_note": null,
+ "doctors_name": null,
+ "download_url": null,
+ "appointment_id": null,
+ "clinical_details": null
+} 
+ Print the Test Registration Form (TRF)
+ GET 
+ /api/test_registration/{id}/trf 
+ Returns the Test Registration Form to print and include with the sample. The response is a PDF ( application/pdf ). Append ?show_as_html=1 to receive the raw HTML instead, which is useful for previewing or embedding.
+ curl "https://api.londonmedicallaboratory.com/api/test_registration/f8a9b0c1-.../trf" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ --output trf.pdf 
+ Print the sample label
+ GET 
+ /api/test_registration/{id}/label 
+ Returns a printable sample label (barcode plus patient identifiers) to stick on the sample tube. The response is a PDF ( application/pdf ); append ?show_as_html=1 for the raw HTML. A patient must be assigned to the test registration first — otherwise this returns 404 Not Found . The code shown on the label is the test registration's label_sample_id (e.g. LML1021 ), so you can match a printed label back to the registration.
+ curl "https://api.londonmedicallaboratory.com/api/test_registration/f8a9b0c1-.../label" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ --output label.pdf 
+ Get a test registration
+ GET 
+ /api/test_registration/{id} 
+ Retrieve a single test registration. The {id} parameter accepts a UUID, TRF code, or foreign ID.
+ List test registrations
+ GET 
+ /api/test_registration/ 
+ Returns a paginated list of test registrations for your brand.
+ Update a test registration
+ PATCH 
+ /api/test_registration/{id} 
+ Assign a patient to a test registration, or update its external reference. This is how you register a patient through your own site after creating an order.
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ patient_id 
+ string 
+ Yes 
+ UUID of the patient to assign 
+ mobile_phone_number 
+ string 
+ No 
+ Patient's mobile number for SMS result delivery 
+ foreign_id 
+ string 
+ No 
+ Your own external reference ID for future lookups 
+ Example request
+ curl -X PATCH "https://api.londonmedicallaboratory.com/api/test_registration/f8a9b0c1-..." \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "patient_id": "a1b2c3d4-...",
+ "mobile_phone_number": "+447700900000"
+}' 
+ Get lab results
+ GET 
+ /api/test_registration/{id}/lab_results 
+ Retrieve the lab results for a test registration. Returns 204 No Content if results are not yet available.
+ Example response
+ {
+ "nr_of_results": 3,
+ "current_page": 1,
+ "nr_of_pages": 1,
+ "results_per_page": 100,
+ "next_page": null,
+ "items": [
+ {
+ "id": "c1d2e3f4-...",
+ "name": "Thyroid Stimulating Hormone (TSH)",
+ "code": "TSH",
+ "value": "2.5",
+ "min_range": "0.27",
+ "max_range": "4.2",
+ "unit_type": "mIU/L",
+ "out_of_range": null,
+ "successful": true,
+ "status": "success",
+ "biomarker_id": "b1c2d3e4-...",
+ "comment": null,
+ "human_readable_value": "2.5 mIU/L",
+ "error_reason": null,
+ "fallback_range_applied": false
+ }
+ ]
+} 
+ Result fields
+ Field 
+ Type 
+ Description 
+ value 
+ string|null 
+ The test result value 
+ min_range / max_range 
+ string|null 
+ Normal reference range for this biomarker 
+ unit_type 
+ string|null 
+ Unit of measurement (e.g. mIU/L , mmol/L ) 
+ out_of_range 
+ string|null 
+ high , low , or null if within range 
+ status 
+ string 
+ pending , success , or failed 
+ successful 
+ boolean 
+ Whether the test was processed successfully 
+ error_reason 
+ string|null 
+ Reason for failure if status is failed 
+ Sandbox testing
+ The sandbox environment ( https://api.sandbox.londonmedicallaboratory.com ) is fully self-contained — no real laboratory is involved . Every test registration you create is resulted automatically , so you can build and test your integration end to end without any manual lab or clinician step.
+ When you create a test registration in the sandbox, it progresses through its full lifecycle on its own:
+ The registration is created with status: "pending" and results_ready: false .
+ The order is sent to a mocked lab . After a short delay (~30 seconds) fake results are generated for every biomarker on the ordered product(s). Values are random and are not clinically meaningful — they exist only to exercise your integration.
+ A simulated doctor sign-off then runs automatically: the results are authenticated and a standard doctor's note is attached.
+ The registration transitions to status: "success" , results_ready: true , and completed_at is set.
+ End to end this normally completes within 1–2 minutes . To detect completion, poll either the registration ( GET /api/test_registration/{id} — watch results_ready / status ) or the results endpoint ( GET /api/test_registration/{id}/lab_results ), which returns 204 No Content until results are ready and 200 with the result items once they are.
+ Forcing specific outcomes
+ By default a sandbox registration resolves to a clean success . To exercise other known situations (much like Stripe's test cards), set the registration's foreign_id to a magic value of the form:
+ test:<scenario>:<your-ref> 
+ Keep your own reference on the end ( <your-ref> ) so the foreign_id stays unique and you can still look the registration up by it. Any foreign_id that does not start with test: behaves normally (success). Magic values are only honoured in the sandbox.
+ Results are deterministic : the same patient + product + scenario always produces the same values, so you can write reproducible assertions. The resolved scenario is echoed back on the registration as sandbox_scenario . For a machine-readable catalogue of scenarios and timing modifiers, call GET /api/sandbox/scenarios .
+ Target specific biomarkers by appending @ and a comma-separated list of biomarker codes: test:abnormal_high@LDL,CHO:<your-ref> pushes only LDL and CHO out of range while every other biomarker stays firmly in range. Generated panels are also internally consistent — calculated results (e.g. non-HDL, cholesterol/HDL ratio, HDL %) are derived from their components rather than made up independently.
+ Reference ranges and values are grounded in real historical results and are sex-aware : where a biomarker's normal range depends on sex (e.g. testosterone, ferritin, oestradiol), the patient's sex is used.
+ Receiving webhooks
+ The sandbox fires the real lifecycle webhooks (sample received, lab id created, results complete, registration complete, …) as your forced registrations progress. Point them at your own endpoint with PUT /api/webhook , then GET /api/webhook to confirm:
+ curl -X PUT "https://api.sandbox.londonmedicallaboratory.com/api/webhook" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{"url": "https://your-app.example.com/lml-webhooks"}' 
+ Send {"url": null} to disable. See the Webhooks guide for payloads.
+ Scenario 
+ foreign_id 
+ Resulting status 
+ Success (default) anything not starting with test: success , all results in range 
+ All results high test:abnormal_high:<ref> success , every result flagged high 
+ All results low test:abnormal_low:<ref> success , every result flagged low 
+ Sample rejected test:all_failed:<ref> fail (all biomarkers failed) 
+ Partial results test:partial:<ref> partial_result (some pending) 
+ One failed, rest pass test:one_failed:<ref> success with one failed, retestable result 
+ Results never arrive test:pending_forever:<ref> stays pending (sample received, no results) 
+ Awaiting authentication test:awaiting_auth:<ref> pending_authentication (auto sign-off skipped) 
+ Processing error test:processing_error:<ref> processing_error 
+ HTTP error append ?force_status=<code> to any API request (e.g. 401 , 429 , 500 ) that HTTP status 
+ partial and one_failed need a product with more than one biomarker (with a single-biomarker product they resolve to success and fail respectively).
+ Controlling timing
+ Append a timing modifier to the scenario with + to control how quickly the mocked results arrive: test:<scenario>+<timing>:<your-ref> .
+ Modifier Delay before results Example 
+ (none) ~30 seconds (default) test:all_failed:ref-1 
+ instant no delay test:success+instant:ref-2 
+ slow ~2 minutes (for testing polling) test:partial+slow:ref-3 
+ This automatic resulting behaviour is sandbox-only . In production, registrations require real laboratory processing and clinician authentication, so results are not instantaneous.
+ Download results PDF
+ GET 
+ /api/test_registration/{id}/download_pdf 
+ Download the lab results as a PDF document. Returns 404 if the patient has not yet been assigned.
+ Force a retest
+ POST 
+ /api/test_registration/{id}/retest 
+ Create a retest for a test registration that has failed results. A new order and test registration will be created. Returns 201 Created with the new test registration, or 400 if there are no failed results or no linked order.
+ Send completion email
+ POST 
+ /api/test_registration/{id}/send-complete-email 
+ Send the test registration completion email to a specific email address. The patient must not have been assigned yet.
+ Field 
+ Type 
+ Required 
+ Description 
+ email 
+ string 
+ Yes 
+ Email address to send the completion email to 
+ Sub-resources
+ Each test registration has related resources available as separate endpoints.
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/test_registration/{id}/lab_results 
+ Get lab results (paginated) 
+ GET 
+ /api/test_registration/{id}/trf 
+ Test Registration Form PDF ( ?show_as_html=1 for HTML) 
+ GET 
+ /api/test_registration/{id}/label 
+ Sample label PDF — barcode + patient (requires assigned patient) 
+ GET 
+ /api/test_registration/{id}/products 
+ Get products included in this test 
+ GET 
+ /api/test_registration/{id}/order 
+ Get the linked order 
+ GET 
+ /api/test_registration/{id}/patient 
+ Get the assigned patient 
+ GET 
+ /api/test_registration/{id}/appointment 
+ Get the linked appointment 
+ GET 
+ /api/test_registration/{id}/lml_lab_id 
+ Get the LIMS lab ID 
+ GET 
+ /api/test_registration/{id}/download_pdf 
+ Download results as PDF 
+ GET 
+ /api/test_registration/barcode/{barcode} 
+ Look up by barcode / order number

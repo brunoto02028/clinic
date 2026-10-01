@@ -1,0 +1,35 @@
+Workflow | LML API 
+ API Docs 
+ Swagger UI
+ Workflow
+ How the London Medical Laboratory API works and how it can fit in with your site.
+ Selling tests online
+ If you sell tests online through your own website, here are the steps you will commonly use:
+ 1
+ Create an order
+ First, create an order consisting of the product ID, quantity, customer details and shipping method.
+ Depending on the shipping method you might also need to send us an onsite appointment, shipping address, or phlebotomy appointment and address.
+ We will reply back with confirmation including an array of Test Registration IDs to use for future requests.
+ Orders API reference
+ 2
+ Register the test
+ You have two options here:
+ A 
+ Direct the user to register the test through the LML patient portal at patient.londonmedicallaboratory.com 
+ B 
+ Register the patient through your own site and send us a PATCH to update the test registration with the patient details 
+ The option you choose will affect the information printed on the Test Registration Form sent to the patient, directing them to your site or ours.
+ Test Registrations API reference
+ 3
+ Get results
+ Once the sample has been sent back to the lab and tested, we will send a webhook to advise you the result is ready. You can then make a call to the lab results endpoint to retrieve the results.
+ We offer you the choice of us sending the result to the patient — protected via a code sent by SMS combined with a secure link on email to download the result — otherwise we can leave it up to you to consume the result and inform the patient yourself.
+ Taking your own tests
+ If you are a GP or doctor and want to integrate with your own systems:
+ 1
+ Register the test
+ Make a simple call to the test registration API to register a test into our system.
+ 2
+ Get results
+ Once the sample has been sent back to the lab and tested, we will send a webhook to advise you the result is ready. You can then make a call to the lab results endpoint to retrieve the results.
+ We offer you the choice of us sending the result to the patient — protected via a code sent by SMS combined with a secure link on email to download the result — otherwise we can leave it up to you to consume the result and inform the patient yourself.

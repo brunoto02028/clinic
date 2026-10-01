@@ -1,0 +1,173 @@
+Appointments | LML API 
+ API Docs 
+ Swagger UI
+ Appointments
+ Book, manage, and confirm appointments at test locations.
+ Create an appointment
+ POST 
+ /api/appointment/ 
+ Create a new appointment. Use a slot_id from the Test Locations slots endpoint to book a specific time.
+ Request body
+ Field 
+ Type 
+ Required 
+ Description 
+ slot_id 
+ string 
+ Yes* 
+ Slot ID from the test location slots endpoint 
+ confirmed 
+ boolean 
+ Yes 
+ true to confirm immediately, false for provisional 
+ patient_id 
+ string 
+ No 
+ UUID of the patient 
+ starts_at 
+ string 
+ No* 
+ ISO 8601 datetime, used instead of slot_id . Seconds are ignored 
+ test_location_id 
+ string 
+ No 
+ Book at another of your locations rather than the authenticated brand. Must belong to the same organization 
+ override_availability 
+ boolean 
+ No 
+ Defaults to false . See Booking outside published availability 
+ * Provide either slot_id or starts_at . 
+ Example request
+ curl -X POST "https://api.londonmedicallaboratory.com/api/appointment/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "slot_id": "a1b2c3d4-...",
+ "confirmed": true,
+ "patient_id": "e5f6a7b8-..."
+}' 
+ Example response
+ Returns 201 Created :
+ {
+ "id": "f8a9b0c1-...",
+ "type": "brand_location",
+ "test_location_id": "d4e5f6a7-...",
+ "brand_id": "b2c3d4e5-...",
+ "starts_at": "2024-04-15T10:00:00+01:00",
+ "ends_at": "2024-04-15T10:15:00+01:00",
+ "patient_id": "e5f6a7b8-...",
+ "confirmed": true,
+ "status": "booked",
+ "time_id": null,
+ "expires_at": null,
+ "slot_id": "a1b2c3d4-...",
+ "full_address": "10 Harley Street, London, W1G 9PF",
+ "point": {
+ "latitude": 51.5188,
+ "longitude": -0.1487
+ }
+} 
+ Booking outside published availability
+ By default a booking is refused when the calendar says the time is closed, blocked by a break or time
+block, or already taken. Send "override_availability": true to book anyway — the same thing our
+location portal staff do when they take a booking by hand.
+ How you address the time depends on why it is unavailable:
+ Situation 
+ What to send 
+ Slot exists but is unavailable (fully booked, break, time block) 
+ The slot_id — the slots endpoint returns these with "is_available": false 
+ Outside published working hours, or on a closed day 
+ starts_at , plus test_location_id if the location is not the authenticated brand. No slot exists for those times, so there is no id to send 
+ curl -X POST "https://api.londonmedicallaboratory.com/api/appointment/" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "starts_at": "2024-12-25T09:30:00+00:00",
+ "test_location_id": "d4e5f6a7-...",
+ "override_availability": true,
+ "confirmed": true,
+ "patient_id": "e5f6a7b8-..."
+}' 
+ The same flag works on PATCH , so an appointment can be moved to an unavailable time or
+confirmed at one. The location still has to be one of yours: test_location_id outside your
+organization is rejected.
+ Get an appointment
+ GET 
+ /api/appointment/{id} 
+ Retrieve a single appointment by UUID.
+ List appointments
+ GET 
+ /api/appointment/ 
+ Returns a paginated list of appointments.
+ Query parameters
+ Parameter 
+ Type 
+ Description 
+ start_date 
+ string 
+ Filter appointments created after this date ( YYYY-MM-DD ) 
+ end_date 
+ string 
+ Filter appointments created before this date ( YYYY-MM-DD ) 
+ Update an appointment
+ PATCH 
+ /api/appointment/{id} 
+ Update an existing appointment. Use this to reschedule, assign a patient, change the location, or confirm a provisional appointment.
+ Patchable fields
+ Field 
+ Type 
+ Description 
+ appointment_time 
+ string 
+ New appointment time (ISO 8601 format) 
+ patient_id 
+ string|null 
+ Assign or remove a patient 
+ test_location_id 
+ string 
+ Move to a different test location 
+ confirmed 
+ boolean 
+ Set to true to confirm a provisional appointment. false is rejected — to release an appointment, cancel it 
+ override_availability 
+ boolean 
+ Apply the change even when the calendar reports the time as unavailable 
+ Cancel an appointment
+ DELETE 
+ /api/appointment/{id} 
+ Cancels the appointment and frees its slot so it can be booked again. Nothing is erased:
+the appointment is kept for the record with "status": "cancelled" , which is what the response
+body returns. Where the booking was made at one of our clinics, the clinic is notified by email.
+ curl -X DELETE "https://api.londonmedicallaboratory.com/api/appointment/f8a9b0c1-..." \
+ -H "Authorization: Bearer YOUR_API_TOKEN" 
+ Returns 200 OK with the cancelled appointment. An appointment that has already been cancelled,
+attended or marked as a no-show returns 422 with an explanation.
+ Appointment statuses
+ Every appointment payload carries a status . confirmed is separate: it says whether
+a booking is provisional, not whether it is still live.
+ Status 
+ Description 
+ booked 
+ Live appointment. The only status that can be cancelled 
+ attended 
+ The patient attended 
+ no_show 
+ The patient did not attend 
+ cancelled 
+ Cancelled; the slot has been released 
+ Appointment types
+ Type 
+ Description 
+ brand_location 
+ In-person appointment at a test location 
+ home_visit_phlebotomist 
+ Home visit by a phlebotomist 
+ video 
+ Video consultation 
+ Sub-resources
+ Method 
+ Endpoint 
+ Description 
+ GET 
+ /api/appointment/{id}/products 
+ Get products linked to this appointment

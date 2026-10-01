@@ -349,7 +349,7 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
 
       const fullPrompt = `Image labels in order: ${imageLabels.join(", ")}\n\n${analysisPrompt}`;
 
-      // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+      // Provedor unificado: visão pelo OpenRouter (primário) → Gemini (reserva)
       const { analyzeMultipleImages } = await import("@/lib/ai-provider");
       const responseContent = await analyzeMultipleImages(
         visionImages,
@@ -460,7 +460,7 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
              * direto.
              *
              * Hoje ela chama `analyzeMultipleImages` (`lib/ai-provider.ts`), que
-             * escolhe entre OpenRouter, Minimax e Gemini conforme a chave
+             * escolhe entre OpenRouter e Gemini conforme a chave
              * disponivel e **devolve so o texto** — nao diz quem respondeu.
              *
              * Entao `null`, e nao um palpite: num registro de analise clinica,

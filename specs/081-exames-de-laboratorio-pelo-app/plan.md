@@ -1,6 +1,6 @@
 # Atividade 081 — Exames de laboratório pelo app (London Medical Laboratory)
 
-**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 a T-9 esperam o token da LML
+**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 parcial; T-6 a T-9 esperam o token da LML
 **Data:** 25/09/2026
 
 ## Objetivo
@@ -178,7 +178,7 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 | T-2 | Painel da clínica: preço de venda, margem, pedidos, fila de liberação | T-1 | não | concluído |
 | T-3 | Telas do app: catálogo, compra, acompanhamento, resultado | T-1 | não | concluído (telas nativas: conferir no build 15) |
 | T-4 | Privacidade, consentimento e frase de não-diagnóstico | T-1 | não | concluído |
-| T-5 | Cliente da API LML e sincronização do catálogo | T-1 | **sim** | pendente |
+| T-5 | Cliente da API LML e sincronização do catálogo | T-1 | **sim** | **parcial** (01/10) — cliente feito e testado; catálogo espera o token |
 | T-6 | Carrinho, endereço e pagamento pelo Stripe | T-1, T-5 | sim | pendente |
 | T-7 | Pedido na LML e registro do kit pelo paciente | T-6 | sim | pendente |
 | T-8 | Webhooks: kit despachado, amostra recebida, resultado pronto | T-1, T-7 | sim | pendente |
@@ -191,16 +191,33 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 > esta tabela quando o plano for aprovado — o conteúdo de cada tarefa não muda, só a ordem.
 
 **O único ponto que não dá para desenhar sem eles:** o que exatamente o paciente digita para
-registrar o kit — código de barras, código do TRF, número impresso na caixa. Uma pergunta ao
-gerente de conta resolve. Até lá a tela existe com um campo genérico.
+registrar o kit — código de barras, código do TRF, número impresso na caixa. **Respondido em
+01/10 pela documentação:** o registo tem `trf_code` (`LML-AB1234`), `short_code` (`AB1234`) e
+`label_sample_id` (`LML1021`, o que sai impresso na etiqueta da amostra), e o `GET
+/api/test_registration/{id}` aceita os três — mais o nosso próprio `foreign_id`. O campo genérico
+da tela pode passar a dizer qual código pedir.
+
+## O que falta do lado do Bruno (01/10/2026)
+
+**Abrir a conta na LML.** O e-mail de parceria pede **conta nova, com e-mail diferente do da
+primeira empresa** — é outra pessoa jurídica. Cadastro gratuito, link no e-mail deles, e o token
+vem no *onboarding* depois. Sem isso as T-6 a T-9 não andam, e a T-5 fica onde está.
+
+Quando o token chegar: `LML_API_KEY` no Coolify e `LML_API_URL` apontando para
+`https://api.sandbox.londonmedicallaboratory.com` enquanto se testa. O sandbox resulta sozinho e
+tem cenários forçados, então o QA das T-7 a T-9 dá para escrever inteiro — ver o mapa da API.
 
 ## Suposições — preciso da sua validação
 
 1. ~~**Quem interpreta o resultado.**~~ **RESOLVIDO em 25/09/2026:** o paciente só vê depois que o
    Bruno libera. A tela mostra "em revisão com o seu terapeuta" no intervalo, com prazo escrito.
-2. **O preço de custo vem da API.** Assumi que o endpoint de Products devolve o que *nós* pagamos.
-   Se devolver só o preço público, o custo terá que ser cadastrado à mão no painel a partir da lista
-   que eles mandam — a T-8 cobre os dois casos, mas é bom saber antes.
+2. ~~**O preço de custo vem da API.**~~ **RESOLVIDO em 01/10/2026, e era o segundo caso:** o
+   Bruno passou a folha de preços 2026, com `2026 WholesalePrice` (o que nós pagamos) e `2026 RRP`
+   (o preço de venda sugerido) para os **421 exames**. A API devolve um `price` só, sem dizer qual
+   dos dois é. Então o custo entra pela folha, versionada em
+   [`referencia/precos-2026.csv`](referencia/precos-2026.csv), e a API serve para o que só ela sabe:
+   `appointment_only`, métodos de entrega e biomarcadores. **Um exame vende abaixo do custo** — o
+   `LEM`, Leptospirosis, £132,44 de custo e £129,00 de RRP; ver o mapa da API.
 3. **A LML despacha direto para o paciente.** Assumi que o kit vai do laboratório para a casa da
    pessoa, com o nosso pedido carregando o endereço. Se eles mandarem em lote para a clínica, muda
    a T-4 inteira.
@@ -209,7 +226,9 @@ gerente de conta resolve. Até lá a tela existe com um campo genérico.
    preço de venda — dá para fazer, só não está neste desenho.
 5. **Estoque e prazo.** Assumi que a LML não expõe estoque e que o prazo ("1 day**") conta a partir
    do recebimento da amostra, não da compra. A tela vai falar em prazo de laboratório, não de
-   entrega.
+   entrega. **Confirmado em 01/10** pelo e-mail deles ("results in 1-2 days from when the sample
+   reaches our lab") e pela folha, que traz o prazo exame a exame — 219 dos 421 em 1 dia, o maior em
+   3 semanas. Estoque continua sem aparecer em lugar nenhum.
 6. **Idade mínima e restrições.** Assumi 18+ para comprar exame, sem checagem no app além de um
    aceite. Se houver exame com restrição (gravidez, medicação), é regra deles e não sei ainda.
 7. **Devolução e cancelamento.** Assumi que depois que o kit é despachado não há devolução, e que

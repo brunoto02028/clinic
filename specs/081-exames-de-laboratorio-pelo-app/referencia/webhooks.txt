@@ -1,0 +1,53 @@
+Webhooks | LML API 
+ API Docs 
+ Swagger UI
+ Webhooks
+ Receive real-time notifications when events occur in the system.
+ How webhooks work
+ When you have a webhook URL configured, the system will send an HTTP POST request to your endpoint for all events that occur. Each webhook call contains two keys:
+ event — a string identifying the event type
+ data — an object with event-specific data
+ {
+ "event": "event_name",
+ "data": {
+ "somevalue": 42
+ }
+} 
+ Verifying the sender
+ You can give us a shared secret for your account. When one is set, every webhook we send carries it in the
+ X-Webhook-Secret header, so your endpoint can reject anything that does not present it:
+ POST /your/webhook/endpoint HTTP/1.1
+Content-Type: application/json
+X-Webhook-Secret: your-shared-secret
+{
+ "event": "event_name",
+ "data": { ... }
+} 
+ The secret is optional : with none set, no header is sent and nothing else changes. Compare
+it in constant time, and treat it as a credential — it is sent on every call, so it should be a long random
+string rather than anything you use elsewhere.
+ In the sandbox you can set it yourself alongside your webhook URL. Only the keys you send are changed, so
+updating the URL leaves the secret alone, and an explicit null clears either one. We never send
+the secret back — the response only tells you whether one is set:
+ curl -X PUT "https://api.sandbox.londonmedicallaboratory.com/api/webhook" \
+ -H "Authorization: Bearer YOUR_API_TOKEN" \
+ -H "Content-Type: application/json" \
+ -d '{
+ "url": "https://example.com/lml/webhook",
+ "secret": "a-long-random-string"
+}'
+{
+ "webhook_url": "https://example.com/lml/webhook",
+ "webhook_secret_set": true,
+ "secret_header": "X-Webhook-Secret",
+ "events": [ ... ]
+} 
+ For live accounts, send the secret to your account manager and we will set it for you. It can be set once
+for your whole organization, or per brand.
+ Response requirements
+ Your server must respond with an HTTP 200 status code. Any other status code is treated as a failed delivery attempt. Failed deliveries are retried automatically with increasing delays before being abandoned.
+ Available events
+ Test Registration 
+ Lab results complete, registration complete, sample received, lab ID created, retests
+ Orders 
+ Order shipped, order delivered

@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const { callAIClinical } = await import("@/lib/ai-provider");
     const { getConfigValue: getCfg } = await import("@/lib/system-config");
 
-    // 1. Transcribe: Groq Whisper primary → Gemini fallback (GDPR-safe, no Minimax)
+    // 1. Transcrição: Groq Whisper primário → Gemini reserva
     let transcript: string | null = null;
     try {
       const groqKey = (await getCfg("GROQ_API_KEY")) || process.env.GROQ_API_KEY;

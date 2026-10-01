@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Transcription failed (strict mode). Groq Whisper unavailable, no fallback to Gemini." }, { status: 503 });
     }
 
-    // Fallback to Gemini multimodal transcription (Minimax removed — GDPR: no patient audio to Minimax)
+    // Reserva: transcrição multimodal pelo Gemini.
     const geminiKey = await getConfigValue("GEMINI_API_KEY");
     if (geminiKey) {
       const arrayBuffer = await audioFile.arrayBuffer();
