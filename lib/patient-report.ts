@@ -14,7 +14,17 @@ export async function getPatientReportData(patientId: string, opts: { days?: num
         // A língua em que o papel sai — ver `IdiomaDoRelatorio`. Sem este
         // campo no `select`, quem chama lê `undefined` e cai sempre em inglês,
         // que é a tradução a existir e nunca ser alcançada.
-        reportLanguage: true } as any,
+        reportLanguage: true,
+        /*
+         * **A clínica, para o papel não dizer o nome errado** (achado do QA).
+         *
+         * O cabeçalho e o rodapé escreviam "Bruno Physical Rehabilitation ·
+         * Ipswich, Suffolk" à mão, para **qualquer** inquilino. Um paciente de
+         * outro estúdio recebia um documento clínico assinado por uma clínica
+         * que não é a dele — e agora quem gera o papel é o próprio paciente, por
+         * isso a quantidade deles vai subir.
+         */
+        clinic: { select: { name: true, city: true, country: true, slug: true } } } as any,
     }).catch(() => null),
     (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }).catch(() => null),
     (prisma as any).bodyAssessment.findFirst({
@@ -52,7 +62,21 @@ export async function getPatientReportData(patientId: string, opts: { days?: num
 const esc = (s: any) =>
   String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+/**
+ * A data, na língua do papel.
+ *
+ * Era `"en-GB"` fixo — e com o resto traduzido saía *"Paciente desde 24 Sept
+ * 2026"*, meia frase em cada língua. Meio papel traduzido é pior do que nenhum:
+ * convida a ignorar a parte que não se lê.
+ */
+const fmtDate = (d: any, idioma: "en" | "pt" = "en") =>
+  d
+    ? new Date(d).toLocaleDateString(idioma === "pt" ? "pt-BR" : "en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
 
 const row = (label: string, value: any) =>
   value ? `<tr><td class="lbl">${esc(label)}</td><td>${esc(value)}</td></tr>` : "";
@@ -97,7 +121,19 @@ function linhaDeSinal(
     m.variacao === null || m.variacao === 0
       ? ""
       : `${Math.abs(m.variacao)}${unidade} ${m.variacao < 0 ? t.maisBaixo : t.maisAlto} ${t.queAPrimeiraMetade}`;
-  return `<tr><td class="lbl">${esc(rotulo)}</td><td>${esc(valor)}${mudanca ? ` — ${esc(mudanca)}` : ""}<span class="meta"> · ${t.diasComDados(m.dias)}</span></td></tr>`;
+
+  /*
+   * **Número grande, rótulo pequeno** — a linguagem da referência que o Bruno
+   * escolheu. Era uma linha de tabela com grade, onde o valor tinha o mesmo peso
+   * do rótulo e da nota; num papel que alguém lê de relance à frente de um
+   * médico, o número é o que tem de saltar.
+   */
+  const numero = m.atual !== null ? String(m.atual) : "—";
+  return `<div class="metrica">
+    <span class="rotulo">${esc(rotulo)}</span>
+    <span class="valor">${esc(numero)}${unidade.trim() ? `<span class="unidade">${esc(unidade.trim())}</span>` : ""}</span>
+    <span class="nota">${mudanca ? `<span class="mudanca">${esc(mudanca)}</span> · ` : ""}${esc(t.diasComDados(m.dias))}</span>
+  </div>`;
 }
 
 
@@ -117,6 +153,42 @@ export type IdiomaDoRelatorio = "en" | "pt";
 const P = {
   en: {
     titulo: "Clinical Report",
+    imprimir: "Print / Save as PDF",
+    comoGuardar: "Use your browser's print dialog and choose \"Save as PDF\" to download.",
+    estadoPorExtenso: { APPROVED: "approved", DRAFT: "draft", PENDING: "pending", REJECTED: "rejected" } as Record<string, string>,
+    estadoDaConsulta: { COMPLETED: "completed", CONFIRMED: "confirmed", SCHEDULED: "scheduled", CANCELLED: "cancelled", NO_SHOW: "missed" } as Record<string, string>,
+    nome: "Name",
+    idade: "Age",
+    email: "Email",
+    telefone: "Phone",
+    pacienteDesde: "Patient since",
+    anos: "years",
+    nascido: "DOB",
+    queixa: "Chief complaint",
+    localDaDor: "Pain location",
+    notaDaDor: "Pain score",
+    duracaoDaDor: "Pain duration",
+    tipoDeDor: "Pain type",
+    piora: "Aggravating factors",
+    melhora: "Relieving factors",
+    limitacoes: "Functional limitations",
+    ocupacao: "Occupation",
+    nivelDeAtividade: "Activity level",
+    passatempos: "Hobbies / sports",
+    historicoCirurgico: "Surgical history",
+    outrasCondicoes: "Other conditions",
+    medicacao: "Current medications",
+    alergias: "Allergies",
+    reabilitacaoAnterior: "Previous rehabilitation",
+    metasDoTratamento: "Treatment goals",
+    alturaPeso: "Height / Weight",
+    fumante: "Smoker",
+    sim: "Yes",
+    medicoDeFamilia: "GP details",
+    subjetivo: "Subjective",
+    objetivo: "Objective",
+    avaliacaoSoap: "Assessment",
+    plano: "Plan",
     gerado: "Generated",
     paciente: "Patient Information",
     triagem: "Medical Screening — Patient Reported",
@@ -170,11 +242,47 @@ const P = {
       n === 1 ? "on the 1 day with data" : `average of the ${n} days with data`,
     naoEhDiagnostico:
       "<strong>This is not a diagnosis.</strong> It shows what was measured and what was recorded, and it has not been read by a doctor. Talk to your therapist, or to the doctor you bring it to, about what it means.",
-    rodape:
-      "This report was generated by Bruno Physical Rehabilitation (bpr.clinic). It reflects the clinical information recorded up to the generation date and is intended for the patient and their healthcare providers. For questions, contact the clinic.",
+    rodape: (clinica: string) =>
+        `This report was generated by ${clinica}. It reflects the clinical information recorded up to the generation date and is intended for the patient and their healthcare providers. For questions, contact the clinic.`,
   },
   pt: {
     titulo: "Relatório clínico",
+    imprimir: "Imprimir / Salvar em PDF",
+    comoGuardar: "Use a caixa de impressão do navegador e escolha \"Salvar em PDF\".",
+    estadoPorExtenso: { APPROVED: "aprovada", DRAFT: "rascunho", PENDING: "pendente", REJECTED: "recusada" } as Record<string, string>,
+    estadoDaConsulta: { COMPLETED: "realizada", CONFIRMED: "confirmada", SCHEDULED: "marcada", CANCELLED: "cancelada", NO_SHOW: "faltou" } as Record<string, string>,
+    nome: "Nome",
+    idade: "Idade",
+    email: "E-mail",
+    telefone: "Telefone",
+    pacienteDesde: "Paciente desde",
+    anos: "anos",
+    nascido: "nasc.",
+    queixa: "Queixa principal",
+    localDaDor: "Local da dor",
+    notaDaDor: "Nota da dor",
+    duracaoDaDor: "Duração da dor",
+    tipoDeDor: "Tipo de dor",
+    piora: "O que piora",
+    melhora: "O que melhora",
+    limitacoes: "Limitações funcionais",
+    ocupacao: "Ocupação",
+    nivelDeAtividade: "Nível de atividade",
+    passatempos: "Passatempos / esportes",
+    historicoCirurgico: "Histórico cirúrgico",
+    outrasCondicoes: "Outras condições",
+    medicacao: "Medicações atuais",
+    alergias: "Alergias",
+    reabilitacaoAnterior: "Reabilitação anterior",
+    metasDoTratamento: "Metas do tratamento",
+    alturaPeso: "Altura / Peso",
+    fumante: "Fumante",
+    sim: "Sim",
+    medicoDeFamilia: "Médico de família",
+    subjetivo: "Subjetivo",
+    objetivo: "Objetivo",
+    avaliacaoSoap: "Avaliação",
+    plano: "Plano",
     gerado: "Gerado em",
     paciente: "Dados do paciente",
     triagem: "Triagem de saúde — informada pelo paciente",
@@ -229,8 +337,8 @@ const P = {
       n === 1 ? "no único dia com dado" : `média dos ${n} dias com dados`,
     naoEhDiagnostico:
       "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registrado, e não foi lido por um médico. Fale com seu terapeuta, ou com o médico a quem entregar este documento, sobre o que ele significa.",
-    rodape:
-      "Este relatório foi gerado pela Bruno Physical Rehabilitation (bpr.clinic). Reflete as informações clínicas registradas até a data de geração e é destinado ao paciente e aos profissionais de saúde que o acompanham. Em caso de dúvida, fale com a clínica.",
+    rodape: (clinica: string) =>
+        `Este relatório foi gerado por ${clinica}. Reflete as informações clínicas registradas até a data de geração e é destinado ao paciente e aos profissionais de saúde que o acompanham. Em caso de dúvida, fale com a clínica.`,
   },
 } as const;
 
@@ -247,14 +355,16 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
       linhaDeSinal(t.spo2, mon.sinais.spo2, "%", idioma),
       linhaDeSinal(t.passos, mon.sinais.passos, "", idioma),
     ].join("");
-    partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><table>${linhas}</table></div>`);
+    partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><div class="metricas">${linhas}</div></div>`);
   }
 
   if (mon.pressao.leituras > 0) {
-    partes.push(`<div class="section"><h2>${t.pressao}</h2><table>
+    partes.push(`<div class="section"><h2>${t.pressao}</h2><div class="metricas">
       ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", idioma)}
       ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", idioma)}
-      ${mon.pressao.ultima ? row(t.maisRecente, `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg ${t.em} ${fmtDate(mon.pressao.ultima.measuredAt)}`) : ""}
+    </div>
+    <table>
+      ${mon.pressao.ultima ? row(t.maisRecente, `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg ${t.em} ${fmtDate(mon.pressao.ultima.measuredAt, idioma)}`) : ""}
       ${row(t.leiturasNoPeriodo, String(mon.pressao.leituras))}
     </table></div>`);
   }
@@ -285,18 +395,19 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
     const ultimos = mon.comoSeSentiu.ultimos
       .map((c) => `<li>${esc(c.dia)} — ${t.dor.toLowerCase()} ${c.dor}/10, ${t.humor.toLowerCase()} ${c.humor}/5</li>`)
       .join("");
-    partes.push(`<div class="section"><h2>${t.comoSeSentiu}</h2><table>
+    partes.push(`<div class="section"><h2>${t.comoSeSentiu}</h2><div class="metricas">
       ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", idioma)}
       ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", idioma)}
-      ${row(t.checkins, String(mon.comoSeSentiu.registros))}
-    </table><h3>${t.maisRecente}</h3><ul>${ultimos}</ul></div>`);
+    </div>
+    <table>${row(t.checkins, String(mon.comoSeSentiu.registros))}</table>
+    <h3>${t.maisRecente}</h3><ul>${ultimos}</ul></div>`);
   }
 
   if (mon.consultas.length > 0) {
     const itens = mon.consultas
       .map(
         (a) =>
-          `<li>${esc(fmtDate(a.dateTime))} — ${esc(a.treatmentType)} (${esc(a.status.toLowerCase())}${a.mode && a.mode !== "IN_PERSON" ? `, ${esc(a.mode === "VIDEO" ? t.porVideo : t.emCasa)}` : ""})</li>`
+          `<li>${esc(fmtDate(a.dateTime, idioma))} — ${esc(a.treatmentType)} (${esc(t.estadoDaConsulta[a.status] ?? String(a.status).toLowerCase())}${a.mode && a.mode !== "IN_PERSON" ? `, ${esc(a.mode === "VIDEO" ? t.porVideo : t.emCasa)}` : ""})</li>`
       )
       .join("");
     partes.push(`<div class="section"><h2>${t.consultas}</h2><ul>${itens}</ul></div>`);
@@ -336,6 +447,19 @@ export function renderPatientReportHTML(
 ): string {
   const idioma: IdiomaDoRelatorio = opts?.idioma === "pt" ? "pt" : "en";
   const t = P[idioma];
+
+  /*
+   * **A clínica de quem é o paciente**, e não um nome escrito à mão.
+   *
+   * Sem ela, o recurso é dizer apenas "a sua clínica" — vago, mas verdadeiro.
+   * Pôr um nome que pode ser de outra pessoa num documento clínico é pior do que
+   * não pôr nenhum.
+   */
+  const clinicaDoPaciente = (data as any)?.patient?.clinic ?? null;
+  const nomeDaClinica: string =
+    clinicaDoPaciente?.name || (idioma === "pt" ? "a sua clínica" : "your clinic");
+  /* A cidade situa; um código ISO de país numa linha de marca é ruído. */
+  const ondeFica: string = clinicaDoPaciente?.city ?? "";
   const { patient, screening: ms, bodyAssessment: ba, diagnosis: dx, protocols, soapNotes, monitoring } = data as any;
   if (!patient) return "<html><body>Patient not found</body></html>";
 
@@ -367,7 +491,7 @@ export function renderPatientReportHTML(
     return `
     <div class="section">
       <h2>Treatment Protocol: ${esc(p.title)}</h2>
-      <p class="meta">Status: ${esc(p.status)} · Created ${fmtDate(p.createdAt)} by ${esc(p.therapist?.firstName || "")} ${esc(p.therapist?.lastName || "")}${p.estimatedWeeks ? ` · ${p.estimatedWeeks} weeks` : ""}${(p as any).totalSessions ? ` · ${(p as any).totalSessions} sessions` : ""}</p>
+      <p class="meta">Status: ${esc(p.status)} · Created ${fmtDate(p.createdAt, idioma)} by ${esc(p.therapist?.firstName || "")} ${esc(p.therapist?.lastName || "")}${p.estimatedWeeks ? ` · ${p.estimatedWeeks} weeks` : ""}${(p as any).totalSessions ? ` · ${(p as any).totalSessions} sessions` : ""}</p>
       <p>${esc(p.summary)}</p>
       ${p.therapistComments ? `<p class="comment"><strong>Therapist comments:</strong> ${esc(p.therapistComments)}</p>` : ""}
 
@@ -399,20 +523,21 @@ export function renderPatientReportHTML(
       <h2>Session Notes (SOAP)</h2>
       ${soapNotes.map((s: any) => `
         <div class="soap">
-          <p class="meta">${fmtDate(s.createdAt)} — ${esc(s.therapist?.firstName || "")} ${esc(s.therapist?.lastName || "")}${s.painLevel != null ? ` · Pain ${s.painLevel}/10` : ""}</p>
+          <p class="meta">${fmtDate(s.createdAt, idioma)} — ${esc(s.therapist?.firstName || "")} ${esc(s.therapist?.lastName || "")}${s.painLevel != null ? ` · Pain ${s.painLevel}/10` : ""}</p>
           <table>
-            ${row("Subjective", s.subjective)}
-            ${row("Objective", s.objective)}
-            ${row("Assessment", s.assessment)}
-            ${row("Plan", s.plan)}
+            ${row(t.subjetivo, s.subjective)}
+            ${row(t.objetivo, s.objective)}
+            ${row(t.avaliacaoSoap, s.assessment)}
+            ${row(t.plano, s.plan)}
           </table>
         </div>`).join("")}
     </div>` : "";
 
+  /* A barra só existe no navegador; no e-mail e no papel ela não vai. */
   const printBar = opts?.forEmail ? "" : `
     <div class="no-print toolbar">
-      <button onclick="window.print()">🖨 Print / Save as PDF</button>
-      <span>Use your browser's print dialog and choose "Save as PDF" to download.</span>
+      <button onclick="window.print()">${esc(t.imprimir)}</button>
+      <span>${esc(t.comoGuardar)}</span>
     </div>`;
 
   return `<!DOCTYPE html>
@@ -421,30 +546,251 @@ export function renderPatientReportHTML(
 <meta charset="utf-8"/>
 <title>${t.titulo} — ${esc(patient.firstName)} ${esc(patient.lastName)}</title>
 <style>
+  /*
+   * BA One Design System v4 — pilar **Health** (119 T-9 / 118 T-5).
+   *
+   * O papel vinha do tempo em que era documento interno da clínica: teal
+   * "#0f766e" — que não é a nossa cor —, tabelas com grade em toda a célula, e
+   * títulos com barra verde por baixo. A unificação da identidade (ativ. 34)
+   * passou por tudo menos por aqui.
+   *
+   * A linguagem é a que o Bruno escolheu: a nossa paleta com a modernidade da
+   * referência que ele deu — **número grande, rótulo pequeno**, muito respiro,
+   * cartão com sombra suave em vez de grade, e acento usado com parcimónia.
+   *
+   * **Sem fonte externa, de propósito.** Sora e Inter viriam do Google Fonts, e
+   * isso é um terceiro novo a receber o IP de quem abre um documento clínico.
+   * A identidade aqui vem da cor, da escala e do ritmo — e essas não pedem
+   * licença a ninguém.
+   */
+  :root {
+    --ink: #20242D;
+    --ink-2: #3A4150;
+    --bone: #F5F4F1;
+    --card: #FFFFFF;
+    --line: #E4E3DF;
+    --muted: #767B85;
+    --moss: #4F7361;
+    --moss-soft: #EDF3EF;
+    --bad: #A85A4B;
+    --warn: #8A6D3B;
+  }
+
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a202c; margin: 0; padding: 24px; max-width: 900px; margin-inline: auto; font-size: 13px; line-height: 1.5; }
-  h1 { font-size: 22px; margin: 0 0 2px; color: #0f766e; }
-  h2 { font-size: 16px; color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 4px; margin: 28px 0 10px; }
-  h3 { font-size: 13.5px; margin: 16px 0 6px; color: #334155; }
-  .meta { color: #64748b; font-size: 11.5px; margin: 2px 0 8px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f766e; padding-bottom: 12px; }
-  .brand { text-align: right; color: #0f766e; font-weight: 700; }
-  .brand small { display: block; color: #64748b; font-weight: 400; }
-  table { border-collapse: collapse; width: 100%; margin: 6px 0; }
-  td, th { padding: 5px 8px; vertical-align: top; text-align: left; border: 1px solid #e2e8f0; }
-  td.lbl { width: 180px; font-weight: 600; background: #f8fafc; }
-  table.items th { background: #f0fdfa; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #334155; }
-  .precautions { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 4px 14px 8px; margin: 10px 0; }
-  .precautions h3 { color: #b91c1c; }
-  .comment { background: #f0fdfa; border-left: 3px solid #0f766e; padding: 6px 10px; }
-  .soap { margin-bottom: 14px; }
-  .redflags li { color: #b91c1c; }
-  .toolbar { background: #0f766e; color: #fff; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
-  .toolbar button { background: #fff; color: #0f766e; border: 0; border-radius: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; font-size: 13px; }
-  .toolbar span { font-size: 11.5px; opacity: .9; }
-  .footer { margin-top: 32px; padding-top: 10px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 10.5px; }
-  ul { margin: 4px 0; padding-left: 20px; }
-  @media print { .no-print { display: none !important; } body { padding: 0; font-size: 11.5px; } .section { page-break-inside: avoid; } }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bone);
+    color: var(--ink);
+    margin: 0;
+    padding: 32px 20px 56px;
+    max-width: 820px;
+    margin-inline: auto;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── cabeçalho ─────────────────────────────────────────────── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 650;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .brand {
+    text-align: right;
+    color: var(--moss);
+    font-weight: 650;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .brand small {
+    display: block;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0;
+    margin-top: 2px;
+  }
+
+  /* ─── secções: cartão claro, sombra suave, sem grade ─────────── */
+  .section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px 22px;
+    margin: 0 0 16px;
+    box-shadow: 0 1px 2px rgba(32, 36, 45, 0.04);
+  }
+
+  /*
+   * O título da secção é um **rótulo**, não uma faixa. A barra verde por baixo
+   * de cada um dava a seis secções o mesmo peso do nome do paciente.
+   */
+  h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 650;
+    color: var(--moss);
+    margin: 0 0 14px;
+  }
+  h3 {
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--ink-2);
+    margin: 18px 0 6px;
+  }
+  .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+
+  /* ─── número grande, rótulo pequeno ──────────────────────────── */
+  .metricas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 18px 22px;
+  }
+  .metrica .rotulo {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .metrica .valor {
+    display: block;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 650;
+    color: var(--ink);
+  }
+  .metrica .valor .unidade {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-left: 3px;
+    letter-spacing: 0;
+  }
+  .metrica .nota {
+    display: block;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .metrica .mudanca { color: var(--ink-2); }
+
+  /* ─── tabelas: só linha de base, sem grade ───────────────────── */
+  table { border-collapse: collapse; width: 100%; margin: 2px 0; }
+  td, th {
+    padding: 9px 0;
+    vertical-align: top;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  tr:last-child td { border-bottom: 0; }
+  td.lbl {
+    width: 190px;
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 12.5px;
+    background: none;
+  }
+  table.items th {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+    padding-top: 0;
+  }
+
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin: 3px 0; }
+
+  .precautions {
+    background: #FBF4F2;
+    border: 1px solid #EBD9D4;
+    border-radius: 10px;
+    padding: 2px 16px 10px;
+    margin: 12px 0;
+  }
+  .precautions h3 { color: var(--bad); }
+  .comment {
+    background: var(--moss-soft);
+    border-left: 2px solid var(--moss);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+  .soap { margin-bottom: 16px; }
+  .redflags li { color: var(--bad); }
+
+  /* ─── a barra de imprimir, que não vai no papel ──────────────── */
+  .toolbar {
+    background: var(--ink);
+    color: var(--bone);
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .toolbar button {
+    background: var(--bone);
+    color: var(--ink);
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-weight: 650;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .toolbar span { font-size: 12px; opacity: 0.85; }
+
+  .footer {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+  .footer strong { color: var(--ink-2); }
+
+  /* ─── impresso ───────────────────────────────────────────────── */
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff; padding: 0; font-size: 12px; max-width: none; }
+    /*
+     * A sombra não imprime e o fundo bege gasta tinta sem acrescentar nada.
+     * No papel, a secção é um fio — e cada uma começa inteira numa página.
+     */
+    .section {
+      box-shadow: none;
+      border-radius: 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+      padding: 14px 0 6px;
+      margin: 0;
+      page-break-inside: avoid;
+      background: none;
+    }
+    .metrica .valor { font-size: 21px; }
+    h1 { font-size: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -454,17 +800,17 @@ ${printBar}
     <h1>${t.titulo}</h1>
     <p class="meta">${t.gerado} ${new Date().toLocaleDateString(idioma === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
   </div>
-  <div class="brand">Bruno Physical Rehabilitation<small>Ipswich, Suffolk · bpr.clinic</small></div>
+  <div class="brand">${esc(nomeDaClinica)}${ondeFica ? `<small>${esc(ondeFica)}</small>` : ""}</div>
 </div>
 
 <div class="section">
   <h2>${t.paciente}</h2>
   <table>
-    ${row("Name", `${patient.firstName} ${patient.lastName}`)}
-    ${row("Age", age ? `${age} years (DOB ${fmtDate(patient.dateOfBirth)})` : null)}
-    ${row("Email", patient.email)}
-    ${row("Phone", patient.phone)}
-    ${row("Patient since", fmtDate(patient.createdAt))}
+    ${row(t.nome, `${patient.firstName} ${patient.lastName}`)}
+    ${row(t.idade, age ? `${age} ${t.anos} (${t.nascido} ${fmtDate(patient.dateOfBirth, idioma)})` : null)}
+    ${row(t.email, patient.email)}
+    ${row(t.telefone, patient.phone)}
+    ${row(t.pacienteDesde, fmtDate(patient.createdAt, idioma))}
   </table>
 </div>
 
@@ -472,26 +818,26 @@ ${ms ? `
 <div class="section">
   <h2>${t.triagem}</h2>
   <table>
-    ${row("Chief complaint", ms.chiefComplaint)}
-    ${row("Pain location", ms.painLocation)}
-    ${row("Pain score", ms.painScore != null ? `${ms.painScore}/10` : null)}
-    ${row("Pain duration", ms.painDuration)}
-    ${row("Pain type", ms.painType)}
-    ${row("Aggravating factors", ms.painAggravating)}
-    ${row("Relieving factors", ms.painRelieving)}
-    ${row("Functional limitations", ms.functionalLimitations)}
-    ${row("Occupation", ms.occupation)}
-    ${row("Activity level", ms.activityLevel)}
-    ${row("Hobbies / sports", ms.hobbiesSports)}
-    ${row("Surgical history", ms.surgicalHistory)}
-    ${row("Other conditions", ms.otherConditions)}
-    ${row("Current medications", ms.currentMedications)}
-    ${row("Allergies", ms.allergies)}
-    ${row("Previous rehabilitation", ms.previousPhysioDetails)}
-    ${row("Treatment goals", ms.treatmentGoals)}
-    ${row("Height / Weight", [ms.height, ms.weight].filter(Boolean).join(" / ") || null)}
-    ${row("Smoker", ms.smoker ? "Yes" : null)}
-    ${row("GP details", ms.gpDetails)}
+    ${row(t.queixa, ms.chiefComplaint)}
+    ${row(t.localDaDor, ms.painLocation)}
+    ${row(t.notaDaDor, ms.painScore != null ? `${ms.painScore}/10` : null)}
+    ${row(t.duracaoDaDor, ms.painDuration)}
+    ${row(t.tipoDeDor, ms.painType)}
+    ${row(t.piora, ms.painAggravating)}
+    ${row(t.melhora, ms.painRelieving)}
+    ${row(t.limitacoes, ms.functionalLimitations)}
+    ${row(t.ocupacao, ms.occupation)}
+    ${row(t.nivelDeAtividade, ms.activityLevel)}
+    ${row(t.passatempos, ms.hobbiesSports)}
+    ${row(t.historicoCirurgico, ms.surgicalHistory)}
+    ${row(t.outrasCondicoes, ms.otherConditions)}
+    ${row(t.medicacao, ms.currentMedications)}
+    ${row(t.alergias, ms.allergies)}
+    ${row(t.reabilitacaoAnterior, ms.previousPhysioDetails)}
+    ${row(t.metasDoTratamento, ms.treatmentGoals)}
+    ${row(t.alturaPeso, [ms.height, ms.weight].filter(Boolean).join(" / ") || null)}
+    ${row(t.fumante, ms.smoker ? t.sim : null)}
+    ${row(t.medicoDeFamilia, ms.gpDetails)}
   </table>
   ${redFlags.length ? `<h3 style="color:#b91c1c">Red Flags Reported</h3><ul class="redflags">${redFlags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
 </div>` : ""}
@@ -499,7 +845,7 @@ ${ms ? `
 ${ba ? `
 <div class="section">
   <h2>${t.postural}</h2>
-  <p class="meta">${fmtDate(ba.createdAt)}${ba.overallScore != null ? ` · ${t.pontuacao}: ${ba.overallScore}` : ""}</p>
+  <p class="meta">${fmtDate(ba.createdAt, idioma)}${ba.overallScore != null ? ` · ${t.pontuacao}: ${ba.overallScore}` : ""}</p>
   ${ba.aiSummary ? `<p>${esc(ba.aiSummary)}</p>` : ""}
   ${ba.aiRecommendations ? `<p><strong>${t.recomendacoes}:</strong> ${esc(ba.aiRecommendations)}</p>` : ""}
 </div>` : ""}
@@ -507,7 +853,7 @@ ${ba ? `
 ${dx ? `
 <div class="section">
   <h2>${t.avaliacao}</h2>
-  <p class="meta">${fmtDate(dx.createdAt)} · ${t.estado}: ${esc(dx.status)}</p>
+  <p class="meta">${fmtDate(dx.createdAt, idioma)} · ${t.estado}: ${esc(t.estadoPorExtenso[dx.status] ?? String(dx.status).toLowerCase())}</p>
   <p>${esc(dx.summary)}</p>
   ${parseJson(dx.conditions).length ? `<h3>${t.condicoes}</h3><ul>${parseJson(dx.conditions).map((c: any) => `<li><strong>${esc(c.name)}</strong>${c.severity ? ` (${esc(c.severity)})` : ""}: ${esc(c.description || "")}</li>`).join("")}</ul>` : ""}
   ${parseJson(dx.findings).length ? `<h3>${t.achados}</h3><ul>${parseJson(dx.findings).map((f: any) => `<li><strong>${esc(f.area || "")}</strong>: ${esc(f.finding || f.description || "")}</li>`).join("")}</ul>` : ""}
@@ -523,7 +869,7 @@ ${soapHtml}
 <div class="footer">
   ${t.naoEhDiagnostico}
   <br><br>
-  ${t.rodape}
+  ${esc(t.rodape(nomeDaClinica))}
 </div>
 </body>
 </html>`;
