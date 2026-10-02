@@ -241,3 +241,4 @@ código está inerte esperando:
 - **116** — [O painel no escuro](116-o-painel-no-escuro/plan.md) — paleta clara crua sobre tema escuro; o conserto é token, não `dark:`
 - **117** — [Os termos aguentam a loja, e o paciente](117-os-termos-aguentam-a-loja/plan.md) — a política nomeia 2 processadores; o produto usa 10
 - **118** — [A aba Saúde](118-a-aba-saude/plan.md) — as medições saem de dentro do Menu; resumo, cinco famílias e **as metas que o paciente define**
+- **119** — [O que a Withings mostra, e o que a API nos dá](119-o-que-a-withings-mostra/plan.md) — paridade com o app deles; **a T-1 é medição**, porque dado fora do plano volta vazio sem erro
