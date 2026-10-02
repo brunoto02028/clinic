@@ -57,7 +57,7 @@ describe("os três desfechos", () => {
   it("**veio** — com quantos e um exemplo", async () => {
     chamar.mockResolvedValue(corpoCheio({ series: [{ rmssd: 14 }, { rmssd: 18 }] }));
     const linhas = await sondar();
-    const hrv = linhas.find((l) => l.biomarcador.startsWith("HRV"))!;
+    const hrv = linhas.find((l) => l.biomarcador.includes("HRV"))!;
     expect(hrv.desfecho).toBe("veio");
     expect(hrv.quantos).toBe(2);
     expect(hrv.exemplo).toEqual({ rmssd: 14 });
@@ -142,6 +142,17 @@ describe("o que ela pergunta", () => {
     const nomes = linhas.map((l) => l.biomarcador).join(" | ");
     expect(nomes).toMatch(/HRV/);
     expect(nomes).toMatch(/respiração/i);
+    /*
+     * E com os nomes de campo certos: `rmssd` e `sdnn_1` **não existem** no
+     * `getsummary`. Pedi-los lá foi o que me fez escrever na tabela que a API
+     * não devolvia HRV, quando o que havia era a pergunta no sítio errado.
+     */
+    const pedidos = chamar.mock.calls.map((c) => String(c[1].data_fields ?? "")).join("|");
+    expect(pedidos).toMatch(/rmssd_start_avg/);
+    /* `,rmssd,` e nao `b`: o `b` ja veio parar aqui como byte de backspace invisivel, e um padrao que nunca casa parece defeito do codigo em vez de defeito do teste. */
+    expect(pedidos).toMatch(/,rmssd,/);
+    expect(pedidos).toMatch(/sdnn_1/);
+    expect(pedidos).toMatch(/sdnn1/);
     expect(nomes).toMatch(/Hipnograma/);
     expect(nomes).toMatch(/ECG — o traçado/);
     expect(nomes).toMatch(/Treinos/);

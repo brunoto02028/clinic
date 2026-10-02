@@ -62,6 +62,18 @@ com o que o browser mostra.
 - https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/data-api/raw-data/
 - https://web.archive.org/web/20260210103752if_/https://static.withings.com/content/api/plans/plans.html (a versão anterior da página de planos)
 
+**Fontes do lado do consumidor** (secção 8.3)
+
+- https://www.withings.com/en-us/pages/ecg-watches · https://www.withings.com/en-uk/pages/ecg-watches — **o FAQ que diz que o ECG não precisa de assinatura**
+- https://support.withings.com/hc/en-us/articles/17091647688465-ScanWatch-2-Sharing-ECG-recordings-with-your-doctor
+- https://support.withings.com/hc/en-us/articles/14166469200529-Withings-Subscribing-to-Withings (preços e teste gratuito)
+- https://support.withings.com/hc/en-us/articles/8986672043153-Withings-FAQ
+- https://support.withings.com/hc/en-us/articles/11132728427921-Withings-Terms-and-Conditions
+- https://support.withings.com/hc/en-us/articles/33789946387217-Withings-App-Sharing-data-with-a-Healthcare-Professional (o tecto de 3 meses)
+- https://support.withings.com/hc/en-us/articles/15547200464273-Withings-Health-Improvement-Score
+- https://support.withings.com/hc/en-us/articles/32557735511953-Withings-Cardio-Check-Up
+- https://support.withings.com/hc/en-us/articles/201489647-Partner-Apps-Linking-a-Partner-app-to-my-Withings-account
+
 ---
 
 ## 2. Os pacotes de biomarcadores

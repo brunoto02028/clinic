@@ -508,7 +508,6 @@ export async function ingestWithings(
        * guarda-se o instante, e quem mostra agrupa no seu próprio fuso.
        */
       const ecg = await withingsEcg(token, since, opts.until);
-      let sinalTentado = false;
       for (const rec of ecg) {
         const dataDate = rec.recordedAt.toISOString().split("T")[0];
         const { traduzirClassificacao } = await import("@/lib/ecg-record");
@@ -519,7 +518,7 @@ export async function ingestWithings(
               ? null
               : Number(rec.afibClassification);
 
-        await prisma.ecgRecording.upsert({
+        const gravado = await prisma.ecgRecording.upsert({
           where: {
             userId_provider_recordedAt: {
               userId,
@@ -550,39 +549,70 @@ export async function ingestWithings(
             conclusao: traduzirClassificacao(rec.afibClassification),
             signalId: rec.signalId,
           },
+          select: { signal: true },
         });
         ecgRecords++;
+        /* Já temos as amostras desta gravação? Então não se pedem outra vez. */
+        const jaTemSinal = gravado.signal !== null;
 
         /*
-         * **O traçado — e, antes disso, a medição.** (099 T-9)
+         * **O traçado, na linha da gravação a que pertence** (099 T-9).
          *
-         * A lista dá a conclusão e um `signalid`; as amostras são uma segunda
-         * chamada que nunca fizemos. E não dá para saber pela documentação se o
-         * nosso plano a inclui: a divisão publicada põe o sinal no escalão
-         * pago, e **dado fora do plano não dá erro** — o campo só não vem.
+         * Medido em 02/10/2026: **9.000 amostras a 300 Hz** — 30 segundos, um
+         * ScanWatch. O sinal vem, e vem para a conta do Bruno sem contrato
+         * nenhum assinado da nossa parte.
          *
-         * Então o log distingue os três desfechos, porque "vazio" e "sem
-         * direito" são a mesma resposta e levam a ações opostas. Só o registo
-         * **mais recente** é buscado: a pergunta é se dá, não encher o banco.
+         * ## Três coisas que mudaram em relação à primeira versão
+         *
+         * **Guarda-se por gravação, não por dia.** Antes ia para o
+         * `WearableSeries`, cuja chave é `(connectionId, dataDate, kind)` — um
+         * traçado por dia UTC. Dois ECG no mesmo dia partilhavam a linha e o
+         * segundo apagava o primeiro, e as amostras não tinham como ser
+         * atribuídas a um registo. Um traçado sem saber de que gravação é não
+         * serve para o papel que o paciente leva ao médico.
+         *
+         * **Busca-se o de cada gravação, não só o do mais recente.** A primeira
+         * versão buscava um só porque a pergunta era *"isto dá?"*. Agora dá, e
+         * a pergunta passou a ser *"onde está o meu ECG?"*.
+         *
+         * **Só o que falta.** Um traçado já guardado não é pedido outra vez: são
+         * 9.000 números por gravação, e o limite publicado é de 120 pedidos por
+         * minuto por `client_id`.
+         *
+         * O log continua a distinguir os três desfechos. "Vazio" e "sem direito"
+         * continuam a ser a mesma resposta na rede, e levam a ações opostas.
          */
-        if (rec.signalId && !sinalTentado) {
-          sinalTentado = true;
+        if (rec.signalId && !jaTemSinal) {
           try {
             const { sinalDoEcg } = await import("@/lib/withings-series");
             const sinal = await sinalDoEcg(token, rec.signalId);
             if (sinal.amostras.length > 0) {
-              await upsertSeries(userId, connection.id, "ECG_SIGNAL", dataDate, sinal.amostras);
+              await prisma.ecgRecording.update({
+                where: {
+                  userId_provider_recordedAt: {
+                    userId,
+                    provider: PROVEDOR,
+                    recordedAt: rec.recordedAt,
+                  },
+                },
+                data: {
+                  signal: sinal.amostras,
+                  samplingHz: sinal.frequencia ?? null,
+                  wearPosition: sinal.posicao ?? null,
+                },
+              });
               console.log(
-                `[withings-ingest] ECG: ${sinal.amostras.length} amostras a ${sinal.frequencia ?? "?"} Hz — O PLANO INCLUI`
+                `[withings-ingest] ECG ${rec.signalId}: ${sinal.amostras.length} amostras a ` +
+                  `${sinal.frequencia ?? "?"} Hz, posicao ${sinal.posicao ?? "?"} — GUARDADO`
               );
             } else {
               console.log(
-                `[withings-ingest] ECG: VAZIO SEM ERRO (ambiguo — tratar como NAO LIDO). ` +
+                `[withings-ingest] ECG ${rec.signalId}: VAZIO SEM ERRO (ambiguo — tratar como NAO LIDO). ` +
                   `chaves do corpo: ${Object.keys(sinal.bruto).join(",") || "nenhuma"}`
               );
             }
           } catch (e: any) {
-            console.log(`[withings-ingest] ECG: ERRO EXPLICITO — ${e?.message ?? e}`);
+            console.log(`[withings-ingest] ECG ${rec.signalId}: ERRO EXPLICITO — ${e?.message ?? e}`);
           }
         }
       }

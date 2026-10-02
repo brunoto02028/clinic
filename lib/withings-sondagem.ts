@@ -163,7 +163,8 @@ export async function sondarTudo(
       ...token,
       startdate: seg(umDia),
       enddate: seg(ate),
-      data_fields: "heart_rate,steps,calories",
+      /* `sdnn1` **sem underscore** aqui — a mesma métrica, outra grafia. */
+      data_fields: "heart_rate,steps,calories,rmssd,sdnn1,hrv_quality",
     }, (c) => Object.values(c?.series ?? {}))
   );
 
@@ -179,31 +180,37 @@ export async function sondarTudo(
   );
 
   /*
-   * **HRV, respiração, SpO₂ do sono e a pontuação deles.**
+   * **Respiração, pontuação, frequência do sono — e o HRV com o nome certo.**
    *
-   * Estes são os campos que o app da Withings mostra e nós nunca vimos. Vão
-   * **numa pergunta só**, com todos os `data_fields` juntos, porque é assim que
-   * a API os entrega — e separados seriam quatro perguntas a gastar quatro
-   * esperas de 11s para a mesma resposta.
+   * A primeira sondagem pediu `rmssd` e `sdnn_1` a este endpoint e registou
+   * *"HRV não veio"*. **Esses campos não existem aqui.** No `getsummary` o HRV
+   * chama-se `rmssd_start_avg` e `rmssd_end_avg`; o `rmssd` e o `sdnn_1` vivem
+   * no `v2/sleep get`, e no `getintradayactivity` a mesma métrica chama-se
+   * `sdnn1`, **sem underscore** — três grafias na mesma documentação.
    *
-   * Se a resposta vier com os campos, estão no nosso plano. Se vier sem eles,
-   * **não estão** — e aí a tabela diz quais faltaram, um a um.
+   * Ou seja: o HRV nunca esteve bloqueado. Eu é que perguntei no sítio errado,
+   * e depois escrevi na tabela que a API não o devolvia. Foi o terceiro
+   * "vazio" desta atividade que era defeito nosso e não falta de plano.
    */
   await correr(
-    perguntar("HRV, respiração, SpO₂ do sono, pontuação", "/v2/sleep#getsummary", {
+    perguntar("Respiração, pontuação, frequência do sono, HRV", "/v2/sleep#getsummary", {
       ...token,
       startdateymd: new Date(desde).toISOString().slice(0, 10),
       enddateymd: new Date(ate).toISOString().slice(0, 10),
       data_fields:
-        "rmssd,sdnn_1,breathing_disturbances_intensity,apnea_hypopnea_index,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max,sleep_score,night_events,snoring,withings_index",
+        "rmssd_start_avg,rmssd_end_avg,hrv_quality,breathing_disturbances_intensity,apnea_hypopnea_index,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max,sleep_score,night_events,snoring,withings_index,sleep_efficiency,sleep_latency,waso,nb_rem_episodes",
     }, (c) => c?.series ?? [])
   );
 
+  /*
+   * O hipnograma — e é **aqui** que o `rmssd` e o `sdnn_1` moram, com estes
+   * nomes. O `getsummary` não os tem.
+   */
   await correr(
-    perguntar("Hipnograma da noite", "/v2/sleep#get", {
+    perguntar("Hipnograma da noite, com HRV e respiração", "/v2/sleep#get", {
       ...token,
       ...janela,
-      data_fields: "hr,rr,snoring",
+      data_fields: "hr,rr,snoring,rmssd,sdnn_1,hrv_quality",
     }, (c) => c?.series ?? [])
   );
 

@@ -7798,8 +7798,42 @@ model EcgRecording {
   /// `normal` | `fibrilacao` | `inconclusivo` — a leitura de `afibRaw`.
   conclusao String
 
-  /// O identificador do sinal na Withings. Não é o traçado; é o caminho até ele.
+  /// O identificador do sinal na Withings. É o caminho até ao traçado.
   signalId String?
+
+  /**
+   * O traçado, amostra a amostra, em **micro-volts** (099 T-9).
+   *
+   * Um JSON com a lista de inteiros, no mesmo formato que o `WearableSeries`
+   * usa para as outras séries: 9.000 números para um ScanWatch (30 s a 300 Hz).
+   *
+   * ## Porque vive aqui e não no `WearableSeries`
+   *
+   * Lá a chave é `(connectionId, dataDate, kind)` — **um traçado por dia UTC**.
+   * É a mesma forma de chave que esta atividade tirou da conclusão, e tem os
+   * mesmos dois defeitos: dois ECG no mesmo dia partilham a linha, e o segundo
+   * apaga o primeiro; e um ECG das 00:30 em Londres no verão fica arquivado
+   * como sendo de ontem.
+   *
+   * Pior do que isso: lá as amostras não têm como ser atribuídas a uma
+   * gravação. Um traçado sem saber de que registo é não serve para nada — e é
+   * o traçado que vai no papel que o paciente leva ao médico.
+   *
+   * Aqui é a mesma linha da gravação. Não há chave para errar.
+   */
+  signal Json?
+
+  /// Hz do sinal. 300 no ScanWatch, 500 no BPM Core — vem da própria resposta.
+  samplingHz Int?
+
+  /**
+   * Onde a pessoa tinha o aparelho, no código da Withings. `1` é pulso
+   * esquerdo, que é o que o PDF deles imprime como *"Left wrist"*.
+   *
+   * Guardado porque **vai no papel**: um ECG sem dizer de onde foi tirado é
+   * menos do que um ECG, e quem o lê precisa de saber.
+   */
+  wearPosition Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
