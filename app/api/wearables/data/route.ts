@@ -7,6 +7,7 @@ import { getEffectiveUser } from '@/lib/get-effective-user';
 import { lerEcg } from '@/lib/ecg-record';
 import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from '@/lib/ecg-limite';
 import { quaisTemTracado } from '@/lib/ecg-tem-sinal';
+import { serieDaMetrica } from '@/lib/onde-mora-a-metrica';
 
 export async function GET(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
@@ -92,8 +93,28 @@ export async function GET(request: NextRequest) {
     ecgs.map((e) => e.id)
   );
 
+  /**
+   * **A série diária de cada sinal, resolvida aqui** (118 T-9).
+   *
+   * A aba Saúde passa a mostrar a tendência em barras, e precisa dos dias. Vem
+   * do servidor já resolvida — e **não** com o app a repetir o mapa de onde cada
+   * métrica mora: foi exactamente esse o defeito da 119 T-9, três leitores a
+   * escolherem o balde de memória e a clínica inteira cega a FC de repouso, VFC
+   * e SpO2 durante semanas.
+   *
+   * Um critério, um sítio, lido por todos os lados.
+   */
+  const series = {
+    sono: serieDaMetrica(dataPoints as any[], "sleepDuration"),
+    fcRepouso: serieDaMetrica(dataPoints as any[], "restingHr"),
+    hrv: serieDaMetrica(dataPoints as any[], "hrv"),
+    spo2: serieDaMetrica(dataPoints as any[], "spo2"),
+    passos: serieDaMetrica(dataPoints as any[], "steps"),
+  };
+
   return NextResponse.json({
     data: comEcg,
+    series,
     /** Houve mais do que cabe — a tela diz, em vez de cortar calada. */
     ecgsCortados: cortouRegistos(ecgsVieram.length),
     ecgRecordings: ecgs.map((e) => ({

@@ -148,6 +148,7 @@ some ensina à pessoa que o produto está estragado.
 | T-6 | Os anéis e as linhas — **só com build autorizado** | T-4, T-7 | pendente |
 | T-7 | **As metas são do paciente** | T-2 | **feito** (02/10) — QA 0 reprovados, 9 achados do review fechados |
 | T-8 | [**O relatório ganha gráfico**](t-8-o-relatorio-ganha-grafico.md) | T-5 | **concluído** (02/10) — linha por métrica que **não atravessa buracos**, fases do sono, triagem em grupos; 10 mutações |
+| T-9 | [**A aba Saúde com a cara nova**](t-9-a-aba-com-a-cara-nova.md) | T-8 | **concluído** (02/10) — tendência em barras, sem dependência nova; 8 mutações |
 
 **Ordem pedida pelo Bruno:** *"vamos antes conectar tudo e ver esse
 layout/design"* — ou seja, T-1 a T-4 primeiro; a T-5 e a T-6 depois.

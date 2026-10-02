@@ -89,6 +89,33 @@ export async function fetchWearableData(days = 7): Promise<WearableDataPoint[]> 
   return res.data ?? [];
 }
 
+/** Um dia de uma métrica. `null` é um dia sem medição, e fica na lista. */
+export interface DiaDaSerie {
+  dia: string;
+  valor: number | null;
+}
+
+/**
+ * As séries diárias, **resolvidas pelo servidor** (118 T-9).
+ *
+ * O app não repete o mapa de onde cada métrica mora no `WearableDataPoint`.
+ * Esse foi o defeito da 119 T-9: três leitores escolheram o balde de memória —
+ * `BODY`, que ninguém escreve — e a clínica inteira ficou cega a FC de repouso,
+ * VFC e SpO2 sem nada o denunciar. Um critério, um sítio.
+ *
+ * Vem numa chamada própria em vez de mudar o `fetchWearableData`, que três telas
+ * usam esperando um array: mudar-lhe a forma partiria as outras duas por uma
+ * coisa de que só a aba Saúde precisa.
+ */
+export async function fetchSeriesDosSinais(
+  days = 30
+): Promise<Record<string, DiaDaSerie[]>> {
+  const res = await apiFetch<{ series?: Record<string, DiaDaSerie[]> }>(
+    `/api/wearables/data?days=${days}`
+  );
+  return res.series ?? {};
+}
+
 /**
  * Um registo de ECG — **um por gravação** (119 T-2).
  *
