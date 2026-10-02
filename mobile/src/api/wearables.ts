@@ -218,3 +218,26 @@ export async function fetchSerie(
   const q = date ? `&date=${encodeURIComponent(date)}` : "";
   return apiFetch<SerieDoDia>(`/api/wearables/series?kind=${kind}${q}`);
 }
+
+/**
+ * As metas diárias — **do paciente** (118 T-7).
+ *
+ * Um campo a `null` é meta **não definida**, e a tela não desenha progresso
+ * nenhum para ele. Não há valor por omissão de propósito: pôr "8.000 passos"
+ * seria dar a alguém um alvo que ele não escolheu.
+ */
+export type { Metas } from "@/lib/metas-formulario";
+import type { Metas } from "@/lib/metas-formulario";
+
+export async function fetchMetas(): Promise<Metas> {
+  const r = await apiFetch<{ goals: Metas }>("/api/patient/goals");
+  return r.goals;
+}
+
+export async function salvarMetas(m: Partial<Metas>): Promise<Metas> {
+  const r = await apiFetch<{ goals: Metas }>("/api/patient/goals", {
+    method: "PUT",
+    body: JSON.stringify(m),
+  });
+  return r.goals;
+}

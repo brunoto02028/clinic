@@ -27,6 +27,15 @@ import { desviosDosPontos } from "@/lib/monitoring-deviation";
  * uma noite sem o relógio no pulso não é uma noite sem sono, e a ausência é
  * informação — ela diz que a pessoa parou de usar o aparelho.
  */
+/**
+ * A marca de "não consegui ler as metas".
+ *
+ * Um objecto próprio, porque `null` já significa outra coisa aqui — *"o
+ * paciente não definiu nenhuma"* — e misturar as duas é o que fazia o painel
+ * afirmar uma escolha que ninguém fez.
+ */
+const ILEGIVEL = Symbol("metas-ilegiveis");
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const actor = (await getSessionStaffActor(request)) ?? (await getActor(request));
@@ -50,7 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     desde.setDate(desde.getDate() - days);
     const desdeStr = desde.toISOString().split("T")[0];
 
-    const [monitoring, pontos, checkins, pressao] = await Promise.all([
+    const [monitoring, pontos, checkins, pressao, metas] = await Promise.all([
       getMonitoringData(paciente.id, { days }),
       (prisma as any).wearableDataPoint.findMany({
         where: { userId: paciente.id, dataDate: { gte: desdeStr } },
@@ -76,6 +85,30 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         orderBy: { measuredAt: "asc" },
         select: { systolic: true, diastolic: true, measuredAt: true },
       }).catch(() => []),
+      /*
+       * **As metas que o paciente definiu** (118 T-7).
+       *
+       * Regra do Bruno: *"o que aparece no app precisa aparecer na clinic, pois
+       * lá é o centro de comando"*. Se ele vê uma barra de progresso no
+       * telemóvel, o terapeuta tem de ver contra o quê — senão a consulta
+       * acontece com os dois a olhar para números diferentes.
+       *
+       * São **do paciente**, e o painel lê e não escreve: quem as define é ele.
+       */
+      prisma.patientGoals
+        .findUnique({
+          where: { userId: paciente.id },
+          select: { steps: true, activeMinutes: true, sleepMinutes: true, activeCalories: true, updatedAt: true },
+        })
+        /*
+         * **Não pude ler** é diferente de **não definiu nenhuma**, e o `.catch`
+         * a devolver `null` fazia as duas serem a mesma frase: o painel
+         * afirmava *"None set yet — these are the patient's to choose"* quando a
+         * verdade era que o dado não chegou. Como não há `prisma/migrations` e o
+         * deploy aplica por `db push` — que engole a falha —, a tabela em falta
+         * em produção cairia exactamente aqui, calada.
+         */
+        .catch(() => ILEGIVEL),
     ]);
 
     const serie = (tipo: string, campo: string) =>
@@ -87,6 +120,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       patient: paciente,
       days,
       monitoring,
+      /** `null` quando o paciente não definiu nenhuma — e isso é informação. */
+      goals: metas === ILEGIVEL ? null : metas,
+      /** E isto é a outra coisa: a leitura falhou, não houve escolha nenhuma. */
+      goalsUnreadable: metas === ILEGIVEL,
       // Os desvios do próprio paciente, para a ficha dele repetir o que a fila
       // da clínica já mostra — sem obrigar quem abriu a ficha a ir até lá.
       deviations: desviosDosPontos(pontos as any[]),

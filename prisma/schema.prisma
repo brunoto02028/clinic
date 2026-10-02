@@ -1041,6 +1041,7 @@ model User {
   wearableConnections        WearableConnection[]        @relation("UserWearableConnections")
   wearableDataPoints         WearableDataPoint[]         @relation("UserWearableData")
   wearableSeries             WearableSeries[]            @relation("UserWearableSeries")
+  goals                      PatientGoals?               @relation("UserGoals")
 
   // Study Assistant (AI tutor for coursework)
   studyProjects StudyProject[] @relation("StudyProjectOwner")
@@ -7738,6 +7739,49 @@ model WearableSeries {
   @@unique([connectionId, dataDate, kind])
   @@index([userId, kind])
   @@index([dataDate])
+}
+
+/**
+ * As metas diárias — **do paciente** (118 T-7).
+ *
+ * Decisão do Bruno, e ela muda o significado do número na tela: *"o paciente
+ * define as metas"*. Não é a clínica, e não é um valor por omissão da
+ * indústria.
+ *
+ * ## Porque isto tinha de existir antes dos anéis
+ *
+ * Um anel de progresso mede contra um alvo. Sem metas guardadas, desenhar um
+ * anel exigiria inventar um — "8.000 passos" — e isso é pôr na tela de alguém
+ * um alvo que ele não escolheu. É a mesma classe de coisa que a faixa de
+ * referência que saiu da tela na 099 T-2: uma afirmação sobre o corpo da pessoa
+ * disfarçada de desenho.
+ *
+ * ## Cada campo é opcional, e isso é o desenho
+ *
+ * **Meta não definida não desenha barra.** Quem só quer acompanhar o sono põe a
+ * do sono e deixa o resto vazio; os outros números aparecem sem progresso, que
+ * é o que são. Um campo obrigatório forçaria toda a gente a inventar um alvo
+ * para poder usar a tela.
+ */
+model PatientGoals {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation("UserGoals", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Passos por dia.
+  steps         Int?
+  /// Minutos ativos por dia.
+  activeMinutes Int?
+  /// Minutos de sono por noite — guardado em minutos, como o resto do sono.
+  sleepMinutes  Int?
+  /// Calorias ativas por dia.
+  activeCalories Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /* Sem `@@index([userId])`: o `@unique` acima já cria o índice, e um segundo
+     sobre a mesma coluna seria mantido a cada escrita por nada. */
 }
 
 // ─── Clinical Rehabilitation Agent ───────────────────────────────────────────
