@@ -3,6 +3,24 @@
 **Status:** pendente
 **Depende de:** nenhuma
 
+> **Revisto em 02/10/2026, depois de trazer o `main`.** Esta tarefa era
+> "criar um portão". **Metade dele já existe** e foi escrita por outra
+> sessão: `pediramEnviarAoPaciente` em `lib/notify-patient.ts:87`.
+>
+> ```ts
+> export function pediramEnviarAoPaciente(pedido: unknown): boolean {
+>   return pedido === true || pedido === "true";
+> }
+> ```
+>
+> Com o comentário certo em cima: *"o silêncio — campo ausente, nulo, vazio
+> — é **não**. Só um sim explícito envia. Isto é uma função e não um
+> `=== true` solto porque já escorregou uma vez."*
+>
+> Então a tarefa deixa de ser inventar e passa a ser **espalhar e
+> reforçar**. Está usada em **duas** rotas (`app/api/admin/appointments/route.ts:171`
+> e `app/api/appointments/[id]/route.ts:287`) e precisa estar em todas.
+
 ## Objetivo
 
 Um lugar só que decide se uma mensagem pode sair para um paciente. Treze
@@ -20,13 +38,13 @@ pessoa?". São perguntas diferentes e ficam em camadas diferentes.
 
 ## Passos
 
-1. Criar `lib/patient-send-gate.ts` com uma função que toda rota que
-   mande ao paciente passa a chamar antes de `notifyPatient`,
-   `sendEmail` ou push:
+1. **Não criar arquivo novo.** Crescer `lib/notify-patient.ts` em volta do
+   `pediramEnviarAoPaciente` que já está lá, acrescentando o que falta: os
+   outros modos de confirmação, o teto por paciente e o registro.
 
    ```ts
    type ConfirmacaoDeEnvio =
-     | { modo: "explicito"; confirmado: boolean }   // notify: true no corpo
+     | { modo: "explicito"; confirmado: boolean }   // já coberto hoje
      | { modo: "preview"; hash: string }            // preview + hash
      | { modo: "fila" }                             // vai para a outbox
      | { modo: "transacional"; motivo: string };    // disparado pelo paciente
@@ -38,6 +56,10 @@ pessoa?". São perguntas diferentes e ficam em camadas diferentes.
      origem: string;  // rota, para o log e para a tela do T-7
    }): Promise<{ ok: true } | { ok: false; status: number; error: string; code: string }>;
    ```
+
+   O modo `"explicito"` **delega** a `pediramEnviarAoPaciente`. Não
+   reimplementar a comparação: foi justamente um operador invertido
+   (`!== false`) que causou o defeito original.
 
 2. **O padrão é não mandar.** `confirmado: false`, `confirmacao` ausente ou
    malformada → `{ ok: false }`. Nunca o contrário.
@@ -53,9 +75,8 @@ pessoa?". São perguntas diferentes e ficam em camadas diferentes.
 
 ## Arquivos afetados
 
-- `lib/patient-send-gate.ts` (novo)
+- `lib/notify-patient.ts` (crescer em volta do que já existe)
 - `__tests__/patient-send-gate.test.ts` (novo)
-- `lib/notify-patient.ts` (só o comentário de topo, apontando para o portão)
 
 ## Critérios de aceite
 
@@ -69,3 +90,7 @@ pessoa?". São perguntas diferentes e ficam em camadas diferentes.
       (prove por mutação: inverta o default e veja o teste ficar vermelho).
 - [ ] O portão **não** é chamado em caminho transacional do próprio
       paciente — ou, se for, com `modo: "transacional"` e motivo escrito.
+- [ ] `pediramEnviarAoPaciente` continua existindo e sendo a única
+      comparação do modo explícito — nenhuma rota faz `=== true` por conta.
+- [ ] As duas rotas que já o usam (`admin/appointments:171`,
+      `appointments/[id]:287`) continuam funcionando igual.

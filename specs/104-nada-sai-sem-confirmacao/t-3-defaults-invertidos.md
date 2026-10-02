@@ -3,9 +3,24 @@
 **Status:** pendente
 **Depende de:** T-1
 
+> **Revisto em 02/10/2026, depois de trazer o `main`.** Eram três; **o de
+> `appointments` já foi consertado por outra sessão** e sai do escopo. Hoje
+> a linha 171 diz:
+>
+> ```ts
+> const emailPatientNow = pediramEnviarAoPaciente(sendConfirmation);
+> ```
+>
+> com o comentário *"nada sai para paciente sem alguém pedir"*. O `||
+> paymentMode === "online"` sumiu junto. Mesma coisa em
+> `app/api/appointments/[id]/route.ts:287`.
+>
+> **Sobram dois.** A seção sobre `appointments` fica abaixo só como
+> registro do que era — serve de modelo para os outros dois.
+
 ## Objetivo
 
-Três lugares onde o sistema manda **por omissão**. São os mais baratos de
+Os lugares onde o sistema manda **por omissão**. São os mais baratos de
 consertar e os que mais surpreendem, porque o usuário acha que escolheu.
 
 ## Contexto
@@ -19,7 +34,7 @@ mesmo arquivo já tem o padrão certo três linhas abaixo.
 Agrava: já houve vazamento cross-tenant nesta rota (11/09/2026), então ela
 já é a mais sensível do painel.
 
-### 2. `appointments/route.ts:94` — sai mesmo quando se pede para não sair
+### 2. ~~`appointments/route.ts`~~ — **já consertado** (registro)
 
 ```ts
 const emailPatientNow = paymentMode === "online" || sendConfirmation !== false;
@@ -44,11 +59,11 @@ real — `WELCOME`, `SCREENING_RECEIVED` ou o template que vier no slug.
 
 ## Passos
 
-1. `broadcasts`: inverter o default de `notify` para `false`. A UI passa a
-   marcar explicitamente. Conferir se algum chamador depende da omissão.
-2. `appointments`: `sendConfirmation: false` passa a valer **sempre**,
-   inclusive em pagamento online. Separar as duas perguntas: "confirmar a
-   consulta?" e "mandar o aviso agora?".
+1. `broadcasts`: trocar `notify = true` por `pediramEnviarAoPaciente(notify)`
+   — a mesma função que o `appointments` já usa. A UI passa a marcar
+   explicitamente. Conferir se algum chamador depende da omissão.
+2. ~~`appointments`~~ — feito por outra sessão. Só conferir no QA que
+   continua assim.
 3. `email-test`: duas saídas, escolher com o Bruno —
    - (a) nunca aceitar `patientId`: o teste vai sempre para o admin da
      sessão, com os dados do paciente só preenchendo as variáveis; ou

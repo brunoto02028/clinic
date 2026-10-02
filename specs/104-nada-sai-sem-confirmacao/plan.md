@@ -105,6 +105,24 @@ Os outros três não têm nenhuma.
 E há **três envios automáticos ligados hoje** que não são defeito óbvio e
 precisam de decisão, não de conserto presumido (ver T-8).
 
+## Reconferência depois do merge (02/10, à tarde)
+
+A varredura rodou com o `main` local **229 commits atrasado**. Ao trazer o
+remoto, duas coisas mudaram — as duas a favor:
+
+1. **Metade do portão do T-1 já existe.** `pediramEnviarAoPaciente`
+   (`lib/notify-patient.ts:87`) faz exatamente o "só um sim explícito
+   envia", com o comentário explicando que um `!== false` já escorregou
+   antes. Está usada em **duas** rotas. A T-1 deixa de ser inventar e passa
+   a ser espalhar.
+2. **O `appointments` do grupo B já foi consertado** por outra sessão — o
+   `|| paymentMode === "online"` sumiu. Sai do escopo da T-3.
+
+Reconferidos um a um contra o código novo, **os treze do grupo A continuam
+abertos** e nenhum usa o guard. `broadcasts` continua com `notify = true`
+na linha 103. As linhas citadas neste plano andaram ~3 posições; os
+arquivos são os mesmos.
+
 ## Os três formatos de conserto
 
 Não inventar um quarto. Cada rota do grupo A recai num destes:
