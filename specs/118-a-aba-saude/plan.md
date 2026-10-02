@@ -1,7 +1,7 @@
 # Atividade 118 — A aba Saúde
 
 **Aberta:** 01/10/2026, a pedido do Bruno.
-**Status:** aprovado e em execução — T-1 a T-3 e **T-7** feitas, T-4 parcial; faltam T-5 e T-6
+**Status:** aprovado e em execução — T-1 a T-3, **T-5** e **T-7** feitas, T-4 parcial; falta a T-6 (depende de build autorizado)
 
 > *"aba saúde e dentro dela uma primeira página com um resumão de tudo e uma
 > página para cada informação? como o withings faz?"*
@@ -144,7 +144,7 @@ some ensina à pessoa que o produto está estragado.
 | T-2 | O resumo: o que mudou desde ontem | T-1 | **feito** (01/10) |
 | T-3 | As cinco páginas de família | T-1 | **feito** (01/10) — uma tela parametrizada, não cinco |
 | T-4 | O visual: o que cabe num update | T-2, T-3 | **parcial** (01/10) — cabeçalho e tipografia; os anéis esperavam metas, que a T-7 criou |
-| T-5 | O relatório preso ao plano, com a trava no servidor | T-1 | pendente |
+| T-5 | [**O relatório preso ao plano**](t-5-o-relatorio-preso-ao-plano.md) | T-1 | **concluído** (02/10) — [QA](qa/report-t-5.md) reprovado na 1ª rodada (o papel afirmava diagnóstico; o POST aceitava terapeuta), aprovado na 2ª; 13 mutações |
 | T-6 | Os anéis e as linhas — **só com build autorizado** | T-4, T-7 | pendente |
 | T-7 | **As metas são do paciente** | T-2 | **feito** (02/10) — QA 0 reprovados, 9 achados do review fechados |
 

@@ -1,6 +1,17 @@
 # T-5: O relatório preso ao plano, com a trava no servidor
 
-**Status:** pendente
+**Status:** concluído (02/10/2026)
+
+> **O QA reprovou a primeira rodada em dois pontos, e os dois eram graves.** O
+> papel que o paciente leva ao médico **afirmava diagnóstico** — `<h2>Clinical
+> Diagnosis</h2>`, com condição e gravidade, e zero ocorrências da frase que o
+> nega. E o `POST` **aceitava conta de terapeuta**, saltando o `mod_records` por
+> inteiro: o `patientGate` devolve cedo para quem não é paciente, antes da
+> checagem de módulo. Fechado com o `patientOnlyWriteRefusal` — o mesmo guarda que
+> eu já tinha posto na T-7 desta atividade, nesta mesma sessão, e que aqui esqueci.
+>
+> Também saía só em inglês: o `reportLanguage` existia e era ignorado.
+
 **Depende de:** T-1
 
 ## O pedido
@@ -108,11 +119,11 @@ estragado; um botão que explica manda a pessoa falar com a clínica.
 
 ## Critérios de aceite
 
-- [ ] Com `mod_records` ligado, o paciente gera e o relatório aparece na lista
-- [ ] Com `mod_records` desligado, o `POST` responde 403 — **pela rota**, não pela tela
-- [ ] A tela desligada diz porquê e para quem falar, em vez de esconder o botão
-- [ ] Dois pedidos seguidos devolvem o mesmo relatório, sem gerar duas vezes
-- [ ] Passados 10 minutos, um pedido gera um novo
-- [ ] O relatório de outro paciente continua a dar 404
-- [ ] `days` fora do intervalo é preso ao intervalo, não recusado
-- [ ] EN e PT
+- [x] Com `mod_records` ligado, o paciente gera e o relatório aparece na lista
+- [x] Com `mod_records` desligado, o `POST` responde 403 — **pela rota**, não pela tela
+- [~] A tela desligada diz porquê e para quem falar — **o `PlanGate` diz, mas a linha do menu some** (`ModuleProfile.tsx:97`, governa todos os módulos; decisão de produto, ver o QA)
+- [x] Dois pedidos seguidos devolvem o mesmo relatório, sem gerar duas vezes
+- [x] Passados 10 minutos, um pedido gera um novo
+- [x] O relatório de outro paciente continua a dar 404
+- [x] `days` fora do intervalo é preso ao intervalo, não recusado
+- [x] EN e PT — a tela e, desde a 2ª rodada, **o documento**

@@ -64,7 +64,16 @@ export async function POST(
       return NextResponse.json({ error: "Patient has no email address on file" }, { status: 400 });
     }
 
-    const html = renderPatientReportHTML(data, { forEmail: true });
+    /*
+     * **Este vai para o paciente, logo é na língua dele.** O `GET` acima fica
+     * como está: lá quem lê é a clínica, a trabalhar em inglês, e um relatório
+     * que muda de língua consoante o paciente tornaria o painel inconsistente
+     * para quem o usa o dia inteiro.
+     */
+    const html = renderPatientReportHTML(data, {
+      forEmail: true,
+      idioma: (data.patient as any)?.reportLanguage === "pt" ? "pt" : "en",
+    });
 
     const emailResult = await sendEmail({
       to: patient.email,

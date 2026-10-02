@@ -3,6 +3,7 @@ jest.mock("@/lib/db", () => ({ prisma: {} }));
 import { lerCodigo } from "../helpers/codigo";
 import { lerEcg, exigeAtencao, TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
 import { resumirSerie } from "@/lib/patient-monitoring";
+import { renderPatientReportHTML } from "@/lib/patient-report";
 
 /**
  * O ECG que ninguém via, e o relatório que falava do plano (099 T-1/T-4).
@@ -147,13 +148,71 @@ describe("comparar a pessoa com ela mesma", () => {
   });
 });
 
+/**
+ * Um relatório com acompanhamento, na forma que o `getMonitoringData` devolve.
+ *
+ * Existe para que estes testes meçam o **documento**, e não a grafia de uma
+ * chamada: três deles caíram quando `renderMonitoringHTML` ganhou um parâmetro,
+ * sem que nada do que eles guardam tivesse mudado.
+ */
+const comAcompanhamento = (opts: { dias?: number } = {}) => {
+  const dias = opts.dias ?? 30;
+  const metrica = (atual: number) => ({ atual, variacao: 0, dias });
+  return {
+    patient: {
+      id: "cmuq0001",
+      firstName: "Teste",
+      lastName: "QA",
+      email: "qa@example.test",
+      phone: null,
+      dateOfBirth: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    },
+    screening: null,
+    bodyAssessment: null,
+    diagnosis: null,
+    protocols: [],
+    soapNotes: [],
+    atlasChatCount: 0,
+    monitoring: {
+      periodo: { dias },
+      temSinais: true,
+      sinais: {
+        sono: metrica(420),
+        fcRepouso: metrica(55),
+        hrv: metrica(40),
+        spo2: metrica(98),
+        passos: metrica(5000),
+      },
+      pressao: {
+        leituras: 3,
+        sistolica: metrica(120),
+        diastolica: metrica(80),
+        ultima: { systolic: 120, diastolic: 80, measuredAt: new Date("2026-10-01T09:00:00.000Z") },
+      },
+      ecg: [],
+      exercicio: { registros: 0, diasComExercicio: 0 },
+      comoSeSentiu: { registros: 0, dor: metrica(0), humor: metrica(0), ultimos: [] },
+      consultas: [],
+    },
+  } as any;
+};
+
 describe("o relatório", () => {
   const relatorio = lerCodigo("lib", "patient-report.ts");
   const monitor = lerCodigo("lib", "patient-monitoring.ts");
 
   it("passou a reunir o acompanhamento do período", () => {
     expect(relatorio).toMatch(/getMonitoringData\(patientId, \{ days: opts\.days \?\? 30 \}\)/);
-    expect(relatorio).toMatch(/renderMonitoringHTML\(monitoring\)/);
+    /*
+     * **O que sai, e não como a chamada está escrita.** Esta linha fixava
+     * `renderMonitoringHTML(monitoring)` e caiu quando a função ganhou o
+     * parâmetro do idioma — uma mudança que não tocou no comportamento que o
+     * teste existe para guardar.
+     */
+    const saida = renderPatientReportHTML(comAcompanhamento());
+    expect(saida).toMatch(/Blood pressure/);
+    expect(saida).toMatch(/120\/80 mmHg/);
   });
 
   it("**seção sem dado não aparece**", () => {
@@ -184,7 +243,16 @@ describe("o relatório", () => {
   });
 
   it("e diz quantos dias têm dado, porque trinta noites e duas não são a mesma frase", () => {
-    expect(relatorio).toMatch(/day\$\{m\.dias === 1 \? "" : "s"\} with data/);
+    /* Medido na saída: o singular e o plural, que é o que a pessoa lê. */
+    expect(renderPatientReportHTML(comAcompanhamento({ dias: 1 }))).toMatch(/1 day with data/);
+    expect(renderPatientReportHTML(comAcompanhamento({ dias: 30 }))).toMatch(/30 days with data/);
+  });
+
+  it("**e em português também conta certo**", () => {
+    const pt = (n: number) =>
+      renderPatientReportHTML(comAcompanhamento({ dias: n }), { idioma: "pt" });
+    expect(pt(1)).toMatch(/1 dia com dados/);
+    expect(pt(30)).toMatch(/30 dias com dados/);
   });
 
   it("o ECG entra como fato, e a ausência do traçado é dita", () => {
