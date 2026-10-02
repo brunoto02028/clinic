@@ -133,12 +133,19 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
   const [picked, setPicked] = useState<string[]>([]);
   const browsingRef = useRef<string | null>(null);
 
+  // Só a primeira carga troca a lista pelo spinner. Nas seguintes a lista
+  // continua na tela: ela sumindo, a página perdia a altura e o navegador
+  // devolvia o scroll para o topo — a cada exercício salvo, numa lista de
+  // dezessete.
+  const jaCarregou = useRef(false);
+
   const fetchPrescriptions = useCallback(async () => {
-    setLoading(true);
+    if (!jaCarregou.current) setLoading(true);
     try {
       const res = await fetch(`/api/admin/exercise-prescriptions?patientId=${patientId}`);
       const data = await res.json();
       setPrescriptions(data.prescriptions || []);
+      jaCarregou.current = true;
     } catch (err) {
       console.error("Failed to fetch prescriptions:", err);
     } finally {

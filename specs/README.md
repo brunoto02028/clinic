@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **103**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **104**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > **Recuperado em 27/09/2026.** O índice estava 21 atividades atrasado — faltavam 065–069,
 > 070-fatura, 071-alerta, as duas 072, 073, 075–080 e 087–092 — e ainda mandava usar o 076, quando
@@ -128,6 +128,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [036](036-instagram-import-permission/) | Permissão do "Import from Instagram" | ✅ |
 | [047](047-migrar-rotas-legadas-para-clinica-ativa/) | Migrar rotas legadas para a clínica ativa | ✅ |
 | [053](053-centro-custos-ia/) | Centro de controle de custos de IA (repasse ao personal) | 📋 |
+| [104](104-nada-sai-sem-confirmacao/) | Nada sai para o paciente sem confirmação (13 botões que mandavam sozinhos, 3 defaults invertidos, 4 crons sem trava) | 🟢 **aprovado 02/10**, pronto para executar. T-8 (decisões) concluída |
 
 ## Clínica (fisioterapia BPR)
 
@@ -189,6 +190,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [010](010-venda-do-livro/) | Página de vendas do livro | 🟡 em andamento |
 | [012](012-artigos-url-por-idioma-seo/) | URLs por idioma nos artigos (SEO) | ⏸ ver plan.md |
 | [017](017-ux-paginas-publicas/) | UX das páginas públicas (auditoria + backlog) | ⏸ aguardando priorização |
+| [098](098-paginas-publicas/) | As páginas públicas contam o que o produto virou (3 públicos, agendamento público, app/exames/remoto, PT com URL) | 🟡 plano em aprovação |
 | [054](054-book-referral-and-homepage-cta/) | Indicação do livro "Beyond Pain" + chamada na home | ✅ |
 
 ## Próximas (ainda sem pasta)

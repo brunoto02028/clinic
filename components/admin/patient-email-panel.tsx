@@ -39,6 +39,43 @@ type Context = {
 type Draft = { language: Lang; subjectEn: string; subjectPt: string; bodyEn: string; bodyPt: string; appointmentId: string | null };
 const emptyDraft = (): Draft => ({ language: "both", subjectEn: "", subjectPt: "", bodyEn: "", bodyPt: "", appointmentId: null });
 
+/**
+ * Paste arrives hard-wrapped, and the renderer turns every single newline into
+ * a <br> — so a message copied from a document, a PDF or a chat window came out
+ * broken mid-sentence, while the textarea hid it behind its own soft wrapping.
+ * What you edit has to be what you send, so the wrapping is undone on the way
+ * in: a blank line still starts a paragraph, a lone newline becomes a space.
+ * A line break typed on purpose survives, because it is typed, not pasted.
+ */
+export function unwrapPastedText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.split("\n").map((l) => l.trim()).filter(Boolean).join(" "))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** Replaces the selection with the unwrapped paste, leaving the cursor after it. */
+function pasteUnwrapped(
+  event: React.ClipboardEvent<HTMLTextAreaElement>,
+  current: string,
+  apply: (next: string) => void
+) {
+  const pasted = event.clipboardData.getData("text/plain");
+  if (!pasted || !/\n/.test(pasted)) return; // single line: nothing to undo
+  event.preventDefault();
+  const el = event.currentTarget;
+  const start = el.selectionStart ?? current.length;
+  const end = el.selectionEnd ?? start;
+  const clean = unwrapPastedText(pasted);
+  apply(current.slice(0, start) + clean + current.slice(end));
+  requestAnimationFrame(() => {
+    const at = start + clean.length;
+    el.setSelectionRange(at, at);
+  });
+}
+
 const T = {
   en: {
     title: "Email to patient", write: "Write email", sent: "Emails sent", none: "No emails sent from here yet.",
@@ -236,7 +273,9 @@ export function PatientEmailPanel({ patientId, openAppointmentId }: { patientId:
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground block mb-0.5">{t.bodyEn}</label>
-                    <Textarea rows={8} value={draft.bodyEn} maxLength={5000} onChange={(e) => setDraft({ ...draft, bodyEn: e.target.value })} />
+                    <Textarea rows={8} value={draft.bodyEn} maxLength={5000}
+                      onPaste={(e) => pasteUnwrapped(e, draft.bodyEn, (bodyEn) => setDraft({ ...draft, bodyEn }))}
+                      onChange={(e) => setDraft({ ...draft, bodyEn: e.target.value })} />
                   </div>
                 </div>
               )}
@@ -248,7 +287,9 @@ export function PatientEmailPanel({ patientId, openAppointmentId }: { patientId:
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground block mb-0.5">{t.bodyPt}</label>
-                    <Textarea rows={8} value={draft.bodyPt} maxLength={5000} onChange={(e) => setDraft({ ...draft, bodyPt: e.target.value })} />
+                    <Textarea rows={8} value={draft.bodyPt} maxLength={5000}
+                      onPaste={(e) => pasteUnwrapped(e, draft.bodyPt, (bodyPt) => setDraft({ ...draft, bodyPt }))}
+                      onChange={(e) => setDraft({ ...draft, bodyPt: e.target.value })} />
                   </div>
                 </div>
               )}
