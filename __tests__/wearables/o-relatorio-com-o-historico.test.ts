@@ -198,39 +198,49 @@ describe("o relatório", () => {
 
 describe("o app", () => {
   const tela = lerCodigo("mobile", "app", "(app)", "(clinica)", "wearable-data.tsx");
+  const familia = lerCodigo("mobile", "app", "(app)", "(clinica)", "familia", "[nome].tsx");
+  const lista = lerCodigo("mobile", "src", "components", "ListaDeEcg.tsx");
   const rota = lerCodigo("app", "api", "wearables", "data", "route.ts");
 
-  it("**o ECG finalmente aparece para o paciente**", () => {
-    expect(tela).toMatch(/d\.dataType === "ECG"/);
+  /*
+   * Estes testes liam a tela antiga. Em 02/10 o ECG mudou de casa — passou a
+   * ter lista própria, uma linha por gravação (119 T-2) — e eles caíram, a
+   * apontar para um ficheiro que já não é dono do assunto.
+   *
+   * Agora medem **o componente**, que é onde o comportamento vive, mais o facto
+   * de as duas telas o usarem. Era esse o buraco: enquanto cada tela tinha a
+   * sua cópia, elas podiam divergir e nenhuma delas estaria obviamente errada.
+   */
+  it("**as duas telas mostram a mesma lista de ECG**", () => {
+    expect(tela).toMatch(/<ListaDeEcg/);
+    expect(familia).toMatch(/<ListaDeEcg/);
   });
 
-  it("**a tela tem um caminho próprio para a fibrilhação**", () => {
+  it("**a lista tem um caminho próprio para a fibrilhação**", () => {
     /*
-     * Este teste fixava a frase à letra — `/Fibrilação atrial detectada/` — e
-     * caiu quando a frase mudou para dizer que a conclusão é **do relógio**. O
-     * texto não era o que estava a ser protegido: o que importa é que exista um
-     * ramo para a fibrilhação e que ele a **nomeie**, em vez de a diluir num
-     * "inconclusivo" genérico.
-     *
-     * A grafia varia (fibrilação / fibrilhação) e não é assunto de teste.
+     * O ramo vive no `ecg-lista.ts`, não no componente: o componente só
+     * pergunta `ehAchado(conclusao)` e escolhe a frase. É de propósito — o que
+     * uma tela desenha não é verificável nesta base, e por isso a decisão sai
+     * da tela.
      */
-    expect(tela).toMatch(/conclusao === "fibrilacao"/);
-    expect(tela).toMatch(/atrial fibrillation/i);
-    expect(tela).toMatch(/fibrilh?ação atrial/i);
+    expect(lista).toMatch(/ehAchado|FRASE_DA_CONCLUSAO/);
+    expect(lerCodigo("mobile", "src", "lib", "ecg-lista.ts")).toMatch(/atrial fibrillation/i);
+    expect(lerCodigo("mobile", "src", "lib", "ecg-lista.ts")).toMatch(/fibrilh?ação atrial/i);
   });
 
   it("**e nunca chama 'normal' ao que o relógio não assinalou**", () => {
     // Regra da tela do paciente desde o QA da T-8: nem "normal", nem
     // "alterado". Dizer o que o relógio não assinalou é relato.
-    const semComentarios = tela
-      .replace(/\/\*[\s\S]*?\*\//g, " ")
-      .replace(/(^|[^:])\/\/.*$/gm, "$1 ");
-    expect(semComentarios).not.toMatch(/en: "Normal rhythm"/);
-    expect(semComentarios).not.toMatch(/pt: "Ritmo normal"/);
+    const semComentarios = (src: string) =>
+      src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1 ");
+    for (const src of [tela, lista, lerCodigo("mobile", "src", "lib", "ecg-lista.ts")]) {
+      expect(semComentarios(src)).not.toMatch(/en: "Normal rhythm"/);
+      expect(semComentarios(src)).not.toMatch(/pt: "Ritmo normal"/);
+    }
   });
 
-  it("e a tela diz de quem é a conclusão", () => {
-    expect(tela).toMatch(/we do not read the trace|não lemos o traçado/);
+  it("e a lista diz de quem é a conclusão", () => {
+    expect(lista).toMatch(/we do not read the trace|não lemos o traçado/);
   });
 
   it("o payload cru não sai da rota", () => {
