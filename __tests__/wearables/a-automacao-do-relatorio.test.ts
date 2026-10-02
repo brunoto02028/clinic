@@ -182,7 +182,19 @@ describe("a tela da clínica, e a do paciente", () => {
   });
 
   it("e a lista vazia explica, em vez de ficar vazia", () => {
-    expect(tela).toMatch(/The first one arrives at the end of the period/);
+    /*
+     * **O texto mudou com a 118 T-5, e a mudança é o ponto.** Ele dizia *"o
+     * primeiro chega no fim do período que a sua clínica configurou"* — uma
+     * espera que o botão "Gerar um relatório agora", logo abaixo, acabou.
+     * Prometer a espera e oferecer o atalho na mesma tela faz a pessoa duvidar
+     * de qual dos dois é verdade.
+     *
+     * O que se guarda é que a tela vazia **explica**, nas duas línguas, e que
+     * aponta para o que a pessoa pode fazer agora.
+     */
+    expect(tela).toMatch(/No reports yet/);
+    expect(tela).toMatch(/Ainda não há relatórios/);
+    expect(tela).toMatch(/create one now|gerar um agora/i);
   });
 
   it("o trabalho roda sozinho, sem depender de cron externo", () => {

@@ -142,13 +142,18 @@ function ReportsScreen() {
         <Spinner center />
       ) : !data || data.length === 0 ? (
         <Card>
-          {/* Uma tela vazia que explica vale mais que uma lista vazia: quem
-              acabou de ligar o acompanhamento precisa saber que o primeiro
-              relatório chega no fim do período, não agora. */}
+          {/*
+            * Uma tela vazia que explica vale mais que uma lista vazia.
+            *
+            * **E o texto mudou com a T-5.** Ele dizia *"o primeiro chega no fim
+            * do período que a sua clínica configurou"* — uma espera que agora o
+            * botão logo abaixo acaba. Prometer a espera e oferecer o atalho na
+            * mesma tela faz a pessoa duvidar de qual dos dois é verdade.
+            */}
           <Text variant="body" color={t.colors.textSecondary}>
             {tr(lang, {
-              en: "No reports yet. The first one arrives at the end of the period your clinic set up.",
-              pt: "Ainda não há relatórios. O primeiro chega no fim do período que a sua clínica configurou.",
+              en: "No reports yet. Your clinic sends them on a schedule — or you can create one now, below.",
+              pt: "Ainda não há relatórios. A sua clínica envia-os periodicamente — ou pode gerar um agora, abaixo.",
             })}
           </Text>
         </Card>

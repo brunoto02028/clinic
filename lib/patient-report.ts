@@ -10,7 +10,11 @@ export async function getPatientReportData(patientId: string, opts: { days?: num
   const [patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChat, monitoring] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true } as any,
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true,
+        // A língua em que o papel sai — ver `IdiomaDoRelatorio`. Sem este
+        // campo no `select`, quem chama lê `undefined` e cai sempre em inglês,
+        // que é a tradução a existir e nunca ser alcançada.
+        reportLanguage: true } as any,
     }).catch(() => null),
     (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }).catch(() => null),
     (prisma as any).bodyAssessment.findFirst({
@@ -80,37 +84,176 @@ function parseJson(v: any): any[] {
  * A variação é dita sem juízo: "4 menor" e não "melhorou". Quem diz se
  * melhorou é um terapeuta, e aí assina embaixo.
  */
-function linhaDeSinal(rotulo: string, m: ResumoDaMetrica, unidade: string): string {
+function linhaDeSinal(
+  rotulo: string,
+  m: ResumoDaMetrica,
+  unidade: string,
+  idioma: IdiomaDoRelatorio = "en"
+): string {
+  const t = P[idioma];
   if (!m || m.dias === 0) return "";
   const valor = m.atual !== null ? `${m.atual}${unidade}` : "—";
   const mudanca =
     m.variacao === null || m.variacao === 0
       ? ""
-      : `${Math.abs(m.variacao)}${unidade} ${m.variacao < 0 ? "lower" : "higher"} than the first half of the period`;
-  return `<tr><td class="lbl">${esc(rotulo)}</td><td>${esc(valor)}${mudanca ? ` — ${esc(mudanca)}` : ""}<span class="meta"> · ${m.dias} day${m.dias === 1 ? "" : "s"} with data</span></td></tr>`;
+      : `${Math.abs(m.variacao)}${unidade} ${m.variacao < 0 ? t.maisBaixo : t.maisAlto} ${t.queAPrimeiraMetade}`;
+  return `<tr><td class="lbl">${esc(rotulo)}</td><td>${esc(valor)}${mudanca ? ` — ${esc(mudanca)}` : ""}<span class="meta"> · ${t.diasComDados(m.dias)}</span></td></tr>`;
 }
 
-function renderMonitoringHTML(mon: DadosDeMonitoramento | null): string {
+
+/**
+ * As palavras do papel, nas duas línguas (118 T-5, achado do QA).
+ *
+ * `User.reportLanguage` existe desde sempre e **este documento ignorava-o**: com
+ * `"pt"` o HTML saía byte a byte igual ao inglês. O PDF do ECG e o da avaliação
+ * corporal já o respeitam; este não, e é o que o paciente leva a um médico.
+ *
+ * **O que se traduz é o nosso texto.** O que a terapeuta escreveu — o resumo, os
+ * comentários, as notas SOAP, o nome de uma condição — fica como ela escreveu.
+ * Traduzir o registo clínico de alguém seria reescrevê-lo.
+ */
+export type IdiomaDoRelatorio = "en" | "pt";
+
+const P = {
+  en: {
+    titulo: "Clinical Report",
+    gerado: "Generated",
+    paciente: "Patient Information",
+    triagem: "Medical Screening — Patient Reported",
+    postural: "Biomechanical / Postural Assessment",
+    pontuacao: "Overall score",
+    recomendacoes: "Recommendations",
+    avaliacao: "Clinical assessment recorded by your therapist (AI-assisted, clinician reviewed)",
+    estado: "Status",
+    condicoes: "Conditions",
+    achados: "Key Findings",
+    comentariosClinico: "Clinician comments",
+    sinais: (dias: number) => `Signs — last ${dias} days`,
+    sono: "Sleep",
+    fcRepouso: "Resting heart rate",
+    hrv: "HRV",
+    spo2: "SpO2",
+    passos: "Steps",
+    pressao: "Blood pressure",
+    sistolica: "Systolic",
+    diastolica: "Diastolic",
+    maisRecente: "Most recent",
+    leiturasNoPeriodo: "Readings in period",
+    em: "on",
+    ecg: "ECG",
+    ecgRessalva:
+      "These are the watch's own conclusions. The trace is not stored and is not interpreted here.",
+    exercicio: "Exercise",
+    diasComExercicio: "Days with exercise done",
+    exerciciosFeitos: "Exercises logged",
+    comoSeSentiu: "How you felt",
+    dor: "Pain",
+    humor: "Mood",
+    checkins: "Check-ins in period",
+    consultas: "Appointments in the period",
+    porVideo: "by video",
+    emCasa: "at home",
+    protocolo: "Treatment Protocol",
+    criadoPor: "Created",
+    por: "by",
+    semanas: "weeks",
+    sessoes: "sessions",
+    comentariosTerapeuta: "Therapist comments",
+    metas: "Treatment Goals",
+    precaucoes: "Precautions",
+    notas: "Session Notes (SOAP)",
+    dorNivel: "Pain",
+    maisBaixo: "lower",
+    maisAlto: "higher",
+    queAPrimeiraMetade: "than the first half of the period",
+    diasComDados: (n: number) => `${n} day${n === 1 ? "" : "s"} with data`,
+    naoEhDiagnostico:
+      "<strong>This is not a diagnosis.</strong> It shows what was measured and what was recorded, and it has not been read by a doctor. Talk to your therapist, or to the doctor you bring it to, about what it means.",
+    rodape:
+      "This report was generated by Bruno Physical Rehabilitation (bpr.clinic). It reflects the clinical information recorded up to the generation date and is intended for the patient and their healthcare providers. For questions, contact the clinic.",
+  },
+  pt: {
+    titulo: "Relatório clínico",
+    gerado: "Gerado em",
+    paciente: "Dados do paciente",
+    triagem: "Triagem de saúde — relatada pelo paciente",
+    postural: "Avaliação biomecânica / postural",
+    pontuacao: "Pontuação geral",
+    recomendacoes: "Recomendações",
+    avaliacao:
+      "Avaliação clínica registada pelo seu terapeuta (com apoio de IA, revista por um clínico)",
+    estado: "Estado",
+    condicoes: "Condições",
+    achados: "Principais achados",
+    comentariosClinico: "Comentários do clínico",
+    sinais: (dias: number) => `Sinais — últimos ${dias} dias`,
+    sono: "Sono",
+    fcRepouso: "Frequência cardíaca em repouso",
+    hrv: "VFC",
+    spo2: "SpO2",
+    passos: "Passos",
+    pressao: "Pressão arterial",
+    sistolica: "Sistólica",
+    diastolica: "Diastólica",
+    maisRecente: "Mais recente",
+    leiturasNoPeriodo: "Leituras no período",
+    em: "em",
+    ecg: "ECG",
+    ecgRessalva:
+      "Estas são as conclusões do próprio relógio. O traçado não é guardado aqui e não é interpretado por nós.",
+    exercicio: "Exercício",
+    diasComExercicio: "Dias com exercício feito",
+    exerciciosFeitos: "Exercícios registados",
+    comoSeSentiu: "Como se sentiu",
+    dor: "Dor",
+    humor: "Humor",
+    checkins: "Registos no período",
+    consultas: "Consultas no período",
+    porVideo: "por vídeo",
+    emCasa: "em casa",
+    protocolo: "Protocolo de tratamento",
+    criadoPor: "Criado em",
+    por: "por",
+    semanas: "semanas",
+    sessoes: "sessões",
+    comentariosTerapeuta: "Comentários do terapeuta",
+    metas: "Metas do tratamento",
+    precaucoes: "Precauções",
+    notas: "Notas de sessão (SOAP)",
+    dorNivel: "Dor",
+    maisBaixo: "abaixo",
+    maisAlto: "acima",
+    queAPrimeiraMetade: "da primeira metade do período",
+    diasComDados: (n: number) => `${n} dia${n === 1 ? "" : "s"} com dados`,
+    naoEhDiagnostico:
+      "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registado, e não foi lido por um médico. Fale com o seu terapeuta, ou com o médico a quem o entregar, sobre o que significa.",
+    rodape:
+      "Este relatório foi gerado pela Bruno Physical Rehabilitation (bpr.clinic). Reflete a informação clínica registada até à data de geração e destina-se ao paciente e aos profissionais de saúde que o acompanham. Para dúvidas, contacte a clínica.",
+  },
+} as const;
+
+function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDoRelatorio = "en"): string {
   if (!mon) return "";
+  const t = P[idioma];
   const partes: string[] = [];
 
   if (mon.temSinais) {
     const linhas = [
-      linhaDeSinal("Sleep", mon.sinais.sono, " min"),
-      linhaDeSinal("Resting heart rate", mon.sinais.fcRepouso, " bpm"),
-      linhaDeSinal("HRV", mon.sinais.hrv, " ms"),
-      linhaDeSinal("SpO2", mon.sinais.spo2, "%"),
-      linhaDeSinal("Steps", mon.sinais.passos, ""),
+      linhaDeSinal(t.sono, mon.sinais.sono, " min", idioma),
+      linhaDeSinal(t.fcRepouso, mon.sinais.fcRepouso, " bpm", idioma),
+      linhaDeSinal(t.hrv, mon.sinais.hrv, " ms", idioma),
+      linhaDeSinal(t.spo2, mon.sinais.spo2, "%", idioma),
+      linhaDeSinal(t.passos, mon.sinais.passos, "", idioma),
     ].join("");
-    partes.push(`<div class="section"><h2>Signs — last ${mon.periodo.dias} days</h2><table>${linhas}</table></div>`);
+    partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><table>${linhas}</table></div>`);
   }
 
   if (mon.pressao.leituras > 0) {
-    partes.push(`<div class="section"><h2>Blood pressure</h2><table>
-      ${linhaDeSinal("Systolic", mon.pressao.sistolica, " mmHg")}
-      ${linhaDeSinal("Diastolic", mon.pressao.diastolica, " mmHg")}
-      ${mon.pressao.ultima ? row("Most recent", `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg on ${fmtDate(mon.pressao.ultima.measuredAt)}`) : ""}
-      ${row("Readings in period", String(mon.pressao.leituras))}
+    partes.push(`<div class="section"><h2>${t.pressao}</h2><table>
+      ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", idioma)}
+      ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", idioma)}
+      ${mon.pressao.ultima ? row(t.maisRecente, `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg ${t.em} ${fmtDate(mon.pressao.ultima.measuredAt)}`) : ""}
+      ${row(t.leiturasNoPeriodo, String(mon.pressao.leituras))}
     </table></div>`);
   }
 
@@ -122,45 +265,75 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null): string {
     const itens = mon.ecg
       .map(
         (e) =>
-          `<li>${esc(String(e.recordedAt ?? "").slice(0, 10))} — ${esc(TEXTO_DA_CONCLUSAO[e.conclusao].en)}${e.heartRate != null ? ` (${Math.round(e.heartRate)} bpm)` : ""}</li>`
+          `<li>${esc(String(e.recordedAt ?? "").slice(0, 10))} — ${esc(TEXTO_DA_CONCLUSAO[e.conclusao][idioma])}${e.heartRate != null ? ` (${Math.round(e.heartRate)} bpm)` : ""}</li>`
       )
       .join("");
-    partes.push(`<div class="section"><h2>ECG</h2><ul>${itens}</ul>
-      <p class="meta">These are the watch's own conclusions. The trace is not stored and is not interpreted here.</p></div>`);
+    partes.push(`<div class="section"><h2>${t.ecg}</h2><ul>${itens}</ul>
+      <p class="meta">${t.ecgRessalva}</p></div>`);
   }
 
   if (mon.exercicio.registros > 0) {
-    partes.push(`<div class="section"><h2>Exercise</h2><table>
-      ${row("Days with exercise done", String(mon.exercicio.diasComExercicio))}
-      ${row("Exercises logged", String(mon.exercicio.registros))}
+    partes.push(`<div class="section"><h2>${t.exercicio}</h2><table>
+      ${row(t.diasComExercicio, String(mon.exercicio.diasComExercicio))}
+      ${row(t.exerciciosFeitos, String(mon.exercicio.registros))}
     </table></div>`);
   }
 
   if (mon.comoSeSentiu.registros > 0) {
     const ultimos = mon.comoSeSentiu.ultimos
-      .map((c) => `<li>${esc(c.dia)} — pain ${c.dor}/10, mood ${c.humor}/5</li>`)
+      .map((c) => `<li>${esc(c.dia)} — ${t.dor.toLowerCase()} ${c.dor}/10, ${t.humor.toLowerCase()} ${c.humor}/5</li>`)
       .join("");
-    partes.push(`<div class="section"><h2>How you felt</h2><table>
-      ${linhaDeSinal("Pain", mon.comoSeSentiu.dor, "/10")}
-      ${linhaDeSinal("Mood", mon.comoSeSentiu.humor, "/5")}
-      ${row("Check-ins in period", String(mon.comoSeSentiu.registros))}
-    </table><h3>Most recent</h3><ul>${ultimos}</ul></div>`);
+    partes.push(`<div class="section"><h2>${t.comoSeSentiu}</h2><table>
+      ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", idioma)}
+      ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", idioma)}
+      ${row(t.checkins, String(mon.comoSeSentiu.registros))}
+    </table><h3>${t.maisRecente}</h3><ul>${ultimos}</ul></div>`);
   }
 
   if (mon.consultas.length > 0) {
     const itens = mon.consultas
       .map(
         (a) =>
-          `<li>${esc(fmtDate(a.dateTime))} — ${esc(a.treatmentType)} (${esc(a.status.toLowerCase())}${a.mode && a.mode !== "IN_PERSON" ? `, ${esc(a.mode === "VIDEO" ? "by video" : "at home")}` : ""})</li>`
+          `<li>${esc(fmtDate(a.dateTime))} — ${esc(a.treatmentType)} (${esc(a.status.toLowerCase())}${a.mode && a.mode !== "IN_PERSON" ? `, ${esc(a.mode === "VIDEO" ? t.porVideo : t.emCasa)}` : ""})</li>`
       )
       .join("");
-    partes.push(`<div class="section"><h2>Appointments in the period</h2><ul>${itens}</ul></div>`);
+    partes.push(`<div class="section"><h2>${t.consultas}</h2><ul>${itens}</ul></div>`);
   }
 
   return partes.join("");
 }
 
-export function renderPatientReportHTML(data: Awaited<ReturnType<typeof getPatientReportData>>, opts?: { forEmail?: boolean }): string {
+/**
+ * O relatório em HTML, pronto para imprimir.
+ *
+ * ## A palavra "diagnóstico" saiu do papel (118 T-5, achado do QA de 02/10/2026)
+ *
+ * O cabeçalho da secção dizia **"Clinical Diagnosis (AI-assisted, clinician
+ * reviewed)"**, com condição e gravidade por baixo, e o documento inteiro não
+ * tinha **uma** vez a frase que o nega — medido no HTML gerado: `diagnos` ×1,
+ * `not a diagnosis` ×0.
+ *
+ * Este ficheiro nasceu como documento **interno da clínica**, onde a palavra
+ * fazia sentido. A T-5 mudou o destinatário: agora é o **paciente** que o pede,
+ * de propósito para o levar a um médico.
+ *
+ * O conteúdo fica — é o que a terapeuta registou, e escondê-lo do paciente seria
+ * pior. O que muda é a palavra, e o rodapé passa a dizer o que o papel é, com a
+ * mesma frase que a tela do app já dizia e que o papel não levava.
+ *
+ * Não é preferência de redação: é o que mantém o produto fora de "dispositivo
+ * médico". Quem diagnostica é médico.
+ *
+ * **E o comentário não vai no HTML.** A primeira versão desta explicação estava
+ * dentro da template string, como `<!-- -->` — ou seja, o documento entregue ao
+ * paciente continuaria a conter a frase antiga, por extenso, no código-fonte.
+ */
+export function renderPatientReportHTML(
+  data: Awaited<ReturnType<typeof getPatientReportData>>,
+  opts?: { forEmail?: boolean; idioma?: IdiomaDoRelatorio }
+): string {
+  const idioma: IdiomaDoRelatorio = opts?.idioma === "pt" ? "pt" : "en";
+  const t = P[idioma];
   const { patient, screening: ms, bodyAssessment: ba, diagnosis: dx, protocols, soapNotes, monitoring } = data as any;
   if (!patient) return "<html><body>Patient not found</body></html>";
 
@@ -244,7 +417,7 @@ export function renderPatientReportHTML(data: Awaited<ReturnType<typeof getPatie
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Clinical Report — ${esc(patient.firstName)} ${esc(patient.lastName)}</title>
+<title>${t.titulo} — ${esc(patient.firstName)} ${esc(patient.lastName)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a202c; margin: 0; padding: 24px; max-width: 900px; margin-inline: auto; font-size: 13px; line-height: 1.5; }
@@ -276,14 +449,14 @@ export function renderPatientReportHTML(data: Awaited<ReturnType<typeof getPatie
 ${printBar}
 <div class="header">
   <div>
-    <h1>Clinical Report</h1>
-    <p class="meta">Generated ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
+    <h1>${t.titulo}</h1>
+    <p class="meta">${t.gerado} ${new Date().toLocaleDateString(idioma === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
   </div>
   <div class="brand">Bruno Physical Rehabilitation<small>Ipswich, Suffolk · bpr.clinic</small></div>
 </div>
 
 <div class="section">
-  <h2>Patient Information</h2>
+  <h2>${t.paciente}</h2>
   <table>
     ${row("Name", `${patient.firstName} ${patient.lastName}`)}
     ${row("Age", age ? `${age} years (DOB ${fmtDate(patient.dateOfBirth)})` : null)}
@@ -295,7 +468,7 @@ ${printBar}
 
 ${ms ? `
 <div class="section">
-  <h2>Medical Screening — Patient Reported</h2>
+  <h2>${t.triagem}</h2>
   <table>
     ${row("Chief complaint", ms.chiefComplaint)}
     ${row("Pain location", ms.painLocation)}
@@ -323,30 +496,32 @@ ${ms ? `
 
 ${ba ? `
 <div class="section">
-  <h2>Biomechanical / Postural Assessment</h2>
-  <p class="meta">${fmtDate(ba.createdAt)}${ba.overallScore != null ? ` · Overall score: ${ba.overallScore}` : ""}</p>
+  <h2>${t.postural}</h2>
+  <p class="meta">${fmtDate(ba.createdAt)}${ba.overallScore != null ? ` · ${t.pontuacao}: ${ba.overallScore}` : ""}</p>
   ${ba.aiSummary ? `<p>${esc(ba.aiSummary)}</p>` : ""}
-  ${ba.aiRecommendations ? `<p><strong>Recommendations:</strong> ${esc(ba.aiRecommendations)}</p>` : ""}
+  ${ba.aiRecommendations ? `<p><strong>${t.recomendacoes}:</strong> ${esc(ba.aiRecommendations)}</p>` : ""}
 </div>` : ""}
 
 ${dx ? `
 <div class="section">
-  <h2>Clinical Diagnosis (AI-assisted, clinician reviewed)</h2>
-  <p class="meta">${fmtDate(dx.createdAt)} · Status: ${esc(dx.status)}</p>
+  <h2>${t.avaliacao}</h2>
+  <p class="meta">${fmtDate(dx.createdAt)} · ${t.estado}: ${esc(dx.status)}</p>
   <p>${esc(dx.summary)}</p>
-  ${parseJson(dx.conditions).length ? `<h3>Conditions</h3><ul>${parseJson(dx.conditions).map((c: any) => `<li><strong>${esc(c.name)}</strong>${c.severity ? ` (${esc(c.severity)})` : ""}: ${esc(c.description || "")}</li>`).join("")}</ul>` : ""}
-  ${parseJson(dx.findings).length ? `<h3>Key Findings</h3><ul>${parseJson(dx.findings).map((f: any) => `<li><strong>${esc(f.area || "")}</strong>: ${esc(f.finding || f.description || "")}</li>`).join("")}</ul>` : ""}
-  ${dx.therapistComments ? `<p class="comment"><strong>Clinician comments:</strong> ${esc(dx.therapistComments)}</p>` : ""}
+  ${parseJson(dx.conditions).length ? `<h3>${t.condicoes}</h3><ul>${parseJson(dx.conditions).map((c: any) => `<li><strong>${esc(c.name)}</strong>${c.severity ? ` (${esc(c.severity)})` : ""}: ${esc(c.description || "")}</li>`).join("")}</ul>` : ""}
+  ${parseJson(dx.findings).length ? `<h3>${t.achados}</h3><ul>${parseJson(dx.findings).map((f: any) => `<li><strong>${esc(f.area || "")}</strong>: ${esc(f.finding || f.description || "")}</li>`).join("")}</ul>` : ""}
+  ${dx.therapistComments ? `<p class="comment"><strong>${t.comentariosClinico}:</strong> ${esc(dx.therapistComments)}</p>` : ""}
 </div>` : ""}
 
-${renderMonitoringHTML(monitoring)}
+${renderMonitoringHTML(monitoring, idioma)}
 
 ${protocolsHtml}
 
 ${soapHtml}
 
 <div class="footer">
-  This report was generated by Bruno Physical Rehabilitation (bpr.clinic). It reflects the clinical information recorded up to the generation date and is intended for the patient and their healthcare providers. For questions, contact the clinic.
+  ${t.naoEhDiagnostico}
+  <br><br>
+  ${t.rodape}
 </div>
 </body>
 </html>`;

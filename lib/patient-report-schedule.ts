@@ -177,7 +177,16 @@ export async function gerarRelatoriosVencidos(
         if (!dados.patient) continue;
 
         const houveAlgo = temAlgumDado((dados as any).monitoring);
-        const html = houveAlgo ? renderPatientReportHTML(dados, { forEmail: true }) : "";
+        /*
+         * Na língua do paciente: este é lido por ele, não pela clínica. Ver
+         * `IdiomaDoRelatorio` em `lib/patient-report.ts`.
+         */
+        const html = houveAlgo
+          ? renderPatientReportHTML(dados, {
+              forEmail: true,
+              idioma: (dados.patient as any)?.reportLanguage === "pt" ? "pt" : "en",
+            })
+          : "";
 
         await (prisma as any).patientReport.create({
           data: {
