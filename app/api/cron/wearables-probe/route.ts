@@ -44,10 +44,70 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  /**
+   * `?listar=1` — quem tem ligação Withings, e com que aparelho.
+   *
+   * Existe para responder a uma pergunta de plano, não de pessoa: *o traçado do
+   * ECG depende do Withings+ do paciente, ou do nosso pacote na API?* Só se
+   * decide medindo alguém **sem** assinatura, e para isso é preciso saber quem
+   * há.
+   *
+   * Devolve **só metadados** — nunca uma medição, nunca um valor de saúde. O
+   * e-mail vem truncado: dá para o Bruno reconhecer quem é sem que a lista seja
+   * um despejo de contactos.
+   */
+  if (req.nextUrl.searchParams.get("listar") === "1") {
+    const ligacoes = await prisma.wearableConnection.findMany({
+      where: { provider: "WITHINGS" },
+      select: {
+        status: true,
+        isClinicDevice: true,
+        lastSyncedAt: true,
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+
+    /* Quantos ECG cada um tem — é o que diz se o relógio sequer faz ECG. */
+    const comEcg = await prisma.ecgRecording.groupBy({
+      by: ["userId"],
+      _count: { _all: true },
+    });
+    const porUser = new Map(comEcg.map((c) => [c.userId, c._count._all]));
+
+    const ligacoesComId = await prisma.wearableConnection.findMany({
+      where: { provider: "WITHINGS" },
+      select: { userId: true, user: { select: { email: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+    const ecgPorEmail = new Map(
+      ligacoesComId.map((l) => [l.user?.email ?? "", porUser.get(l.userId) ?? 0])
+    );
+
+    return NextResponse.json({
+      quantas: ligacoes.length,
+      ligacoes: ligacoes.map((l) => {
+        const email = l.user?.email ?? "";
+        const [antes, dominio] = email.split("@");
+        return {
+          quem: `${(antes ?? "").slice(0, 4)}…@${dominio ?? "?"}`,
+          nome: `${l.user?.firstName ?? ""} ${(l.user?.lastName ?? "").slice(0, 1)}.`.trim(),
+          status: l.status,
+          aparelhoDaClinica: l.isClinicDevice,
+          ultimaSincronizacao: l.lastSyncedAt,
+          /** Zero aqui costuma querer dizer "o relógio dele não faz ECG". */
+          ecgsGuardados: ecgPorEmail.get(email) ?? 0,
+        };
+      }),
+    });
+  }
+
   const email = req.nextUrl.searchParams.get("email");
   if (!email) {
     return NextResponse.json(
-      { error: "diga de quem: ?email=..." },
+      { error: "diga de quem: ?email=... — ou ?listar=1 para ver quem há" },
       { status: 400 }
     );
   }
