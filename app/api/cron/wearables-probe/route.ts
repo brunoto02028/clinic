@@ -131,6 +131,85 @@ export async function POST(req: NextRequest) {
   });
   if (!user) return NextResponse.json({ error: "não achei essa pessoa" }, { status: 404 });
 
+  /**
+   * `?pontos=1` — **o que nós guardámos**, ao lado do que a API devolve.
+   *
+   * A sondagem mostrava o que a Withings manda; não havia como ver o que ficou
+   * no banco sem uma sessão de paciente. Isso deixava sem resposta a pergunta
+   * que mais importa depois de uma correcção de campo: *"o número passou a
+   * chegar?"*
+   *
+   * A VFC esteve sempre vazia porque pedíamos `sdnn_1` ao endpoint errado. A
+   * correcção é de uma linha; a **prova** de que ela serviu é esta.
+   *
+   * Leitura, e só leitura. Nenhum dado de saúde identificável sai: por dia, o
+   * valor de cada métrica — que é o mesmo que o próprio paciente vê na app.
+   *
+   * **Fica antes do token, de propósito.** Isto não fala com a Withings, e os
+   * refresh tokens deles são de **uso único**: pedir um para ler o nosso próprio
+   * banco arriscava deixar a ligação do paciente a precisar de reautorização por
+   * causa de uma consulta que nem sai daqui.
+   */
+  if (req.nextUrl.searchParams.get("pontos") === "1") {
+    const pontos = await prisma.wearableDataPoint.findMany({
+      where: { userId: user.id },
+      orderBy: { dataDate: "desc" },
+      take: 40,
+      select: {
+        dataType: true,
+        dataDate: true,
+        sleepDuration: true,
+        deepMinutes: true,
+        remMinutes: true,
+        lightMinutes: true,
+        hrv: true,
+        restingHr: true,
+        spo2: true,
+        steps: true,
+      },
+    });
+
+    const ecgs = await prisma.ecgRecording.findMany({
+      where: { userId: user.id },
+      orderBy: { recordedAt: "desc" },
+      take: 10,
+      select: {
+        recordedAt: true,
+        conclusao: true,
+        heartRate: true,
+        samplingHz: true,
+        wearPosition: true,
+        deviceModel: true,
+        deviceName: true,
+        signalId: true,
+      },
+    });
+
+    /* Quantos dias têm cada métrica — a resposta directa a "chegou ou não". */
+    const quantosTem = (campo: string) =>
+      pontos.filter((p: any) => typeof p[campo] === "number").length;
+
+    return NextResponse.json({
+      quem: user.email,
+      quando: new Date().toISOString(),
+      quantosDias: {
+        sono: quantosTem("sleepDuration"),
+        fasesDoSono: pontos.filter((p: any) => typeof p.deepMinutes === "number").length,
+        hrv: quantosTem("hrv"),
+        fcRepouso: quantosTem("restingHr"),
+        spo2: quantosTem("spo2"),
+        passos: quantosTem("steps"),
+      },
+      pontos,
+      ecgs: ecgs.map((e: any) => ({
+        ...e,
+        /* O sinal não sai daqui: são 9.000 números. Só se ele existe. */
+        temTracado: undefined,
+      })),
+    });
+  }
+
+
   /* O provedor é guardado em maiúsculas — "withings" não encontra nada. */
   const ligacao = await prisma.wearableConnection.findFirst({
     where: { userId: user.id, provider: "WITHINGS" },
