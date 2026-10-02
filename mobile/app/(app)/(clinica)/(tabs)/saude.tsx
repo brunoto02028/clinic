@@ -183,10 +183,10 @@ export default function SaudeScreen() {
           * de manhã.
           *
           * **O que não tem aqui: anéis de progresso.** Os da referência medem
-          * contra metas, e nós não temos metas guardadas. Inventar "8.000
-          * passos" seria pôr um alvo que o paciente não escolheu — a mesma
-          * classe de coisa que a faixa de referência que saiu na 099 T-2. Os
-          * números de hoje aparecem grandes, sem barra a dizer se são pouco.
+          * contra metas — e a T-7 deu-nos metas, mas as do **paciente**, não um
+          * "8.000 passos" que ele nunca escolheu. Quem definiu uma vê a barra
+          * fina abaixo do número; quem não definiu vê o número sozinho, que é o
+          * que ele é. Anel propriamente dito é a T-6, e depende de build.
           */}
         <View style={{ gap: 3, paddingTop: 6 }}>
           <Text
