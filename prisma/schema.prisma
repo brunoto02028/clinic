@@ -7840,10 +7840,13 @@ model EcgRecording {
    * menos do que um ECG, e quem o lê precisa de saber.
    */
   wearPosition Int?
-  /// O código do aparelho que gravou, como a Withings o manda (`model`).
-  /// Cru de propósito: inventar um nome para um código desconhecido seria pôr
-  /// um palpite nosso num documento clínico.
+  /// O código do aparelho que gravou, como a Withings o manda (`model`/`modelid`).
   deviceModel  Int?
+  /// O **nome** do aparelho, como a própria Withings o escreve ("ScanWatch 2").
+  /// É este que vai ao papel. A tabela de códigos que eu tinha montado chamava
+  /// "ScanWatch" ao `94`, que a API nomeia "ScanWatch 2" — um palpite meu num
+  /// documento clínico, que é precisamente o que não pode haver.
+  deviceName   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

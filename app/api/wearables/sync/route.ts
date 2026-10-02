@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { patientGate } from "@/lib/patient-gate";
+import { patientOnlyWriteRefusal } from "@/lib/patient-only-write";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { owSyncUser } from '@/lib/open-wearables';
@@ -19,6 +20,54 @@ export async function POST(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
   const __gate = await patientGate({ module: "mod_devices" });
   if (__gate.response) return __gate.response;
+
+  /**
+   * **A terceira porta** (achado do code review, 02/10).
+   *
+   * Isto é escrita de paciente: dispara o `ingestWithings`, que grava
+   * `WearableDataPoint` e `EcgRecording`, **consome o refresh token de uso único
+   * da Withings**, e escreve `status`, `lastSyncError` e `lastSyncedAt` na
+   * ligação. Tinha o portão do módulo e não tinha o guarda.
+   *
+   * Dois ramos, e os dois mordem:
+   *
+   * - **impersonação**: o `patientGate` devolve `role: "PATIENT"` com
+   *   `isImpersonating: true`, e o `eff.userId` é o id **do paciente**. Um admin
+   *   a ver o portal sincronizava como ele, queimava o refresh token dele e,
+   *   numa falha, marcava a ligação **dele** como `ERROR`;
+   * - **não-paciente**: a mesma saída antecipada que deixava um bearer de
+   *   terapeuta passar em `/api/patient/reports` — e a conta do aparelho da
+   *   clínica é exactamente um terapeuta com ligação Withings.
+   *
+   * E o que cresceu **hoje** foi a exposição: o `useFocusEffect` da aba Saúde
+   * tornou isto automático ao entrar na aba. Deixou de ser um botão raro; basta
+   * um admin a impersonar abrir a tela.
+   *
+   * É a terceira vez que eu fecho este buraco hoje. É por isso que ele tem de
+   * ser um helper chamado em toda escrita do paciente, e não uma coisa de que
+   * alguém se lembra.
+   */
+  const recusa = patientOnlyWriteRefusal(__gate.gate);
+  if (recusa === 'impersonation') {
+    return NextResponse.json(
+      {
+        error: 'Read-only during impersonation',
+        errorPt: 'Somente leitura durante a visualização',
+        code: 'impersonation_read_only',
+      },
+      { status: 403 }
+    );
+  }
+  if (recusa === 'not_patient') {
+    return NextResponse.json(
+      {
+        error: 'Only the patient syncs their own device.',
+        errorPt: 'Só o paciente sincroniza o próprio aparelho.',
+        code: 'patient_only',
+      },
+      { status: 403 }
+    );
+  }
 
   const eff = await getEffectiveUser();
   if (!eff) {

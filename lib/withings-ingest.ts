@@ -679,6 +679,10 @@ export async function ingestWithings(
                   samplingHz: inteiroOuNulo(sinal.frequencia),
                   wearPosition: inteiroOuNulo(sinal.posicao),
                   deviceModel: inteiroOuNulo((sinal as any).modelo),
+                  deviceName:
+                    typeof (sinal as any).nomeDoAparelho === "string"
+                      ? (sinal as any).nomeDoAparelho.slice(0, 120)
+                      : null,
                 },
               });
               console.log(

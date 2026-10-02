@@ -257,6 +257,8 @@ export interface SinalDeEcg {
   frequencia: number | null;
   /** O código do aparelho, cru. Quem mostra decide se sabe nomeá-lo. */
   modelo?: number | null;
+  /** O nome que a **própria Withings** dá ao aparelho, quando ela o manda. */
+  nomeDoAparelho?: string | null;
   /** O que mais veio no corpo, para o primeiro contato real não perder nada. */
   bruto: Record<string, unknown>;
 }
@@ -392,9 +394,29 @@ export async function sinalDoEcg(
   const modelo =
     typeof body?.model === "number"
       ? body.model
+      : typeof body?.modelid === "number"
+        ? body.modelid
       : typeof body?.ecg?.model === "number"
         ? body.ecg.model
         : null;
 
-  return { amostras, frequencia, posicao, modelo, bruto: body ?? {} };
+  /**
+   * **O nome do aparelho, como a Withings o escreve.**
+   *
+   * Eu tinha montado uma tabela de códigos a nomes — e o QA comparativo apanhou:
+   * a API devolveu `modelid: 94` com `model: "ScanWatch 2"`, e a minha tabela
+   * dizia que 94 era "ScanWatch". O papel chamava ScanWatch a um ScanWatch 2.
+   *
+   * Isso era exactamente a invenção que o Bruno pediu para não haver. A API
+   * manda o **nome**; usa-se o nome. A tabela de códigos fica só para o caso de
+   * só vir o número.
+   */
+  const nomeDoAparelho =
+    typeof body?.model === "string" && body.model.trim()
+      ? String(body.model).trim()
+      : typeof body?.ecg?.model === "string" && body.ecg.model.trim()
+        ? String(body.ecg.model).trim()
+        : null;
+
+  return { amostras, frequencia, posicao, modelo, nomeDoAparelho, bruto: body ?? {} };
 }

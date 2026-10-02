@@ -69,6 +69,7 @@ export async function GET(
       samplingHz: true,
       wearPosition: true,
       deviceModel: true,
+      deviceName: true,
       user: {
         select: {
           firstName: true,
@@ -106,6 +107,7 @@ export async function GET(
     samplingHz: registo.samplingHz,
     wearPosition: registo.wearPosition,
     deviceModel: registo.deviceModel,
+    deviceName: registo.deviceName,
     clinica: registo.user?.clinic?.name ?? null,
     idioma: registo.user?.reportLanguage === "pt" ? "pt" : "en",
     /*

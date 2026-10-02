@@ -48,9 +48,22 @@ export interface ValorDoDia {
  *
  * `restingHr` está em dois, e isso é uma escolha e não um acaso: a Withings
  * entrega-a no resumo do **sono** e nas medições do **dia**, e não são a mesma
- * coisa. A do sono é a frequência em repouso de verdade — a noite inteira,
- * deitado. A das medições é a média do que o aparelho capturou durante o dia, e
- * depende de quando a pessoa mediu.
+ * coisa:
+ *
+ * - a do **sono** é o `hr_average` da noite, que a Withings mede — a frequência
+ *   em repouso como as palavras significam;
+ * - a das **medições** é o **mínimo** das frequências capturadas no dia, e esse
+ *   número é **nosso**: `vitalsByDay` faz `Math.min(...)` porque a média de um
+ *   dia de frequências não é uma frequência de repouso por definição nenhuma.
+ *
+ * Esta frase dizia "a média", e estava errada — apanhado pelo QA comparativo de
+ * 02/10. Num mapa que existe para ser a única fonte de verdade sobre a
+ * proveniência, descrever mal a origem é o defeito, não o detalhe.
+ *
+ * O que fica por decidir, e está dito aqui para não se perder: um dia sem noite
+ * registada mostra um número **que nós calculámos**, e nada no relatório o
+ * distingue dos dias em que ele veio da Withings. Um número que muda de origem
+ * entre dois dias não é bem uma série.
  *
  * Fica a do sono à frente, com a das medições como recurso para os dias sem
  * noite registada. A ordem é a preferência, e está aqui para ser lida.
@@ -66,9 +79,20 @@ export const ONDE_MORA: Record<string, readonly string[]> = {
   spo2: ["VITALS"],
   bodyTemperature: ["VITALS"],
   steps: ["ACTIVITY"],
-  calories: ["ACTIVITY"],
   activeMinutes: ["ACTIVITY"],
-  distance: ["ACTIVITY"],
+  /*
+   * **Os nomes são os das colunas, e não os que soam bem.**
+   *
+   * Este mapa tinha `calories` e `distance` — nenhuma das duas existe no
+   * `WearableDataPoint`, que guarda `activeCalories` e `totalCalories` e não
+   * guarda distância nenhuma. Ninguém as lia ainda, por isso não doía; mas é a
+   * mesma família do defeito que este ficheiro existe para fechar — um nome
+   * escrito de memória, e uma série sempre vazia à espera de quem o usasse.
+   *
+   * Apanhado pelo teste que obriga o mapa do app e o do servidor a concordarem.
+   */
+  activeCalories: ["ACTIVITY"],
+  totalCalories: ["ACTIVITY"],
 };
 
 /**

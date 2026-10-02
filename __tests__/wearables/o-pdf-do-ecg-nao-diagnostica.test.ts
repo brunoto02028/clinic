@@ -283,12 +283,24 @@ describe("o papel parece uma tira de verdade", () => {
     expect(pulsos).toHaveLength(3);
   });
 
-  it("**e tem 7 mm de largura**, antes do traçado começar", () => {
+  it("**e o planalto tem 5 mm** — 200 ms, que é a convenção", () => {
+    /*
+     * Estava a 3 mm enquanto o comentário do próprio código prometia 5, e dizia
+     * que *"se não der, o papel inteiro é suspeito"*. Medido pelo QA
+     * comparativo nos operadores do PDF.
+     */
     const p = caminhos(construirPdfDoEcg({ ...base, signal: comOnda() })).find(
       (c) => c.length === 6
     )!;
+    const ys = p.map((v) => v.y);
+    /* No PDF o `y` cresce para **cima**: o topo do degrau é o máximo. */
+    const topo = Math.max(...ys);
+    /* As duas arestas verticais: o planalto é a distância entre elas. */
+    const noTopo = p.filter((v) => Math.abs(v.y - topo) < 0.01).map((v) => v.x);
+    expect(Math.max(...noTopo) - Math.min(...noTopo)).toBeCloseTo(5, 2);
+
     const largura = Math.max(...p.map((v) => v.x)) - Math.min(...p.map((v) => v.x));
-    expect(largura).toBeCloseTo(7, 2);
+    expect(largura).toBeCloseTo(9, 2);
   });
 
   it("**o traço é fino** — 0,18 mm, não 0,25", () => {

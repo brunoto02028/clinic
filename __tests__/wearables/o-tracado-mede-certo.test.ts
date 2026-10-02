@@ -424,9 +424,25 @@ describe("o aparelho que gravou", () => {
    * o traçado veio de um relógio de pulso ou de um eletrocardiógrafo, e são
    * coisas muito diferentes para quem o vai ler.
    */
-  it("**um código conhecido vira o nome do aparelho**", () => {
-    expect(aparelhoPorExtenso(93)).toBe("Withings ScanWatch");
-    expect(aparelhoPorExtenso(1061)).toBe("Withings BPM Core");
+  it("**só os códigos que foram vistos numa resposta real**", () => {
+    /*
+     * A tabela tinha cinco linhas montadas de memória, e o QA comparativo
+     * apanhou: o `94` estava como "ScanWatch", e a API devolveu `modelid: 94`
+     * com `model: "ScanWatch 2"` — três vezes, na mesma sondagem. O papel
+     * chamava ScanWatch a um ScanWatch 2, que é precisamente a invenção que não
+     * pode haver num documento clínico.
+     *
+     * Quem nomeia o aparelho passou a ser a própria Withings, pelo campo
+     * `model`. Esta tabela é recurso, e só tem o que foi medido.
+     */
+    expect(aparelhoPorExtenso(94)).toBe("Withings ScanWatch 2");
+    expect(Object.keys(MODELOS)).toHaveLength(1);
+  });
+
+  it("**e os que eu tinha suposto saíram**", () => {
+    for (const suposto of [93, 1061, 1062, 1063]) {
+      expect(aparelhoPorExtenso(suposto)).toBeNull();
+    }
   });
 
   it("**um código desconhecido não vira um palpite**", () => {
