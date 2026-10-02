@@ -172,12 +172,30 @@ export async function POST(req: NextRequest) {
    */
   const totals = {
     bloodPressure: 0,
+    /**
+     * Quantas leituras de pressão a Withings devolveu, guardadas ou não.
+     *
+     * Sem este número, um `bp=0` não distingue *"não veio nada"* de *"veio e
+     * era tudo repetido"* — e as duas coisas levam a procurar em sítios
+     * opostos. Já perdi tempo com essa confusão.
+     */
+    bloodPressureRead: 0,
     activityDays: 0,
     sleepNights: 0,
     vitalsDays: 0,
     intradayDays: 0,
     hypnogramNights: 0,
     workouts: 0,
+    /**
+     * Quantas gravações de ECG entraram.
+     *
+     * O contador existia dentro da ingestão desde sempre e **não subia até
+     * aqui**. Em 02/10/2026 disparei uma sincronização exactamente para
+     * recuperar um ECG perdido, e o resultado não dizia quantos ECG tinham
+     * entrado — fiquei cego no único número que me interessava. É a segunda
+     * vez que esta mesma omissão morde nesta rota.
+     */
+    ecgRecords: 0,
   };
 
   // O scheduled task do Coolify corta em 300s. Parar por conta própria antes
@@ -245,12 +263,14 @@ export async function POST(req: NextRequest) {
       const counts = await ingestWithings(c.userId, c, { since });
       synced++;
       totals.bloodPressure += counts.bloodPressure;
+      totals.bloodPressureRead += counts.bloodPressureRead ?? 0;
       totals.activityDays += counts.activityDays;
       totals.sleepNights += counts.sleepNights;
       totals.vitalsDays += counts.vitalsDays;
       totals.intradayDays += counts.intradayDays ?? 0;
       totals.hypnogramNights += counts.hypnogramNights ?? 0;
       totals.workouts += counts.workouts ?? 0;
+      totals.ecgRecords += counts.ecgRecords ?? 0;
 
       const arrived =
         counts.bloodPressure +
@@ -336,7 +356,19 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(
-    `[cron/wearables-sync]${ranOut ? " (orcamento esgotado)" : ""} connections=${connections.length} synced=${synced} withData=${withData} failed=${failed} subscriptionsChecked=${checked} bp=${totals.bloodPressure} intraday=${totals.intradayDays} hipnograma=${totals.hypnogramNights} treinos=${totals.workouts}`
+    `[cron/wearables-sync]${ranOut ? " (orcamento esgotado)" : ""} ` +
+      `connections=${connections.length} synced=${synced} withData=${withData} ` +
+      `failed=${failed} subscriptionsChecked=${checked} | ` +
+      /*
+       * **Todos os contadores, e não só alguns.** O log do contentor é por onde
+       * se lê isto em produção — descobri que o ECG tinha entrado indo lá, e só
+       * lá — e um contador que falte aqui continua invisível para quem olha.
+       */
+      `bp=${totals.bloodPressure}/${totals.bloodPressureRead} ` +
+      `atividade=${totals.activityDays} sono=${totals.sleepNights} ` +
+      `vitais=${totals.vitalsDays} intraday=${totals.intradayDays} ` +
+      `hipnograma=${totals.hypnogramNights} treinos=${totals.workouts} ` +
+      `ecg=${totals.ecgRecords}`
   );
 
   return NextResponse.json({
