@@ -7840,6 +7840,10 @@ model EcgRecording {
    * menos do que um ECG, e quem o lê precisa de saber.
    */
   wearPosition Int?
+  /// O código do aparelho que gravou, como a Withings o manda (`model`).
+  /// Cru de propósito: inventar um nome para um código desconhecido seria pôr
+  /// um palpite nosso num documento clínico.
+  deviceModel  Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

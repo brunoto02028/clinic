@@ -301,6 +301,36 @@ export function frasePadraoDaEscala(
   return `Scale: ${MM_POR_SEGUNDO}mm/s, ${MM_POR_MILIVOLT}mm/mV · sampled at ${hz}`;
 }
 
+/**
+ * Os aparelhos da Withings que gravam ECG, pelo código que a API manda.
+ *
+ * **Só os que a documentação deles nomeia.** Um código que não está aqui não
+ * recebe nome nenhum: o papel omite a linha, como já faz com a posição. Pôr um
+ * palpite nosso — *"provavelmente um ScanWatch"* — num documento clínico seria
+ * uma afirmação que ninguém fez, e num papel que vai a um médico isso passa por
+ * facto.
+ *
+ * A lista cresce quando um código novo for **visto** numa resposta real, e não
+ * quando alguém o supuser.
+ */
+export const MODELOS: Record<number, string> = {
+  93: "Withings ScanWatch",
+  94: "Withings ScanWatch",
+  1061: "Withings BPM Core",
+  1062: "Withings ScanWatch 2",
+  1063: "Withings ScanWatch Light",
+};
+
+/**
+ * O nome do aparelho, ou `null`.
+ *
+ * `null` quer dizer *"não sei qual é"*, e aí a linha não sai — ver `MODELOS`.
+ */
+export function aparelhoPorExtenso(codigo: number | null | undefined): string | null {
+  if (typeof codigo !== "number") return null;
+  return MODELOS[codigo] ?? null;
+}
+
 /** Onde a pessoa tinha o aparelho, no código da Withings. */
 export const POSICOES: Record<number, { en: string; pt: string }> = {
   0: { en: "Right wrist", pt: "Pulso direito" },

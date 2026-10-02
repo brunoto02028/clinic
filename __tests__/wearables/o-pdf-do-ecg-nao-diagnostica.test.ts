@@ -200,3 +200,112 @@ describe("quando o traçado é reduzido, o papel diz", () => {
     expect(t).not.toMatch(/min and max of/i);
   });
 });
+
+describe("o papel parece uma tira de verdade", () => {
+  /**
+   * > *"O ECG em papel não ficou bom, nem perto do real"* — Bruno, 02/10/2026
+   *
+   * A geometria estava certa — o QA mediu 25,000 mm por segundo e 10,000 mm por
+   * milivolt dentro do PDF — e o papel na mesma não parecia um ECG. Duas razões,
+   * as duas visíveis só a olhar:
+   *
+   * 1. **o traço era um borrão.** Cada coluna desenhava a sua barra vertical e
+   *    uma ligação à anterior, cada uma com 0,25 mm e ponta redonda. As colunas
+   *    estão a 0,25 mm de distância: as pontas sobrepunham-se e a linha de base
+   *    saía gorda. Agora é um caminho só por troço, a 0,18 mm, com ponta reta;
+   * 2. **faltava o pulso de calibração** — o degrau de 1 mV no início da tira.
+   *    Não é decoração: é o que mostra a quem lê que o ganho declarado no rodapé
+   *    é o ganho que foi usado. Uma régua posta nele tem de dar 10 mm.
+   */
+  const comOnda = () => {
+    /* Um P-QRS-T simples, para haver forma onde medir. */
+    const HZ = 300;
+    const RR = Math.round((HZ * 60) / 72);
+    const g = (t: number, c: number, w: number, a: number) =>
+      a * Math.exp(-((t - c) ** 2) / (2 * w * w));
+    return Array.from({ length: HZ * 30 }, (_, i) => {
+      const t = i % RR;
+      return Math.round(
+        g(t, 0.17 * RR, 0.035 * RR, 90) +
+          g(t, 0.33 * RR, 0.01 * RR, 780) +
+          g(t, 0.58 * RR, 0.055 * RR, 210)
+      );
+    });
+  };
+
+  /** Os números crus do content stream, que o jsPDF não comprime. */
+  const fluxo = (pdf: ArrayBuffer) => Buffer.from(pdf).toString("latin1");
+
+  /**
+   * Os caminhos do content stream, em **milímetros**.
+   *
+   * O jsPDF escreve em pontos (72 por polegada) com o y para cima. Medir em mm
+   * é medir o que uma régua mede no papel — e é a única forma honesta de dizer
+   * que o pulso tem 10 mm, em vez de fixar a grafia de um número.
+   */
+  const PT_POR_MM = 72 / 25.4;
+  const caminhos = (pdf: ArrayBuffer) => {
+    const t = Buffer.from(pdf).toString("latin1");
+    const saida: Array<Array<{ x: number; y: number }>> = [];
+    let atual: Array<{ x: number; y: number }> = [];
+    for (const m of t.matchAll(/([\d.]+) ([\d.]+) (m|l)\b|\bS\b/g)) {
+      if (m[0] === "S") {
+        if (atual.length) saida.push(atual);
+        atual = [];
+        continue;
+      }
+      if (m[3] === "m" && atual.length) {
+        saida.push(atual);
+        atual = [];
+      }
+      atual.push({ x: Number(m[1]) / PT_POR_MM, y: Number(m[2]) / PT_POR_MM });
+    }
+    if (atual.length) saida.push(atual);
+    return saida;
+  };
+
+  it("**o pulso de calibração mede 1 mV de altura** — 10 mm, à régua", () => {
+    const todos = caminhos(construirPdfDoEcg({ ...base, signal: comOnda() }));
+    /* O pulso tem seis pontos e é o primeiro caminho de cada faixa. */
+    const pulsos = todos.filter((c) => c.length === 6);
+    expect(pulsos.length).toBeGreaterThan(0);
+
+    const p = pulsos[0];
+    const altura = Math.max(...p.map((v) => v.y)) - Math.min(...p.map((v) => v.y));
+    expect(altura).toBeCloseTo(10, 2);
+  });
+
+  it("**e aparece uma vez por faixa**", () => {
+    // Quem corta a folha a meio continua a poder verificar o ganho.
+    const pulsos = caminhos(construirPdfDoEcg({ ...base, signal: comOnda() })).filter(
+      (c) => c.length === 6
+    );
+    expect(pulsos).toHaveLength(3);
+  });
+
+  it("**e tem 7 mm de largura**, antes do traçado começar", () => {
+    const p = caminhos(construirPdfDoEcg({ ...base, signal: comOnda() })).find(
+      (c) => c.length === 6
+    )!;
+    const largura = Math.max(...p.map((v) => v.x)) - Math.min(...p.map((v) => v.x));
+    expect(largura).toBeCloseTo(7, 2);
+  });
+
+  it("**o traço é fino** — 0,18 mm, não 0,25", () => {
+    /*
+     * 0,18 mm = 0,51 pt. A 0,25 mm com ponta redonda, e com as colunas a
+     * 0,25 mm de distância, a tinta dobrava e a linha de base virava um borrão.
+     */
+    const t = fluxo(construirPdfDoEcg({ ...base, signal: comOnda() }));
+    expect(t).toMatch(/0\.51\d* w/);
+    expect(t).not.toMatch(/0\.70\d* w/);
+  });
+
+  it("**sem traçado, não há pulso de calibração**", () => {
+    // Um degrau de ganho num papel sem traço é uma escala para coisa nenhuma.
+    const pulsos = caminhos(construirPdfDoEcg({ ...base, signal: null })).filter(
+      (c) => c.length === 6
+    );
+    expect(pulsos).toHaveLength(0);
+  });
+});
