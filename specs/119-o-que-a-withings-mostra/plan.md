@@ -1,7 +1,7 @@
 # Atividade 119 — O que a Withings mostra, e o que a API nos dá
 
 **Aberta:** 02/10/2026, 04:45, a pedido do Bruno.
-**Status:** plano escrito, **à espera de aprovação**
+**Status:** aprovado em 02/10 — T-2 e T-3 feitas e em produção; a T-1 é a próxima
 
 > *"Quero as mesmas informações do app da Withings aqui no nosso. Mas puxando
 > da API."*
@@ -67,9 +67,9 @@ derrubou as três chamadas de série de uma vez).
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | **Medir, biomarcador a biomarcador, o que a API devolve** | — | pendente |
-| T-2 | O ECG deixa de ser um por dia — tabela própria, uma linha por registo | — | pendente |
-| T-3 | O ECG dentro da página Heart, com a lista e a hora | T-2 | pendente |
+| T-1 | [**Medir, biomarcador a biomarcador, o que a API devolve**](t-1-medir-o-que-a-api-devolve.md) | — | pendente |
+| T-2 | O ECG deixa de ser um por dia — tabela própria, uma linha por registo | — | **feito** (02/10) |
+| T-3 | O ECG dentro da página Heart, com a lista e a hora | T-2 | **feito** (02/10) |
 | T-4 | O hipnograma da noite, se a T-1 disser que vem | T-1 | pendente |
 | T-5 | A curva da frequência durante a noite | T-1 | pendente |
 | T-6 | O que faltar: dizer **porquê** na tela, em vez de esconder | T-1 | pendente |
