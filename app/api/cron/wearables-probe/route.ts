@@ -14,11 +14,20 @@ export const maxDuration = 300;
  * O segredo do cron já existe, já protege oito rotas, e é passado por `?key=`.
  * O mesmo caminho, a mesma guarda.
  *
- * ## O que ela não faz
+ * ## O que ela escreve, e o que não escreve
  *
- * **Não escreve nada.** Nem um `upsert`, nem um ponto, nem uma série. Medir não
- * pode alterar o que está a ser medido — se a sondagem gravasse, a execução
- * seguinte estaria a medir a anterior.
+ * **Não escreve dado de saúde nenhum.** Nem um ponto, nem uma série, nem um
+ * ECG. Medir não pode alterar o que está a ser medido — se a sondagem gravasse,
+ * a execução seguinte estaria a medir a anterior.
+ *
+ * **Mas escreve uma coisa, e dizer que não escrevia era falso:** se o token
+ * estiver a expirar, o `withingsAccessToken` renova-o e grava o par novo. Os
+ * refresh tokens da Withings são de **uso único**, portanto duas renovações
+ * sobrepostas — esta e a do `wearables-sync` — deixam a ligação do paciente a
+ * precisar de reautorização. Por uma medição.
+ *
+ * Por isso a sondagem **só renova quando não há alternativa**, e diz no
+ * resultado se o fez. Correr com o token fresco não toca em nada.
  *
  * O token **é desembrulhado e renovado se precisar**, e isto mudou de ideia a
  * meio: a primeira versão recusava renovar, argumentando que um token expirado
@@ -57,9 +66,18 @@ export async function POST(req: NextRequest) {
    * um despejo de contactos.
    */
   if (req.nextUrl.searchParams.get("listar") === "1") {
+    /*
+     * **Uma consulta só, cruzada por `userId`.**
+     *
+     * A primeira versão fazia duas consultas quase iguais e juntava-as por
+     * e-mail — o que colapsaria duas ligações que partilhem e-mail numa linha
+     * só, e numa clínica onde um responsável gere outra pessoa isso não é
+     * hipótese teórica. O `userId` é a chave, e já vem na mesma consulta.
+     */
     const ligacoes = await prisma.wearableConnection.findMany({
       where: { provider: "WITHINGS" },
       select: {
+        userId: true,
         status: true,
         isClinicDevice: true,
         lastSyncedAt: true,
@@ -70,21 +88,11 @@ export async function POST(req: NextRequest) {
     });
 
     /* Quantos ECG cada um tem — é o que diz se o relógio sequer faz ECG. */
-    const comEcg = await prisma.ecgRecording.groupBy({
+    const contagens = await prisma.ecgRecording.groupBy({
       by: ["userId"],
       _count: { _all: true },
     });
-    const porUser = new Map(comEcg.map((c) => [c.userId, c._count._all]));
-
-    const ligacoesComId = await prisma.wearableConnection.findMany({
-      where: { provider: "WITHINGS" },
-      select: { userId: true, user: { select: { email: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-    });
-    const ecgPorEmail = new Map(
-      ligacoesComId.map((l) => [l.user?.email ?? "", porUser.get(l.userId) ?? 0])
-    );
+    const ecgsPorUser = new Map(contagens.map((c) => [c.userId, c._count._all]));
 
     return NextResponse.json({
       quantas: ligacoes.length,
@@ -97,8 +105,13 @@ export async function POST(req: NextRequest) {
           status: l.status,
           aparelhoDaClinica: l.isClinicDevice,
           ultimaSincronizacao: l.lastSyncedAt,
-          /** Zero aqui costuma querer dizer "o relógio dele não faz ECG". */
-          ecgsGuardados: ecgPorEmail.get(email) ?? 0,
+          /**
+           * Zero aqui costuma querer dizer *"o relógio dele não faz ECG"* — e
+           * é por isso que esta coluna existe: um vazio na sondagem de alguém
+           * sem aparelho de ECG não distingue "sem direito" de "sem aparelho",
+           * e serviria para concluir a coisa errada.
+           */
+          ecgsGuardados: ecgsPorUser.get(l.userId) ?? 0,
         };
       }),
     });

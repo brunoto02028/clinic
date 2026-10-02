@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { lerEcg } from '@/lib/ecg-record';
+import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from '@/lib/ecg-limite';
 
 export async function GET(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
@@ -56,9 +57,15 @@ export async function GET(request: NextRequest) {
    * pode estar lá, em `data[].ecg`, enquanto o backfill não o trouxe. A tela
    * lê **esta** lista; a outra fica para não quebrar nada que já esteja no ar.
    */
-  const ecgs = await prisma.ecgRecording.findMany({
+  /*
+   * `MAXIMO + 1` de propósito: a lista é cortada no tecto, e o registo extra
+   * serve só para saber se houve corte — e dizê-lo. O painel usa o mesmo
+   * número, senão as duas telas contariam diferente para o mesmo período.
+   */
+  const ecgsVieram = await prisma.ecgRecording.findMany({
     where: { userId: eff.userId, recordedAt: { gte: since } },
     orderBy: { recordedAt: "desc" },
+    take: MAXIMO_DE_ECGS + 1,
     select: {
       id: true,
       recordedAt: true,
@@ -67,9 +74,12 @@ export async function GET(request: NextRequest) {
       signalId: true,
     },
   });
+  const ecgs = ateAoLimite(ecgsVieram);
 
   return NextResponse.json({
     data: comEcg,
+    /** Houve mais do que cabe — a tela diz, em vez de cortar calada. */
+    ecgsCortados: cortouRegistos(ecgsVieram.length),
     ecgRecordings: ecgs.map((e) => ({
       id: e.id,
       /* O instante. O dia é de quem mostra — ver o comentário no schema. */

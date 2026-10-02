@@ -156,6 +156,19 @@ export function detectarDesvio(
  * histórico para mostrá-la seria esconder exatamente o achado que existe para
  * ser visto.
  */
+/**
+ * Uma gravação de ECG, como o `EcgRecording` a guarda.
+ *
+ * **É daqui que a fibrilhação passou a vir** (119 T-2). Antes o ECG vivia no
+ * `WearableDataPoint`, e esta função lia-o de lá.
+ */
+export interface GravacaoDeEcg {
+  id?: string;
+  recordedAt: Date | string;
+  heartRate?: number | null;
+  conclusao?: string | null;
+}
+
 export function desviosDosPontos(
   pontos: Array<{
     dataType?: string | null;
@@ -165,23 +178,62 @@ export function desviosDosPontos(
     spo2?: number | null;
     sleepDuration?: number | null;
     rawPayload?: string | null;
-  }>
+  }>,
+  /**
+   * As gravações de ECG — **e sem elas a fibrilhação não chega à clínica**.
+   *
+   * Em 02/10/2026 o ECG mudou de casa: a ingestão passou a escrever só no
+   * `EcgRecording`, e esta função continuou a ler os pontos diários. Resultado:
+   * o app mostrava a fibrilhação a vermelho e a fila *"Worth a look"* ficava
+   * **vazia**. Era o estado anterior à 099 T-6 reposto por outra porta, e
+   * nenhum teste apanhou — o teste fabricava um `WearableDataPoint`, que é um
+   * estado que o banco já não produz.
+   *
+   * Opcional para não partir chamadores antigos, mas quem não a passar não vê
+   * fibrilhação nenhuma. Os pontos continuam a ser lidos pela mesma razão: um
+   * registo trazido do tempo em que o ECG vivia lá ainda vale.
+   */
+  ecgs: GravacaoDeEcg[] = []
 ): Desvio[] {
   const achados: Desvio[] = [];
+  /* Uma gravação não entra duas vezes por estar nas duas fontes. */
+  const jaVistos = new Set<string>();
+
+  const anotarFibrilhacao = (quando: string, bpm: number | null | undefined) => {
+    const dia = quando.slice(0, 10);
+    /*
+     * A chave carrega o **instante**, não o dia. Duas fibrilhações no mesmo dia
+     * são dois achados: colapsá-las repetiria, na fila da clínica, o mesmo erro
+     * que a 119 T-2 tirou do banco.
+     */
+    const chave = `ecg_afib:${quando}`;
+    if (jaVistos.has(chave)) return;
+    jaVistos.add(chave);
+    achados.push({
+      chave,
+      tipo: "ecg",
+      dia,
+      valor: bpm ?? 0,
+      base: 0,
+      sentido: "alta",
+      conclusao: "fibrilacao",
+    });
+  };
+
+  for (const e of ecgs) {
+    if (e?.conclusao !== "fibrilacao") continue;
+    const quando =
+      e.recordedAt instanceof Date
+        ? e.recordedAt.toISOString()
+        : String(e.recordedAt ?? "");
+    if (!quando) continue;
+    anotarFibrilhacao(quando, e.heartRate);
+  }
 
   for (const p of pontos) {
     const ecg = lerEcg(p);
     if (ecg && exigeAtencao(ecg)) {
-      const dia = String(ecg.recordedAt ?? p.dataDate ?? "").slice(0, 10);
-      achados.push({
-        chave: `ecg_afib:${dia}`,
-        tipo: "ecg",
-        dia,
-        valor: ecg.heartRate ?? 0,
-        base: 0,
-        sentido: "alta",
-        conclusao: "fibrilacao",
-      });
+      anotarFibrilhacao(String(ecg.recordedAt ?? p.dataDate ?? ""), ecg.heartRate);
     }
   }
 

@@ -25,7 +25,19 @@ const prisma = new PrismaClient();
  * um e um ECG com fibrilhação aparecia como ritmo normal.
  *
  * Está repetida aqui porque este ficheiro corre no boot, fora do bundle do
- * Next, e não consegue importar TypeScript. A duplicação é guardada por teste.
+ * Next, e não consegue importar TypeScript.
+ *
+ * **A duplicação é guardada por teste** — `__tests__/wearables/a-tabela-do-afib-
+ * num-sitio-so.test.ts`. Até 02/10/2026 este comentário afirmava isso e era
+ * **falso**: o QA mutou a tabela aqui e a suíte inteira ficou verde. Um
+ * comentário que promete uma guarda que não existe é pior do que nenhum, porque
+ * convence o próximo a não procurar.
+ *
+ * E a consequência não é teórica. A `conclusao` é recalculada a cada
+ * sincronização, portanto um erro aqui sara-se sozinho **para os registos que a
+ * API ainda devolve**. Um registo trazido por este script cujo instante já saiu
+ * da janela da Withings fica com a palavra errada **para sempre** — e a palavra
+ * errada deste erro específico é "normal" numa fibrilhação.
  */
 function traduzir(v) {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
@@ -86,7 +98,18 @@ async function main() {
       continue;
     }
 
-    const afibRaw = Number(bruto.afibClassification);
+    /*
+     * **`Number(null)` é `0`, e `0` é "sem sinais de fibrilhação".**
+     *
+     * A ingestão antiga escrevia `afibClassification: null` quando a Withings
+     * não mandava o campo, e o `JSON.stringify` preserva esse `null`. Converter
+     * cegamente dava `afibRaw: 0` a um registo que o relógio **não
+     * classificou** — e o `afibRaw` existe justamente para que uma correcção
+     * futura da tabela possa ser reaplicada. Reaplicá-la transformaria um
+     * "não sei" num "ritmo sinusal", que é o lado que não pode errar.
+     */
+    const cru = bruto.afibClassification;
+    const afibRaw = cru == null ? null : Number(cru);
     await prisma.ecgRecording.create({
       data: {
         userId: p.userId,
@@ -94,7 +117,7 @@ async function main() {
         provider,
         recordedAt: quando,
         heartRate: typeof p.restingHr === "number" ? Math.round(p.restingHr) : null,
-        afibRaw: Number.isFinite(afibRaw) ? afibRaw : null,
+        afibRaw: afibRaw !== null && Number.isFinite(afibRaw) ? afibRaw : null,
         conclusao: traduzir(bruto.afibClassification),
         signalId: bruto.signalId == null ? null : String(bruto.signalId),
       },
@@ -125,10 +148,17 @@ async function main() {
       },
       select: { id: true },
     });
-    if (gemea) {
+    /*
+     * `gemea.id !== r.id` **não é zelo**: para qualquer provedor já em
+     * maiúsculas e diferente de WITHINGS — `GARMIN`, `OURA` —, o
+     * `toUpperCase()` é um no-op e o `findUnique` devolve **a própria linha**.
+     * Sem esta condição o script criava a linha e apagava-a na mesma execução,
+     * imprimindo `trazidos: 1 | grafia juntada: 1`, que se lê como sucesso.
+     */
+    if (gemea && gemea.id !== r.id) {
       await prisma.ecgRecording.delete({ where: { id: r.id } });
       juntadas++;
-    } else {
+    } else if (r.provider !== r.provider.toUpperCase()) {
       await prisma.ecgRecording.update({
         where: { id: r.id },
         data: { provider: r.provider.toUpperCase() },

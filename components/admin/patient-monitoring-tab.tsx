@@ -109,6 +109,8 @@ interface Dados {
     conclusao: "normal" | "fibrilacao" | "inconclusivo";
   }>;
   ecgUnreadable?: boolean;
+  /** Houve mais registos do que o tecto — dito, em vez de cortado em silêncio. */
+  ecgsCortados?: boolean;
 }
 
 const JANELAS = [7, 30, 90];
@@ -245,7 +247,33 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
         * única que muda de cor: o inconclusivo é um registo que o relógio não
         * conseguiu classificar, e pintá-lo de vermelho seria alarmar por nada.
         */}
-      {(dados.ecgRecordings?.length ?? 0) > 0 && (
+      {/*
+        * **"Não pude ler" não é "não há ECG".**
+        *
+        * O cartão aparecia só quando havia registos, e a flag `ecgUnreadable`
+        * era calculada e nunca lida. Com a tabela em falta no servidor — o
+        * deploy aplica o schema com `db push` e engole a falha — o terapeuta
+        * via **nenhuma secção de ECG**, indistinguível de "este paciente nunca
+        * gravou um".
+        *
+        * É o defeito idêntico que foi corrigido para as metas **no mesmo dia**,
+        * e a cópia para o ECG trouxe-o de volta.
+        */}
+      {dados.ecgUnreadable && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+              ECG — what the watch concluded
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Could not read the recordings this time — this is not the patient having none.
+              Try again; if it persists, the table may be missing on the server.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!dados.ecgUnreadable && (dados.ecgRecordings?.length ?? 0) > 0 && (
         <Card>
           <CardContent className="p-3 space-y-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
@@ -272,6 +300,11 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
                 );
               })}
             </div>
+            {dados.ecgsCortados && (
+              <p className="text-[11px] text-muted-foreground">
+                More recordings exist in this window than are shown here.
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               The trace is not stored and is not interpreted here.
             </p>

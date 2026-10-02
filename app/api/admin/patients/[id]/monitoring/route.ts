@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from "@/lib/ecg-limite";
 import {
   getActor,
   getSessionStaffActor,
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           where: { userId: paciente.id, recordedAt: { gte: desde } },
           orderBy: { recordedAt: "desc" },
           select: { id: true, recordedAt: true, heartRate: true, conclusao: true },
-          take: 100,
+          take: MAXIMO_DE_ECGS + 1,
         })
         .catch(() => ILEGIVEL),
     ]);
@@ -144,16 +145,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       ecgRecordings:
         ecgs === ILEGIVEL
           ? []
-          : (ecgs as any[]).map((e) => ({
+          : ateAoLimite(ecgs as any[]).map((e) => ({
               id: e.id,
               recordedAt: e.recordedAt.toISOString(),
               heartRate: e.heartRate,
               conclusao: e.conclusao,
             })),
+      /** O mesmo tecto do app — senão as duas telas contavam diferente. */
+      ecgsCortados: ecgs !== ILEGIVEL && cortouRegistos((ecgs as any[]).length),
       ecgUnreadable: ecgs === ILEGIVEL,
       // Os desvios do próprio paciente, para a ficha dele repetir o que a fila
       // da clínica já mostra — sem obrigar quem abriu a ficha a ir até lá.
-      deviations: desviosDosPontos(pontos as any[]),
+      /*
+       * As gravações vão junto — **sem elas não há fibrilhação nenhuma aqui**.
+       * O ECG mudou de casa em 02/10 e esta chamada continuou a ler só os
+       * pontos diários, que a ingestão já não escreve.
+       */
+      deviations: desviosDosPontos(
+        pontos as any[],
+        ecgs === ILEGIVEL ? [] : (ecgs as any[])
+      ),
       series: {
         sleepDuration: serie("SLEEP", "sleepDuration"),
         restingHr: serie("BODY", "restingHr"),

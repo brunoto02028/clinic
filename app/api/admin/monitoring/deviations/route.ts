@@ -66,19 +66,64 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const porPaciente = new Map<string, { nome: string; pontos: any[] }>();
+    /**
+     * As gravações de ECG da clínica inteira, na mesma janela.
+     *
+     * **Sem isto a fila fica sem fibrilhação nenhuma.** Em 02/10/2026 o ECG
+     * passou a viver no `EcgRecording` e esta rota continuou a ler só os pontos
+     * diários — que a ingestão já não escreve. O app mostrava o achado a
+     * vermelho e a clínica não era avisada: o estado anterior à 099 T-6,
+     * reposto por outra porta.
+     *
+     * Uma consulta só para toda a gente, pela mesma razão que os pontos: esta
+     * tela fica aberta o dia inteiro.
+     */
+    const ecgs = await prisma.ecgRecording.findMany({
+      where: {
+        recordedAt: { gte: desde },
+        user: { clinicId: actor.clinicId, role: "PATIENT", deletedAt: null },
+      },
+      orderBy: { recordedAt: "asc" },
+      select: { id: true, userId: true, recordedAt: true, heartRate: true, conclusao: true },
+    });
+
+    const porPaciente = new Map<string, { nome: string; pontos: any[]; ecgs: any[] }>();
     for (const p of pontos as any[]) {
       const atual = porPaciente.get(p.userId) ?? {
         nome: `${p.user.firstName} ${p.user.lastName}`,
         pontos: [],
+        ecgs: [],
       };
       atual.pontos.push(p);
       porPaciente.set(p.userId, atual);
     }
+    for (const e of ecgs) {
+      /*
+       * Um paciente pode ter ECG e **nenhum ponto diário** na janela — um
+       * relógio que só gravou o ECG, ou alguém cujos pontos já saíram dos 30
+       * dias. Sem esta entrada, o achado dele não existiria.
+       */
+      const atual = porPaciente.get(e.userId) ?? { nome: "", pontos: [], ecgs: [] };
+      atual.ecgs.push(e);
+      porPaciente.set(e.userId, atual);
+    }
+
+    /* Quem entrou só pelo ECG ainda não tem nome. */
+    const semNome = [...porPaciente.entries()].filter(([, v]) => !v.nome).map(([id]) => id);
+    if (semNome.length) {
+      const pessoas = await prisma.user.findMany({
+        where: { id: { in: semNome } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      for (const p of pessoas) {
+        const atual = porPaciente.get(p.id);
+        if (atual) atual.nome = `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+      }
+    }
 
     const achados: Array<Desvio & { patientId: string; patientName: string; seenAt?: string; seenBy?: string }> = [];
-    for (const [patientId, { nome, pontos: seus }] of porPaciente) {
-      for (const d of desviosDosPontos(seus)) {
+    for (const [patientId, { nome, pontos: seus, ecgs: seusEcgs }] of porPaciente) {
+      for (const d of desviosDosPontos(seus, seusEcgs)) {
         achados.push({ ...d, patientId, patientName: nome });
       }
     }
