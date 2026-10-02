@@ -19,7 +19,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
+    /**
+   * **Preso, e nunca `NaN`** (achado do code review).
+   *
+   * Era `parseInt(... || '30')` sem validar: `?days=abc` dava `NaN`, o
+   * `setDate(NaN)` dava `Invalid Date`, e o `toISOString()` lançava — 500 sem
+   * corpo. A rota deixou de ser um pedido raro e passou a ser chamada sozinha ao
+   * entrar na aba Saúde.
+   */
+  const pedido = Number(request.nextUrl.searchParams.get("days"));
+  const days = Number.isFinite(pedido) && pedido > 0 ? Math.min(365, Math.max(1, Math.round(pedido))) : 30;
   const dataType = request.nextUrl.searchParams.get('type') || undefined;
 
   const since = new Date();

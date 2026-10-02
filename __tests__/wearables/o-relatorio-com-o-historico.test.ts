@@ -220,6 +220,15 @@ const comAcompanhamento = (opts: { dias?: number } = {}) => {
   } as any;
 };
 
+/** Um relatório com uma gravação de ECG, como o `EcgRecording` a devolve. */
+const comEcg = () => {
+  const d = comAcompanhamento();
+  d.monitoring.ecg = [
+    { recordedAt: "2026-10-01T22:54:15.000Z", conclusao: "normal", heartRate: 78 },
+  ];
+  return d;
+};
+
 describe("o relatório", () => {
   const relatorio = lerCodigo("lib", "patient-report.ts");
   const monitor = lerCodigo("lib", "patient-monitoring.ts");
@@ -312,8 +321,20 @@ describe("o relatório", () => {
     expect(resumirSerie(dias, "hrv").atual).toBe(138.5);
   });
 
-  it("o ECG entra como fato, e a ausência do traçado é dita", () => {
-    expect(relatorio).toMatch(/The trace is not stored and is not interpreted here/);
+  it("**o ECG entra como facto, e o papel não mente sobre o que guardamos**", () => {
+    /*
+     * Esta frase dizia *"the trace is not stored"* — e **deixou de ser verdade**
+     * na 119 T-2: o `EcgRecording.signal` guarda as 9.000 amostras, e o botão
+     * "Abrir em PDF" desenha-as. O paciente lia no relatório que o traçado não
+     * era guardado e tinha-o no telemóvel.
+     *
+     * O que continua verdadeiro — e é o que importa — é que **não o lemos**.
+     * Medido na saída, não na grafia do ficheiro.
+     */
+    const html = renderPatientReportHTML(comEcg());
+    expect(html).not.toMatch(/not stored/i);
+    expect(html).toMatch(/we do not read it/i);
+    expect(renderPatientReportHTML(comEcg(), { idioma: "pt" })).toMatch(/nós não o lemos/i);
   });
 
   it("a coleta não interpreta nada", () => {

@@ -678,13 +678,40 @@ export async function ingestWithings(
                    */
                   samplingHz: inteiroOuNulo(sinal.frequencia),
                   wearPosition: inteiroOuNulo(sinal.posicao),
-                  deviceModel: inteiroOuNulo((sinal as any).modelo),
-                  deviceName:
-                    typeof (sinal as any).nomeDoAparelho === "string"
-                      ? (sinal as any).nomeDoAparelho.slice(0, 120)
-                      : null,
                 },
               });
+              /**
+               * **O aparelho vai num `update` à parte, e de propósito.**
+               *
+               * Estava no mesmo `update` que as 9.000 amostras — que é
+               * **exactamente** o padrão que o comentário do `inteiroOuNulo`
+               * descreve: um campo que o Prisma recuse faz a escrita inteira
+               * falhar, o `catch` regista "ERRO EXPLICITO", o traçado nunca é
+               * guardado, e a condição de pedir é *"ainda não tenho o sinal"* —
+               * logo pede outra vez, para sempre, calado.
+               *
+               * `deviceName` é uma coluna que nasceu hoje, e o deploy aplica o
+               * schema com `db push`, **que engole a falha**. Se ela não existir
+               * em produção, isto falha — e aqui falha sozinho, sem levar o
+               * traçado atrás.
+               */
+              await prisma.ecgRecording
+                .update({
+                  where: {
+                    userId_provider_recordedAt: { userId, provider: PROVEDOR, recordedAt: rec.recordedAt },
+                  },
+                  data: {
+                    deviceModel: inteiroOuNulo((sinal as any).modelo),
+                    deviceName:
+                      typeof (sinal as any).nomeDoAparelho === "string"
+                        ? (sinal as any).nomeDoAparelho.slice(0, 120)
+                        : null,
+                  },
+                })
+                .catch((e: any) =>
+                  console.log(`[withings-ingest] ECG ${rec.signalId}: aparelho nao guardado — ${e?.message ?? e}`)
+                );
+
               console.log(
                 `[withings-ingest] ECG ${rec.signalId}: ${sinal.amostras.length} amostras a ` +
                   `${sinal.frequencia ?? "?"} Hz, posicao ${sinal.posicao ?? "?"} — GUARDADO`

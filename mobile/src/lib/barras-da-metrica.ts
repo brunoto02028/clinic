@@ -38,6 +38,11 @@ export interface Tendencia {
   maximo: number;
   /** Quantos dias têm medição. */
   dias: number;
+  /** O primeiro e o último dia da janela — para a tela dizer de quando é. */
+  de: string;
+  ate: string;
+  /** O último dia **com medição**. Pode ser bem antes do fim da janela. */
+  ultimoComDado: string;
 }
 
 /**
@@ -62,7 +67,9 @@ export function tendenciaEmBarras(
    * Quantos dias mostrar, do mais recente para trás. Menos barras num cartão
    * pequeno lêem-se melhor do que noventa fios de um pixel.
    */
-  quantosDias = 14
+  quantosDias = 14,
+  /** Hoje. A janela acaba aqui — ver o comentário na âncora. */
+  agora: Date = new Date()
 ): Tendencia | null {
   if (!Array.isArray(serie) || serie.length === 0) return null;
 
@@ -78,8 +85,23 @@ export function tendenciaEmBarras(
    * vem depois para a esquerda — o mesmo erro que encurtou uma gravação de ECG
    * de 30 s para 29,003 s, e que aqui faria "há três dias" parecer "ontem".
    */
-  const ultimo = validos[validos.length - 1].dia;
-  const base = Date.parse(ultimo + "T00:00:00Z");
+  /**
+   * **A janela acaba hoje, não no último dia medido** (achado do review).
+   *
+   * Ancorava em `validos[validos.length - 1].dia`. Quem parou de usar o relógio
+   * há um mês via catorze barras densas que se liam como as últimas duas
+   * semanas — e nada no gráfico dizia o contrário.
+   *
+   * É o mesmo raciocínio que este ficheiro já defende para os buracos — *"há
+   * três dias" não pode parecer "ontem"* —, aplicado ao fim da janela e não ao
+   * meio dela. Agora um relógio parado desenha barras **à esquerda** e espaço
+   * vazio à direita, que é o que aconteceu.
+   */
+  const hoje = new Date(agora.getTime()).toISOString().slice(0, 10);
+  const ultimoMedido = validos[validos.length - 1].dia;
+  /* Um carimbo no futuro não encolhe a janela para trás do que já se mediu. */
+  const fim = ultimoMedido > hoje ? ultimoMedido : hoje;
+  const base = Date.parse(fim + "T00:00:00Z");
   const porDia = new Map(validos.map((p) => [p.dia, p.valor]));
 
   const janela: Array<{ dia: string; valor: number | null }> = [];
@@ -123,5 +145,8 @@ export function tendenciaEmBarras(
     minimo,
     maximo,
     dias: comDado.length,
+    de: janela[0].dia,
+    ate: janela[janela.length - 1].dia,
+    ultimoComDado: comDado[comDado.length - 1].dia,
   };
 }

@@ -42,6 +42,21 @@ const LUGARES = [
   "lib/ecg-pdf.ts",
   "lib/patient-report.ts",
   "lib/ecg-tracado.ts",
+  /*
+   * **`ecg-record.ts` faltava, e era lá que estava o erro.**
+   *
+   * Ele guarda as frases das conclusões do ECG, lidas pelo relatório e pela aba.
+   * Tinha *"fibrilhação"* enquanto o papel dizia *"fibrilação"* — o mesmo
+   * paciente recebia as duas grafias, e a de pt-BR é a segunda. O guarda passou
+   * ao lado porque eu não lhe dei o ficheiro.
+   *
+   * Um varredor só vale os caminhos que lhe dão. Estes são **todos** os que
+   * carregam texto para o paciente — e acrescentar um novo sem o pôr aqui é a
+   * forma de o próximo erro escapar.
+   */
+  "lib/ecg-record.ts",
+  "lib/patient-monitoring.ts",
+  "lib/relatorio-a-pedido.ts",
 ];
 
 /**

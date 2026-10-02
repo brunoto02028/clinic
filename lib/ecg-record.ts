@@ -64,8 +64,8 @@ export const TEXTO_DA_CONCLUSAO: Record<ConclusaoDoEcg, { en: string; pt: string
    * aparelho, não nossa.
    */
   normal: { en: "Sinus rhythm — the watch found no signs of AFib", pt: "Ritmo sinusal — o relógio não encontrou sinais de FA" },
-  fibrilacao: { en: "The watch found signs of atrial fibrillation", pt: "O relógio encontrou sinais de fibrilhação atrial" },
-  inconclusivo: { en: "The watch could not classify this recording", pt: "O relógio não conseguiu classificar este registo" },
+  fibrilacao: { en: "The watch found signs of atrial fibrillation", pt: "O relógio encontrou sinais de fibrilação atrial" },
+  inconclusivo: { en: "The watch could not classify this recording", pt: "O relógio não conseguiu classificar este registro" },
 };
 
 export function traduzirClassificacao(v: unknown): ConclusaoDoEcg {
