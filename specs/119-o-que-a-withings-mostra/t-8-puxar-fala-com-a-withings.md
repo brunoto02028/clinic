@@ -1,6 +1,16 @@
 # T-8: Puxar a tela fala com a Withings, não só com o nosso banco
 
-**Status:** pendente
+**Status:** concluído (02/10/2026)
+
+> **O QA reprovou a primeira rodada, e tinha razão em dois pontos que apagavam a
+> tarefa.** O `NEEDS_REAUTH` que eu filtrava **não existe neste código** — o
+> schema diz `CONNECTED | DISCONNECTED | ERROR` — e como o `lastSyncedAt` não
+> avança numa falha, o tecto de 2 minutos deixava de existir para sempre a partir
+> do primeiro erro. E a pendência que justificava não mostrar alerta nenhum
+> também não existia: a rota nunca gravava `lastSyncError` e a rota das ligações
+> nunca o devolvia. Os dois fechados, mais a guarda de concorrência no servidor,
+> que faltava por completo.
+
 **Depende de:** nenhuma
 
 ## O pedido

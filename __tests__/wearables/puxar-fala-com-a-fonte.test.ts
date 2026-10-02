@@ -32,6 +32,9 @@ import {
   INTERVALO_MINIMO_MS,
 } from "../../mobile/src/lib/sincronizar-se-vale-a-pena";
 
+/** Sem memória de pedido nosso — o caso de quem acabou de abrir a app. */
+const semPedido = { ultimoPedidoMs: null };
+
 const agora = new Date("2026-10-02T10:20:00.000Z");
 const haMinutos = (n: number) => new Date(agora.getTime() - n * 60000).toISOString();
 const withings = (extra: Record<string, unknown> = {}) => ({
@@ -42,29 +45,29 @@ const withings = (extra: Record<string, unknown> = {}) => ({
 
 describe("quando vale a pena ir à fonte", () => {
   it("**passados os dois minutos, sim**", () => {
-    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(195) })], agora)).toBe(true);
+    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(195) })], semPedido, agora)).toBe(true);
   });
 
   it("**e dentro deles, não** — puxar cinco vezes é uma conversa, não cinco", () => {
-    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(1) })], agora)).toBe(false);
-    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(0) })], agora)).toBe(false);
+    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(1) })], semPedido, agora)).toBe(false);
+    expect(valeASincronizacao([withings({ lastSyncedAt: haMinutos(0) })], semPedido, agora)).toBe(false);
   });
 
   it("a fronteira é exactamente o intervalo", () => {
     expect(INTERVALO_MINIMO_MS).toBe(2 * 60 * 1000);
     const naLinha = new Date(agora.getTime() - INTERVALO_MINIMO_MS).toISOString();
     const umPouquinhoAntes = new Date(agora.getTime() - INTERVALO_MINIMO_MS + 1).toISOString();
-    expect(valeASincronizacao([withings({ lastSyncedAt: naLinha })], agora)).toBe(true);
-    expect(valeASincronizacao([withings({ lastSyncedAt: umPouquinhoAntes })], agora)).toBe(false);
+    expect(valeASincronizacao([withings({ lastSyncedAt: naLinha })], semPedido, agora)).toBe(true);
+    expect(valeASincronizacao([withings({ lastSyncedAt: umPouquinhoAntes })], semPedido, agora)).toBe(false);
   });
 
   it("**nunca sincronizada vale sempre** — é quando a pessoa está à espera", () => {
-    expect(valeASincronizacao([withings({ lastSyncedAt: null })], agora)).toBe(true);
-    expect(valeASincronizacao([withings()], agora)).toBe(true);
+    expect(valeASincronizacao([withings({ lastSyncedAt: null })], semPedido, agora)).toBe(true);
+    expect(valeASincronizacao([withings()], semPedido, agora)).toBe(true);
   });
 
   it("e uma data ilegível é o mesmo que não ter data", () => {
-    expect(valeASincronizacao([withings({ lastSyncedAt: "não é data" })], agora)).toBe(true);
+    expect(valeASincronizacao([withings({ lastSyncedAt: "não é data" })], semPedido, agora)).toBe(true);
   });
 });
 
@@ -80,6 +83,7 @@ describe("qual das ligações manda", () => {
         withings({ lastSyncedAt: haMinutos(300) }),
         withings({ lastSyncedAt: haMinutos(0.2) }),
       ],
+      semPedido,
       agora
     );
     expect(r).toBe(false);
@@ -88,6 +92,7 @@ describe("qual das ligações manda", () => {
   it("e se as duas são velhas, vai", () => {
     const r = valeASincronizacao(
       [withings({ lastSyncedAt: haMinutos(300) }), withings({ lastSyncedAt: haMinutos(10) })],
+      semPedido,
       agora
     );
     expect(r).toBe(true);
@@ -97,30 +102,59 @@ describe("qual das ligações manda", () => {
 describe("quando não há fonte a quem perguntar", () => {
   it("**sem ligação nenhuma, não se tenta**", () => {
     // Seria pedir ao nosso servidor que descobrisse que não tem a quem perguntar.
-    expect(valeASincronizacao([], agora)).toBe(false);
-    expect(valeASincronizacao(null, agora)).toBe(false);
-    expect(valeASincronizacao(undefined, agora)).toBe(false);
+    expect(valeASincronizacao([], semPedido, agora)).toBe(false);
+    expect(valeASincronizacao(null, semPedido, agora)).toBe(false);
+    expect(valeASincronizacao(undefined, semPedido, agora)).toBe(false);
   });
 
   it("**outro provedor não é a Withings**", () => {
     const outro = [{ provider: "FITBIT", status: "CONNECTED", lastSyncedAt: haMinutos(300) }];
-    expect(valeASincronizacao(outro, agora)).toBe(false);
+    expect(valeASincronizacao(outro, semPedido, agora)).toBe(false);
   });
 
   it("maiúsculas ou minúsculas, é a mesma ligação", () => {
     expect(
-      valeASincronizacao([{ provider: "withings", lastSyncedAt: haMinutos(300) }], agora)
+      valeASincronizacao(
+        [{ provider: "withings", status: "CONNECTED", lastSyncedAt: haMinutos(300) }],
+        semPedido,
+        agora
+      )
     ).toBe(true);
   });
 
-  it("**uma ligação que precisa de reautorização também não**", () => {
+  it("**uma ligação partida também não** — e os estados são os que o banco tem", () => {
     /*
-     * O servidor responderia erro, e quem puxou veria a roda girar mais tempo
-     * para nada. Quem resolve isso é a tela dos aparelhos, e a pendência já
-     * aponta para lá.
+     * **O achado do QA de 02/10.** A versão anterior excluía `"NEEDS_REAUTH"`,
+     * um estado que **não existe neste código**: o schema diz, na própria
+     * coluna, `CONNECTED | DISCONNECTED | ERROR`. Eu tinha inferido o nome da
+     * mensagem de erro da rota (*"needs to be reauthorised"*) e escrito dois
+     * testes a fixá-lo — testes que morriam sob mutação a defender um estado que
+     * o banco nunca produz.
+     *
+     * O efeito real: `ERROR`, que é o que a rota **escreve** quando a Withings
+     * falha, passava o filtro. E a rota procura a ligação com
+     * `status: 'CONNECTED'`, logo cada pedido era uma ida e volta para receber
+     * 404, com a roda a girar — a cada gesto e a cada entrada na aba, sem fim.
+     */
+    for (const estado of ["ERROR", "DISCONNECTED"]) {
+      const r = valeASincronizacao(
+        [withings({ status: estado, lastSyncedAt: haMinutos(300) })],
+        semPedido,
+        agora
+      );
+      expect(r).toBe(false);
+    }
+  });
+
+  it("**um estado que ainda não existe entra como 'não serve'**", () => {
+    /*
+     * A lista é do que **serve**, e não do que não serve. Um estado novo entra
+     * pelo lado seguro sozinho — que é o único lado aceitável quando o engano é
+     * falar com uma API de terceiros a um tecto partilhado.
      */
     const r = valeASincronizacao(
-      [withings({ status: "NEEDS_REAUTH", lastSyncedAt: haMinutos(300) })],
+      [withings({ status: "PAUSADA_QUE_AINDA_NAO_EXISTE", lastSyncedAt: haMinutos(300) })],
+      semPedido,
       agora
     );
     expect(r).toBe(false);
@@ -129,12 +163,68 @@ describe("quando não há fonte a quem perguntar", () => {
   it("mas uma sadia ao lado de uma partida ainda vale", () => {
     const r = valeASincronizacao(
       [
-        withings({ status: "NEEDS_REAUTH", lastSyncedAt: haMinutos(300) }),
+        withings({ status: "ERROR", lastSyncedAt: haMinutos(300) }),
         withings({ status: "CONNECTED", lastSyncedAt: haMinutos(300) }),
       ],
+      semPedido,
       agora
     );
     expect(r).toBe(true);
+  });
+});
+
+describe("o tecto mede **o nosso pedido**, não o sucesso do servidor", () => {
+  /**
+   * O defeito que o QA mediu e que apagava a tarefa inteira:
+   *
+   * > `qa119.t8.erro | status=ERROR | lastSyncedAt=2026-10-02T06:36:42Z` →
+   * > `valeASincronizacao = true`
+   *
+   * **Para sempre.** O `lastSyncedAt` só é escrito quando a ingestão termina
+   * bem, portanto numa falha ele congela, a idade nunca cresce, e o tecto — a
+   * decisão central desta tarefa — deixava de existir a partir da primeira
+   * falha.
+   *
+   * O relógio passou a ser o nosso: *quando foi a última vez que pedimos*. Esse
+   * avança mesmo quando a sincronização falha, que é exactamente quando o tecto
+   * tem de apertar.
+   */
+  const pedimosHa = (minutos: number) => ({
+    ultimoPedidoMs: agora.getTime() - minutos * 60000,
+  });
+
+  it("**pedimos há um minuto: não se pede outra vez**, mesmo com o servidor parado há horas", () => {
+    const r = valeASincronizacao(
+      [withings({ lastSyncedAt: haMinutos(300) })],
+      pedimosHa(1),
+      agora
+    );
+    expect(r).toBe(false);
+  });
+
+  it("passados os dois minutos desde o nosso pedido, pede-se de novo", () => {
+    const r = valeASincronizacao(
+      [withings({ lastSyncedAt: haMinutos(300) })],
+      pedimosHa(3),
+      agora
+    );
+    expect(r).toBe(true);
+  });
+
+  it("**e o do servidor continua a contar** — se ele acabou de sincronizar, não há nada a pedir", () => {
+    // Os dois relógios valem: o nosso impede a rajada, o dele impede o inútil.
+    const r = valeASincronizacao(
+      [withings({ lastSyncedAt: haMinutos(1) })],
+      pedimosHa(300),
+      agora
+    );
+    expect(r).toBe(false);
+  });
+
+  it("sem pedido nosso nenhum, decide o do servidor", () => {
+    expect(
+      valeASincronizacao([withings({ lastSyncedAt: haMinutos(300) })], semPedido, agora)
+    ).toBe(true);
   });
 });
 
@@ -146,7 +236,7 @@ describe("um relógio dessincronizado não vira sincronização a cada gesto", (
      * segura.
      */
     const futuro = new Date(agora.getTime() + 60 * 60 * 1000).toISOString();
-    expect(valeASincronizacao([withings({ lastSyncedAt: futuro })], agora)).toBe(false);
+    expect(valeASincronizacao([withings({ lastSyncedAt: futuro })], semPedido, agora)).toBe(false);
   });
 });
 
@@ -154,6 +244,7 @@ describe("o caso do Bruno, reproduzido", () => {
   it("**às 10:20, com a última sincronização às 07:05, puxar vai à fonte**", () => {
     const r = valeASincronizacao(
       [withings({ lastSyncedAt: "2026-10-02T07:05:00.000Z" })],
+      semPedido,
       agora
     );
     expect(r).toBe(true);

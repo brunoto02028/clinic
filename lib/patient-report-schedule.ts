@@ -28,7 +28,34 @@ import { temAlgumDado } from "@/lib/patient-monitoring";
  * pessoa acordaria com quatro relatórios da mesma semana.
  */
 
-export type Cadencia = "NONE" | "DAILY" | "WEEKLY";
+/**
+ * As cadências que **este** cron entende.
+ *
+ * `ON_DEMAND` existe no enum do schema (118 T-5) e **não** está aqui de
+ * propósito: não é uma cadência, é um pedido do paciente. O cron tem de o tratar
+ * como "não geres nada", e isso não pode ficar implícito — ver `GERA_SOZINHO`.
+ */
+export type Cadencia = "NONE" | "DAILY" | "WEEKLY" | "ON_DEMAND";
+
+/**
+ * As cadências que fazem o cron gerar um relatório sozinho.
+ *
+ * **Uma lista do que gera, e não uma do que não gera.** Um valor novo no enum
+ * entra como "não gera" por omissão, que é o lado seguro: a regra em vigor é que
+ * nada chega a um paciente automaticamente sem decisão explícita.
+ *
+ * Sem isto, o `ON_DEMAND` caía no ramo **semanal** do `inicioDoPeriodo` — a
+ * última condição é um `else` — e um paciente marcado como *"só a pedido"*
+ * passaria a receber um relatório automático toda a segunda-feira. O `as
+ * Cadencia` no corpo da rodada escondia-o: o tipo dizia que não podia acontecer
+ * enquanto o banco dizia que podia.
+ */
+const GERA_SOZINHO: ReadonlySet<Cadencia> = new Set<Cadencia>(["DAILY", "WEEKLY"]);
+
+/** Esta cadência faz o cron gerar um relatório sem ninguém pedir? */
+export function geraSozinho(cadencia: Cadencia | string | null | undefined): boolean {
+  return GERA_SOZINHO.has(cadencia as Cadencia);
+}
 
 /**
  * O começo do período que está vencendo agora.
@@ -38,7 +65,8 @@ export type Cadencia = "NONE" | "DAILY" | "WEEKLY";
  * independentemente da hora em que o contêiner acordou.
  */
 export function inicioDoPeriodo(cadencia: Cadencia, agora = new Date()): Date | null {
-  if (cadencia === "NONE") return null;
+  /* Tudo o que não gera sozinho não tem período a vencer. */
+  if (!geraSozinho(cadencia)) return null;
 
   const d = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()));
 
@@ -123,7 +151,7 @@ export async function gerarRelatoriosVencidos(
       // Nulo quer dizer "o que a clínica decidiu": ligar para todo mundo é uma
       // chave só, e quem precisa de exceção tem exceção.
       const cadencia = (p.reportCadence ?? clinica.defaultReportCadence) as Cadencia;
-      if (cadencia === "NONE") continue;
+      if (!geraSozinho(cadencia)) continue;
       r.pacientesConsiderados++;
 
       const inicio = inicioDoPeriodo(cadencia, agora);

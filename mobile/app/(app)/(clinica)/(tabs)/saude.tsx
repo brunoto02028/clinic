@@ -121,36 +121,70 @@ export default function SaudeScreen() {
    */
   const [aSincronizar, setASincronizar] = React.useState(false);
 
+  /**
+   * **Quando nós pedimos**, e não quando o servidor conseguiu.
+   *
+   * Um `ref` e não um estado: mudá-lo não precisa de redesenhar nada, e precisa
+   * de ser lido **no instante** da chamada. Um `aSincronizar` lido do estado é o
+   * do render em que ele foi capturado — foi assim que o QA mostrou que a
+   * guarda `if (aSincronizar)` não era quem travava o segundo disparo.
+   *
+   * E é este relógio que faz o tecto existir: o `lastSyncedAt` da ligação só é
+   * escrito quando a ingestão termina **bem**, portanto numa falha ele congela e
+   * a idade nunca cresce. Medido pelo QA: `valeASincronizacao` devolvia `true`
+   * para sempre depois da primeira falha.
+   */
+  const ultimoPedidoMs = React.useRef<number | null>(null);
+  const aPedir = React.useRef(false);
+
   const atualizar = React.useCallback(
     async (gesto: boolean) => {
-      if (aSincronizar) return;
+      /* Lido do `ref`, que é o valor de agora e não o do render. */
+      if (aPedir.current) return;
 
-      const vale = valeASincronizacao(ligacoes.data as any[]);
+      const relerTudo = () =>
+        Promise.all([dados.refetch(), ligacoes.refetch(), metas.refetch()]).catch(() => {});
+
+      const vale = valeASincronizacao(ligacoes.data as any[], {
+        ultimoPedidoMs: ultimoPedidoMs.current,
+      });
       if (!vale) {
         /* Sem ida à fonte, mas relê na mesma — era o que o gesto já fazia. */
-        if (gesto) {
-          await Promise.all([dados.refetch(), ligacoes.refetch(), metas.refetch()]);
-        }
+        if (gesto) await relerTudo();
         return;
       }
 
+      aPedir.current = true;
+      ultimoPedidoMs.current = Date.now();
       setASincronizar(true);
       try {
         await syncProvider("withings");
       } catch {
         /*
          * **Sem alerta novo.** Se a Withings não respondeu, a tela mostra o que
-         * tem, e as pendências — que já existem — dizem que a última
-         * sincronização falhou. Um erro vermelho por cima de um gesto que a
-         * pessoa faz por hábito ensina a não fazer o gesto.
+         * tem e a pendência diz que a última sincronização falhou — agora diz
+         * mesmo: a rota passou a gravar `lastSyncError` e a rota das ligações
+         * passou a devolvê-lo. Até 02/10 essa frase era inalcançável, e o QA
+         * mediu-o: `pendencias(payload com status ERROR) = []`.
+         *
+         * Um erro vermelho por cima de um gesto que a pessoa faz por hábito
+         * ensina a não fazer o gesto.
          */
       } finally {
-        /* Relê sempre: a sincronização pode ter gravado antes de falhar. */
-        await Promise.all([dados.refetch(), ligacoes.refetch()]);
+        /*
+         * **A roda pára antes do `await`.** Estava depois, e se aquele `await`
+         * rejeitasse a roda ficava a girar para sempre. Hoje o `refetch` do
+         * React Query resolve com `isError` em vez de rejeitar — medido pelo QA
+         * na 5.101.0 — mas isso é uma garantia da biblioteca que o código não
+         * pedia, e uma palavra (`throwOnError`) chegava para a perder.
+         */
         setASincronizar(false);
+        aPedir.current = false;
+        /* Relê sempre: a sincronização pode ter gravado antes de falhar. */
+        await relerTudo();
       }
     },
-    [aSincronizar, dados, ligacoes, metas]
+    [dados, ligacoes, metas]
   );
 
   /*
