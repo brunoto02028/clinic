@@ -19,6 +19,7 @@ import React from "react";
 import { View } from "react-native";
 import { Text } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
 import { tendenciaEmBarras, type PontoDaSerie } from "@/lib/barras-da-metrica";
 
 export function BarrasDaMetrica({
@@ -31,6 +32,7 @@ export function BarrasDaMetrica({
   dias?: number;
 }) {
   const t = useTheme();
+  const lang = useLang();
   const tendencia = tendenciaEmBarras(serie, dias);
 
   /*
@@ -95,6 +97,30 @@ export function BarrasDaMetrica({
           {formatar(tendencia.maximo)}
         </Text>
       </View>
+
+      {/*
+        * **De quando são estas barras** (achado do code review).
+        *
+        * O gráfico não tinha data nenhuma. Catorze barras densas lêem-se como as
+        * últimas duas semanas mesmo quando a última é de há um mês — e o número
+        * grande acima só mostra a data quando não é de hoje.
+        *
+        * Só aparece quando o último dado **não é de hoje**: repeti-lo todos os
+        * dias seria ruído.
+        */}
+      {tendencia.ultimoComDado !== tendencia.ate ? (
+        <Text
+          variant="caption"
+          color={t.colors.textMuted}
+          style={{ fontSize: 10, marginTop: 2 }}
+          testID="barras-ultimo-dado"
+        >
+          {tr(lang, {
+            en: `last reading ${tendencia.ultimoComDado}`,
+            pt: `última leitura ${tendencia.ultimoComDado}`,
+          })}
+        </Text>
+      ) : null}
     </View>
   );
 }

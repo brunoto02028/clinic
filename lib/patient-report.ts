@@ -126,16 +126,38 @@ const grupos = (
 const row = (label: string, value: any) =>
   value ? `<tr><td class="lbl">${esc(label)}</td><td>${esc(value)}</td></tr>` : "";
 
-const PHASE_LABELS: Record<string, string> = {
-  SHORT_TERM: "Short-Term (Acute) — Weeks 1-4",
-  MEDIUM_TERM: "Medium-Term (Rehab) — Weeks 4-12",
-  LONG_TERM: "Long-Term (Maintenance) — Weeks 12+",
+/**
+ * As fases e os tipos de item, nas duas línguas.
+ *
+ * Eram `Record<string, string>` só em inglês, e saíam assim no papel de um
+ * paciente brasileiro — *"Short-Term (Acute) — Weeks 1-4"* no meio de um
+ * documento em português. Faziam parte das 23 cadeias que o code review contou.
+ */
+const PHASE_LABELS: Record<"en" | "pt", Record<string, string>> = {
+  en: {
+    SHORT_TERM: "Short-Term (Acute) — Weeks 1-4",
+    MEDIUM_TERM: "Medium-Term (Rehab) — Weeks 4-12",
+    LONG_TERM: "Long-Term (Maintenance) — Weeks 12+",
+  },
+  pt: {
+    SHORT_TERM: "Curto prazo (agudo) — semanas 1 a 4",
+    MEDIUM_TERM: "Médio prazo (reabilitação) — semanas 4 a 12",
+    LONG_TERM: "Longo prazo (manutenção) — a partir da semana 12",
+  },
 };
-const ITEM_TYPES: Record<string, string> = {
-  IN_CLINIC: "In-Clinic",
-  HOME_EXERCISE: "Home Exercise",
-  HOME_CARE: "Home Care",
-  ASSESSMENT: "Assessment",
+const ITEM_TYPES: Record<"en" | "pt", Record<string, string>> = {
+  en: {
+    IN_CLINIC: "In-Clinic",
+    HOME_EXERCISE: "Home Exercise",
+    HOME_CARE: "Home Care",
+    ASSESSMENT: "Assessment",
+  },
+  pt: {
+    IN_CLINIC: "Na clínica",
+    HOME_EXERCISE: "Exercício em casa",
+    HOME_CARE: "Cuidado em casa",
+    ASSESSMENT: "Avaliação",
+  },
 };
 
 function parseJson(v: any): any[] {
@@ -285,7 +307,17 @@ const P = {
     em: "on",
     ecg: "ECG",
     ecgRessalva:
-      "These are the watch's own conclusions. The trace is not stored and is not interpreted here.",
+      /*
+       * **"não é guardado" deixou de ser verdade** (achado do QA comparativo).
+       *
+       * O `EcgRecording.signal` guarda as 9.000 amostras desde a 119 T-2, e o
+       * botão "Abrir em PDF" desenha-as. O paciente lia aqui que o traçado não
+       * era guardado e tinha o traçado no telemóvel.
+       *
+       * A parte que continua verdadeira — e é a que importa — é que **não o
+       * lemos**. É essa que fica, dita por inteiro.
+       */
+      "These are the watch's own conclusions. We store the trace so you can print it; we do not read it.",
     exercicio: "Exercise",
     diasComExercicio: "Days with exercise done",
     exerciciosFeitos: "Exercises logged",
@@ -305,6 +337,12 @@ const P = {
     metas: "Treatment Goals",
     precaucoes: "Precautions",
     notas: "Session Notes (SOAP)",
+    sinaisDeAlerta: "Red Flags Reported",
+    tipo: "Type",
+    item: "Item",
+    detalhes: "Details",
+    dosagem: "Dosage",
+    semanasCol: "Weeks",
     dorNivel: "Pain",
     maisBaixo: "lower",
     maisAlto: "higher",
@@ -388,7 +426,7 @@ const P = {
     em: "em",
     ecg: "ECG",
     ecgRessalva:
-      "Estas são as conclusões do próprio relógio. O traçado não é salvo aqui e não é interpretado por nós.",
+      "Estas são as conclusões do próprio relógio. Guardamos o traçado para você poder imprimi-lo; nós não o lemos.",
     exercicio: "Exercício",
     diasComExercicio: "Dias com exercício feito",
     exerciciosFeitos: "Exercícios registrados",
@@ -408,6 +446,12 @@ const P = {
     metas: "Metas do tratamento",
     precaucoes: "Precauções",
     notas: "Notas de sessão (SOAP)",
+    sinaisDeAlerta: "Sinais de alerta relatados",
+    tipo: "Tipo",
+    item: "Item",
+    detalhes: "Detalhes",
+    dosagem: "Dosagem",
+    semanasCol: "Semanas",
     dorNivel: "Dor",
     maisBaixo: "abaixo",
     maisAlto: "acima",
@@ -630,23 +674,23 @@ export function renderPatientReportHTML(
 
     return `
     <div class="section">
-      <h2>Treatment Protocol: ${esc(p.title)}</h2>
-      <p class="meta">Status: ${esc(p.status)} · Created ${fmtDate(p.createdAt, idioma)} by ${esc(p.therapist?.firstName || "")} ${esc(p.therapist?.lastName || "")}${p.estimatedWeeks ? ` · ${p.estimatedWeeks} weeks` : ""}${(p as any).totalSessions ? ` · ${(p as any).totalSessions} sessions` : ""}</p>
+      <h2>${t.protocolo}: ${esc(p.title)}</h2>
+      <p class="meta">${t.estado}: ${esc(p.status)} · ${t.criadoPor} ${fmtDate(p.createdAt, idioma)} ${t.por} ${esc(p.therapist?.firstName || "")} ${esc(p.therapist?.lastName || "")}${p.estimatedWeeks ? ` · ${p.estimatedWeeks} ${t.semanas}` : ""}${(p as any).totalSessions ? ` · ${(p as any).totalSessions} ${t.sessoes}` : ""}</p>
       <p>${esc(p.summary)}</p>
-      ${p.therapistComments ? `<p class="comment"><strong>Therapist comments:</strong> ${esc(p.therapistComments)}</p>` : ""}
+      ${p.therapistComments ? `<p class="comment"><strong>${t.comentariosTerapeuta}:</strong> ${esc(p.therapistComments)}</p>` : ""}
 
-      ${goals.length ? `<h3>Treatment Goals</h3><ul>${goals.map((g: any) => `<li><strong>${esc(g.timeline || g.phase || "")}</strong>: ${esc(g.goal || g.description || "")}${g.metrics ? ` <em>(${esc(g.metrics)})</em>` : ""}</li>`).join("")}</ul>` : ""}
+      ${goals.length ? `<h3>${t.metas}</h3><ul>${goals.map((g: any) => `<li><strong>${esc(g.timeline || g.phase || "")}</strong>: ${esc(g.goal || g.description || "")}${g.metrics ? ` <em>(${esc(g.metrics)})</em>` : ""}</li>`).join("")}</ul>` : ""}
 
-      ${precautions.length ? `<div class="precautions"><h3>⚠ Precautions</h3><ul>${precautions.map((pr: any) => `<li>${esc(pr.precaution || pr.description || pr)}</li>`).join("")}</ul></div>` : ""}
+      ${precautions.length ? `<div class="precautions"><h3>⚠ ${t.precaucoes}</h3><ul>${precautions.map((pr: any) => `<li>${esc(pr.precaution || pr.description || pr)}</li>`).join("")}</ul></div>` : ""}
 
       ${Object.entries(phases).map(([phase, items]) => `
-        <h3>${esc(PHASE_LABELS[phase] || phase)}</h3>
+        <h3>${esc(PHASE_LABELS[idioma][phase] || phase)}</h3>
         <table class="items">
-          <thead><tr><th>Type</th><th>Item</th><th>Details</th><th>Dosage</th><th>Weeks</th></tr></thead>
+          <thead><tr><th>${t.tipo}</th><th>${t.item}</th><th>${t.detalhes}</th><th>${t.dosagem}</th><th>${t.semanasCol}</th></tr></thead>
           <tbody>
           ${(items as any[]).map((it) => `
             <tr>
-              <td>${esc(ITEM_TYPES[it.itemType] || it.itemType)}</td>
+              <td>${esc(ITEM_TYPES[idioma][it.itemType] || it.itemType)}</td>
               <td><strong>${esc(it.title)}</strong>${it.hiddenFromPatient ? " <em>(internal)</em>" : ""}</td>
               <td>${esc(it.description || "")}${it.instructions ? `<br/><em>${esc(it.instructions)}</em>` : ""}</td>
               <td>${[it.frequency, it.sets ? `${it.sets} sets` : "", it.reps ? `${it.reps} reps` : "", it.holdSeconds ? `hold ${it.holdSeconds}s` : "", it.restSeconds ? `rest ${it.restSeconds}s` : "", it.sessionDuration ? `${it.sessionDuration}min` : ""].filter(Boolean).map(esc).join(" · ") || "—"}</td>
@@ -660,10 +704,10 @@ export function renderPatientReportHTML(
   // ── SOAP notes ──
   const soapHtml = (soapNotes || []).length ? `
     <div class="section">
-      <h2>Session Notes (SOAP)</h2>
+      <h2>${t.notas}</h2>
       ${soapNotes.map((s: any) => `
         <div class="soap">
-          <p class="meta">${fmtDate(s.createdAt, idioma)} — ${esc(s.therapist?.firstName || "")} ${esc(s.therapist?.lastName || "")}${s.painLevel != null ? ` · Pain ${s.painLevel}/10` : ""}</p>
+          <p class="meta">${fmtDate(s.createdAt, idioma)} — ${esc(s.therapist?.firstName || "")} ${esc(s.therapist?.lastName || "")}${s.painLevel != null ? ` · ${t.dorNivel} ${s.painLevel}/10` : ""}</p>
           <table>
             ${row(t.subjetivo, s.subjective)}
             ${row(t.objetivo, s.objective)}
@@ -1077,7 +1121,7 @@ ${ms ? `
       semTitulo: true,
     },
   ])}
-  ${redFlags.length ? `<h3 style="color:#b91c1c">Red Flags Reported</h3><ul class="redflags">${redFlags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+  ${redFlags.length ? `<h3 style="color:#b91c1c">${t.sinaisDeAlerta}</h3><ul class="redflags">${redFlags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
 </div>` : ""}
 
 ${ba ? `

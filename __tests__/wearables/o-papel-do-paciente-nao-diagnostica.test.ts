@@ -72,8 +72,52 @@ const dados = () =>
       findings: JSON.stringify([{ area: "Right knee", finding: "Pain on squat" }]),
       therapistComments: null,
     },
-    protocols: [],
-    soapNotes: [],
+    /*
+     * **As secções cheias, e não vazias** (achado do code review).
+     *
+     * A fixture tinha `protocols: []`, `soapNotes: []` e `screening: null` — e
+     * as três secções que saíam **inteiramente em inglês** no papel PT eram
+     * exactamente essas. As asserções de tradução passavam contra um documento
+     * que não tinha o conteúdo onde o erro estava.
+     *
+     * 23 cadeias inglesas sobreviveram assim, com 14 chaves de tradução escritas
+     * no dicionário e nunca ligadas ao render.
+     */
+    protocols: [
+      {
+        title: "Joelho direito",
+        status: "ACTIVE",
+        createdAt: new Date("2026-09-10T00:00:00.000Z"),
+        estimatedWeeks: 8,
+        therapist: { firstName: "Ana", lastName: "L." },
+        therapistComments: "Progredir carga conforme tolerância.",
+        goals: JSON.stringify([{ timeline: "4 semanas", goal: "Subir escadas sem dor" }]),
+        precautions: JSON.stringify([{ precaution: "Evitar impacto nas duas primeiras semanas" }]),
+        items: [
+          {
+            phase: "SHORT_TERM",
+            type: "HOME_EXERCISE",
+            name: "Agachamento isométrico",
+            description: "Parede, 45 graus",
+            sets: 3,
+            reps: 10,
+            holdSeconds: 30,
+            weeks: 4,
+          },
+        ],
+      },
+    ],
+    soapNotes: [
+      {
+        createdAt: new Date("2026-09-28T00:00:00.000Z"),
+        therapist: { firstName: "Ana", lastName: "L." },
+        painLevel: 4,
+        subjective: "Refere melhora ao subir escadas.",
+        objective: "Agachamento até 60 graus sem dor.",
+        assessment: "Evolução conforme esperado.",
+        plan: "Manter protocolo.",
+      },
+    ],
     atlasChatCount: 0,
     monitoring: null,
   }) as any;
@@ -234,6 +278,17 @@ describe("o papel em português não fica meio traduzido", () => {
    * o paciente respondeu na triagem, e o nome de uma condição. Traduzir o registo
    * clínico de alguém seria reescrevê-lo.
    */
+  /**
+   * A palavra inteira, e não um pedaço dela.
+   *
+   * A primeira versão usava `includes` e acusava "Dosage" num papel
+   * correctamente traduzido, porque *"Dosagem"* contém *"Dosage"*. Um teste que
+   * acusa à toa é um teste que a próxima pessoa desliga — e este existe
+   * precisamente para não ser desligado.
+   */
+  const palavraInteira = (w: string, texto: string) =>
+    new RegExp("\\b" + w + "\\b").test(texto);
+
   const NOSSAS_PALAVRAS_EM_INGLES = [
     "Name", "Age", "Email", "Phone", "Patient since",
     "Occupation", "Activity level", "Surgical history", "Other conditions",
@@ -242,12 +297,34 @@ describe("o papel em português não fica meio traduzido", () => {
     "Print / Save as PDF", "Blood pressure", "Exercise", "How you felt",
     "Most recent", "Readings in period", "Appointments in the period",
     "with data", "average of the",
+    /*
+     * Estas só se tornaram alcançáveis quando a fixture deixou de ter os
+     * protocolos e as notas vazios — eram as secções inteiramente inglesas.
+     */
+    "Treatment Protocol", "Therapist comments", "Treatment Goals", "Precautions",
+    "Session Notes", "Red Flags Reported", "Home Exercise", "Short-Term",
+    "Created", "Details", "Dosage", "Weeks",
   ];
 
   it("**nenhum rótulo nosso fica em inglês**", () => {
+    /*
+     * **Fronteira de palavra, e não `includes`.**
+     *
+     * A primeira versão acusava "Dosage" num papel correctamente traduzido,
+     * porque *"Dosagem"* contém *"Dosage"*. Um teste que acusa à toa é um teste
+     * que a próxima pessoa desliga — e este existe precisamente para não ser
+     * desligado.
+     */
     const pt = html("pt");
-    const escaparam = NOSSAS_PALAVRAS_EM_INGLES.filter((w) => pt.includes(w));
+    const escaparam = NOSSAS_PALAVRAS_EM_INGLES.filter((w) => palavraInteira(w, pt));
     expect(escaparam).toEqual([]);
+  });
+
+  it("e a varredura **não acusa uma tradução correcta**", () => {
+    // "Dosagem" contém "Dosage"; a fronteira de palavra é o que os separa.
+    expect(palavraInteira("Dosage", "Dosagem")).toBe(false);
+    expect(palavraInteira("Dosage", "<th>Dosage</th>")).toBe(true);
+    expect(palavraInteira("Created", "Criado em")).toBe(false);
   });
 
   it("**e as datas seguem a língua**", () => {
