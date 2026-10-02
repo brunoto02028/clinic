@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { pickEditable } from "@/lib/tenant-field-guard";
 import { callAIClinical } from "@/lib/ai-provider";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -567,13 +567,36 @@ export async function PATCH(
       }).catch(err => console.error('[protocol] release notify error:', err));
     }
 
-    // Notify patient when treatment is completed
+    /**
+     * Tratamento concluído.
+     *
+     * **A oferta de plano saiu daqui** (104, 02/10/2026). Ela vinha junto,
+     * cinco segundos depois, num `setTimeout` — e o atraso existia para os
+     * dois e-mails não chegarem colados, ou seja, foi desenhado para a oferta
+     * parecer que veio sozinha.
+     *
+     * Três coisas erradas, em ordem de gravidade: era **venda** disparada por
+     * um ato clínico, sem opt-in próprio; o `setTimeout` num handler de rota
+     * não tem garantia nenhuma, então se o processo reciclasse naqueles 5s a
+     * mensagem sumia sem log, e se não sumisse disparava fora do pedido, sem
+     * rastro no `AuditLog`; e chegava no pior momento possível, logo depois
+     * de a pessoa concluir um tratamento, parecendo parte do cuidado.
+     *
+     * Virou botão: quem quiser oferecer um plano manda pelo compositor de
+     * e-mail, que tem prévia.
+     */
     if (status === "COMPLETED") {
-      try {
-        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
-        const patientId = params.id;
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
+      const patientId = params.id;
 
-        // Send treatment completed notification
+      const permissaoConclusao = await podeEnviarAoPaciente({
+        patientId,
+        canal: "email",
+        confirmacao: { modo: "explicito", pedido: body?.notify },
+        origem: "PATCH /api/admin/patients/[id]/protocol (COMPLETED)",
+      });
+
+      if (permissaoConclusao.ok) {
         notifyPatient({
           patientId,
           emailTemplateSlug: 'TREATMENT_COMPLETED',
@@ -584,20 +607,7 @@ export async function PATCH(
           plainMessage: `Congratulations! Your treatment plan "${updated.title || 'Treatment Plan'}" is now complete. Log in to see your results.`,
           plainMessagePt: `Parabéns! Seu plano de tratamento "${updated.title || 'Plano de Tratamento'}" foi concluído. Acesse o portal para ver seus resultados.`,
         }).catch(err => console.error('[protocol] TREATMENT_COMPLETED notify error:', err));
-
-        // Send membership offer (post-treatment upsell) after a small delay
-        setTimeout(() => {
-          notifyPatient({
-            patientId,
-            emailTemplateSlug: 'MEMBERSHIP_OFFER',
-            emailVars: {
-              portalUrl: `${BASE}/dashboard/membership`,
-            },
-            plainMessage: 'Now that your treatment is complete, stay connected with a membership plan for ongoing support and exclusive benefits!',
-            plainMessagePt: 'Agora que seu tratamento foi concluído, mantenha-se conectado com um plano de assinatura para suporte contínuo e benefícios exclusivos!',
-          }).catch(err => console.error('[protocol] MEMBERSHIP_OFFER notify error:', err));
-        }, 5000);
-      } catch {}
+      }
     }
 
     // Create PENDING_PATIENT appointments when protocol is sent to patient

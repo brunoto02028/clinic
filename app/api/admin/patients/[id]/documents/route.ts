@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
 import { pushDocumento } from "@/lib/push-notify";
+import { podeEnviarAoPaciente } from "@/lib/notify-patient";
 import { camposDoFormulario } from "@/lib/form-fields";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,9 @@ export async function POST(
     const doctorName = (formData.get("doctorName") as string) || null;
     const documentDate = formData.get("documentDate") as string;
     const source = (formData.get("source") as string) || "ADMIN_UPLOAD";
+    // Anexar ao prontuário é arquivo, não recado. Isto vibrava o celular do
+    // paciente a cada upload — inclusive nos administrativos (104).
+    const notify = formData.get("notify");
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -96,9 +100,18 @@ export async function POST(
 
     // O 4º aviso da T-5. A função existia e nunca era chamada — um gatilho que
     // não dispara é pior que nenhum, porque a spec diz que ele existe.
-    await pushDocumento(patientId);
+    const permissao = await podeEnviarAoPaciente({
+      patientId,
+      canal: "push",
+      confirmacao: { modo: "explicito", pedido: notify },
+      origem: "POST /api/admin/patients/[id]/documents",
+    });
+    if (permissao.ok) await pushDocumento(patientId);
 
-    return NextResponse.json({ success: true, document }, { status: 201 });
+    return NextResponse.json(
+      { success: true, document, notifySkipped: permissao.ok ? null : (permissao as any).code },
+      { status: 201 }
+    );
   } catch (err: any) {
     console.error("[documents] POST error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { templateInTenant, mapExercisesToClinic, TEMPLATE_NOT_FOUND } from "@/lib/protocol-template-access";
 import { logAudit } from "@/lib/system-logger";
@@ -195,9 +195,15 @@ export async function POST(
     description: `Protocol "${title}" assigned by ${assignedBy ? `${assignedBy.firstName} ${assignedBy.lastName}` : actor.userId}`,
   });
 
-  // Notify patient
+  // Atribuir um modelo é montar o plano; mandar é outro ato (104).
   const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
-  try {
+  const permissao = await podeEnviarAoPaciente({
+    patientId,
+    canal: "email",
+    confirmacao: { modo: "explicito", pedido: body?.notify },
+    origem: "POST /api/admin/protocols/[id]/assign",
+  });
+  if (permissao.ok) try {
     await notifyPatient({
       patientId,
       plainMessage: `Your therapist assigned you a new treatment protocol: "${template.name}". View it in your portal: ${appUrl}/dashboard/treatment`,
@@ -208,7 +214,7 @@ export async function POST(
   }
 
   return NextResponse.json(
-    { protocolId: protocol.id, prescriptions, unlinkedExercises, archived, language: lang },
+    { protocolId: protocol.id, prescriptions, unlinkedExercises, archived, language: lang, notifySkipped: permissao.ok ? null : (permissao as any).code },
     { status: 201 }
   );
 }

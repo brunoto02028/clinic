@@ -1,6 +1,6 @@
 # T-5: O upsell automático e o e-mail sem marca
 
-**Status:** pendente
+**Status:** implementada em 02/10/2026 — QA pendente
 **Depende de:** T-1
 
 ## Objetivo

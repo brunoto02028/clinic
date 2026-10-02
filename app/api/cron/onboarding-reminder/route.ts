@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { lembretesAutomaticosLigados, lembretesDesligados } from "@/lib/lembretes-ao-paciente";
 import { prisma } from "@/lib/db";
 import { getOnboardingPending, ONBOARDING_REMINDER_ACTION } from "@/lib/onboarding-reminder";
 import { notifyPatient } from "@/lib/notify-patient";
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
   if (key !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // A política vive no código, não no painel do Coolify (104). Ver
+  // `lib/lembretes-ao-paciente.ts` para o porquê e para como religar.
+  if (!lembretesAutomaticosLigados()) return lembretesDesligados("POST /api/cron/onboarding-reminder");
 
   const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 

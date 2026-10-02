@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getClinicContext, getClinicContextFromSession, getDefaultClinic } from "@/lib/clinic-context";
 import { stripe } from "@/lib/stripe";
 import { sendTemplatedEmail } from "@/lib/email-templates";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
@@ -113,8 +113,17 @@ export async function POST(request: NextRequest) {
       include: { patient: { select: { id: true, firstName: true, lastName: true, email: true } } },
     });
 
-    // Send membership notification via patient's preferred channel
-    if (plan.patient?.id) {
+    // Criar o plano é cadastro; avisar quem vai pagar é outro ato (104).
+    const permissao = plan.patient?.id
+      ? await podeEnviarAoPaciente({
+          patientId: plan.patient.id,
+          canal: "email",
+          confirmacao: { modo: "explicito", pedido: body?.notify },
+          origem: "POST /api/admin/memberships",
+        })
+      : { ok: false as const };
+
+    if (plan.patient?.id && permissao.ok) {
       const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const intervalLabels: Record<string, string> = { MONTHLY: 'Monthly', WEEKLY: 'Weekly', YEARLY: 'Yearly' };
       notifyPatient({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 import { pushTarefa } from "@/lib/push-notify";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 
@@ -87,6 +87,14 @@ export async function POST(req: NextRequest) {
     dueDate,
     actionUrl,
     metadata,
+    /**
+     * Criar a tarefa é um ato interno; avisar é um segundo ato (104).
+     *
+     * Isto mandava e-mail **e** push, um par por paciente do laço — montar
+     * a lista de pendências de dez pessoas eram vinte interrupções que
+     * ninguém pediu. Ausência de `notify` é não.
+     */
+    notify,
   } = body;
 
   if (!title) {
@@ -153,6 +161,14 @@ export async function POST(req: NextRequest) {
     });
     created.push(task);
 
+    const permissao = await podeEnviarAoPaciente({
+      patientId: pid,
+      canal: "email",
+      confirmacao: { modo: "explicito", pedido: notify },
+      origem: "POST /api/admin/patient-tasks",
+    });
+    if (!permissao.ok) continue;
+
     try {
       await notifyPatient({
         patientId: pid,
@@ -187,7 +203,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { task: created[0], count: created.length, notified, emailSent: notified > 0 },
+    { task: created[0], count: created.length, notified, emailSent: notified > 0, notifySkipped: notified === 0 && created.length > 0 ? "not_requested" : null },
     { status: 201 }
   );
 }

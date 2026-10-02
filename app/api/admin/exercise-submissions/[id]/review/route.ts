@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
 import { logAudit } from "@/lib/system-logger";
 import { pushRespostaAoVideo } from "@/lib/push-notify";
+import { podeEnviarAoPaciente } from "@/lib/notify-patient";
 
 /**
  * A correção do terapeuta sobre um envio.
@@ -70,10 +71,27 @@ export async function POST(
     metadata: { patientId: submission.patientId, hasNote: !!note },
   }).catch(() => {});
 
-  // O toque no ombro. Uma pessoa da clínica acabou de assistir e responder —
-  // o push só conta isso. Falhar aqui não desfaz a revisão, que já está no
-  // banco (`.catch` dentro de `pushRespostaAoVideo`).
-  await pushRespostaAoVideo(submission.patientId);
+  /**
+   * O toque no ombro. Uma pessoa da clínica acabou de assistir e responder —
+   * o push só conta isso. Falhar aqui não desfaz a revisão, que já está no
+   * banco (`.catch` dentro de `pushRespostaAoVideo`).
+   *
+   * **Precisa ser pedido, e só faz sentido quando houve resposta** (104).
+   * Marcar como revisado com a nota vazia disparava *"seu Terapeuta
+   * respondeu"* sobre um silêncio — o paciente abria o app e não achava
+   * resposta nenhuma.
+   */
+  const houveResposta = !!note || !!replyKind;
+  const permissao = await podeEnviarAoPaciente({
+    patientId: submission.patientId,
+    canal: "push",
+    confirmacao: { modo: "explicito", pedido: houveResposta && body?.notify },
+    origem: "POST /api/admin/exercise-submissions/[id]/review",
+  });
+  if (permissao.ok) await pushRespostaAoVideo(submission.patientId);
 
-  return NextResponse.json({ submission: atualizado });
+  return NextResponse.json({
+    submission: atualizado,
+    notifySkipped: permissao.ok ? null : (permissao as any).code,
+  });
 }

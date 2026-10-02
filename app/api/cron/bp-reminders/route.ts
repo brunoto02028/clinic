@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { lembretesAutomaticosLigados, lembretesDesligados } from "@/lib/lembretes-ao-paciente";
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest) {
   if (key !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // A política vive no código, não no painel do Coolify (104). Ver
+  // `lib/lembretes-ao-paciente.ts` para o porquê e para como religar.
+  if (!lembretesAutomaticosLigados()) return lembretesDesligados("POST /api/cron/bp-reminders");
 
   try {
     // Find all patients with BP reminders enabled

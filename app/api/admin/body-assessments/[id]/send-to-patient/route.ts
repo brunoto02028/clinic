@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 import { sendEmail } from "@/lib/email";
+import { wrapInLayout } from "@/lib/email-templates";
 
 // POST - Send body assessment report to patient
 export async function POST(
@@ -27,7 +28,7 @@ export async function POST(
     const assessment = await (prisma as any).bodyAssessment.findUnique({
       where: { id: params.id },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+        patient: { select: { id: true, firstName: true, lastName: true, email: true, clinicId: true } },
         therapist: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -56,7 +57,7 @@ export async function POST(
         reportLanguage: language,
       },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+        patient: { select: { id: true, firstName: true, lastName: true, email: true, clinicId: true } },
         therapist: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -92,7 +93,6 @@ export async function POST(
               Ver Avaliação Completa
             </a>
           </p>
-          <p style="color: #666; font-size: 12px;">Bruno Physical Rehabilitation</p>
         </div>`
       : `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #1a1a2e;">Hello ${patientName},</h2>
@@ -109,14 +109,28 @@ export async function POST(
               View Full Assessment
             </a>
           </p>
-          <p style="color: #666; font-size: 12px;">Bruno Physical Rehabilitation</p>
         </div>`;
 
+    /**
+     * O layout do produto, com logo e rodapé — não um `<div>` escrito à mão
+     * (104, 02/10/2026).
+     *
+     * Este era o único e-mail ao paciente montado inline: chegava sem a marca
+     * da clínica, com uma assinatura em texto solto no lugar do rodapé, e com
+     * um roxo que não é de lugar nenhum do produto. Quem recebe não sabe
+     * distinguir isso de um e-mail falso — e a regra da casa é que nada vai ao
+     * paciente sem a logo.
+     */
     try {
       await sendEmail({
         to: assessment.patient.email,
         subject,
-        html: htmlContent,
+        html: await wrapInLayout(
+          htmlContent,
+          isPt ? "A sua avaliação biomecânica está pronta" : "Your biomechanical assessment is ready",
+          isPt ? "pt-BR" : "en-GB",
+          assessment.patient.clinicId ?? null
+        ),
       });
     } catch (emailErr) {
       console.error("Failed to send assessment email:", emailErr);

@@ -1,7 +1,28 @@
 # T-4: Os botões passam a pedir confirmação
 
-**Status:** pendente
+**Status:** API feita em 02/10/2026 · **telas pela metade** · QA pendente
 **Depende de:** T-1
+
+> ## O que está feito e o que não está — leia antes de marcar concluída
+>
+> **Feito:** as nove rotas passam pelo portão. Chamada sem `notify` executa
+> a ação e não manda nada.
+>
+> **Não feito: a caixa só existe em uma tela.** Só
+> `components/admin/patient-exercises-tab.tsx` ganhou o "Tell the patient
+> now". Nas outras oito — tarefas, documentos, revisão de vídeo, pacotes,
+> perguntas, protocolo-modelo, planos e artigos — a tela não manda `notify`,
+> então hoje elas **nunca avisam o paciente**.
+>
+> Isso erra para o lado seguro, e de propósito: o defeito que a atividade
+> conserta é mandar sem querer, não deixar de mandar. Mas é meia entrega, e
+> alguém vai precisar da caixa nessas telas. Enquanto não existir, avisar
+> por esses caminhos só é possível pelo compositor de e-mail.
+>
+> **Parcial: `packages`.** O passo 5 manda mover o aviso da criação para a
+> transição de status. Eu só pus o portão: sem `notify` não cobra, mas com
+> `notify: true` ainda cobraria um rascunho `DRAFT`. O caminho certo
+> continua sendo prender o aviso à transição.
 
 ## Objetivo
 
@@ -29,7 +50,22 @@ de uma caixa de confirmação.
 | `protocols/[id]/assign` POST | 201 | notifyPatient | atribuir modelo |
 | `memberships` POST | 120 | `MEMBERSHIP_CREATED` | criar plano |
 | `articles/[id]/notify` POST | 35 | blast na lista | notificar sobre artigo |
-| `body-assessments/[id]/route.ts` | 236 | `ASSESSMENT_COMPLETED` | enviar avaliação |
+| ~~`body-assessments/[id]/route.ts`~~ | 236 | `ASSESSMENT_COMPLETED` | **fora do escopo, ver abaixo** |
+
+### Por que a avaliação corporal ficou de fora
+
+O envio está dentro de `if (action === "sendToPatient")`. O nome da ação
+**é** a confirmação: ninguém manda `action: "sendToPatient"` sem querer
+mandar ao paciente, do mesmo jeito que ninguém aperta "Enviar" por engano.
+
+Exigir um `notify: true` além disso seria cerimônia — duas perguntas para a
+mesma decisão, e a segunda sempre respondida igual. O que vale checar aqui
+é outro assunto, e está na T-5: esse e-mail sai **sem logo e sem template**,
+montado inline.
+
+A mesma régua separa os treze do grupo A dos que já estavam certos: o
+problema nunca foi "manda", foi **"manda enquanto você achava que estava
+fazendo outra coisa"**.
 
 Dois casos merecem nota:
 

@@ -1,6 +1,6 @@
 # T-6: Trava em código nos quatro crons
 
-**Status:** pendente
+**Status:** implementada em 02/10/2026 — QA pendente
 **Depende de:** nenhuma
 
 ## Objetivo

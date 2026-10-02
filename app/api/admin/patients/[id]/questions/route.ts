@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
@@ -40,7 +40,7 @@ export async function POST(
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { questions, context, language = "en", type = "questions" } = await req.json();
+  const { questions, context, language = "en", type = "questions", notify } = await req.json();
   if (!questions?.length) return NextResponse.json({ error: "No questions" }, { status: 400 });
 
   const [qset, patient] = await Promise.all([
@@ -61,7 +61,18 @@ export async function POST(
     }),
   ]);
 
-  if (patient) {
+  // Montar o conjunto de perguntas não é mandá-lo. Não havia rascunho
+  // possível: criar era enviar (104).
+  const permissaoPerguntas = patient
+    ? await podeEnviarAoPaciente({
+        patientId: patient.id,
+        canal: "email",
+        confirmacao: { modo: "explicito", pedido: notify },
+        origem: "POST /api/admin/patients/[id]/questions",
+      })
+    : { ok: false as const };
+
+  if (patient && permissaoPerguntas.ok) {
     const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const isPt = language === "pt";
     try {

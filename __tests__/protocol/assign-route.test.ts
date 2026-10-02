@@ -15,12 +15,31 @@ jest.mock("@/lib/db", () => {
     prisma: {
       user: { findUnique: jest.fn() },
       treatmentProtocol: { findMany: jest.fn() },
+      // Lidos pelo portão de envio (104): o teto por hora e o registro.
+      patientOutboundEmail: { count: jest.fn().mockResolvedValue(0) },
+      systemLog: { count: jest.fn().mockResolvedValue(0), create: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn((fn: any) => fn(tx)),
       __tx: tx,
     },
   };
 });
-jest.mock("@/lib/notify-patient", () => ({ notifyPatient: jest.fn() }));
+/**
+ * O portão de envio (104) entra aqui como dublê, não como `jest.requireActual`:
+ * o módulo de verdade arrasta WhatsApp, Telegram e os templates de e-mail
+ * atrás dele, e a suíte trava ao carregá-los. O dublê guarda a única regra
+ * que importa para **estas** rotas — só um sim explícito envia — e o portão
+ * de verdade tem a própria suíte, com as mutações.
+ */
+jest.mock("@/lib/notify-patient", () => ({
+  notifyPatient: jest.fn(),
+  pediramEnviarAoPaciente: (p: unknown) => p === true || p === "true",
+  podeEnviarAoPaciente: jest.fn(async ({ confirmacao }: any) =>
+    confirmacao?.modo === "explicito" &&
+    (confirmacao.pedido === true || confirmacao.pedido === "true")
+      ? { ok: true }
+      : { ok: false, status: 200, error: "not requested", code: "not_requested" }
+  ),
+}));
 jest.mock("@/lib/staff-patient-access", () => ({ staffPatientAccess: jest.fn() }));
 jest.mock("@/lib/protocol-template-access", () => ({
   TEMPLATE_NOT_FOUND: { error: "Template not found" },
@@ -116,6 +135,27 @@ describe("input validation", () => {
     expect(res.status).toBe(400);
     expect(accessMock).not.toHaveBeenCalled();
     expect(tx.treatmentProtocol.create).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Atribuir um protocolo-modelo é montar o plano. Até 02/10/2026 também
+ * avisava o paciente, sempre — e o "sempre" é que era o defeito (104).
+ */
+describe("avisar é um segundo ato", () => {
+  it("sem `notify`, atribui o modelo e não avisa ninguém", async () => {
+    const res = await call({ patientId: "p1" });
+    expect(res.status).toBe(201);
+    expect(tx.treatmentProtocol.create).toHaveBeenCalled();
+    expect(notifyPatient).not.toHaveBeenCalled();
+    expect((await res.json()).notifySkipped).toBe("not_requested");
+  });
+
+  it("com `notify: true`, avisa", async () => {
+    const res = await call({ patientId: "p1", notify: true });
+    expect(res.status).toBe(201);
+    expect(notifyPatient).toHaveBeenCalledTimes(1);
+    expect((await res.json()).notifySkipped).toBeNull();
   });
 });
 

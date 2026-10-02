@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -118,8 +118,18 @@ export async function POST(
       },
     });
 
-    // Notify patient: package ready to pay
-    try {
+    /**
+     * Pedir pagamento precisa ser pedido — e o pacote **nasce `DRAFT`** (104).
+     * Isto cobrava um rascunho interno: quem montava um orçamento para olhar
+     * depois mandava a cobrança junto, sem querer.
+     */
+    const permissaoPacote = await podeEnviarAoPaciente({
+      patientId: params.id,
+      canal: "email",
+      confirmacao: { modo: "explicito", pedido: body?.notify },
+      origem: "POST /api/admin/patients/[id]/packages",
+    });
+    if (permissaoPacote.ok) try {
       const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const patientId = params.id;
       const totalPrice = pkg.priceFullPackage || pkg.pricePerSession || 0;
