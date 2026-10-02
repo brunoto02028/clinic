@@ -14,17 +14,35 @@
  * palavra. Ele **não interpreta** traçado nenhum — nós não temos traçado, de
  * propósito, e não teríamos o que dizer sobre ele se tivéssemos.
  *
- * A classificação da Withings, para o ScanWatch:
+ * ## A tabela estava errada, e errada do lado que não pode errar (02/10/2026)
  *
- * | valor | o aparelho concluiu |
+ * Até esta data este ficheiro lia `0` como *"sem sinal utilizável"* e **`1`
+ * como "ritmo normal"**. O campo é o `ecg.afib` da Withings, e nele:
+ *
+ * | `afib` | o aparelho concluiu |
  * |---|---|
- * | 0 | sem sinal utilizável |
- * | 1 | ritmo normal |
- * | 2 | **fibrilação atrial** |
- * | 3 | inconclusivo (frequência alta, movimento) |
+ * | 0 | **sem sinais de fibrilhação** — o ritmo sinusal, o resultado normal |
+ * | 1 | **fibrilhação atrial** |
+ * | 2 | não classificável (frequência muito baixa ou alta, outras arritmias) |
+ *
+ * Com a tabela antiga, um ECG com **fibrilhação detectada** aparecia na tela do
+ * paciente como **"Ritmo normal"**. O erro caía exactamente do lado que não
+ * pode errar.
+ *
+ * **Como se soube:** o Bruno fez dois ECG em 01/10/2026, os dois classificados
+ * "Normal" pelo relógio, e o nosso app mostrava *"No usable signal"* — logo o
+ * valor guardado era `0` e `0` **não** é ausência de sinal. A documentação
+ * pública confirma `0` = *"no signs of atrial fibrillation"* e `2` = *"couldn't
+ * be classified as normal rhythm or atrial fibrillation"*; a Withings descreve
+ * três classes, e `1` é a que sobra.
+ *
+ * **O desempate, quando a certeza falta:** qualquer valor que não seja
+ * reconhecido vira `inconclusivo`, e **nunca** `normal`. Se a leitura de `1`
+ * estiver errada, o erro empurra para o alarme, não para o sossego — e é essa
+ * a direcção certa para errar num número que fala do coração de alguém.
  */
 
-export type ConclusaoDoEcg = "sem_sinal" | "normal" | "fibrilacao" | "inconclusivo";
+export type ConclusaoDoEcg = "normal" | "fibrilacao" | "inconclusivo";
 
 export interface RegistroDeEcg {
   /** Quando foi gravado, não o dia em que sincronizou. */
@@ -40,24 +58,31 @@ export interface RegistroDeEcg {
 
 /** A palavra que o painel e o app mostram, nas duas línguas. */
 export const TEXTO_DA_CONCLUSAO: Record<ConclusaoDoEcg, { en: string; pt: string }> = {
-  normal: { en: "Normal rhythm", pt: "Ritmo normal" },
-  fibrilacao: { en: "Atrial fibrillation detected", pt: "Fibrilação atrial detectada" },
-  inconclusivo: { en: "Inconclusive", pt: "Inconclusivo" },
-  sem_sinal: { en: "No usable signal", pt: "Sem sinal utilizável" },
+  /*
+   * "Sinus rhythm" é a palavra do próprio relógio, e dizê-la é relatar. "Normal"
+   * sozinho soaria a nota nossa sobre o coração da pessoa — e a conclusão é do
+   * aparelho, não nossa.
+   */
+  normal: { en: "Sinus rhythm — the watch found no signs of AFib", pt: "Ritmo sinusal — o relógio não encontrou sinais de FA" },
+  fibrilacao: { en: "The watch found signs of atrial fibrillation", pt: "O relógio encontrou sinais de fibrilhação atrial" },
+  inconclusivo: { en: "The watch could not classify this recording", pt: "O relógio não conseguiu classificar este registo" },
 };
 
-function traduzirClassificacao(v: unknown): ConclusaoDoEcg {
+export function traduzirClassificacao(v: unknown): ConclusaoDoEcg {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  if (n === 1) return "normal";
-  if (n === 2) return "fibrilacao";
-  if (n === 3) return "inconclusivo";
-  if (n === 0) return "sem_sinal";
+  if (n === 0) return "normal";
+  if (n === 1) return "fibrilacao";
   /**
-   * Classificação desconhecida vira **inconclusivo**, nunca "normal".
+   * Tudo o resto vira **inconclusivo**, e nunca "normal".
    *
-   * Um código novo que a Withings passe a devolver não pode aparecer na tela
-   * como se o aparelho tivesse dito que estava tudo bem — o erro cairia
-   * exatamente do lado que não pode errar.
+   * O `2` da Withings é literalmente "não deu para classificar". E um código
+   * novo que eles passem a devolver não pode aparecer na tela como se o
+   * aparelho tivesse dito que estava tudo bem: o erro cairia exactamente do
+   * lado que não pode errar.
+   *
+   * `null`/ausente também cai aqui. Um ECG sem classificação **aconteceu** —
+   * dizer que não houve nada seria pior —, mas não autoriza uma palavra sobre
+   * o ritmo.
    */
   return "inconclusivo";
 }

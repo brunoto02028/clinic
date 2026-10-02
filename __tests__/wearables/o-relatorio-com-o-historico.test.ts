@@ -24,14 +24,29 @@ const ecgNormal = {
   dataDate: "2026-09-20",
   restingHr: 62,
   rawPayload: JSON.stringify({
-    afibClassification: 1,
+    /* `0` é "sem sinais de fibrilhação" — o ritmo sinusal. Ver abaixo. */
+    afibClassification: 0,
     signalId: 987,
     recordedAt: "2026-09-20T08:31:00.000Z",
   }),
 };
 
+/**
+ * ## Este bloco **garantia o defeito** até 02/10/2026
+ *
+ * Os testes aqui estavam verdes a fixar a tabela errada: `1` como "ritmo
+ * normal" e `2` como "fibrilhação". No campo `ecg.afib` da Withings, `0` é
+ * *sem sinais de fibrilhação*, `1` é *fibrilhação*, e `2` é *não classificável*.
+ *
+ * Com a tabela antiga, um ECG com **fibrilhação detectada** aparecia na tela do
+ * paciente como **"Ritmo normal"**.
+ *
+ * Soube-se pelos dados do próprio Bruno: dois ECG em 01/10/2026, os dois
+ * "Normal" no relógio, e o nosso app a mostrar *"No usable signal"* — logo o
+ * valor guardado era `0`, e `0` não é ausência de sinal.
+ */
 describe("o ECG, lido do que o aparelho concluiu", () => {
-  it("ritmo normal", () => {
+  it("**`0` é o ritmo sinusal** — sem sinais de fibrilhação", () => {
     const r = lerEcg(ecgNormal)!;
     expect(r.conclusao).toBe("normal");
     expect(r.heartRate).toBe(62);
@@ -39,21 +54,33 @@ describe("o ECG, lido do que o aparelho concluiu", () => {
     expect(exigeAtencao(r)).toBe(false);
   });
 
-  it("**fibrilação atrial é o caso que a clínica precisa ver**", () => {
-    const r = lerEcg({ ...ecgNormal, rawPayload: JSON.stringify({ afibClassification: 2 }) })!;
+  it("**`1` é fibrilhação — o caso que a clínica precisa ver**", () => {
+    const r = lerEcg({ ...ecgNormal, rawPayload: JSON.stringify({ afibClassification: 1 }) })!;
     expect(r.conclusao).toBe("fibrilacao");
     expect(exigeAtencao(r)).toBe(true);
   });
 
-  it("**classificação desconhecida vira inconclusivo, nunca normal**", () => {
+  it("**`2` é não classificável** — e não é fibrilhação", () => {
+    // A tabela antiga dizia "fibrilhação atrial detectada" para este valor:
+    // um alarme por um registo que o relógio apenas não conseguiu classificar.
+    const r = lerEcg({ ...ecgNormal, rawPayload: JSON.stringify({ afibClassification: 2 }) })!;
+    expect(r.conclusao).toBe("inconclusivo");
+    expect(exigeAtencao(r)).toBe(false);
+  });
+
+  it("**nenhum valor desconhecido vira 'normal'**", () => {
     /**
-     * Um código novo que a Withings passe a devolver não pode aparecer na tela
-     * como se o aparelho tivesse dito que estava tudo bem. O erro cairia
-     * exatamente do lado que não pode errar.
+     * A certeza que temos é sobre `0` (provado pelos dados do Bruno) e sobre
+     * `2` (documentado). O `1` vem por eliminação das três classes que a
+     * Withings descreve. Então tudo o que não for `0` ou `1` cai em
+     * inconclusivo: se a leitura do `1` estiver errada, o erro empurra para o
+     * alarme e não para o sossego — e é essa a direcção certa para errar num
+     * número que fala do coração de alguém.
      */
-    for (const v of [7, "99", null, undefined, "abc"]) {
+    for (const v of [2, 3, 7, "99", null, undefined, "abc"]) {
       const r = lerEcg({ ...ecgNormal, rawPayload: JSON.stringify({ afibClassification: v }) })!;
       expect(r.conclusao).toBe("inconclusivo");
+      expect(r.conclusao).not.toBe("normal");
     }
   });
 
@@ -69,10 +96,20 @@ describe("o ECG, lido do que o aparelho concluiu", () => {
     expect(lerEcg({ dataType: "SLEEP", dataDate: "2026-09-20" })).toBeNull();
   });
 
-  it("as quatro conclusões têm frase nas duas línguas", () => {
-    for (const k of ["normal", "fibrilacao", "inconclusivo", "sem_sinal"] as const) {
+  it("as três conclusões têm frase nas duas línguas", () => {
+    for (const k of ["normal", "fibrilacao", "inconclusivo"] as const) {
       expect(TEXTO_DA_CONCLUSAO[k].en).toBeTruthy();
       expect(TEXTO_DA_CONCLUSAO[k].pt).toBeTruthy();
+    }
+  });
+
+  it("**a frase diz que a conclusão é do relógio**, não nossa", () => {
+    // "Normal" sozinho soa a nota nossa sobre o coração da pessoa. Quem
+    // concluiu foi o aparelho, e a frase tem de dizer isso — é a diferença
+    // entre relatar e opinar, e é ela que nos mantém fora de dispositivo médico.
+    for (const k of ["normal", "fibrilacao", "inconclusivo"] as const) {
+      expect(TEXTO_DA_CONCLUSAO[k].en.toLowerCase()).toContain("watch");
+      expect(TEXTO_DA_CONCLUSAO[k].pt.toLowerCase()).toContain("relógio");
     }
   });
 });
@@ -165,7 +202,31 @@ describe("o app", () => {
 
   it("**o ECG finalmente aparece para o paciente**", () => {
     expect(tela).toMatch(/d\.dataType === "ECG"/);
-    expect(tela).toMatch(/Fibrilação atrial detectada/);
+  });
+
+  it("**a tela tem um caminho próprio para a fibrilhação**", () => {
+    /*
+     * Este teste fixava a frase à letra — `/Fibrilação atrial detectada/` — e
+     * caiu quando a frase mudou para dizer que a conclusão é **do relógio**. O
+     * texto não era o que estava a ser protegido: o que importa é que exista um
+     * ramo para a fibrilhação e que ele a **nomeie**, em vez de a diluir num
+     * "inconclusivo" genérico.
+     *
+     * A grafia varia (fibrilação / fibrilhação) e não é assunto de teste.
+     */
+    expect(tela).toMatch(/conclusao === "fibrilacao"/);
+    expect(tela).toMatch(/atrial fibrillation/i);
+    expect(tela).toMatch(/fibrilh?ação atrial/i);
+  });
+
+  it("**e nunca chama 'normal' ao que o relógio não assinalou**", () => {
+    // Regra da tela do paciente desde o QA da T-8: nem "normal", nem
+    // "alterado". Dizer o que o relógio não assinalou é relato.
+    const semComentarios = tela
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1 ");
+    expect(semComentarios).not.toMatch(/en: "Normal rhythm"/);
+    expect(semComentarios).not.toMatch(/pt: "Ritmo normal"/);
   });
 
   it("e a tela diz de quem é a conclusão", () => {
