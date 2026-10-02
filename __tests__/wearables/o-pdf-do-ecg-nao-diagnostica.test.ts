@@ -20,6 +20,7 @@
  * sem ninguém dar conta.
  */
 
+import { alturaQueOSinalPede } from "@/lib/ecg-tracado";
 import { construirPdfDoEcg, DadosDoEcgParaPapel } from "../../lib/ecg-pdf";
 
 /** Extrai o texto legível de dentro do PDF, sem o descomprimir. */
@@ -181,10 +182,19 @@ describe("quando o traçado é reduzido, o papel diz", () => {
      * o que dá ondas R de topo plano — à régua lia-se 1,8 mV num sinal de 2,5.
      * Em silêncio, nos dois casos.
      */
-    const dente = Array.from({ length: 9000 }, (_, i) => (i % 150 === 0 ? 2500 : 0));
+    /*
+     * **5 mV, e não 2,5.** A faixa passou a crescer com o sinal (ver
+     * `alturaQueOSinalPede`), porque o ECG real do Bruno chega a 3,38 mV e numa
+     * faixa de 36 mm as ondas R batiam no tecto — o papel avisava do corte e
+     * quem media o R à régua lia metade.
+     *
+     * Acima do tecto de 80 mm (±4 mV) o corte volta a ser inevitável, e aí o
+     * aviso tem de continuar lá.
+     */
+    const dente = Array.from({ length: 9000 }, (_, i) => (i % 150 === 0 ? 5000 : 0));
     const t = textoDoPdf(construirPdfDoEcg({ ...base, signal: dente }));
     expect(t).toMatch(/clipped/i);
-    expect(t).toMatch(/2\.50 mV/);
+    expect(t).toMatch(/5\.00 mV/);
   });
 
   it("**um sinal constante não sai como linha reta** — diz que não foi obtido", () => {
@@ -319,5 +329,50 @@ describe("o papel parece uma tira de verdade", () => {
       (c) => c.length === 6
     );
     expect(pulsos).toHaveLength(0);
+  });
+});
+
+describe("a faixa cresce com o sinal", () => {
+  /**
+   * > O ECG real do Bruno chega a **3,38 mV**.
+   *
+   * Numa faixa de 36 mm — ±1,8 mV a 10 mm/mV — as ondas R batiam no tecto e
+   * ficavam de topo plano. O papel **dizia** que tinha cortado, o que é honesto,
+   * e não substituía a medida: quem punha a régua na altura do R lia 1,8 mV num
+   * sinal de 3,38.
+   *
+   * A escala **não muda** — continua 10 mm/mV. O que muda é o espaço.
+   */
+  const comPico = (uv: number) =>
+    Array.from({ length: 9000 }, (_, i) => (i % 150 === 0 ? uv : 0));
+
+  it("**um sinal pequeno mantém a faixa compacta**", () => {
+    // O caso comum continua a caber numa página.
+    expect(alturaQueOSinalPede(comPico(800))).toBe(40);
+  });
+
+  it("**e o sinal do Bruno deixa de ser cortado**", () => {
+    const altura = alturaQueOSinalPede(comPico(3380));
+    /* 3,38 mV são 33,8 mm de um lado: a faixa precisa de mais do que o dobro. */
+    expect(altura).toBeGreaterThanOrEqual(2 * 33.8);
+    const t = textoDoPdf(construirPdfDoEcg({ ...base, signal: comPico(3380) }));
+    expect(t).not.toMatch(/clipped/i);
+  });
+
+  it("**mas não cresce para além do que cabe numa A4**", () => {
+    // 80 mm são ±4 mV e ainda deixam duas faixas na folha deitada.
+    expect(alturaQueOSinalPede(comPico(9000))).toBe(80);
+  });
+
+  it("e cresce em passos de 5 mm, para ficar alinhada com a grelha grande", () => {
+    for (const uv of [1500, 2200, 3380, 3900]) {
+      expect(alturaQueOSinalPede(comPico(uv)) % 5).toBe(0);
+    }
+  });
+
+  it("**sem sinal, a altura é a compacta** — e não zero", () => {
+    expect(alturaQueOSinalPede(null)).toBe(40);
+    expect(alturaQueOSinalPede([])).toBe(40);
+    expect(alturaQueOSinalPede([null, null])).toBe(40);
   });
 });

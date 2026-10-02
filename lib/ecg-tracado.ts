@@ -59,6 +59,45 @@ export const MM_POR_MICROVOLT = MM_POR_MILIVOLT / 1000;
  */
 export const AMPLITUDE_MINIMA_UV = 50;
 
+/**
+ * A altura que uma faixa precisa para o traçado **caber inteiro**.
+ *
+ * O ECG do Bruno chega a **3,38 mV**. Numa faixa de 36 mm — ±1,8 mV a 10 mm/mV —
+ * as ondas R batem no tecto: o papel diz que cortou, mas quem põe a régua na
+ * altura do R lê 1,8 mV num sinal de 3,38. O aviso é honesto e não substitui a
+ * medida.
+ *
+ * Então a faixa cresce com o sinal, em passos de 5 mm para continuar alinhada
+ * com a grelha grande. O mínimo de 36 mm mantém o caso comum numa página; o
+ * máximo de 80 mm (±4 mV) é o que ainda deixa duas faixas numa A4 deitada.
+ *
+ * O mínimo é **40 e não 36** porque 36 não é múltiplo de 5, e o comentário acima
+ * promete alinhamento com a grelha grande. Uma promessa que o próprio código não
+ * cumpre é a classe de defeito que me mordeu três vezes hoje.
+ *
+ * **A escala não muda** — continua 10 mm/mV. O que muda é o espaço, não a régua.
+ */
+export function alturaQueOSinalPede(
+  amostrasMicroVolts: Array<number | null> | null | undefined,
+  minimoMm = 40,
+  maximoMm = 80
+): number {
+  if (!Array.isArray(amostrasMicroVolts)) return minimoMm;
+
+  let pico = 0;
+  for (const v of amostrasMicroVolts) {
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    const abs = Math.abs(v);
+    if (abs > pico) pico = abs;
+  }
+  if (pico === 0) return minimoMm;
+
+  /* A faixa é simétrica: o pico ocupa metade dela, mais uma folga de 2 mm. */
+  const precisa = 2 * (pico * MM_POR_MICROVOLT + 2);
+  const emPassosDe5 = Math.ceil(precisa / 5) * 5;
+  return Math.min(maximoMm, Math.max(minimoMm, emPassosDe5));
+}
+
 export interface Faixa {
   /** O segundo em que esta faixa começa, dentro da gravação. */
   inicioSegundos: number;

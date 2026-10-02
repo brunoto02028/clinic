@@ -45,6 +45,14 @@ export const MEASTYPE = {
 
 export interface WithingsVital {
   measuredAt: Date;
+  /**
+   * O fuso em que a medição foi feita, como a Withings o manda.
+   *
+   * Existe porque o dia de uma medição é o dia **de quem mediu**, e não o dia em
+   * UTC: o `getactivity` e o `getsummary` do sono já datam assim, e usar UTC só
+   * aqui fazia a mesma noite cair em dias diferentes conforme o balde.
+   */
+  timezone?: string | null;
   /** Withings' `grpid`, or null when they did not send one. */
   measureId: string | null;
   heartRate?: number;
@@ -101,6 +109,7 @@ export async function withingsVitals(
 
     const vital: WithingsVital = {
       measuredAt: new Date(Number(group.date) * 1000),
+      timezone: typeof group.timezone === "string" ? group.timezone : null,
       measureId: group.grpid != null ? String(group.grpid) : null,
       heartRate: val(MEASTYPE.HEART_RATE),
       temperature: val(MEASTYPE.TEMPERATURE),
@@ -223,10 +232,44 @@ export interface VitalsDay {
  * day's **minimum**, not its mean: the mean of a day's heart rates is not a
  * resting rate by any definition.
  */
+/**
+ * O dia em que a medição aconteceu, **no fuso de quem mediu**.
+ *
+ * A Withings manda o fuso com os grupos de medidas (`timezone`), e é o mesmo que
+ * ela usa para datar a actividade e o sono. Usar UTC aqui e o fuso deles ali faz
+ * a mesma noite cair em dias diferentes conforme o balde.
+ */
+function diaDaMedicao(v: { measuredAt: Date; timezone?: string | null }): string {
+  const fuso = typeof v.timezone === "string" && v.timezone ? v.timezone : null;
+  if (!fuso) return v.measuredAt.toISOString().split("T")[0];
+  try {
+    /* `en-CA` dá `YYYY-MM-DD`, que é a forma que o resto do ficheiro usa. */
+    return new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(v.measuredAt);
+  } catch {
+    /* Um fuso que o runtime não conhece não pode derrubar a ingestão. */
+    return v.measuredAt.toISOString().split("T")[0];
+  }
+}
+
 export function vitalsByDay(vitals: WithingsVital[]): VitalsDay[] {
   const days = new Map<string, WithingsVital[]>();
   for (const v of vitals) {
-    const key = v.measuredAt.toISOString().split("T")[0];
+    /*
+     * **O dia da medição, e não o dia em UTC** (achado do QA comparativo).
+     *
+     * Isto era `toISOString()`, ou seja UTC, enquanto o `ACTIVITY` e o `SLEEP`
+     * usam o campo `date` da Withings, que vem no fuso de quem mediu. Em Outubro
+     * Londres está em BST: uma medição entre as 00:00 e a 01:00 caía no **dia
+     * anterior** no `VITALS` e no dia certo nos outros.
+     *
+     * Consequência: a mesma noite podia produzir `SLEEP` no dia D e `VITALS` em
+     * D−1, e a garantia de que um dia conta uma vez só — que o `onde-mora` e as
+     * barras assumem — deixava de valer.
+     *
+     * O fuso vem com a medição quando a Withings o manda; sem ele, UTC, como
+     * antes, e aí o erro é o que já era.
+     */
+    const key = diaDaMedicao(v);
     const list = days.get(key);
     if (list) list.push(v);
     else days.set(key, [v]);

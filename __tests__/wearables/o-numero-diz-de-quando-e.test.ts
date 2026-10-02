@@ -129,3 +129,39 @@ describe("o caso do Bruno, reproduzido", () => {
     expect(r!.pt).toBe("Atualizado às 07:05");
   });
 });
+
+describe("uma hora sem dia apresenta-se como hoje", () => {
+  /**
+   * **Achado do code review.** Acima de 60 minutos a frase passava a ser a hora
+   * do relógio, **sem data** — e uma ligação partida nunca mais actualiza o
+   * carimbo, porque ele só é escrito quando a ingestão termina bem.
+   *
+   * Três dias depois o cabeçalho dizia *"Atualizado às 07:05"*, que se lê como
+   * hoje às 07:05. É o mesmo defeito que este ficheiro existe para resolver, uma
+   * casa à frente.
+   */
+  const frase = (minutos: number) =>
+    fraseDaUltimaLeitura(ultimaLeitura([{ lastSyncedAt: haMinutos(minutos) }], agora), horaLocal);
+
+  it("**dentro do dia, a hora** — que é o que se compara com o app deles", () => {
+    expect(frase(138)!.pt).toBe("Atualizado às 07:05");
+  });
+
+  it("**passado um dia, deixa de dizer a hora**", () => {
+    // "às 07:05" sobre uma leitura de anteontem é uma afirmação sobre hoje.
+    const r = frase(60 * 30);
+    expect(r!.pt).not.toMatch(/às \d/);
+    expect(r!.pt).toBe("Atualizado ontem");
+    expect(r!.en).toBe("Updated yesterday");
+  });
+
+  it("e a partir de dois dias conta os dias", () => {
+    expect(frase(60 * 24 * 3)!.pt).toBe("Atualizado há 3 dias");
+    expect(frase(60 * 24 * 3)!.en).toBe("Updated 3 days ago");
+  });
+
+  it("**a fronteira é o dia, não um número redondo de horas**", () => {
+    expect(frase(60 * 23)!.pt).toMatch(/às /);
+    expect(frase(60 * 25)!.pt).toBe("Atualizado ontem");
+  });
+});
