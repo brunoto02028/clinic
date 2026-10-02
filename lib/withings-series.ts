@@ -255,6 +255,8 @@ export interface SinalDeEcg {
   amostras: Array<number | null>;
   /** Hz. Sem isto o traçado não tem escala de tempo, e sem escala não é um ECG. */
   frequencia: number | null;
+  /** O código do aparelho, cru. Quem mostra decide se sabe nomeá-lo. */
+  modelo?: number | null;
   /** O que mais veio no corpo, para o primeiro contato real não perder nada. */
   bruto: Record<string, unknown>;
 }
@@ -375,5 +377,24 @@ export async function sinalDoEcg(
         ? body.ecg.wearposition
         : null;
 
-  return { amostras, frequencia, posicao, bruto: body ?? {} };
+  /**
+   * **O aparelho**, tal como a API o manda.
+   *
+   * Vem no corpo do sinal — `model` — e era deitado fora. Uma tira de ECG a
+   * sério nomeia o aparelho que a gravou: sem isso, quem recebe o papel não sabe
+   * se o traçado veio de um relógio de pulso ou de um eletrocardiógrafo, e são
+   * coisas muito diferentes para quem o vai ler.
+   *
+   * Guarda-se **o número cru**, e é a tela/papel que decide se sabe nomeá-lo.
+   * Inventar um nome para um código desconhecido seria pôr um palpite nosso num
+   * documento clínico — a mesma regra de `posicaoPorExtenso`.
+   */
+  const modelo =
+    typeof body?.model === "number"
+      ? body.model
+      : typeof body?.ecg?.model === "number"
+        ? body.ecg.model
+        : null;
+
+  return { amostras, frequencia, posicao, modelo, bruto: body ?? {} };
 }

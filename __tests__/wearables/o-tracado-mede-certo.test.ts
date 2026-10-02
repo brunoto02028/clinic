@@ -43,9 +43,11 @@ import {
   tracadoEmPapel,
   frasePadraoDaEscala,
   posicaoPorExtenso,
+  aparelhoPorExtenso,
   MM_POR_SEGUNDO,
   MM_POR_MILIVOLT,
   AMPLITUDE_MINIMA_UV,
+  MODELOS,
 } from "../../lib/ecg-tracado";
 
 /** Um sinal plano de `n` segundos a `hz`, todo no valor `uv`. */
@@ -408,6 +410,42 @@ describe("o caso real do Bruno", () => {
         expect(c.yMin!).toBeGreaterThanOrEqual(0);
         expect(c.yMax!).toBeLessThanOrEqual(40);
       }
+    }
+  });
+});
+
+describe("o aparelho que gravou", () => {
+  /**
+   * > *"quero no mesmo padrão da Withings, mas não quero informação inventada"*
+   * > — Bruno, 02/10/2026
+   *
+   * A API manda o `model` na resposta do sinal e nós deitávamo-lo fora. Uma tira
+   * de ECG a sério nomeia o aparelho: sem isso, quem recebe o papel não sabe se
+   * o traçado veio de um relógio de pulso ou de um eletrocardiógrafo, e são
+   * coisas muito diferentes para quem o vai ler.
+   */
+  it("**um código conhecido vira o nome do aparelho**", () => {
+    expect(aparelhoPorExtenso(93)).toBe("Withings ScanWatch");
+    expect(aparelhoPorExtenso(1061)).toBe("Withings BPM Core");
+  });
+
+  it("**um código desconhecido não vira um palpite**", () => {
+    /*
+     * Nem "modelo 7", nem "provavelmente um ScanWatch". A linha não sai — a
+     * mesma regra da posição no corpo. Um palpite nosso num documento clínico
+     * passa por facto a quem o lê.
+     */
+    expect(aparelhoPorExtenso(7)).toBeNull();
+    expect(aparelhoPorExtenso(99999)).toBeNull();
+    expect(aparelhoPorExtenso(null)).toBeNull();
+    expect(aparelhoPorExtenso(undefined)).toBeNull();
+  });
+
+  it("e nenhum nome da lista é uma suposição com 'provavelmente' ou 'talvez'", () => {
+    for (const nome of Object.values(MODELOS)) {
+      expect(nome).not.toMatch(/provav|talvez|likely|probabl|\?/i);
+      expect(nome.trim()).toBe(nome);
+      expect(nome.length).toBeGreaterThan(3);
     }
   });
 });

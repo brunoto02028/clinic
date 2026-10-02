@@ -80,7 +80,31 @@ export function graficoDeLinha(
   pontos: PontoDoGrafico[] | null | undefined,
   opcoes: OpcoesDoGrafico = {}
 ): Grafico | null {
-  if (!Array.isArray(pontos)) return null;
+  return graficoDeLinhas([{ pontos: pontos ?? [], cor: opcoes.cor }], opcoes);
+}
+
+export interface SerieDesenhada {
+  pontos: PontoDoGrafico[] | null | undefined;
+  /** A cor do traço desta série. */
+  cor?: string;
+}
+
+/**
+ * Várias séries na mesma caixa, com **a mesma escala**.
+ *
+ * É o que a pressão pede: a sistólica e a diastólica lêem-se juntas, e o
+ * afastamento entre as duas é informação. Desenhá-las em caixas separadas, cada
+ * uma com a sua escala, faria duas linhas parecidas que não dizem nada sobre a
+ * distância entre elas — que é metade do que um clínico olha.
+ *
+ * A escala é partilhada **de propósito**: dar a cada uma a sua faria a
+ * diastólica subir tanto como a sistólica e as duas parecerem iguais.
+ */
+export function graficoDeLinhas(
+  series: SerieDesenhada[],
+  opcoes: OpcoesDoGrafico = {}
+): Grafico | null {
+  if (!Array.isArray(series) || series.length === 0) return null;
 
   const largura = opcoes.largura ?? 260;
   const altura = opcoes.altura ?? 44;
@@ -100,9 +124,12 @@ export function graficoDeLinha(
    * Apanhado a olhar para o papel, não pelos testes: as séries que eles usavam
    * tinham todas datas válidas.
    */
-  const ordenados = [...pontos]
-    .filter((p) => typeof p?.dia === "string" && Number.isFinite(Date.parse(p.dia + "T00:00:00Z")))
-    .sort((a, b) => a.dia.localeCompare(b.dia));
+  const limpas = series.map((s) =>
+    (Array.isArray(s.pontos) ? s.pontos : [])
+      .filter((p) => typeof p?.dia === "string" && Number.isFinite(Date.parse(p.dia + "T00:00:00Z")))
+      .sort((a, b) => a.dia.localeCompare(b.dia))
+  );
+  const ordenados = limpas.flat().sort((a, b) => a.dia.localeCompare(b.dia));
   if (ordenados.length === 0) return null;
 
   const comDado = ordenados.filter(
@@ -111,6 +138,7 @@ export function graficoDeLinha(
   );
   if (comDado.length < MINIMO_DE_PONTOS) return null;
 
+  /* A escala é de todas as séries juntas — ver o comentário em `graficoDeLinhas`. */
   const minimo = Math.min(...comDado.map((p) => p.valor));
   const maximo = Math.max(...comDado.map((p) => p.valor));
 
@@ -142,36 +170,46 @@ export function graficoDeLinha(
    * Os troços: um por corrida de dias **seguidos** com dado. É aqui que o buraco
    * fica buraco.
    */
-  const troços: Array<Array<{ x: number; y: number }>> = [];
-  let atual: Array<{ x: number; y: number }> = [];
-  let diaAnterior: number | null = null;
+  const caminhos: string[] = [];
+  const pontinhos: string[] = [];
+  let totalDeTroços = 0;
 
-  for (const p of ordenados) {
-    const temDado = typeof p.valor === "number" && Number.isFinite(p.valor);
-    const esteDia = emDias(p.dia);
-    if (!temDado) continue;
-    if (diaAnterior !== null && esteDia - diaAnterior > 1) {
-      if (atual.length) troços.push(atual);
-      atual = [];
+  limpas.forEach((serie, i) => {
+    const corDesta = series[i].cor ?? cor;
+    const troços: Array<Array<{ x: number; y: number }>> = [];
+    let atual: Array<{ x: number; y: number }> = [];
+    let diaAnterior: number | null = null;
+
+    for (const p of serie) {
+      const temDado = typeof p.valor === "number" && Number.isFinite(p.valor);
+      const esteDia = emDias(p.dia);
+      if (!temDado) continue;
+      if (diaAnterior !== null && esteDia - diaAnterior > 1) {
+        if (atual.length) troços.push(atual);
+        atual = [];
+      }
+      atual.push({ x: x(p.dia), y: y(p.valor as number) });
+      diaAnterior = esteDia;
     }
-    atual.push({ x: x(p.dia), y: y(p.valor as number) });
-    diaAnterior = esteDia;
-  }
-  if (atual.length) troços.push(atual);
+    if (atual.length) troços.push(atual);
+    totalDeTroços += troços.length;
 
-  const caminhos = troços
-    .filter((t) => t.length >= 2 && t.every((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y)))
-    .map(
-      (t) =>
-        `<path d="${t
-          .map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
-          .join(" ")}" fill="none" stroke="${cor}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`
-    );
-
-  /* Um troço de um dia só não é linha: marca-se o ponto, para ele existir. */
-  const pontinhos = troços
-    .filter((t) => t.length === 1 && Number.isFinite(t[0].x) && Number.isFinite(t[0].y))
-    .map((t) => `<circle cx="${t[0].x.toFixed(1)}" cy="${t[0].y.toFixed(1)}" r="1.8" fill="${cor}"/>`);
+    for (const t of troços) {
+      if (!t.every((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y))) continue;
+      if (t.length >= 2) {
+        caminhos.push(
+          `<path d="${t
+            .map((pt, k) => `${k === 0 ? "M" : "L"}${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
+            .join(" ")}" fill="none" stroke="${corDesta}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`
+        );
+      } else if (t.length === 1) {
+        /* Um troço de um dia só não é linha: marca-se o ponto, para ele existir. */
+        pontinhos.push(
+          `<circle cx="${t[0].x.toFixed(1)}" cy="${t[0].y.toFixed(1)}" r="1.8" fill="${corDesta}"/>`
+        );
+      }
+    }
+  });
 
   if (caminhos.length === 0 && pontinhos.length === 0) return null;
 
@@ -182,7 +220,7 @@ export function graficoDeLinha(
     pontinhos.join("") +
     `</svg>`;
 
-  return { svg, minimo, maximo, dias: comDado.length, segmentos: troços.length };
+  return { svg, minimo, maximo, dias: comDado.length, segmentos: totalDeTroços };
 }
 
 export interface FaseDoSono {

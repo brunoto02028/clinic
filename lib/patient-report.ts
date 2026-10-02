@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/db";
 import { getMonitoringData, type DadosDeMonitoramento, type ResumoDaMetrica } from "@/lib/patient-monitoring";
-import { graficoDeLinha, barraDasFases } from "@/lib/grafico-de-linha";
+import { graficoDeLinha, graficoDeLinhas, barraDasFases } from "@/lib/grafico-de-linha";
 import { TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
 
 export async function getPatientReportData(patientId: string, opts: { days?: number } = {}) {
@@ -470,10 +470,39 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
   }
 
   if (mon.pressao.leituras > 0) {
+    /*
+     * **As duas na mesma caixa, com a mesma escala.**
+     *
+     * A sistólica e a diastólica lêem-se juntas, e o afastamento entre elas é
+     * informação. Em caixas separadas, cada uma com a sua escala, a diastólica
+     * subiria tanto como a sistólica e as duas pareceriam iguais.
+     *
+     * Distinguem-se por **claridade**, não só por tom: duas cores da mesma
+     * luminosidade são a mesma linha para quem não as separa — e numa impressão
+     * a preto e branco são a mesma linha para toda a gente.
+     */
+    const gp = graficoDeLinhas(
+      [
+        { pontos: (mon as any).series?.sistolica, cor: "#20242D" },
+        { pontos: (mon as any).series?.diastolica, cor: "#8FA89A" },
+      ],
+      { altura: 54 }
+    );
+    const grafPressao = gp
+      ? `<div class="pressao-grafico">${gp.svg}
+          <div class="extremos"><span>${esc(String(gp.minimo))}</span><span>${esc(String(gp.maximo))}</span></div>
+          <div class="legenda">
+            <span><i style="background:#20242D"></i>${esc(t.sistolica)}</span>
+            <span><i style="background:#8FA89A"></i>${esc(t.diastolica)}</span>
+          </div>
+        </div>`
+      : "";
+
     partes.push(`<div class="section"><h2>${t.pressao}</h2><div class="metricas">
       ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", null, idioma)}
       ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", null, idioma)}
     </div>
+    ${grafPressao}
     <table>
       ${mon.pressao.ultima ? row(t.maisRecente, `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg ${t.em} ${fmtDate(mon.pressao.ultima.measuredAt, idioma)}`) : ""}
       ${row(t.leiturasNoPeriodo, String(mon.pressao.leituras))}
@@ -824,6 +853,26 @@ export function renderPatientReportHTML(
     color: var(--muted);
   }
   .fases .legenda span { display: inline-flex; align-items: center; gap: 5px; }
+  .pressao-grafico { margin: 14px 0 2px; }
+  .pressao-grafico svg { display: block; }
+  .pressao-grafico .extremos {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .pressao-grafico .legenda,
+  .fases .legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 7px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .pressao-grafico .legenda span,
+  .fases .legenda span { display: inline-flex; align-items: center; gap: 5px; }
+  .pressao-grafico .legenda i,
   .fases .legenda i {
     width: 8px;
     height: 8px;

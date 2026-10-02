@@ -26,7 +26,7 @@
  * igualmente espaçadas mentem sobre quando as coisas aconteceram.
  */
 
-import { graficoDeLinha, barraDasFases } from "../../lib/grafico-de-linha";
+import { graficoDeLinha, graficoDeLinhas, barraDasFases } from "../../lib/grafico-de-linha";
 
 /** Dias seguidos, a partir de 01/10/2026. */
 const dias = (valores: Array<number | null>) =>
@@ -254,5 +254,84 @@ describe("as fases da noite", () => {
   it("cada pedaço diz o que é, para quem passa o rato", () => {
     const svg = barraDasFases(fases(60, 180, 90, 30))!;
     expect(svg).toContain("<title>Profundo</title>");
+  });
+});
+
+describe("duas linhas na mesma caixa — a pressão", () => {
+  /**
+   * > *"faz a pressão tb"* — Bruno, 02/10/2026
+   *
+   * A sistólica e a diastólica **lêem-se juntas**, e o afastamento entre elas é
+   * informação. Em caixas separadas, cada uma com a sua escala, a diastólica
+   * subiria tanto como a sistólica e as duas pareceriam iguais — o gráfico
+   * mostraria duas linhas parecidas e esconderia a única coisa que elas dizem em
+   * conjunto.
+   */
+  const sis = dias([140, 138, 136, 134]);
+  const dia_ = dias([92, 91, 90, 88]);
+
+  it("**a escala é das duas juntas**, não uma por linha", () => {
+    const g = graficoDeLinhas([{ pontos: sis }, { pontos: dia_ }])!;
+    expect(g.minimo).toBe(88);
+    expect(g.maximo).toBe(140);
+  });
+
+  it("**e por isso a diastólica fica mesmo por baixo**", () => {
+    /*
+     * Com escalas separadas, 88 e 140 desenhavam-se ambos no fundo da sua caixa
+     * e a distância entre as duas linhas desaparecia.
+     */
+    const g = graficoDeLinhas([{ pontos: sis, cor: "#20242D" }, { pontos: dia_, cor: "#8FA89A" }])!;
+    const ys = pontos(g.svg).map((p) => p.y);
+    const metade = ys.length / 2;
+    const ySistolica = Math.max(...ys.slice(0, metade));
+    const yDiastolica = Math.min(...ys.slice(metade));
+    /* `y` cresce para baixo: a diastólica, menor, tem `y` maior. */
+    expect(yDiastolica).toBeGreaterThan(ySistolica);
+  });
+
+  it("**cada linha tem a sua cor**, e elas diferem em claridade", () => {
+    /*
+     * Duas cores da mesma luminosidade são a mesma linha para quem não as
+     * separa — e numa impressão a preto e branco são a mesma linha para toda a
+     * gente.
+     */
+    const g = graficoDeLinhas([{ pontos: sis, cor: "#20242D" }, { pontos: dia_, cor: "#8FA89A" }])!;
+    const cores = Array.from(g.svg.matchAll(/stroke="([^"]+)"/g)).map((m) => m[1]);
+    expect(new Set(cores).size).toBe(2);
+
+    const clareza = (hex: string) => {
+      const n = parseInt(hex.slice(1), 16);
+      return ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114;
+    };
+    expect(Math.abs(clareza("#20242D") - clareza("#8FA89A"))).toBeGreaterThan(60);
+  });
+
+  it("**e cada uma parte nos seus próprios buracos**", () => {
+    // Um dia em que mediu a sistólica e não a diastólica não une nenhuma das duas.
+    const g = graficoDeLinhas([
+      { pontos: dias([140, 138, null, 134, 132]) },
+      { pontos: dias([92, 91, 90, 89, 88]) },
+    ])!;
+    /* Dois troços na primeira, um na segunda. */
+    expect(g.segmentos).toBe(3);
+  });
+
+  it("uma série vazia ao lado de outra cheia não estraga a cheia", () => {
+    const g = graficoDeLinhas([{ pontos: sis }, { pontos: [] }])!;
+    expect(g.minimo).toBe(134);
+    expect(g.maximo).toBe(140);
+  });
+
+  it("**sem nenhuma das duas, não há caixa**", () => {
+    expect(graficoDeLinhas([{ pontos: [] }, { pontos: [] }])).toBeNull();
+    expect(graficoDeLinhas([])).toBeNull();
+  });
+
+  it("e o gráfico de uma linha continua a ser o mesmo", () => {
+    // `graficoDeLinha` passou a delegar: o comportamento antigo não muda.
+    const a = graficoDeLinha(sis);
+    const b = graficoDeLinhas([{ pontos: sis }]);
+    expect(a!.svg).toBe(b!.svg);
   });
 });

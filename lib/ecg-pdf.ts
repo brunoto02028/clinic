@@ -33,7 +33,9 @@ import {
   tracadoEmPapel,
   frasePadraoDaEscala,
   posicaoPorExtenso,
+  aparelhoPorExtenso,
   MM_POR_SEGUNDO,
+  MM_POR_MILIVOLT,
 } from "@/lib/ecg-tracado";
 
 export interface DadosDoEcgParaPapel {
@@ -50,6 +52,8 @@ export interface DadosDoEcgParaPapel {
   signal?: number[] | null;
   samplingHz?: number | null;
   wearPosition?: number | null;
+  /** O código do aparelho, como a Withings o manda. */
+  deviceModel?: number | null;
   /** O nome da clínica, no cabeçalho. */
   clinica?: string | null;
   idioma?: "en" | "pt";
@@ -63,6 +67,7 @@ const T = {
     gravado: "Recorded",
     frequencia: "Average heart rate",
     posicao: "Recorded at",
+    aparelho: "Recorded with",
     conclusao: "What the watch concluded",
     normal: "Sinus rhythm — the watch found no signs of atrial fibrillation",
     fibrilacao: "The watch found signs of atrial fibrillation",
@@ -82,6 +87,7 @@ const T = {
     gravado: "Gravado",
     frequencia: "Frequência cardíaca média",
     posicao: "Medido em",
+    aparelho: "Gravado com",
     conclusao: "O que o relógio concluiu",
     normal: "Ritmo sinusal — o relógio não encontrou sinais de fibrilação atrial",
     fibrilacao: "O relógio encontrou sinais de fibrilação atrial",
@@ -98,13 +104,17 @@ const T = {
 
 /** A grelha do papel de ECG: 1 mm fina, 5 mm mais forte. */
 function desenharGrelha(doc: jsPDF, x: number, y: number, larguraMm: number, alturaMm: number) {
-  doc.setLineWidth(0.05);
-  doc.setDrawColor(247, 205, 205);
+  /*
+   * A grelha de uma tira a sério: o 1 mm é um fio que mal se vê, e o 5 mm é o
+   * que se conta. Antes os dois tinham peso parecido e o papel saía lavado.
+   */
+  doc.setLineWidth(0.04);
+  doc.setDrawColor(250, 214, 214);
   for (let i = 0; i <= larguraMm; i += 1) doc.line(x + i, y, x + i, y + alturaMm);
   for (let j = 0; j <= alturaMm; j += 1) doc.line(x, y + j, x + larguraMm, y + j);
 
-  doc.setLineWidth(0.18);
-  doc.setDrawColor(232, 150, 150);
+  doc.setLineWidth(0.22);
+  doc.setDrawColor(224, 122, 122);
   for (let i = 0; i <= larguraMm; i += 5) doc.line(x + i, y, x + i, y + alturaMm);
   for (let j = 0; j <= alturaMm; j += 5) doc.line(x, y + j, x + larguraMm, y + j);
 }
@@ -141,7 +151,8 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
 
   /* Deitada: 10 segundos a 25 mm/s são 250 mm, e só assim cabem. */
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const margem = 12;
+  /* 12 mm davam para o texto; o pulso de calibração pede mais 7 à esquerda. */
+  const margem = 19;
   let y = margem;
 
   doc.setFont("helvetica", "bold");
@@ -171,6 +182,12 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
   }
   const onde = posicaoPorExtenso(dados.wearPosition);
   if (onde) linhas.push(`${t.posicao}: ${onde[idioma]}`);
+  /*
+   * O aparelho, **só quando sabemos o nome**. Um código desconhecido não vira
+   * "modelo 1234" nem um palpite: a linha simplesmente não sai.
+   */
+  const aparelho = aparelhoPorExtenso(dados.deviceModel);
+  if (aparelho) linhas.push(`${t.aparelho}: ${aparelho}`);
 
   doc.text(linhas.join("   ·   "), margem, y);
   y += 6;
@@ -240,28 +257,76 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
       desenharGrelha(doc, margem, y, tracado.larguraMm, tracado.alturaMm);
 
       doc.setDrawColor(20, 20, 20);
-      doc.setLineWidth(0.25);
-      const cols = faixa.colunas;
-      let anterior: { x: number; yMin: number; yMax: number } | null = null;
-      for (const c of cols) {
+      /* Fino como o de uma tira: 0,25 mm com ponta redonda saía um borrão. */
+      doc.setLineWidth(0.18);
+      doc.setLineCap("butt");
+      doc.setLineJoin("round");
+
+      /**
+       * **O pulso de calibração** — o degrau de 1 mV no início da tira.
+       *
+       * É a coisa mais reconhecível de um ECG impresso, e não é decoração: é o
+       * que mostra a quem lê que o ganho declarado no rodapé é o ganho que foi
+       * usado. Uma régua posta nele tem de dar 10 mm de altura e 5 mm de
+       * largura; se não der, o papel inteiro é suspeito.
+       *
+       * Fica **antes** do traço, no espaço da margem, para não comer segundos da
+       * gravação.
+       */
+      const alturaDoPulso = MM_POR_MILIVOLT;
+      const baseDaFaixa = y + tracado.alturaMm / 2;
+      const xp = margem - 7;
+      doc.lines(
+        [
+          [2, 0],
+          [0, -alturaDoPulso],
+          [3, 0],
+          [0, alturaDoPulso],
+          [2, 0],
+        ],
+        xp,
+        baseDaFaixa
+      );
+      /**
+       * **Um traço contínuo, e não segmentos sobrepostos.**
+       *
+       * Antes cada coluna desenhava a sua barra vertical **e** uma ligação à
+       * anterior, cada uma com 0,25 mm e ponta redonda. As colunas estão a
+       * 0,25 mm umas das outras: as pontas redondas sobrepunham-se e a linha de
+       * base saía um borrão gordo, em nada parecido com uma tira de verdade —
+       * *"nem perto do real"*, e com razão.
+       *
+       * Agora é **um caminho só** por troço: para cada coluna vai-se ao mínimo e
+       * ao máximo. Num trecho plano os dois são o mesmo ponto e sai uma linha
+       * fina; numa espiga a excursão vertical fica lá inteira. É o que um
+       * eletrocardiógrafo desenha, e é o que preserva a altura do QRS sem
+       * engordar o resto.
+       *
+       * A ponta passa a ser reta (`butt`): a redonda acrescenta meio traço de
+       * cada lado de cada segmento, que a 0,25 mm de distância é o dobro da
+       * tinta.
+       */
+      const troço: Array<[number, number]> = [];
+      const fecharTroço = () => {
+        if (troço.length >= 2) {
+          const [x0, y0] = troço[0];
+          /* `lines` quer deslocamentos, e desenha um caminho só. */
+          const passos = troço.slice(1).map((pt, i) => [pt[0] - troço[i][0], pt[1] - troço[i][1]] as [number, number]);
+          doc.lines(passos, x0, y0);
+        }
+        troço.length = 0;
+      };
+
+      for (const c of faixa.colunas) {
         if (c.yMin === null || c.yMax === null) {
           /* Buraco: a linha interrompe-se, em vez de o atravessar. */
-          anterior = null;
+          fecharTroço();
           continue;
         }
-        /*
-         * A barra vertical da coluna é o que preserva a espiga: o mínimo e o
-         * máximo daquele punhado de amostras, e não a média deles.
-         */
-        if (c.yMin !== c.yMax) {
-          doc.line(margem + c.x, y + c.yMin, margem + c.x, y + c.yMax);
-        }
-        /* E a ligação à coluna anterior, para a linha ser contínua. */
-        if (anterior) {
-          doc.line(margem + anterior.x, y + anterior.yMax, margem + c.x, y + c.yMin);
-        }
-        anterior = { x: c.x, yMin: c.yMin, yMax: c.yMax };
+        troço.push([margem + c.x, y + c.yMin]);
+        if (c.yMax !== c.yMin) troço.push([margem + c.x, y + c.yMax]);
       }
+      fecharTroço();
 
       /* Os segundos, por baixo da faixa — é por eles que se conta o tempo. */
       doc.setFontSize(7);

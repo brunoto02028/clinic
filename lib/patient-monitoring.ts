@@ -78,6 +78,56 @@ export function resumirSerie(
   };
 }
 
+/**
+ * A pressão por dia, a partir das leituras (118 T-8).
+ *
+ * Ela não vem do `WearableDataPoint`: vem leitura a leitura do
+ * `BloodPressureReading`, com a hora. Para a linha, o dia é a unidade — como em
+ * todas as outras métricas.
+ *
+ * **Um dia com três medições é um ponto, não três.** Senão uma manhã em que a
+ * pessoa mediu de hora a hora desenha um pico que é só diligência dela, e a
+ * linha diz que a pressão subiu quando o que subiu foi o cuidado.
+ *
+ * O dia é em UTC, como o resto deste ficheiro. Para quem mede às 23h num fuso a
+ * leste isso cai no dia seguinte — é uma imprecisão conhecida e **partilhada com
+ * as outras séries**; corrigi-la só aqui faria a pressão contar dias diferentes
+ * das restantes, o que é pior do que o erro.
+ *
+ * Vive fora do `getMonitoringData` porque é a parte verificável: lá dentro
+ * precisaria do banco, e duas mutações sobreviveram enquanto ela esteve lá.
+ */
+export function pressaoPorDia(
+  leituras: Array<{ systolic?: unknown; diastolic?: unknown; measuredAt?: unknown }> | null | undefined,
+  campo: "systolic" | "diastolic"
+): Array<{ dia: string; valor: number }> {
+  if (!Array.isArray(leituras)) return [];
+
+  const soma = new Map<string, { total: number; n: number }>();
+  for (const r of leituras) {
+    /*
+     * **`Number(null)` é `0`**, e `Number("")` também. Uma sistólica em falta
+     * virava uma leitura de 0 mmHg — que não é a pressão de ninguém, e puxaria a
+     * média do dia para baixo sem nada a denunciar.
+     */
+    const bruto = (r as any)?.[campo];
+    if (bruto === null || bruto === undefined || bruto === "") continue;
+    const v = Number(bruto);
+    if (!Number.isFinite(v)) continue;
+    const d = new Date((r as any)?.measuredAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const dia = d.toISOString().split("T")[0];
+    const a = soma.get(dia) ?? { total: 0, n: 0 };
+    a.total += v;
+    a.n += 1;
+    soma.set(dia, a);
+  }
+
+  return [...soma.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dia, a]) => ({ dia, valor: Math.round((a.total / a.n) * 10) / 10 }));
+}
+
 export interface DadosDeMonitoramento {
   periodo: { de: string; ate: string; dias: number };
   /**
@@ -209,7 +259,23 @@ export async function getMonitoringData(
    * Vai crua: com os buracos onde eles estão. Quem desenha é que decide o que
    * fazer com eles, e a resposta é não os atravessar.
    */
+  /**
+   * **A pressão, por dia** (118 T-8).
+   *
+   * Ela não vem do `WearableDataPoint`: vem leitura a leitura do
+   * `BloodPressureReading`, com a hora. Para a linha, o dia é a unidade — como
+   * em todas as outras — e **um dia com três medições é um ponto, não três**:
+   * senão uma manhã em que a pessoa mediu de hora a hora desenharia um pico que
+   * é só diligência dela.
+   *
+   * O dia é em UTC, como o resto deste ficheiro (`periodo`). Para quem mede às
+   * 23h num fuso a leste isso cai no dia seguinte — é uma imprecisão conhecida e
+   * partilhada por toda a série; corrigi-la aqui sozinha faria a pressão contar
+   * dias diferentes das outras métricas.
+   */
   const series = {
+    sistolica: pressaoPorDia(pressao as any[], "systolic"),
+    diastolica: pressaoPorDia(pressao as any[], "diastolic"),
     sono: serieDaMetrica(pontos as any[], "sleepDuration"),
     fcRepouso: serieDaMetrica(pontos as any[], "restingHr"),
     hrv: serieDaMetrica(pontos as any[], "hrv"),

@@ -2,7 +2,7 @@ jest.mock("@/lib/db", () => ({ prisma: {} }));
 
 import { lerCodigo } from "../helpers/codigo";
 import { lerEcg, exigeAtencao, TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
-import { resumirSerie } from "@/lib/patient-monitoring";
+import { resumirSerie, pressaoPorDia } from "@/lib/patient-monitoring";
 import { renderPatientReportHTML } from "@/lib/patient-report";
 
 /**
@@ -350,5 +350,95 @@ describe("o app", () => {
     // O que a tela precisa é a conclusão; mandar o JSON inteiro convidaria
     // cada tela a interpretar por conta própria.
     expect(rota).toMatch(/const \{ rawPayload, \.\.\.resto \} = p;/);
+  });
+});
+
+describe("a pressão vira série diária", () => {
+  /**
+   * > *"faz a pressão tb"* — Bruno, 02/10/2026
+   *
+   * Ela não vem do `WearableDataPoint`: vem leitura a leitura do
+   * `BloodPressureReading`, com a hora. Para a linha, o dia é a unidade — como
+   * em todas as outras métricas.
+   *
+   * Esta função viveu dentro do `getMonitoringData` e **duas mutações
+   * sobreviveram** enquanto lá esteve: somar em vez de fazer média, e contar
+   * cada leitura como um ponto. Nenhum teste lhe chegava sem o banco.
+   */
+  const leitura = (quando: string, s: number, d: number) => ({
+    systolic: s,
+    diastolic: d,
+    measuredAt: new Date(quando),
+  });
+
+  it("**um dia com três medições é um ponto, não três**", () => {
+    /*
+     * Senão uma manhã em que a pessoa mediu de hora a hora desenha um pico que
+     * é só diligência dela — e a linha diz que a pressão subiu quando o que
+     * subiu foi o cuidado.
+     */
+    const r = pressaoPorDia(
+      [
+        leitura("2026-10-01T07:00:00Z", 140, 90),
+        leitura("2026-10-01T08:00:00Z", 130, 86),
+        leitura("2026-10-01T09:00:00Z", 135, 88),
+      ],
+      "systolic"
+    );
+    expect(r).toHaveLength(1);
+    expect(r[0]).toEqual({ dia: "2026-10-01", valor: 135 });
+  });
+
+  it("**e o valor é a média, não a soma**", () => {
+    // Somar daria 405 mmHg, que não é uma pressão de ninguém.
+    const r = pressaoPorDia(
+      [leitura("2026-10-01T07:00:00Z", 140, 90), leitura("2026-10-01T08:00:00Z", 130, 86)],
+      "systolic"
+    );
+    expect(r[0].valor).toBe(135);
+  });
+
+  it("a diastólica sai da mesma leitura, pelo seu campo", () => {
+    const r = pressaoPorDia([leitura("2026-10-01T07:00:00Z", 140, 90)], "diastolic");
+    expect(r[0].valor).toBe(90);
+  });
+
+  it("dias diferentes são pontos diferentes, por ordem", () => {
+    const r = pressaoPorDia(
+      [
+        leitura("2026-10-03T07:00:00Z", 120, 80),
+        leitura("2026-10-01T07:00:00Z", 140, 90),
+        leitura("2026-10-02T07:00:00Z", 130, 85),
+      ],
+      "systolic"
+    );
+    expect(r.map((v) => v.dia)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]);
+    expect(r.map((v) => v.valor)).toEqual([140, 130, 120]);
+  });
+
+  it("**um dia sem leitura não vira ponto** — fica o buraco", () => {
+    // É o buraco que a linha depois não atravessa.
+    const r = pressaoPorDia(
+      [leitura("2026-10-01T07:00:00Z", 140, 90), leitura("2026-10-05T07:00:00Z", 120, 80)],
+      "systolic"
+    );
+    expect(r.map((v) => v.dia)).toEqual(["2026-10-01", "2026-10-05"]);
+  });
+
+  it("lixo não entra", () => {
+    const r = pressaoPorDia(
+      [
+        { systolic: null, diastolic: 80, measuredAt: new Date("2026-10-01T07:00:00Z") },
+        { systolic: 140, diastolic: 90, measuredAt: "não é data" },
+        leitura("2026-10-02T07:00:00Z", 130, 85),
+      ] as any,
+      "systolic"
+    );
+    expect(r).toEqual([{ dia: "2026-10-02", valor: 130 }]);
+  });
+
+  it("sem leituras, série vazia", () => {
+    expect(pressaoPorDia([], "systolic")).toEqual([]);
+    expect(pressaoPorDia(null, "systolic")).toEqual([]);
   });
 });
