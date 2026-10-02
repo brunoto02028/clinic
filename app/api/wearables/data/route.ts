@@ -48,5 +48,36 @@ export async function GET(request: NextRequest) {
     return ecg ? { ...resto, ecg } : resto;
   });
 
-  return NextResponse.json({ data: comEcg });
+  /**
+   * Os ECG, **um por gravação** (119 T-2).
+   *
+   * Vêm de uma tabela própria porque um ECG é um evento e não um total do dia.
+   * A lista acima continua a trazer os pontos diários — e um ECG antigo ainda
+   * pode estar lá, em `data[].ecg`, enquanto o backfill não o trouxe. A tela
+   * lê **esta** lista; a outra fica para não quebrar nada que já esteja no ar.
+   */
+  const ecgs = await prisma.ecgRecording.findMany({
+    where: { userId: eff.userId, recordedAt: { gte: since } },
+    orderBy: { recordedAt: "desc" },
+    select: {
+      id: true,
+      recordedAt: true,
+      heartRate: true,
+      conclusao: true,
+      signalId: true,
+    },
+  });
+
+  return NextResponse.json({
+    data: comEcg,
+    ecgRecordings: ecgs.map((e) => ({
+      id: e.id,
+      /* O instante. O dia é de quem mostra — ver o comentário no schema. */
+      recordedAt: e.recordedAt.toISOString(),
+      heartRate: e.heartRate,
+      conclusao: e.conclusao,
+      /* O caminho até ao sinal, não o sinal. */
+      signalId: e.signalId,
+    })),
+  });
 }

@@ -59,7 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     desde.setDate(desde.getDate() - days);
     const desdeStr = desde.toISOString().split("T")[0];
 
-    const [monitoring, pontos, checkins, pressao, metas] = await Promise.all([
+    const [monitoring, pontos, checkins, pressao, metas, ecgs] = await Promise.all([
       getMonitoringData(paciente.id, { days }),
       (prisma as any).wearableDataPoint.findMany({
         where: { userId: paciente.id, dataDate: { gte: desdeStr } },
@@ -109,6 +109,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
          * em produção cairia exactamente aqui, calada.
          */
         .catch(() => ILEGIVEL),
+      /*
+       * Os ECG, **um por gravação** (119 T-2).
+       *
+       * Regra do Bruno: o que aparece no app aparece na clinic. O paciente vê
+       * duas gravações de 1 de outubro, com a hora de cada uma; o terapeuta
+       * tem de ver as mesmas duas. Antes disto o painel via o que sobrava de
+       * uma linha por dia — ou seja, uma.
+       */
+      prisma.ecgRecording
+        .findMany({
+          where: { userId: paciente.id, recordedAt: { gte: desde } },
+          orderBy: { recordedAt: "desc" },
+          select: { id: true, recordedAt: true, heartRate: true, conclusao: true },
+          take: 100,
+        })
+        .catch(() => ILEGIVEL),
     ]);
 
     const serie = (tipo: string, campo: string) =>
@@ -124,6 +140,17 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       goals: metas === ILEGIVEL ? null : metas,
       /** E isto é a outra coisa: a leitura falhou, não houve escolha nenhuma. */
       goalsUnreadable: metas === ILEGIVEL,
+      /** Uma linha por gravação, com o instante — o dia é do fuso de quem lê. */
+      ecgRecordings:
+        ecgs === ILEGIVEL
+          ? []
+          : (ecgs as any[]).map((e) => ({
+              id: e.id,
+              recordedAt: e.recordedAt.toISOString(),
+              heartRate: e.heartRate,
+              conclusao: e.conclusao,
+            })),
+      ecgUnreadable: ecgs === ILEGIVEL,
       // Os desvios do próprio paciente, para a ficha dele repetir o que a fila
       // da clínica já mostra — sem obrigar quem abriu a ficha a ir até lá.
       deviations: desviosDosPontos(pontos as any[]),

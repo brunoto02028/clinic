@@ -95,6 +95,20 @@ interface Dados {
    * ninguém tinha feito. Achado do review de 02/10/2026.
    */
   goalsUnreadable?: boolean;
+  /**
+   * Os ECG, **um por gravação** (119 T-2).
+   *
+   * Até 02/10/2026 o painel via o que sobrava de uma linha por dia — ou seja,
+   * uma. O Bruno gravou duas em 01/10, às 22:44 e às 23:54, e a segunda tinha
+   * apagado a primeira na ingestão.
+   */
+  ecgRecordings?: Array<{
+    id: string;
+    recordedAt: string;
+    heartRate: number | null;
+    conclusao: "normal" | "fibrilacao" | "inconclusivo";
+  }>;
+  ecgUnreadable?: boolean;
 }
 
 const JANELAS = [7, 30, 90];
@@ -223,6 +237,47 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
           )}
         </CardContent>
       </Card>
+
+      {/*
+        * Os ECG, um por gravação, com a hora.
+        *
+        * A conclusão é **do aparelho**, e a frase diz isso. A fibrilhação é a
+        * única que muda de cor: o inconclusivo é um registo que o relógio não
+        * conseguiu classificar, e pintá-lo de vermelho seria alarmar por nada.
+        */}
+      {(dados.ecgRecordings?.length ?? 0) > 0 && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+              ECG — what the watch concluded
+            </p>
+            <div className="space-y-1.5">
+              {dados.ecgRecordings!.map((e) => {
+                const achado = e.conclusao === "fibrilacao";
+                const frase =
+                  e.conclusao === "fibrilacao"
+                    ? "The watch found signs of atrial fibrillation"
+                    : e.conclusao === "normal"
+                      ? "The watch flagged nothing"
+                      : "The watch could not classify this recording";
+                return (
+                  <div key={e.id} className="text-sm">
+                    <span className={achado ? "font-semibold text-destructive" : ""}>{frase}</span>
+                    <span className="text-muted-foreground">
+                      {" · "}
+                      {new Date(e.recordedAt).toLocaleString()}
+                      {e.heartRate != null ? ` · ${Math.round(e.heartRate)} bpm` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              The trace is not stored and is not interpreted here.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* O que mudou mais, em palavras — quem abre a ficha lê isto antes de
           olhar sete gráficos. Nenhuma frase conclui nada: "4 bpm menor" é o

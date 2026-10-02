@@ -456,19 +456,63 @@ export async function ingestWithings(
         vitalsDays++;
       }
 
-      // The fact that an ECG happened and what the device concluded — never the
-      // trace, and never our reading of it.
+      /*
+       * The fact that an ECG happened and what the device concluded — never the
+       * trace, and never our reading of it.
+       *
+       * **Uma linha por gravação** (119 T-2). Até 02/10/2026 isto escrevia no
+       * `WearableDataPoint`, cuja chave é `(utilizador, dia, tipo)` — a chave de
+       * um **total do dia**. Um ECG é um evento: o Bruno gravou dois em 01/10,
+       * às 22:44 e 23:54, e o segundo apagou o primeiro em silêncio. Não ficava
+       * buraco nenhum na tela, ficava um registo plausível.
+       *
+       * E o dia vinha de `recordedAt.toISOString()`, ou seja **UTC**: um ECG às
+       * 00:30 em Londres no verão era guardado como do dia anterior. Agora
+       * guarda-se o instante, e quem mostra agrupa no seu próprio fuso.
+       */
       const ecg = await withingsEcg(token, since, opts.until);
       let sinalTentado = false;
       for (const rec of ecg) {
         const dataDate = rec.recordedAt.toISOString().split("T")[0];
-        await upsertPoint(userId, connection.id, "ECG", dataDate, {
-          restingHr: rec.heartRate ?? undefined,
-          rawPayload: JSON.stringify({
-            afibClassification: rec.afibClassification,
+        const { traduzirClassificacao } = await import("@/lib/ecg-record");
+        const afibRaw =
+          typeof rec.afibClassification === "number"
+            ? rec.afibClassification
+            : rec.afibClassification == null
+              ? null
+              : Number(rec.afibClassification);
+
+        await prisma.ecgRecording.upsert({
+          where: {
+            userId_provider_recordedAt: {
+              userId,
+              provider: "withings",
+              recordedAt: rec.recordedAt,
+            },
+          },
+          create: {
+            userId,
+            connectionId: connection.id,
+            provider: "withings",
+            recordedAt: rec.recordedAt,
+            heartRate: rec.heartRate ?? null,
+            afibRaw: Number.isFinite(afibRaw as number) ? (afibRaw as number) : null,
+            conclusao: traduzirClassificacao(rec.afibClassification),
             signalId: rec.signalId,
-            recordedAt: rec.recordedAt.toISOString(),
-          }),
+          },
+          update: {
+            connectionId: connection.id,
+            heartRate: rec.heartRate ?? null,
+            afibRaw: Number.isFinite(afibRaw as number) ? (afibRaw as number) : null,
+            /*
+             * A conclusão é recalculada a cada sincronização de propósito: se a
+             * tabela de tradução estiver errada — e esteve, até 02/10 —, a
+             * correção alcança os registos antigos sem migração nenhuma. É para
+             * isso que o `afibRaw` fica guardado por inteiro.
+             */
+            conclusao: traduzirClassificacao(rec.afibClassification),
+            signalId: rec.signalId,
+          },
         });
         ecgRecords++;
 

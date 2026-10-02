@@ -28,7 +28,8 @@ import { diaLocal } from "@/lib/dia-e-noite-calculo";
 import { familiaPorChave, valorMostrado, MetricaDaFamilia } from "@/lib/familias-de-saude";
 import { metaDoCampo } from "@/lib/resumo-de-saude";
 import { BarraDeMeta } from "@/components/BarraDeMeta";
-import { fetchMetas } from "@/api/wearables";
+import { fetchMetas, fetchEcgs } from "@/api/wearables";
+import { ListaDeEcg } from "@/components/ListaDeEcg";
 
 export default function FamiliaScreen() {
   const t = useTheme();
@@ -62,6 +63,13 @@ export default function FamiliaScreen() {
    * em tela nenhuma.
    */
   const metas = useQuery({ queryKey: ["metas"], queryFn: fetchMetas, enabled: !!familia });
+
+  /* Os ECG, um por gravação (119 T-2/T-3). Só a família do coração os mostra. */
+  const ecgs = useQuery({
+    queryKey: ["ecgs", janela],
+    queryFn: () => fetchEcgs(janela),
+    enabled: !!familia?.temEcg,
+  });
 
   if (!familia) {
     return (
@@ -308,18 +316,14 @@ export default function FamiliaScreen() {
               </View>
             )}
 
-            {/* O ECG, com a conclusão do aparelho e nada nosso por cima. */}
-            {familia.temEcg && (
-              <Pressable
-                onPress={() => router.push("/(app)/(clinica)/wearable-data")}
-                accessibilityRole="button"
-                style={[cartao, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}
-                testID="ir-para-ecg"
-              >
-                <Text variant="body">{tr(lang, { en: "ECG recordings", pt: "Registos de ECG" })}</Text>
-                <Text variant="caption" color={t.colors.textSecondary}>›</Text>
-              </Pressable>
-            )}
+            {/*
+              * O ECG, com a conclusão do aparelho e nada nosso por cima.
+              *
+              * Era um link para a tela antiga, que mostrava **um por dia** —
+              * porque era assim que ficavam guardados. Agora a lista é a
+              * verdadeira: uma linha por gravação, com a hora.
+              */}
+            {familia.temEcg && <ListaDeEcg registos={ecgs.data ?? []} />}
           </>
         )}
       </ScrollView>
