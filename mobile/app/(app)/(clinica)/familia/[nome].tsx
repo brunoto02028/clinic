@@ -26,6 +26,9 @@ import { Tendencia, PontoDaSerie } from "@/components/Tendencia";
 import { ODia, ANoite } from "@/components/ODiaEANoite";
 import { diaLocal } from "@/lib/dia-e-noite-calculo";
 import { familiaPorChave, valorMostrado, MetricaDaFamilia } from "@/lib/familias-de-saude";
+import { metaDoCampo } from "@/lib/resumo-de-saude";
+import { BarraDeMeta } from "@/components/BarraDeMeta";
+import { fetchMetas } from "@/api/wearables";
 
 export default function FamiliaScreen() {
   const t = useTheme();
@@ -51,6 +54,14 @@ export default function FamiliaScreen() {
     queryFn: () => fetchSerie("HYPNOGRAM"),
     enabled: !!familia?.temANoite,
   });
+
+  /*
+   * As metas do paciente (118 T-7). É aqui que *minutos ativos* e *calorias
+   * ativas* ganham sítio: o resumo da aba não tem destaque para elas, e sem
+   * isto eram duas caixas do formulário que se guardavam sem que nada mudasse
+   * em tela nenhuma.
+   */
+  const metas = useQuery({ queryKey: ["metas"], queryFn: fetchMetas, enabled: !!familia });
 
   if (!familia) {
     return (
@@ -239,6 +250,22 @@ export default function FamiliaScreen() {
                       ) : null}
                     </Text>
                   </View>
+                  {/*
+                    * A meta vai pelo mesmo `valorMostrado` que o número: o sono
+                    * é guardado em minutos e mostrado em horas, e comparar os
+                    * dois sem converter daria um progresso de sete vezes.
+                    */}
+                  {(() => {
+                    const meta = metaDoCampo(String(m.campo), metas.data);
+                    if (meta === null) return null;
+                    return (
+                      <BarraDeMeta
+                        valor={ultimo}
+                        meta={valorMostrado(meta, m)}
+                        testID={`meta-${m.campo}`}
+                      />
+                    );
+                  })()}
                   <Tendencia
                     pontos={serieDe(m)}
                     unidade={m.unidade}

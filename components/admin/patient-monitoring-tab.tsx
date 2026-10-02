@@ -74,6 +74,27 @@ interface Dados {
   };
   deviations: Desvio[];
   series: Record<string, Ponto[]>;
+  /**
+   * As metas que o **paciente** definiu, ou `null` se ainda não definiu nenhuma
+   * (118 T-7).
+   */
+  goals: {
+    steps: number | null;
+    activeMinutes: number | null;
+    sleepMinutes: number | null;
+    activeCalories: number | null;
+    updatedAt?: string;
+  } | null;
+  /**
+   * A leitura das metas **falhou** — que não é a mesma coisa que o paciente
+   * não ter definido nenhuma.
+   *
+   * Sem isto, as duas davam a mesma frase, e o painel afirmava *"None set yet
+   * — these are the patient's to choose"* quando a verdade era que o dado não
+   * chegou. O terapeuta lia uma afirmação sobre a escolha do paciente que
+   * ninguém tinha feito. Achado do review de 02/10/2026.
+   */
+  goalsUnreadable?: boolean;
 }
 
 const JANELAS = [7, 30, 90];
@@ -145,6 +166,63 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
           <Activity className="h-3 w-3" /> Generate report
         </Button>
       </div>
+
+      {/*
+        * **As metas do paciente, no painel** (118 T-7).
+        *
+        * Regra do Bruno: *"o que aparece no app precisa aparecer na clinic,
+        * pois lá é o centro de comando"*. Ele vê uma barra de progresso no
+        * telemóvel; sem isto, o terapeuta não sabe contra o quê — e a consulta
+        * acontece com os dois a olhar para números diferentes.
+        *
+        * **Leitura, não escrita.** Quem define é o paciente, e um campo
+        * editável aqui transformaria "a minha meta" em "a meta que me deram".
+        */}
+      <Card>
+        <CardContent className="p-3 space-y-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+            Goals the patient set
+          </p>
+          {dados.goals &&
+          (dados.goals.steps ||
+            dados.goals.activeMinutes ||
+            dados.goals.sleepMinutes ||
+            dados.goals.activeCalories) ? (
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+              {dados.goals.steps ? (
+                <span>
+                  <span className="text-muted-foreground">Steps</span> {dados.goals.steps.toLocaleString()}/day
+                </span>
+              ) : null}
+              {dados.goals.activeMinutes ? (
+                <span>
+                  <span className="text-muted-foreground">Active</span> {dados.goals.activeMinutes} min/day
+                </span>
+              ) : null}
+              {dados.goals.activeCalories ? (
+                <span>
+                  <span className="text-muted-foreground">Calories</span> {dados.goals.activeCalories} kcal/day
+                </span>
+              ) : null}
+              {dados.goals.sleepMinutes ? (
+                <span>
+                  <span className="text-muted-foreground">Sleep</span>{" "}
+                  {(dados.goals.sleepMinutes / 60).toFixed(1)} h/night
+                </span>
+              ) : null}
+            </div>
+          ) : dados.goalsUnreadable ? (
+            <p className="text-sm text-muted-foreground">
+              Could not read the goals this time — this is not the patient saying they have none.
+              Try again; if it persists, the table may be missing on the server.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              None set yet. These are the patient&apos;s to choose — the app asks, this panel reads.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* O que mudou mais, em palavras — quem abre a ficha lê isto antes de
           olhar sete gráficos. Nenhuma frase conclui nada: "4 bpm menor" é o

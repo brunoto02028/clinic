@@ -57,3 +57,4 @@ Skills/clinical-evidence-report/clinic-resources.json
 # Build dirs que os agentes de QA criam para nao brigar pelo .next
 .next-*
 .build
+.build-verify

@@ -1,7 +1,7 @@
 # Atividade 118 — A aba Saúde
 
 **Aberta:** 01/10/2026, a pedido do Bruno.
-**Status:** plano escrito, à espera de aprovação
+**Status:** aprovado e em execução — T-1 a T-3 e **T-7** feitas, T-4 parcial; faltam T-5 e T-6
 
 > *"aba saúde e dentro dela uma primeira página com um resumão de tudo e uma
 > página para cada informação? como o withings faz?"*
@@ -143,12 +143,19 @@ some ensina à pessoa que o produto está estragado.
 | T-1 | A aba, e o que deixa de estar no Menu | — | **feito** (01/10) |
 | T-2 | O resumo: o que mudou desde ontem | T-1 | **feito** (01/10) |
 | T-3 | As cinco páginas de família | T-1 | **feito** (01/10) — uma tela parametrizada, não cinco |
-| T-4 | O visual: o que cabe num update | T-2, T-3 | **parcial** (01/10) — cabeçalho e tipografia; os anéis exigem metas que não existem |
+| T-4 | O visual: o que cabe num update | T-2, T-3 | **parcial** (01/10) — cabeçalho e tipografia; os anéis esperavam metas, que a T-7 criou |
 | T-5 | O relatório preso ao plano, com a trava no servidor | T-1 | pendente |
-| T-6 | Os anéis e as linhas — **só com build autorizado** | T-4 | pendente |
+| T-6 | Os anéis e as linhas — **só com build autorizado** | T-4, T-7 | pendente |
+| T-7 | **As metas são do paciente** | T-2 | **feito** (02/10) — QA 0 reprovados, 9 achados do review fechados |
 
 **Ordem pedida pelo Bruno:** *"vamos antes conectar tudo e ver esse
 layout/design"* — ou seja, T-1 a T-4 primeiro; a T-5 e a T-6 depois.
+
+**A T-7 entrou no meio, e por uma razão.** A T-4 parou a meio porque *"os anéis
+exigem metas que não existem"*: um anel mede contra um alvo, e sem alvo guardado
+desenhá-lo obrigaria a inventar um. O Bruno fechou a questão de quem escolhe —
+*"o paciente define as metas"* — e a T-7 é essa frase feita tabela, rota e tela.
+A T-6 passou a depender dela.
 
 ## Suposições — preciso da sua validação
 

@@ -31,9 +31,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { fetchWearableData, fetchConnections } from "@/api/wearables";
+import { fetchWearableData, fetchConnections, fetchMetas } from "@/api/wearables";
 import { LoadFailure } from "@/components/LoadFailure";
-import { destaques, pendencias, Destaque, Pendencia } from "@/lib/resumo-de-saude";
+import { destaques, pendencias, metaDoDestaque, Destaque, Pendencia } from "@/lib/resumo-de-saude";
+import { BarraDeMeta } from "@/components/BarraDeMeta";
 
 /** As cinco famílias. A ordem é a do corpo, e é estável de propósito. */
 const FAMILIAS = [
@@ -57,6 +58,8 @@ const DESTINO: Record<string, string> = {
   atividade: "/(app)/(clinica)/familia/atividade",
   pressao: "/(app)/(clinica)/blood-pressure",
   corpo: "/(app)/(clinica)/familia/corpo",
+  /* As metas não são uma família — são o que dá sentido às barras delas. */
+  metas: "/(app)/(clinica)/metas",
 };
 
 const ROTULO: Record<Destaque["chave"], { en: string; pt: string; unidade: string }> = {
@@ -90,6 +93,7 @@ export default function SaudeScreen() {
     queryKey: ["wearable-connections"],
     queryFn: fetchConnections,
   });
+  const metas = useQuery({ queryKey: ["metas"], queryFn: fetchMetas });
 
   const saudacao = (): string => {
     const h = new Date().getHours();
@@ -282,6 +286,24 @@ export default function SaudeScreen() {
                         ) : null}
                       </Text>
                       {/*
+                        * A barra **só existe quando há meta** (118 T-7), e a
+                        * meta é do paciente. Sem meta, o número aparece sozinho
+                        * — é o que ele é, e nada na tela sugere que devia ser
+                        * outro.
+                        *
+                        * O `dia` vai com ela porque o valor é o **último
+                        * medido**, e uma barra cheia por uma leitura de sábado
+                        * afirmaria a meta de hoje. Quem decide isso é a
+                        * `BarraDeMeta`, que é a mesma das páginas de família.
+                        */}
+                      <BarraDeMeta
+                        valor={d.valor}
+                        meta={metaDoDestaque(d.chave, metas.data ?? null)}
+                        dia={d.dia}
+                        testID={`progresso-${d.chave}`}
+                      />
+
+                      {/*
                         * A variação **sem cor**: subir não é bom nem mau, e
                         * pintá-la de verde seria a faixa de referência a entrar
                         * pela porta dos fundos.
@@ -311,7 +333,7 @@ export default function SaudeScreen() {
               >
                 {tr(lang, { en: "Explore", pt: "Explorar" })}
               </Text>
-              {FAMILIAS.map((f) => (
+              {[...FAMILIAS, { chave: "metas", icone: "flag-outline", en: "My goals", pt: "As minhas metas" } as const].map((f) => (
                 <Pressable
                   key={f.chave}
                   onPress={() => router.push(DESTINO[f.chave] as any)}
