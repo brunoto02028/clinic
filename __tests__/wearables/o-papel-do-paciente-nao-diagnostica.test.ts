@@ -216,3 +216,102 @@ describe("o papel fala a língua do paciente", () => {
     expect(html("pt")).not.toMatch(/revis\w+ por um médico/i);
   });
 });
+
+describe("o papel em português não fica meio traduzido", () => {
+  /**
+   * Aconteceu duas vezes num dia.
+   *
+   * Primeiro o documento inteiro saía em inglês com `reportLanguage = "pt"`.
+   * Corrigi os cabeçalhos — e ficaram por traduzir os rótulos das tabelas
+   * (*"Name"*, *"Age"*, *"Occupation"*), as datas (`en-GB` fixo, dando *"Paciente
+   * desde 24 Sept 2026"*), a barra de imprimir e os estados crus da base.
+   *
+   * **Meio papel traduzido é pior do que nenhum**: convida a ignorar a parte que
+   * não se lê, e num documento clínico a parte que não se lê pode ser a que
+   * importa.
+   *
+   * O que **não** se traduz, e é de propósito: o que a terapeuta escreveu, o que
+   * o paciente respondeu na triagem, e o nome de uma condição. Traduzir o registo
+   * clínico de alguém seria reescrevê-lo.
+   */
+  const NOSSAS_PALAVRAS_EM_INGLES = [
+    "Name", "Age", "Email", "Phone", "Patient since",
+    "Occupation", "Activity level", "Surgical history", "Other conditions",
+    "Current medications", "Allergies", "Height / Weight",
+    "Patient Information", "Medical Screening", "Clinical Report",
+    "Print / Save as PDF", "Blood pressure", "Exercise", "How you felt",
+    "Most recent", "Readings in period", "Appointments in the period",
+    "with data", "average of the",
+  ];
+
+  it("**nenhum rótulo nosso fica em inglês**", () => {
+    const pt = html("pt");
+    const escaparam = NOSSAS_PALAVRAS_EM_INGLES.filter((w) => pt.includes(w));
+    expect(escaparam).toEqual([]);
+  });
+
+  it("**e as datas seguem a língua**", () => {
+    /*
+     * `fmtDate` tinha `"en-GB"` fixo. Com o resto traduzido, saía *"Paciente
+     * desde 24 Sept 2026"* — meia frase em cada língua, na linha que identifica
+     * a pessoa.
+     */
+    const pt = html("pt");
+    expect(pt).not.toMatch(/(Sept|Aug|Oct|Jan|Feb|Mar|Apr|Jun|Jul|Nov|Dec)/);
+  });
+
+  it("**e o estado não sai cru da base**", () => {
+    // "Estado: APPROVED" é vocabulário nosso a vazar para o papel de alguém.
+    expect(html("pt")).not.toContain("APPROVED");
+    expect(html("pt")).toMatch(/aprovada/i);
+  });
+
+  it("mas **o que a pessoa escreveu fica como ela escreveu**", () => {
+    // O resumo da terapeuta e o nome da condição não se traduzem.
+    const pt = html("pt");
+    expect(pt).toContain("Pattern consistent with patellofemoral overload");
+    expect(pt).toContain("Patellofemoral pain");
+  });
+
+  it("e em inglês continua tudo em inglês", () => {
+    const en = html("en");
+    expect(en).toContain("Patient Information");
+    expect(en).toContain("Clinical Report");
+  });
+});
+
+describe("a marca do papel é a da clínica de quem o recebe", () => {
+  /**
+   * O cabeçalho e o rodapé escreviam *"Bruno Physical Rehabilitation · Ipswich,
+   * Suffolk"* à mão, para **qualquer** inquilino. Um paciente de outro estúdio
+   * recebia um documento clínico assinado por uma clínica que não é a dele — e
+   * agora quem gera o papel é o próprio paciente, portanto haverá muitos mais.
+   */
+  const comClinica = (nome: string | null, cidade?: string) => {
+    const d = dados();
+    d.patient.clinic = nome ? { name: nome, city: cidade ?? null, country: "GB" } : null;
+    return renderPatientReportHTML(d);
+  };
+
+  it("**o nome vem da clínica do paciente**", () => {
+    const h = comClinica("Manu Training", "Lisboa");
+    expect(h).toContain("Manu Training");
+    expect(h).not.toContain("Bruno Physical Rehabilitation");
+  });
+
+  it("e aparece no cabeçalho **e** no rodapé", () => {
+    const h = comClinica("Manu Training");
+    expect(h.match(/Manu Training/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
+  it("**sem clínica, diz 'a sua clínica'** — vago, mas verdadeiro", () => {
+    /*
+     * Pôr um nome que pode ser de outra pessoa num documento clínico é pior do
+     * que não pôr nenhum.
+     */
+    expect(comClinica(null)).toMatch(/your clinic/i);
+    const d = dados();
+    d.patient.clinic = null;
+    expect(renderPatientReportHTML(d, { idioma: "pt" })).toMatch(/a sua clínica/i);
+  });
+});
