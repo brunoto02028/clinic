@@ -246,6 +246,8 @@ export function agruparPorIntervalo(
 /* ───────────────────────────── o traçado do ECG ───────────────────────────── */
 
 export interface SinalDeEcg {
+  /** Onde o aparelho estava, no código da Withings — `1` é pulso esquerdo. */
+  posicao?: number | null;
   /** As amostras do traçado, na unidade que eles mandarem. */
   amostras: number[];
   /** Hz. Sem isto o traçado não tem escala de tempo, e sem escala não é um ECG. */
@@ -280,11 +282,31 @@ export interface SinalDeEcg {
  * ECG". A diferença é a que separa "o paciente não mediu" de "nós não temos
  * acesso", e as duas frases levam a ações opostas.
  */
-export async function sinalDoEcg(accessToken: string, signalid: string): Promise<SinalDeEcg> {
+export async function sinalDoEcg(
+  accessToken: string,
+  signalid: string,
+  /**
+   * `with_filtered` — a versão **filtrada** do sinal.
+   *
+   * Documentado como *"Request filtered version of the signal"*, e mais do que
+   * isso a Withings não diz: não revela que filtro é, nem se é passa-banda, nem
+   * se tem um notch de 50/60 Hz.
+   *
+   * Pedimo-lo porque o traçado do PDF deles é visivelmente limpo e o rodapé
+   * desse PDF diz *"Enhanced Filter, Main filter"* — é improvável que seja o
+   * sinal cru. Um ECG impresso com ruído de rede por cima é um ECG que o médico
+   * devolve.
+   *
+   * Se o campo não vier filtrado, nada se perde: o corpo é o mesmo e o `bruto`
+   * guarda-o inteiro para se poder comparar as duas versões.
+   */
+  filtrado = true
+): Promise<SinalDeEcg> {
   const body = await withingsRawCall("/v2/heart", {
     action: "get",
     access_token: accessToken,
     signalid: String(signalid),
+    ...(filtrado ? { with_filtered: "1" } : {}),
   });
 
   /*
@@ -301,5 +323,13 @@ export async function sinalDoEcg(accessToken: string, signalid: string): Promise
         ? body.ecg.sampling_frequency
         : null;
 
-  return { amostras, frequencia, bruto: body ?? {} };
+  /* Onde a pessoa tinha o aparelho — `1` é pulso esquerdo. Vai no papel. */
+  const posicao =
+    typeof body?.wearposition === "number"
+      ? body.wearposition
+      : typeof body?.ecg?.wearposition === "number"
+        ? body.ecg.wearposition
+        : null;
+
+  return { amostras, frequencia, posicao, bruto: body ?? {} };
 }

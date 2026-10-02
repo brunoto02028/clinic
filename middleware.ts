@@ -371,7 +371,13 @@ export async function middleware(request: NextRequest) {
    * caminho só. Foi o mesmo defeito do documento, repetido num caminho novo:
    * quem acrescentar o próximo link assinado acrescenta o prefixo aqui.
    */
-  const LINK_ASSINADO = ['/api/files/', '/api/patient/invoices/', '/api/patient/reports/'];
+  const LINK_ASSINADO = [
+    '/api/files/',
+    '/api/patient/invoices/',
+    '/api/patient/reports/',
+    /* O PDF do ECG (099 T-9): o navegador do telemóvel não leva o bearer. */
+    '/api/patient/ecg/',
+  ];
   if (LINK_ASSINADO.some((p) => pathname.startsWith(p)) && request.nextUrl.searchParams.get('t')) {
     return NextResponse.next();
   }

@@ -9,12 +9,14 @@
  * **aparelho de quem lê**, com a hora ao lado. A conta vive no `ecg-lista.ts`
  * porque o que uma tela desenha não é verificável nesta base.
  */
-import React from "react";
-import { View } from "react-native";
+import React, { useState } from "react";
+import { View, Pressable } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { Text } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { diaLocal } from "@/lib/dia-e-noite-calculo";
+import { linkDoPdfDoEcg } from "@/api/wearables";
 import {
   agruparPorDia,
   horaLocalDe,
@@ -26,6 +28,30 @@ import {
 export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
   const t = useTheme();
   const lang = useLang();
+  const [aAbrir, setAAbrir] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const abrirPdf = async (id: string) => {
+    setAAbrir(id);
+    setErro(null);
+    try {
+      const { url } = await linkDoPdfDoEcg(id);
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      /*
+       * Um erro aqui não pode parecer "não há registo": a gravação está na
+       * lista, à vista. O que falhou foi o papel.
+       */
+      setErro(
+        tr(lang, {
+          en: "Could not prepare the PDF. Try again.",
+          pt: "Não foi possível preparar o PDF. Tente outra vez.",
+        })
+      );
+    } finally {
+      setAAbrir(null);
+    }
+  };
 
   const cartao = {
     padding: 16,
@@ -97,6 +123,27 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
                   {horaLocalDe(r.recordedAt) ?? ""}
                   {r.heartRate != null ? ` · ${Math.round(r.heartRate)} bpm` : ""}
                 </Text>
+
+                {/*
+                  * O papel para levar ao médico (099 T-9).
+                  *
+                  * Abre no navegador do telemóvel porque é lá que um PDF se vê
+                  * e se guarda. O link é assinado **no toque**, não quando a
+                  * lista carregou: o token vive minutos.
+                  */}
+                <Pressable
+                  onPress={() => abrirPdf(r.id)}
+                  disabled={aAbrir === r.id}
+                  accessibilityRole="button"
+                  testID={`pdf-${r.id}`}
+                  style={{ paddingVertical: 4, alignSelf: "flex-start" }}
+                >
+                  <Text variant="caption" color={t.colors.primary} style={{ fontSize: 12, fontWeight: "600" }}>
+                    {aAbrir === r.id
+                      ? tr(lang, { en: "Preparing…", pt: "A preparar…" })
+                      : tr(lang, { en: "Open as PDF", pt: "Abrir em PDF" })}
+                  </Text>
+                </Pressable>
               </View>
             );
           })}
@@ -107,6 +154,12 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
         * Dito na tela, e não só nos termos: o aparelho conclui, nós guardamos, e
         * quem lê um traçado é um profissional.
         */}
+      {erro && (
+        <Text variant="caption" color={t.colors.bad} style={{ fontSize: 12 }} testID="ecg-erro-pdf">
+          {erro}
+        </Text>
+      )}
+
       <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11, lineHeight: 16 }}>
         {tr(lang, {
           en: "This is what the watch concluded. Talk to your therapist about it — we do not read the trace.",

@@ -106,6 +106,19 @@ export interface RegistoDeEcg {
   signalId: string | null;
 }
 
+/**
+ * O link do PDF daquela gravação, assinado **agora**.
+ *
+ * Pedido no momento do toque e não junto com a lista: o token vive minutos, e
+ * um botão que só funciona se a pessoa for rápida é um botão que ensina a não
+ * confiar nele.
+ */
+export async function linkDoPdfDoEcg(
+  id: string
+): Promise<{ url: string; temTracado: boolean }> {
+  return apiFetch<{ url: string; temTracado: boolean }>(`/api/patient/ecg/${id}/link`);
+}
+
 export async function fetchEcgs(days = 30): Promise<RegistoDeEcg[]> {
   const res = await apiFetch<{ ecgRecordings?: RegistoDeEcg[] }>(
     `/api/wearables/data?days=${days}`

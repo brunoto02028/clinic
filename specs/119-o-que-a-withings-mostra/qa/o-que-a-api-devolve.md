@@ -46,7 +46,7 @@ próprio dia 02/10/2026**. Catorze dias: acaba por volta de **16/10/2026**.
 | **ECG — o traçado** | `v2/heart get` | ✅ **veio** | **9.000 amostras** |
 | Frequência minuto a minuto | `v2/measure getintradayactivity` | ⚠️ vazio | **janela nossa errada** — ver nota |
 | Treinos | `v2/measure getworkouts` | ⚠️ vazio | resposta bem-formada; ele não tem treinos no período |
-| **HRV** | `v2/sleep getsummary` → `rmssd`, `sdnn_1` | ❌ **não veio** | pedido, e ausente do corpo |
+| **HRV** | `v2/sleep getsummary` → `rmssd`, `sdnn_1` | ⛔ **pergunta errada** | esses campos **não existem** nesse endpoint — ver abaixo |
 
 ## O resumo do sono, campo a campo
 
@@ -104,9 +104,49 @@ quando houver um treino para encontrar.
 | **119 T-5** — a curva da frequência da noite | **destravado**: vem dentro de cada fase |
 | A respiração e a pontuação do sono | disponíveis — a pontuação **citada como deles** |
 
+## ⛔ O HRV nunca esteve bloqueado — eu perguntei no sítio errado
+
+A análise da documentação (`docs/withings-api-2026-10-02.md`) desmente a linha
+que eu próprio escrevi aqui.
+
+**`rmssd` e `sdnn_1` não existem no `v2/sleep getsummary`.** Nesse endpoint o
+HRV chama-se `rmssd_start_avg` e `rmssd_end_avg`. Os nomes que pedi vivem
+noutros sítios:
+
+| endpoint | como o HRV se chama lá |
+|---|---|
+| `v2/sleep get` | `rmssd`, **`sdnn_1`**, `hrv_quality` |
+| `v2/measure getintradayactivity` | `rmssd`, **`sdnn1`** — *sem underscore* |
+| `v2/sleep getsummary` | `rmssd_start_avg`, `rmssd_end_avg` |
+
+A mesma métrica tem **três grafias** na mesma documentação, e eu escolhi a que
+não servia para o endpoint que estava a usar — e depois escrevi na tabela que
+*"a API não devolveu"*. Foi o **terceiro** "vazio" desta atividade que era
+defeito nosso e não falta de plano, depois do `data_fields` inválido de 01/10 e
+da janela de sete dias do intraday.
+
+A sondagem passou a pedir os três nomes, cada um no seu endpoint. **Por medir.**
+
+## A outra correcção: o `601` não é só dedupe
+
+Tinha escrito aqui, e no código, que o `601` da Withings é *"dedupe, não limite
+de taxa"*. A documentação diz que `601` é **"Too many request"**, e publica um
+limite de **120 pedidos por minuto por `client_id`**.
+
+As duas coisas são verdade ao mesmo tempo — argumentos iguais em menos de dez
+segundos também dão `601` —, mas tratar o código **só** como dedupe faria uma
+sondagem agressiva concluir "sem direito" onde o que há é excesso de pedidos.
+
 ## O que continua por responder
 
-- **O HRV.** É o único da lista do Bruno que a API não devolveu. Pode ser plano,
-  pode ser nome de campo. Remedir com outros nomes antes de concluir.
-- **Se isto depende do Withings+.** Só a segunda medição, depois do teste
-  gratuito, responde. **Marcar a data.**
+- **O HRV**, agora com os nomes certos. Era nome de campo, não plano.
+- **Se isto depende do Withings+.** A documentação **exclui** essa hipótese por
+  quatro razões independentes — entre elas a Withings dizer, no próprio FAQ,
+  que *"the ECG feature and atrial fibrillation detection are included with your
+  watch **without any subscription**"*. Ver a secção 0 de
+  `docs/withings-api-2026-10-02.md`.
+- **E a comparação que eu tinha planeado não serve.** As duas sondagens **não
+  pediram o mesmo `signalid`**: a de 02/10 pede sempre o primeiro da lista, e em
+  01/10 o primeiro era outro. Remedir às cegas depois de 16/10 responderia a uma
+  pergunta diferente. O teste controlado é pedir **o mesmo `signalid`** —
+  `763283988`, o das 23:54 de 01/10 — hoje e depois do fim do teste.
