@@ -27,6 +27,19 @@ export interface RegistoDeEcg {
   heartRate: number | null;
   conclusao: "normal" | "fibrilacao" | "inconclusivo";
   signalId: string | null;
+  /**
+   * Se o papel sai com o traçado desenhado, ou só com a conclusão do aparelho.
+   *
+   * **Opcional de propósito.** Um binário instalado antes de a rota passar a
+   * mandar este campo recebe `undefined`, e `undefined` não é "não tem" — é
+   * "não sei". A tela não avisa nada nesse caso, que é exactamente o que ela
+   * fazia antes; inventar o aviso a partir da ausência seria dizer a alguém que
+   * o traçado falta quando ele está lá.
+   *
+   * `signalId` não serve para isto: ele diz que a Withings **tem** o sinal, não
+   * que nós o fomos buscar.
+   */
+  temTracado?: boolean;
 }
 
 export interface DiaDeEcg {

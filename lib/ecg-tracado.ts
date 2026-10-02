@@ -40,21 +40,56 @@ export const MM_POR_MILIVOLT = 10;
 /** 1 µV = 0,001 mV = 0,01 mm. */
 export const MM_POR_MICROVOLT = MM_POR_MILIVOLT / 1000;
 
+/**
+ * Abaixo desta amplitude de ponta a ponta, **não há traçado** — há uma reta.
+ *
+ * 50 µV são **0,5 mm** no papel: metade da menor divisão da grelha. Um sinal que
+ * se move menos do que isso em trinta segundos não é mensurável por ninguém, e
+ * não é hipótese teórica: a ingestão só descarta o que **não é número**, e `0`
+ * é número. Um sinal todo a zeros atravessava tudo e era guardado como traçado
+ * legítimo.
+ *
+ * O que saía era pior do que nada: três faixas de papel milimetrado com uma
+ * linha perfeitamente reta, debaixo de *"Ritmo sinusal"*, com `25mm/s, 10mm/mV`
+ * declarado e nenhuma ressalva. Em papel de ECG isso lê-se como **assistolia** —
+ * uma folha medicamente enganadora, entregue a um médico por um paciente.
+ *
+ * Melhor dizer que o traçado não foi obtido, que é verdade e já é o
+ * comportamento de quando ele falta.
+ */
+export const AMPLITUDE_MINIMA_UV = 50;
+
 export interface Faixa {
   /** O segundo em que esta faixa começa, dentro da gravação. */
   inicioSegundos: number;
   /** Quantos segundos ela cobre. */
   duracaoSegundos: number;
   /**
-   * Os pontos, em **milímetros**, com a origem no canto superior esquerdo da
-   * faixa e `y` a crescer para baixo — como todo sistema de coordenadas de
-   * desenho. A linha de base fica a meio da altura.
+   * As colunas, em **milímetros**, com a origem no canto superior esquerdo da
+   * faixa e `y` a crescer para baixo. A linha de base fica a meio da altura.
+   *
+   * Cada coluna tem o **mínimo e o máximo** do punhado de amostras que
+   * representa, e não a média deles — ver `tracadoEmPapel`.
+   *
+   * `null` em `yMin`/`yMax` é um **buraco**: amostras que não vieram. A linha
+   * interrompe-se ali, em vez de a atravessar com uma reta que ninguém mediu.
    */
-  pontos: Array<{ x: number; y: number }>;
+  colunas: Array<{ x: number; yMin: number | null; yMax: number | null }>;
 }
 
 export interface TracadoEmPapel {
   faixas: Faixa[];
+  /**
+   * O traçado passou dos limites da faixa e foi **cortado**.
+   *
+   * Tem de ser dito no papel. Um traçado cortado em silêncio mede a amplitude
+   * errada para menos, e quem lê não tem como saber — e, pior, antes desta
+   * correcção o excesso era desenhado **por cima da faixa de cima**, inventando
+   * onda onde não houve nenhuma.
+   */
+  cortado: boolean;
+  /** A maior amplitude medida, em mV — dita quando houve corte. */
+  picoMv: number;
   /** Largura de uma faixa, em mm — a duração vezes 25. */
   larguraMm: number;
   /** Altura de uma faixa, em mm. */
@@ -62,11 +97,12 @@ export interface TracadoEmPapel {
   /** Quantos segundos o traçado inteiro cobre. */
   duracaoSegundos: number;
   /**
-   * Quantas amostras entraram em cada ponto desenhado.
+   * Quantas amostras entraram em cada coluna desenhada.
    *
-   * `1` quer dizer que nada foi descartado. Acima de `1`, cada ponto é a média
-   * de um punhado — e isso **tem de ser dito**, porque um traçado reduzido já
-   * não é o sinal, é um resumo dele.
+   * `1` quer dizer que nada foi reduzido. Acima de `1`, cada coluna mostra o
+   * **mínimo e o máximo** do punhado — o que preserva a altura do pico, que uma
+   * média destruiria. Continua a ser dito no papel, porque uma coluna não é uma
+   * amostra.
    */
   amostrasPorPonto: number;
 }
@@ -96,7 +132,15 @@ export interface OpcoesDoPapel {
  * mede errado.
  */
 export function tracadoEmPapel(
-  amostrasMicroVolts: number[] | null | undefined,
+  /**
+   * As amostras, em µV. **`null` é um buraco**, e tem de vir como `null`:
+   * removê-lo da lista adianta tudo o que vem depois, porque o tempo sai do
+   * índice. Medido em 02/10/2026: 299 amostras removidas de 9.000 encurtaram
+   * uma gravação de 30 s para 29,003 s, com o papel a continuar a declarar
+   * 300 Hz. Um intervalo RR medido à régua por cima desse buraco sai curto, e
+   * nada no papel denuncia.
+   */
+  amostrasMicroVolts: Array<number | null> | null | undefined,
   frequenciaHz: number | null | undefined,
   opcoes: OpcoesDoPapel = {}
 ): TracadoEmPapel | null {
@@ -114,10 +158,6 @@ export function tracadoEmPapel(
   const larguraMm = segundosPorFaixa * MM_POR_SEGUNDO;
   const linhaDeBase = alturaMm / 2;
 
-  /*
-   * Quantas amostras cabem num ponto desenhado. Nunca menos de uma — com um
-   * sinal de baixa frequência, desenhar "meia amostra" não quer dizer nada.
-   */
   const amostrasPorPonto = Math.max(
     1,
     Math.round(frequenciaHz / (MM_POR_SEGUNDO * pontosPorMm))
@@ -127,48 +167,114 @@ export function tracadoEmPapel(
   const quantasFaixas = Math.ceil(amostras.length / amostrasPorFaixa);
   const faixas: Faixa[] = [];
 
+  let cortado = false;
+  let picoUv = 0;
+  let desenhaveis = 0;
+  /* Os extremos de toda a gravação, para medir a amplitude de ponta a ponta. */
+  let menorUv: number | null = null;
+  let maiorUv: number | null = null;
+
   for (let f = 0; f < quantasFaixas; f++) {
     const de = f * amostrasPorFaixa;
     const ate = Math.min(de + amostrasPorFaixa, amostras.length);
-    const pontos: Array<{ x: number; y: number }> = [];
+    const colunas: Faixa["colunas"] = [];
 
     for (let i = de; i < ate; i += amostrasPorPonto) {
       const fim = Math.min(i + amostrasPorPonto, ate);
-      let soma = 0;
-      let n = 0;
+
+      /*
+       * **O mínimo e o máximo do punhado, não a média.**
+       *
+       * A média achata a espiga: a 300 Hz cada coluna junta 3 amostras, e um
+       * QRS de 1,5 mV que dura uma amostra saía impresso a 0,5 mV — um terço da
+       * altura real. Quem mede elevação de ST ou altura de R à régua lia um
+       * valor atenuado, e o papel dizia que continuava a medir certo.
+       *
+       * Desenhar os dois extremos custa o mesmo e preserva o pico. É o que um
+       * eletrocardiógrafo faz quando reduz.
+       */
+      let min: number | null = null;
+      let max: number | null = null;
       for (let k = i; k < fim; k++) {
         const v = amostras[k];
-        if (typeof v === "number" && Number.isFinite(v)) {
-          soma += v;
-          n++;
-        }
+        if (typeof v !== "number" || !Number.isFinite(v)) continue;
+        if (min === null || v < min) min = v;
+        if (max === null || v > max) max = v;
+        if (menorUv === null || v < menorUv) menorUv = v;
+        if (maiorUv === null || v > maiorUv) maiorUv = v;
+        const abs = Math.abs(v);
+        if (abs > picoUv) picoUv = abs;
       }
-      /* Um pedaço todo de lixo não vira zero — vira nada, e a linha salta. */
-      if (n === 0) continue;
 
-      const media = soma / n;
-      const segundosDesdeOInicioDaFaixa = (i - de) / frequenciaHz;
-      pontos.push({
-        x: segundosDesdeOInicioDaFaixa * MM_POR_SEGUNDO,
+      const x = ((i - de) / frequenciaHz) * MM_POR_SEGUNDO;
+
+      if (min === null || max === null) {
+        /* Buraco: a coluna existe no tempo certo, e a linha abre. */
+        colunas.push({ x, yMin: null, yMax: null });
+        continue;
+      }
+
+      /*
+       * `y` cresce para baixo no papel e a voltagem cresce para cima no ECG,
+       * daí o sinal trocado — e por isso o **máximo** em µV dá o **menor** `y`.
+       * Esquecer isto desenha o traçado de cabeça para baixo, e um ECG
+       * invertido parece um achado.
+       */
+      const yDoMax = linhaDeBase - max * MM_POR_MICROVOLT;
+      const yDoMin = linhaDeBase - min * MM_POR_MICROVOLT;
+
+      if (yDoMax < 0 || yDoMin > alturaMm) cortado = true;
+
+      colunas.push({
+        x,
         /*
-         * `y` cresce para baixo no papel, e a voltagem cresce para cima no
-         * ECG — daí o sinal trocado. Esquecer isto desenha o traçado de
-         * cabeça para baixo, e um ECG invertido parece um achado.
+         * Preso à faixa. Antes desta correcção o excesso era desenhado **por
+         * cima da faixa de cima**, e inventava onda numa faixa que não era a
+         * dela — medido com 2,5 mV numa faixa de 36 mm, que saía 7 mm acima do
+         * topo, por cima do cabeçalho.
          */
-        y: linhaDeBase - media * MM_POR_MICROVOLT,
+        yMin: Math.max(0, Math.min(alturaMm, yDoMax)),
+        yMax: Math.max(0, Math.min(alturaMm, yDoMin)),
       });
+      desenhaveis++;
     }
 
-    if (pontos.length > 0) {
+    if (colunas.length > 0) {
       faixas.push({
         inicioSegundos: de / frequenciaHz,
         duracaoSegundos: (ate - de) / frequenciaHz,
-        pontos,
+        colunas,
       });
     }
   }
 
-  return { faixas, larguraMm, alturaMm, duracaoSegundos, amostrasPorPonto };
+  /*
+   * **Nenhuma coluna desenhável é a mesma coisa que não haver traçado.**
+   *
+   * Uma amostra só, ou uma lista inteira de buracos, produzia antes um objecto
+   * não-nulo com faixas vazias — e o PDF, que só testava `!tracado`, imprimia a
+   * grelha e a linha da escala **sem traçado e sem aviso nenhum**.
+   */
+  if (desenhaveis < 2) return null;
+
+  /*
+   * **Uma reta não é um traçado.** Ver `AMPLITUDE_MINIMA_UV`: um sinal constante
+   * — a zeros ou a qualquer outro valor — desenhava três faixas de papel
+   * milimetrado com uma linha reta e a escala declarada, que em papel de ECG se
+   * lê como assistolia.
+   */
+  if (menorUv === null || maiorUv === null) return null;
+  if (maiorUv - menorUv < AMPLITUDE_MINIMA_UV) return null;
+
+  return {
+    faixas,
+    cortado,
+    picoMv: picoUv / 1000,
+    larguraMm,
+    alturaMm,
+    duracaoSegundos,
+    amostrasPorPonto,
+  };
 }
 
 /**
@@ -178,8 +284,20 @@ export function tracadoEmPapel(
  * conversão. Um traçado sem esta linha obriga quem o recebe a adivinhar — e,
  * pior, convida a medir com a escala errada.
  */
-export function frasePadraoDaEscala(frequenciaHz: number | null | undefined): string {
+export function frasePadraoDaEscala(
+  frequenciaHz: number | null | undefined,
+  /**
+   * A língua. O papel de um paciente brasileiro saía com o cabeçalho e a
+   * conclusão em português e **esta linha em inglês** — a linha que diz a quem
+   * recebe o papel que pode medi-lo com uma régua. Meio papel traduzido é pior
+   * do que nenhum: convida a ignorar a parte que não se lê.
+   */
+  idioma: "en" | "pt" = "en"
+): string {
   const hz = typeof frequenciaHz === "number" && frequenciaHz > 0 ? `${frequenciaHz} Hz` : "?";
+  if (idioma === "pt") {
+    return `Escala: ${MM_POR_SEGUNDO}mm/s, ${MM_POR_MILIVOLT}mm/mV · amostrado a ${hz}`;
+  }
   return `Scale: ${MM_POR_SEGUNDO}mm/s, ${MM_POR_MILIVOLT}mm/mV · sampled at ${hz}`;
 }
 

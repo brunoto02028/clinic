@@ -42,6 +42,8 @@ import {
   Pendencia,
 } from "@/lib/resumo-de-saude";
 import { BarraDeMeta } from "@/components/BarraDeMeta";
+import { ultimaLeitura, fraseDaUltimaLeitura } from "@/lib/quando-foi-lido";
+import { horaLocalDe } from "@/lib/ecg-lista";
 
 /** As cinco famílias. A ordem é a do corpo, e é estável de propósito. */
 const FAMILIAS = [
@@ -205,6 +207,35 @@ export default function SaudeScreen() {
           <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 13 }}>
             {dataPorExtenso()}
           </Text>
+
+          {/*
+            * **Até quando isto está actualizado.**
+            *
+            * Em 02/10/2026 o Bruno pôs as duas telas lado a lado: o nosso app
+            * dizia "Steps 182" e o da Withings "391 · 9:05 AM". Os dois
+            * números estavam certos — é o mesmo contador em dois instantes —,
+            * mas o nosso não dizia *quando*, e um número sem hora apresenta-se
+            * como **agora**.
+            *
+            * O nosso nunca pode ser agora: é sempre o da última sincronização.
+            */}
+          {(() => {
+            const frase = fraseDaUltimaLeitura(
+              ultimaLeitura((ligacoes.data ?? []) as any),
+              horaLocalDe
+            );
+            if (!frase) return null;
+            return (
+              <Text
+                variant="caption"
+                color={t.colors.textMuted}
+                style={{ fontSize: 11 }}
+                testID="quando-foi-lido"
+              >
+                {tr(lang, frase)}
+              </Text>
+            );
+          })()}
         </View>
 
         {/*

@@ -248,8 +248,11 @@ export function agruparPorIntervalo(
 export interface SinalDeEcg {
   /** Onde o aparelho estava, no código da Withings — `1` é pulso esquerdo. */
   posicao?: number | null;
-  /** As amostras do traçado, na unidade que eles mandarem. */
-  amostras: number[];
+  /**
+   * As amostras do traçado, em µV. **`null` é um buraco** — uma amostra que não
+   * veio —, e tem de continuar na lista: removê-la encurtaria o tempo.
+   */
+  amostras: Array<number | null>;
   /** Hz. Sem isto o traçado não tem escala de tempo, e sem escala não é um ECG. */
   frequencia: number | null;
   /** O que mais veio no corpo, para o primeiro contato real não perder nada. */
@@ -315,7 +318,24 @@ export async function sinalDoEcg(
    * guarda-se o corpo inteiro — descobrir o formato é metade do objetivo.
    */
   const cru = body?.signal ?? body?.ecg?.signal ?? body?.series?.signal ?? null;
-  const amostras = Array.isArray(cru) ? cru.filter((x: unknown) => typeof x === "number") : [];
+
+  /**
+   * Uma amostra que não é número vira **`null`**, e não desaparece.
+   *
+   * O filtro anterior removia-a da lista — e remover uma amostra **adianta
+   * tudo o que vem depois**, porque o tempo do traçado sai do índice. Medido em
+   * 02/10/2026: 299 amostras removidas de 9.000 encurtaram uma gravação de
+   * 30 s para 29,003 s, enquanto o papel continuava a declarar 300 Hz e
+   * 25 mm/s.
+   *
+   * Um intervalo RR medido à régua por cima desse buraco sai **curto**, e não
+   * há nada no papel que o denuncie. Um buraco explícito desenha-se como
+   * interrupção da linha; uma amostra apagada desenha-se como tempo que não
+   * existiu.
+   */
+  const amostras: Array<number | null> = Array.isArray(cru)
+    ? cru.map((x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null))
+    : [];
   const frequencia =
     typeof body?.sampling_frequency === "number"
       ? body.sampling_frequency

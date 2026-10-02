@@ -82,7 +82,7 @@ como se fosse falta de plano.
 | T-3 | O ECG dentro da página Heart, com a lista e a hora | T-2 | **feito** (02/10) |
 | T-4 | O hipnograma da noite, se a T-1 disser que vem | T-1 | pendente |
 | T-5 | A curva da frequência durante a noite | T-1 | pendente |
-| T-6 | O que faltar: dizer **porquê** na tela, em vez de esconder | T-1 | pendente |
+| T-6 | O que faltar: dizer **porquê** na tela, em vez de esconder | T-1 | pendente — **subiu de prioridade**, ver abaixo |
 | T-7 | A contrapartida de tudo isto no painel da clínica | T-2..T-6 | pendente |
 
 **A T-2 não espera pela T-1.** É um defeito provado e independente do plano da
@@ -94,6 +94,25 @@ defeito: o dia vem de `recordedAt.toISOString()`, que é **UTC**, então um ECG 
 
 O traçado propriamente dito é a **099 T-9**, que já existe e está à espera da
 mesma medição — a T-1 daqui fecha-a também.
+
+## ⚠️ Porque a T-6 deixou de ser um extra
+
+O painel de programador, lido com sessão em 02/10, mostra que **o ECG e a
+fibrilhação têm ✗ no nosso plano** — e ✗ também no Enterprise. Só o *Advanced
+Biomarkers* os tem.
+
+**E nós recebemos os dois assim mesmo.** A tabela descreve o direito
+contratual; a API, hoje, não o está a impedir.
+
+O modo como eles retiram dado fora do plano é sempre o mesmo: **o campo deixa de
+vir, sem erro**. Logo o que temos hoje pode desaparecer sem aviso, e a tela, sem
+a T-6, mostraria um buraco indistinguível de *"o paciente não gravou nenhum"*.
+
+Há ainda uma data: **a partir de 12/10/2026**, qualquer paciente que crie conta
+Withings depois disso precisa de **Withings+** para ligar o relógio a uma app do
+plano gratuito. Os actuais ficam como estão.
+
+Nada disto é código. É o que torna a T-6 a tarefa que impede a tela de mentir.
 
 ## Suposições — preciso da sua validação
 

@@ -249,8 +249,24 @@ describe("o sinal do ECG: os três desfechos", () => {
     await expect(sinalDoEcg("tok", "1")).rejects.toThrow("503");
   });
 
-  it("descarta valores que não são número, sem descartar o zero", async () => {
+  it("**o que não é número vira buraco, e não desaparece**", async () => {
+    /*
+     * Apagar a amostra inválida adianta tudo o que vem depois, porque o tempo
+     * de um ECG sai do **índice** da amostra, não de um carimbo por amostra.
+     * Medido em 02/10/2026: 299 amostras removidas de 9.000 encurtaram uma
+     * gravação de 30 s para 29,003 s, com o papel a continuar a declarar
+     * 300 Hz. Um RR medido à régua por cima do buraco sai curto, e nada no
+     * papel denuncia.
+     *
+     * O `null` é o buraco. O desenho interrompe a linha ali — ver
+     * `lib/ecg-tracado.ts`.
+     */
     resposta = { signal: [0, null, 5, "x", -3] };
-    expect((await sinalDoEcg("tok", "1")).amostras).toEqual([0, 5, -3]);
+    expect((await sinalDoEcg("tok", "1")).amostras).toEqual([0, null, 5, null, -3]);
+  });
+
+  it("**o zero não é buraco** — é uma amostra válida no meio da linha", async () => {
+    resposta = { signal: [0, 0, 0] };
+    expect((await sinalDoEcg("tok", "1")).amostras).toEqual([0, 0, 0]);
   });
 });

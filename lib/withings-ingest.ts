@@ -7,6 +7,7 @@ import {
   type WithingsBpReading,
 } from "@/lib/withings";
 import { ignoraPressao } from "@/lib/withings-routing";
+import { temTracadoPorGravacao } from "@/lib/ecg-tem-sinal";
 
 /**
  * Writing Withings data into the models that already hold it.
@@ -152,6 +153,39 @@ export async function saveBloodPressure(
 const DIAS_DE_INTRADAY = 3;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Quantos traçados se vão buscar por passagem.
+ *
+ * O limite publicado é de **120 pedidos por minuto por `client_id`** — nosso, não
+ * do paciente: é partilhado por todos os que sincronizam ao mesmo tempo. Um
+ * paciente com cem gravações antigas sem traçado estouraria o limite sozinho na
+ * primeira passagem, e o 601 resultante falharia também a chamada de quem viesse
+ * atrás.
+ *
+ * Vinte traz os dois ECG do Bruno de uma vez, e o resto vem na passagem
+ * seguinte.
+ */
+const MAXIMO_DE_SINAIS_POR_PASSAGEM = 20;
+
+/**
+ * Um número que uma coluna `Int?` aceita — ou `null`.
+ *
+ * Existe porque **o Prisma recusa a escrita inteira** quando um campo `Int`
+ * recebe `300.5`, e aqui o campo viajava no mesmo `update` que as 9.000
+ * amostras do ECG. O resultado: o `catch` registava "ERRO EXPLICITO", o traçado
+ * nunca era guardado, e a condição que decide pedir o sinal é *"ainda não o
+ * tenho"* — logo a mesma gravação era pedida em **todas** as sincronizações
+ * seguintes, para sempre, sem nada na tela a dizer que faltava.
+ *
+ * Um valor fora do alcance de um inteiro de 32 bits é recusado pela mesma razão.
+ */
+function inteiroOuNulo(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const n = Math.round(v);
+  if (Math.abs(n) > 2_147_483_647) return null;
+  return n;
+}
 
 /** `YYYY-MM-DD` no fuso local, que é o dia que a pessoa viveu. */
 function ymd(d: Date): string {
@@ -508,6 +542,8 @@ export async function ingestWithings(
        * guarda-se o instante, e quem mostra agrupa no seu próprio fuso.
        */
       const ecg = await withingsEcg(token, since, opts.until);
+      let sinaisBuscados = 0;
+      let avisouDoTecto = false;
       for (const rec of ecg) {
         const dataDate = rec.recordedAt.toISOString().split("T")[0];
         const { traduzirClassificacao } = await import("@/lib/ecg-record");
@@ -518,7 +554,7 @@ export async function ingestWithings(
               ? null
               : Number(rec.afibClassification);
 
-        const gravado = await prisma.ecgRecording.upsert({
+        await prisma.ecgRecording.upsert({
           where: {
             userId_provider_recordedAt: {
               userId,
@@ -549,11 +585,18 @@ export async function ingestWithings(
             conclusao: traduzirClassificacao(rec.afibClassification),
             signalId: rec.signalId,
           },
-          select: { signal: true },
+          select: { id: true },
         });
         ecgRecords++;
-        /* Já temos as amostras desta gravação? Então não se pedem outra vez. */
-        const jaTemSinal = gravado.signal !== null;
+        /*
+         * Já temos as amostras desta gravação? Então não se pedem outra vez.
+         *
+         * A pergunta é um booleano e custava as **9.000 amostras**: o
+         * `select: { signal: true }` trazia ~40 KB do banco por gravação, a cada
+         * passagem, só para os comparar com `null` — numa passagem que existe
+         * para evitar trabalho. Ver `lib/ecg-tem-sinal.ts`.
+         */
+        const jaTemSinal = await temTracadoPorGravacao(userId, PROVEDOR, rec.recordedAt);
 
         /*
          * **O traçado, na linha da gravação a que pertence** (099 T-9).
@@ -582,7 +625,30 @@ export async function ingestWithings(
          * O log continua a distinguir os três desfechos. "Vazio" e "sem direito"
          * continuam a ser a mesma resposta na rede, e levam a ações opostas.
          */
-        if (rec.signalId && !jaTemSinal) {
+        /*
+         * **Um tecto por passagem** — o limite deles é por minuto, não por
+         * paciente.
+         *
+         * Sem isto, um paciente com cem gravações sem traçado produzia cem
+         * chamadas em rajada na primeira sincronização, e o limite publicado é de
+         * 120 por minuto por `client_id` — partilhado por **todos** os pacientes
+         * a sincronizar ao mesmo tempo. O 601 que isso provoca não falha só o
+         * traçado: falha a chamada seguinte de quem vier atrás.
+         *
+         * O que ficar de fora vem na próxima passagem, porque a condição é
+         * *"ainda não tenho o sinal"*. Vinte por passagem traz os dois ECG do
+         * Bruno de uma vez e deixa folga para os outros.
+         */
+        if (rec.signalId && !jaTemSinal && sinaisBuscados >= MAXIMO_DE_SINAIS_POR_PASSAGEM) {
+          if (!avisouDoTecto) {
+            avisouDoTecto = true;
+            console.log(
+              `[withings-ingest] ECG: ${MAXIMO_DE_SINAIS_POR_PASSAGEM} tracados nesta passagem — ` +
+                `o resto vem na proxima (limite de 120 pedidos/min por client_id)`
+            );
+          }
+        } else if (rec.signalId && !jaTemSinal) {
+          sinaisBuscados++;
           try {
             const { sinalDoEcg } = await import("@/lib/withings-series");
             const sinal = await sinalDoEcg(token, rec.signalId);
@@ -597,8 +663,21 @@ export async function ingestWithings(
                 },
                 data: {
                   signal: sinal.amostras,
-                  samplingHz: sinal.frequencia ?? null,
-                  wearPosition: sinal.posicao ?? null,
+                  /*
+                   * **Arredondado de propósito.** A coluna é `Int?`, e uma
+                   * frequência fraccionada fazia o Prisma recusar a escrita
+                   * inteira: o `catch` logo abaixo registava "ERRO EXPLICITO", o
+                   * traçado nunca era guardado, e como a condição de pedir é
+                   * "ainda nao tenho o sinal", a mesma gravação era pedida outra
+                   * vez em **todas** as sincronizações seguintes. Para sempre, e
+                   * sem nada na tela a dizer que faltava.
+                   *
+                   * Perder meio hertz desloca o papel em menos de 0,2% — e o
+                   * papel declara a frequência que usou, logo continua coerente
+                   * com a régua de quem o lê. Perder o traçado não tem conserto.
+                   */
+                  samplingHz: inteiroOuNulo(sinal.frequencia),
+                  wearPosition: inteiroOuNulo(sinal.posicao),
                 },
               });
               console.log(
