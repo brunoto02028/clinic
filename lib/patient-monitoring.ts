@@ -80,6 +80,21 @@ export function resumirSerie(
 
 export interface DadosDeMonitoramento {
   periodo: { de: string; ate: string; dias: number };
+  /**
+   * A série diária de cada sinal, com os buracos onde eles estão (118 T-8).
+   *
+   * Existe para o papel poder desenhar a linha. Quem desenha decide o que fazer
+   * com os buracos, e a resposta é **não os atravessar**.
+   */
+  series?: Record<string, Array<{ dia: string; valor: number | null }>>;
+  /** As fases da última noite que as trouxe, ou `null`. */
+  fasesDoSono?: {
+    dia: string;
+    profundo: number;
+    leve: number;
+    rem: number;
+    acordado: number;
+  } | null;
   sinais: {
     sono: ResumoDaMetrica;
     fcRepouso: ResumoDaMetrica;
@@ -185,6 +200,46 @@ export async function getMonitoringData(
   };
 
   /**
+   * **A série diária, ao lado do resumo** (118 T-8).
+   *
+   * Ela era lida, resumida num número e deitada fora. O papel mostrava *"54
+   * bpm"* e não tinha como mostrar **o que mudou** — que é a pergunta que leva
+   * alguém a um médico, e o que o app do aparelho desenha.
+   *
+   * Vai crua: com os buracos onde eles estão. Quem desenha é que decide o que
+   * fazer com eles, e a resposta é não os atravessar.
+   */
+  const series = {
+    sono: serieDaMetrica(pontos as any[], "sleepDuration"),
+    fcRepouso: serieDaMetrica(pontos as any[], "restingHr"),
+    hrv: serieDaMetrica(pontos as any[], "hrv"),
+    spo2: serieDaMetrica(pontos as any[], "spo2"),
+    passos: serieDaMetrica(pontos as any[], "steps"),
+  };
+
+  /**
+   * As fases da **última noite com fases**.
+   *
+   * Sete horas com uma de sono profundo e sete com três são noites diferentes, e
+   * o total de minutos não as distingue.
+   */
+  const noites = (pontos as any[])
+    .filter((p) => p.dataType === "SLEEP")
+    .sort((a, b) => String(b.dataDate).localeCompare(String(a.dataDate)));
+  const comFases = noites.find(
+    (n) => [n.deepMinutes, n.lightMinutes, n.remMinutes, n.awakeMinutes].some((v) => typeof v === "number" && v > 0)
+  );
+  const fasesDoSono = comFases
+    ? {
+        dia: String(comFases.dataDate),
+        profundo: Number(comFases.deepMinutes) || 0,
+        leve: Number(comFases.lightMinutes) || 0,
+        rem: Number(comFases.remMinutes) || 0,
+        acordado: Number(comFases.awakeMinutes) || 0,
+      }
+    : null;
+
+  /**
    * O ECG é lista, não média.
    *
    * Uma "média de conclusões" não existe: cada registro é um evento, e o que
@@ -201,6 +256,8 @@ export async function getMonitoringData(
 
   return {
     periodo: { de: desdeStr, ate: new Date().toISOString().split("T")[0], dias },
+    series,
+    fasesDoSono,
     sinais,
     // Uma seção de sinais com cinco traços é pior que nenhuma seção.
     temSinais: Object.values(sinais).some((m) => m.dias > 0),

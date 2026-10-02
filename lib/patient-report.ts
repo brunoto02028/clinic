@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/db";
 import { getMonitoringData, type DadosDeMonitoramento, type ResumoDaMetrica } from "@/lib/patient-monitoring";
+import { graficoDeLinha, barraDasFases } from "@/lib/grafico-de-linha";
 import { TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
 
 export async function getPatientReportData(patientId: string, opts: { days?: number } = {}) {
@@ -78,6 +79,50 @@ const fmtDate = (d: any, idioma: "en" | "pt" = "en") =>
       })
     : "—";
 
+/**
+ * A triagem arrumada em grupos (118 T-8).
+ *
+ * > *"Veja como deixar a triagem mais leve sem mexer nas que os pacientes já
+ * > fizeram"* — Bruno
+ *
+ * **Nada do que a pessoa respondeu sai.** O que muda é a forma: era uma tabela
+ * de até vinte linhas, a secção mais pesada da folha e provavelmente a menos
+ * consultada. Passa a ser rótulo pequeno por cima do valor, em colunas, com o
+ * fio a separar grupos em vez de factos.
+ *
+ * Um campo sem resposta continua a não aparecer, como já acontecia — e um grupo
+ * que fique todo vazio também não.
+ */
+const grupos = (
+  blocos: Array<{
+    titulo: string;
+    /** `[rótulo, valor, ocupaALinhaToda?]` */
+    campos: Array<[string, any, boolean?]>;
+    semTitulo?: boolean;
+  }>
+) => {
+  const feitos = blocos
+    .map((b) => {
+      const campos = b.campos
+        .filter(([, valor]) => valor !== null && valor !== undefined && String(valor).trim() !== "")
+        .map(
+          ([rotulo, valor, longo]) =>
+            `<div class="campo${longo ? " longo" : ""}">` +
+            `<span class="rotulo">${esc(rotulo)}</span>` +
+            `<span class="texto">${esc(String(valor))}</span>` +
+            `</div>`
+        );
+      if (campos.length === 0) return "";
+      return (
+        `<div class="grupo">` +
+        (b.semTitulo ? "" : `<h3>${esc(b.titulo)}</h3>`) +
+        `<div class="campos">${campos.join("")}</div></div>`
+      );
+    })
+    .filter(Boolean);
+  return feitos.length ? `<div class="grupos">${feitos.join("")}</div>` : "";
+};
+
 const row = (label: string, value: any) =>
   value ? `<tr><td class="lbl">${esc(label)}</td><td>${esc(value)}</td></tr>` : "";
 
@@ -112,6 +157,8 @@ function linhaDeSinal(
   rotulo: string,
   m: ResumoDaMetrica,
   unidade: string,
+  /** A série diária, para a linha. Sem ela, mostra-se só o número. */
+  serie?: Array<{ dia: string; valor: number | null }> | null,
   idioma: IdiomaDoRelatorio = "en"
 ): string {
   const t = P[idioma];
@@ -129,9 +176,25 @@ function linhaDeSinal(
    * médico, o número é o que tem de saltar.
    */
   const numero = m.atual !== null ? String(m.atual) : "—";
+
+  /*
+   * **A linha, debaixo do número** (118 T-8). Um número sozinho não responde à
+   * pergunta que leva alguém ao médico — *o que mudou*.
+   *
+   * `null` quer dizer que não há o que desenhar, e aí **não se desenha caixa
+   * nenhuma**: um gráfico vazio com eixos lê-se como "medimos e deu isto",
+   * quando o que houve foi não haver medida.
+   */
+  const g = serie ? graficoDeLinha(serie) : null;
+  const linha = g
+    ? `<span class="linha">${g.svg}</span>
+       <span class="extremos"><span>${esc(String(g.minimo))}</span><span>${esc(String(g.maximo))}</span></span>`
+    : "";
+
   return `<div class="metrica">
     <span class="rotulo">${esc(rotulo)}</span>
     <span class="valor">${esc(numero)}${unidade.trim() ? `<span class="unidade">${esc(unidade.trim())}</span>` : ""}</span>
+    ${linha}
     <span class="nota">${mudanca ? `<span class="mudanca">${esc(mudanca)}</span> · ` : ""}${esc(t.diasComDados(m.dias))}</span>
   </div>`;
 }
@@ -192,6 +255,9 @@ const P = {
     gerado: "Generated",
     paciente: "Patient Information",
     triagem: "Medical Screening — Patient Reported",
+    aQueixa: "What brought you in",
+    oDiaADia: "Day to day",
+    oHistorico: "History",
     postural: "Biomechanical / Postural Assessment",
     pontuacao: "Overall score",
     recomendacoes: "Recommendations",
@@ -202,6 +268,11 @@ const P = {
     comentariosClinico: "Clinician comments",
     sinais: (dias: number) => `Signs — last ${dias} days`,
     sono: "Sleep",
+    profundo: "Deep",
+    leve: "Light",
+    rem: "REM",
+    acordado: "Awake",
+    ultimaNoite: "Sleep stages, night of",
     fcRepouso: "Resting heart rate",
     hrv: "HRV",
     spo2: "SpO2",
@@ -286,6 +357,9 @@ const P = {
     gerado: "Gerado em",
     paciente: "Dados do paciente",
     triagem: "Triagem de saúde — informada pelo paciente",
+    aQueixa: "O que trouxe você",
+    oDiaADia: "No dia a dia",
+    oHistorico: "Histórico",
     postural: "Avaliação biomecânica / postural",
     pontuacao: "Pontuação geral",
     recomendacoes: "Recomendações",
@@ -297,6 +371,11 @@ const P = {
     comentariosClinico: "Comentários do clínico",
     sinais: (dias: number) => `Sinais — últimos ${dias} dias`,
     sono: "Sono",
+    profundo: "Profundo",
+    leve: "Leve",
+    rem: "REM",
+    acordado: "Acordado",
+    ultimaNoite: "Fases do sono, noite de",
     fcRepouso: "Frequência cardíaca em repouso",
     hrv: "VFC",
     spo2: "SpO2",
@@ -349,19 +428,51 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
 
   if (mon.temSinais) {
     const linhas = [
-      linhaDeSinal(t.sono, mon.sinais.sono, " min", idioma),
-      linhaDeSinal(t.fcRepouso, mon.sinais.fcRepouso, " bpm", idioma),
-      linhaDeSinal(t.hrv, mon.sinais.hrv, " ms", idioma),
-      linhaDeSinal(t.spo2, mon.sinais.spo2, "%", idioma),
-      linhaDeSinal(t.passos, mon.sinais.passos, "", idioma),
+      linhaDeSinal(t.sono, mon.sinais.sono, " min", mon.series?.sono, idioma),
+      linhaDeSinal(t.fcRepouso, mon.sinais.fcRepouso, " bpm", mon.series?.fcRepouso, idioma),
+      linhaDeSinal(t.hrv, mon.sinais.hrv, " ms", mon.series?.hrv, idioma),
+      linhaDeSinal(t.spo2, mon.sinais.spo2, "%", mon.series?.spo2, idioma),
+      linhaDeSinal(t.passos, mon.sinais.passos, "", mon.series?.passos, idioma),
     ].join("");
-    partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><div class="metricas">${linhas}</div></div>`);
+    /*
+     * As fases da última noite que as trouxe. Sete horas com uma de profundo e
+     * sete com três são noites diferentes, e o total de minutos não as
+     * distingue — é o que o aparelho entrega e o que o app deles desenha.
+     */
+    const f = (mon as any).fasesDoSono;
+    const cores = { profundo: "#3A4150", leve: "#7E98A8", rem: "#4F7361", acordado: "#CDC7BE" };
+    const barra = f
+      ? barraDasFases([
+          { rotulo: t.profundo, minutos: f.profundo, cor: cores.profundo },
+          { rotulo: t.leve, minutos: f.leve, cor: cores.leve },
+          { rotulo: t.rem, minutos: f.rem, cor: cores.rem },
+          { rotulo: t.acordado, minutos: f.acordado, cor: cores.acordado },
+        ])
+      : null;
+    const legenda = barra
+      ? `<div class="fases">${barra}<div class="legenda">` +
+        ([
+          [t.profundo, f.profundo, cores.profundo],
+          [t.leve, f.leve, cores.leve],
+          [t.rem, f.rem, cores.rem],
+          [t.acordado, f.acordado, cores.acordado],
+        ] as Array<[string, number, string]>)
+          .filter(([, min]) => min > 0)
+          .map(
+            ([rot, min, cor]) =>
+              `<span><i style="background:${cor}"></i>${esc(rot)} ${Math.round(min)} min</span>`
+          )
+          .join("") +
+        `</div><p class="meta">${esc(t.ultimaNoite)} ${esc(f.dia)}</p></div>`
+      : "";
+
+    partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><div class="metricas">${linhas}</div>${legenda}</div>`);
   }
 
   if (mon.pressao.leituras > 0) {
     partes.push(`<div class="section"><h2>${t.pressao}</h2><div class="metricas">
-      ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", idioma)}
-      ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", idioma)}
+      ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", null, idioma)}
+      ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", null, idioma)}
     </div>
     <table>
       ${mon.pressao.ultima ? row(t.maisRecente, `${mon.pressao.ultima.systolic}/${mon.pressao.ultima.diastolic} mmHg ${t.em} ${fmtDate(mon.pressao.ultima.measuredAt, idioma)}`) : ""}
@@ -396,8 +507,8 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
       .map((c) => `<li>${esc(c.dia)} — ${t.dor.toLowerCase()} ${c.dor}/10, ${t.humor.toLowerCase()} ${c.humor}/5</li>`)
       .join("");
     partes.push(`<div class="section"><h2>${t.comoSeSentiu}</h2><div class="metricas">
-      ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", idioma)}
-      ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", idioma)}
+      ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", null, idioma)}
+      ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", null, idioma)}
     </div>
     <table>${row(t.checkins, String(mon.comoSeSentiu.registros))}</table>
     <h3>${t.maisRecente}</h3><ul>${ultimos}</ul></div>`);
@@ -690,6 +801,63 @@ export function renderPatientReportHTML(
   }
   .metrica .mudanca { color: var(--ink-2); }
 
+  /* A linha fica entre o número e a nota: é o que mudou, não um enfeite. */
+  .metrica .linha { display: block; margin: 6px 0 1px; }
+  .metrica .linha svg { display: block; }
+  .metrica .extremos {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* As fases da noite: uma barra, com a legenda por baixo. */
+  .fases { margin-top: 4px; }
+  .fases svg { display: block; border-radius: 3px; overflow: hidden; }
+  .fases .legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 7px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .fases .legenda span { display: inline-flex; align-items: center; gap: 5px; }
+  .fases .legenda i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /*
+   * **A triagem, arrumada em grupos** — nada do que a pessoa respondeu sai.
+   *
+   * Era uma tabela de até vinte linhas, a secção mais pesada da folha e
+   * provavelmente a menos consultada. Agora é rótulo pequeno por cima do valor,
+   * em colunas, e o fio separa grupos em vez de factos.
+   */
+  .grupos { display: grid; gap: 16px; }
+  .grupo + .grupo { border-top: 1px solid var(--line); padding-top: 14px; }
+  .grupo h3 { margin: 0 0 10px; }
+  .campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px 20px;
+  }
+  .campo .rotulo {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1px;
+  }
+  .campo .texto { display: block; font-size: 13.5px; color: var(--ink); }
+  /* Uma resposta longa ocupa a linha toda, em vez de espremer as vizinhas. */
+  .campo.longo { grid-column: 1 / -1; }
+
   /* ─── tabelas: só linha de base, sem grade ───────────────────── */
   table { border-collapse: collapse; width: 100%; margin: 2px 0; }
   td, th {
@@ -790,6 +958,8 @@ export function renderPatientReportHTML(
     }
     .metrica .valor { font-size: 21px; }
     h1 { font-size: 24px; }
+    /* O traço fino some numa impressora; no papel ele engrossa. */
+    .metrica .linha svg path { stroke-width: 2; }
   }
 </style>
 </head>
@@ -817,28 +987,47 @@ ${printBar}
 ${ms ? `
 <div class="section">
   <h2>${t.triagem}</h2>
-  <table>
-    ${row(t.queixa, ms.chiefComplaint)}
-    ${row(t.localDaDor, ms.painLocation)}
-    ${row(t.notaDaDor, ms.painScore != null ? `${ms.painScore}/10` : null)}
-    ${row(t.duracaoDaDor, ms.painDuration)}
-    ${row(t.tipoDeDor, ms.painType)}
-    ${row(t.piora, ms.painAggravating)}
-    ${row(t.melhora, ms.painRelieving)}
-    ${row(t.limitacoes, ms.functionalLimitations)}
-    ${row(t.ocupacao, ms.occupation)}
-    ${row(t.nivelDeAtividade, ms.activityLevel)}
-    ${row(t.passatempos, ms.hobbiesSports)}
-    ${row(t.historicoCirurgico, ms.surgicalHistory)}
-    ${row(t.outrasCondicoes, ms.otherConditions)}
-    ${row(t.medicacao, ms.currentMedications)}
-    ${row(t.alergias, ms.allergies)}
-    ${row(t.reabilitacaoAnterior, ms.previousPhysioDetails)}
-    ${row(t.metasDoTratamento, ms.treatmentGoals)}
-    ${row(t.alturaPeso, [ms.height, ms.weight].filter(Boolean).join(" / ") || null)}
-    ${row(t.fumante, ms.smoker ? t.sim : null)}
-    ${row(t.medicoDeFamilia, ms.gpDetails)}
-  </table>
+  ${grupos([
+    {
+      titulo: t.aQueixa,
+      campos: [
+        [t.queixa, ms.chiefComplaint, true],
+        [t.localDaDor, ms.painLocation],
+        [t.notaDaDor, ms.painScore != null ? `${ms.painScore}/10` : null],
+        [t.duracaoDaDor, ms.painDuration],
+        [t.tipoDeDor, ms.painType],
+        [t.piora, ms.painAggravating, true],
+        [t.melhora, ms.painRelieving, true],
+        [t.limitacoes, ms.functionalLimitations, true],
+      ],
+    },
+    {
+      titulo: t.oDiaADia,
+      campos: [
+        [t.ocupacao, ms.occupation],
+        [t.nivelDeAtividade, ms.activityLevel],
+        [t.passatempos, ms.hobbiesSports],
+        [t.alturaPeso, [ms.height, ms.weight].filter(Boolean).join(" / ") || null],
+        [t.fumante, ms.smoker ? t.sim : null],
+      ],
+    },
+    {
+      titulo: t.oHistorico,
+      campos: [
+        [t.historicoCirurgico, ms.surgicalHistory],
+        [t.outrasCondicoes, ms.otherConditions],
+        [t.medicacao, ms.currentMedications],
+        [t.alergias, ms.allergies],
+        [t.reabilitacaoAnterior, ms.previousPhysioDetails, true],
+        [t.medicoDeFamilia, ms.gpDetails],
+      ],
+    },
+    {
+      titulo: t.metasDoTratamento,
+      campos: [[t.metasDoTratamento, ms.treatmentGoals, true]],
+      semTitulo: true,
+    },
+  ])}
   ${redFlags.length ? `<h3 style="color:#b91c1c">Red Flags Reported</h3><ul class="redflags">${redFlags.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
 </div>` : ""}
 
