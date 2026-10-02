@@ -189,6 +189,16 @@ async function upsertSeries(
   });
 }
 
+/**
+ * O nome do provedor, **em maiúsculas**.
+ *
+ * É assim que a `WearableConnection` o guarda. Escrevi "withings" minúsculo no
+ * `EcgRecording` quando o criei, e isso partia a chave única em dois: a
+ * ingestão gravava `withings` e o backfill `WITHINGS`, para a mesma gravação —
+ * duas linhas onde devia haver uma, e sem nada a apontar o erro.
+ */
+const PROVEDOR = "WITHINGS";
+
 async function upsertPoint(
   userId: string,
   connectionId: string,
@@ -486,14 +496,14 @@ export async function ingestWithings(
           where: {
             userId_provider_recordedAt: {
               userId,
-              provider: "withings",
+              provider: PROVEDOR,
               recordedAt: rec.recordedAt,
             },
           },
           create: {
             userId,
             connectionId: connection.id,
-            provider: "withings",
+            provider: PROVEDOR,
             recordedAt: rec.recordedAt,
             heartRate: rec.heartRate ?? null,
             afibRaw: Number.isFinite(afibRaw as number) ? (afibRaw as number) : null,

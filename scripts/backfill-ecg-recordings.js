@@ -70,7 +70,13 @@ async function main() {
       continue;
     }
 
-    const provider = p.provider || "withings";
+    /*
+     * Sempre em maiúsculas, como a `WearableConnection` guarda. A primeira
+     * versão usava `p.provider || "withings"`, e a ingestão usava `"withings"`
+     * — a mesma gravação dava duas linhas, uma por grafia, e a chave única não
+     * tinha como as juntar.
+     */
+    const provider = String(p.provider || "WITHINGS").toUpperCase();
     const existente = await prisma.ecgRecording.findUnique({
       where: { userId_provider_recordedAt: { userId: p.userId, provider, recordedAt: quando } },
       select: { id: true },
@@ -96,9 +102,45 @@ async function main() {
     trazidos++;
   }
 
+  /*
+   * Junta o que a grafia partiu. Entre 02/10 04:20 e a correção, a ingestão
+   * gravou `withings` e este script `WITHINGS` — duas linhas para a mesma
+   * gravação. A de minúsculas vai embora quando existe a gémea; quando não
+   * existe, é promovida em vez de apagada, senão perdia-se a gravação.
+   */
+  const minusculas = await prisma.ecgRecording.findMany({
+    where: { provider: { not: "WITHINGS" } },
+    select: { id: true, userId: true, provider: true, recordedAt: true },
+  });
+  let juntadas = 0;
+  let promovidas = 0;
+  for (const r of minusculas) {
+    const gemea = await prisma.ecgRecording.findUnique({
+      where: {
+        userId_provider_recordedAt: {
+          userId: r.userId,
+          provider: r.provider.toUpperCase(),
+          recordedAt: r.recordedAt,
+        },
+      },
+      select: { id: true },
+    });
+    if (gemea) {
+      await prisma.ecgRecording.delete({ where: { id: r.id } });
+      juntadas++;
+    } else {
+      await prisma.ecgRecording.update({
+        where: { id: r.id },
+        data: { provider: r.provider.toUpperCase() },
+      });
+      promovidas++;
+    }
+  }
+
   console.log(
     `[backfill-ecg] pontos de ECG: ${pontos.length} | trazidos: ${trazidos} | ` +
-      `já estavam: ${jaLa} | sem instante no payload: ${semInstante}`
+      `já estavam: ${jaLa} | sem instante no payload: ${semInstante} | ` +
+      `grafia juntada: ${juntadas} | promovidas: ${promovidas}`
   );
 }
 
