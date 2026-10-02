@@ -45,7 +45,12 @@ export async function POST(request: NextRequest) {
         : null;
 
       const name = patient ? `${patient.firstName} ${patient.lastName}` : "Test Patient";
-      const email = patient?.email || (session.user as any).email;
+      // **Nunca o endereço do paciente.** Isto é um botão de diagnóstico
+      // rotulado "simular", e com `patientId` no corpo ele escrevia para a
+      // caixa de entrada da pessoa de verdade — um teste que vira mensagem
+      // é uma armadilha, não uma ferramenta (104, 02/10/2026). Os dados do
+      // paciente continuam preenchendo as variáveis; só o destino muda.
+      const email = (session.user as any).email;
 
       const sent = await sendTemplatedEmail("WELCOME", email, {
         patientName: name,
@@ -68,7 +73,12 @@ export async function POST(request: NextRequest) {
         : null;
 
       const name = patient?.firstName || "Test Patient";
-      const email = patient?.email || (session.user as any).email;
+      // **Nunca o endereço do paciente.** Isto é um botão de diagnóstico
+      // rotulado "simular", e com `patientId` no corpo ele escrevia para a
+      // caixa de entrada da pessoa de verdade — um teste que vira mensagem
+      // é uma armadilha, não uma ferramenta (104, 02/10/2026). Os dados do
+      // paciente continuam preenchendo as variáveis; só o destino muda.
+      const email = (session.user as any).email;
 
       const sent = await sendTemplatedEmail("SCREENING_RECEIVED", email, {
         patientName: name,
@@ -90,7 +100,12 @@ export async function POST(request: NextRequest) {
         : null;
 
       const name = patient ? `${patient.firstName} ${patient.lastName}` : "Test Patient";
-      const email = patient?.email || (session.user as any).email;
+      // **Nunca o endereço do paciente.** Isto é um botão de diagnóstico
+      // rotulado "simular", e com `patientId` no corpo ele escrevia para a
+      // caixa de entrada da pessoa de verdade — um teste que vira mensagem
+      // é uma armadilha, não uma ferramenta (104, 02/10/2026). Os dados do
+      // paciente continuam preenchendo as variáveis; só o destino muda.
+      const email = (session.user as any).email;
 
       const sent = await sendTemplatedEmail(templateSlug, email, {
         patientName: name,

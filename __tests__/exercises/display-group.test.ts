@@ -9,13 +9,22 @@
 
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
 jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
-jest.mock("@/lib/notify-patient", () => ({ notifyPatient: jest.fn() }));
+// `podeEnviarAoPaciente` (104) é o portão, e a rota o chama antes de avisar.
+// Precisa ser o de verdade: substituí-lo por um `jest.fn()` apagaria
+// justamente a regra que estes testes agora têm de respeitar.
+jest.mock("@/lib/notify-patient", () => ({
+  ...jest.requireActual("@/lib/notify-patient"),
+  notifyPatient: jest.fn(),
+}));
 jest.mock("@/lib/db", () => ({
   prisma: {
     user: { findFirst: jest.fn() },
     exerciseFolder: { findFirst: jest.fn(), findMany: jest.fn() },
     exercise: { findMany: jest.fn() },
     exercisePrescription: { findMany: jest.fn(), create: jest.fn() },
+    // Lidos pelo portão de envio: o teto por hora e o registro da decisão.
+    patientOutboundEmail: { count: jest.fn().mockResolvedValue(0) },
+    systemLog: { count: jest.fn().mockResolvedValue(0), create: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn(),
   },
 }));

@@ -97,6 +97,17 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
   // edit and remove — adding meant leaving the patient's record for the
   // library and navigating back, so a folder went across one video at a time.
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  /**
+   * Avisar o paciente é um segundo ato, e nasce **desmarcado** (104).
+   *
+   * Prescrever mandava e-mail sempre. Montar um programa, trocar um
+   * exercício, repor o que a pessoa ainda faz — cada salvada chegava na
+   * caixa dela. A regra do Bruno em 02/10/2026: *"nenhum botao é pra
+   * disparar na hora sem minha confirmação"*.
+   */
+  const [avisarPaciente, setAvisarPaciente] = useState(false);
+
   const [tree, setTree] = useState<FolderNode[]>([]);
   const [loadingTree, setLoadingTree] = useState(false);
   const [chosenFolder, setChosenFolder] = useState<{ id: string; name: string; count: number } | null>(null);
@@ -188,6 +199,9 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
     const parts = [`${data.count} exercise${data.count === 1 ? "" : "s"} prescribed`];
     if (data.restored > 0) parts.push(`${data.restored} back from an archived plan`);
     if (data.skipped > 0) parts.push(`${data.skipped} already prescribed`);
+    // Dizer se o paciente foi avisado, e não deixar a pessoa adivinhar. O
+    // padrão é não avisar, então o silêncio aqui seria ambíguo.
+    parts.push(data.notified?.success ? "patient told" : "patient not told");
     toast({ description: `${label}: ${parts.join(", ")}.` });
   };
 
@@ -224,6 +238,7 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           exercises: [{ exerciseId: escolhido.id }],
           frequency: umaFrequencia.trim() || undefined,
           notes: umaNota.trim() || undefined,
+          notify: avisarPaciente,
         }),
       });
       const data = await res.json();
@@ -256,6 +271,7 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           folderId: chosenFolder.id,
           frequency: folderFrequency || null,
           notes: folderNotes || null,
+          notify: avisarPaciente,
         }),
       });
       const data = await res.json();
@@ -320,6 +336,7 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           })),
           frequency: folderFrequency || null,
           notes: folderNotes || null,
+          notify: avisarPaciente,
         }),
       });
       const data = await res.json();
@@ -537,6 +554,8 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           </div>
         )}
 
+        <CaixaDeAviso marcada={avisarPaciente} aoMudar={setAvisarPaciente} />
+
         <DialogFooter>
           {browsing ? (
             <>
@@ -649,6 +668,8 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
             />
           </div>
         )}
+
+        <CaixaDeAviso marcada={avisarPaciente} aoMudar={setAvisarPaciente} />
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setUmAberto(false)} disabled={prescribing}>
@@ -789,6 +810,39 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * A caixa que decide se o paciente fica sabendo.
+ *
+ * Nasce **desmarcada**, e isso é o ponto inteiro: antes de 02/10/2026
+ * prescrever mandava e-mail sempre, e não havia como não mandar sem
+ * escrever no banco por fora.
+ */
+function CaixaDeAviso({
+  marcada,
+  aoMudar,
+}: {
+  marcada: boolean;
+  aoMudar: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer select-none">
+      <input
+        type="checkbox"
+        checked={marcada}
+        onChange={(e) => aoMudar(e.target.checked)}
+        className="mt-0.5 h-4 w-4 shrink-0 accent-current"
+      />
+      <span>
+        <span className="font-medium">Tell the patient now</span>
+        <span className="block text-xs text-muted-foreground">
+          Off by default — prescribing is clinic-side work. Tick this to e-mail
+          them that the exercises arrived.
+        </span>
+      </span>
+    </label>
   );
 }
 

@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
       case "generate_image":
         return await generateImageAction(params);
       case "send_email":
-        return await sendEmailAction(params);
+        return await sendEmailAction(params, clinicId);
       case "instagram_post":
         return await instagramPostAction(params, clinicId);
       case "send_whatsapp":
-        return await sendWhatsAppAction(params);
+        return await sendWhatsAppAction(params, clinicId);
       case "marketing_campaign":
         return await marketingCampaignAction(params, clinicId);
       case "patient_reengagement":
@@ -491,9 +491,56 @@ async function generateImageAction(params: { prompt?: string; aspectRatio?: stri
 }
 
 // ─── Send Email ───
-async function sendEmailAction(params: { to?: string; subject?: string; body?: string }) {
+/**
+ * **Para um paciente, enfileira. Para o resto, continua mandando.** (104)
+ *
+ * O corpo vem do modelo de linguagem e o endereço vem do pedido, livre. Isso
+ * é aceitável para escrever a um fornecedor; não é para escrever a um
+ * paciente, que é quem a regra protege — e quem recebe no meio de um
+ * tratamento.
+ *
+ * A separação é pelo destinatário, não pela intenção de quem digitou: se o
+ * e-mail bate com um paciente desta clínica, vai para a fila.
+ */
+async function sendEmailAction(
+  params: { to?: string; subject?: string; body?: string },
+  clinicId?: string
+) {
   if (!params.to || !params.subject || !params.body) {
     return NextResponse.json({ error: "Email requires to, subject, and body" }, { status: 400 });
+  }
+
+  const paciente = clinicId
+    ? await prisma.user.findFirst({
+        where: { email: { equals: params.to, mode: "insensitive" as any }, role: "PATIENT", clinicId },
+        select: { id: true, firstName: true, lastName: true },
+      })
+    : null;
+
+  if (paciente) {
+    try {
+      const { enqueueMessage } = await import("@/lib/automation/outbox");
+      const nome = `${paciente.firstName || ""} ${paciente.lastName || ""}`.trim() || params.to;
+      const { messageId } = await enqueueMessage({
+        clinicId: clinicId!,
+        patientId: paciente.id,
+        ruleCode: "COMMAND_CHAT_EMAIL",
+        window: new Date().toISOString(),
+        channel: "EMAIL",
+        subjectEn: params.subject,
+        subjectPt: params.subject,
+        bodyEn: params.body,
+        bodyPt: params.body,
+      });
+      return NextResponse.json({
+        success: true,
+        queued: true,
+        messageId,
+        message: `${params.to} is a patient, so this was queued for ${nome}. Nothing has been sent — approve it in the outbox to deliver.`,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: `Could not queue the e-mail: ${err.message}` }, { status: 500 });
+    }
   }
 
   try {
@@ -587,54 +634,115 @@ Rules:
 }
 
 // ─── Send WhatsApp ───
-async function sendWhatsAppAction(params: { to?: string; patientName?: string; message?: string; context?: string }) {
-  if (!params.to && !params.patientName) {
-    return NextResponse.json({ error: "WhatsApp requires a phone number (to) or patient name" }, { status: 400 });
+/**
+ * **Este handler não manda mais nada. Ele enfileira.** (104, 02/10/2026)
+ *
+ * Era o pior caso da varredura, por duas razões somadas:
+ *
+ * 1. O texto saía escrito pela IA, sem ninguém ler antes.
+ * 2. O destinatário era resolvido por `findFirst` com `contains` do nome —
+ *    pedir "manda um WhatsApp para a Ana" pegava a **primeira** Ana do
+ *    banco. Não é só mandar sem confirmar: é poder acertar outra pessoa.
+ *
+ * E a interface disso é um chat. Quem conversa com um assistente não espera
+ * que a frase vire mensagem no telefone de uma paciente.
+ *
+ * Agora: nome ambíguo devolve os candidatos em vez de escolher, e o que
+ * sobra vira linha na outbox, que uma pessoa aprova.
+ */
+async function sendWhatsAppAction(
+  params: { to?: string; patientId?: string; patientName?: string; message?: string; context?: string },
+  clinicId?: string
+) {
+  if (!params.to && !params.patientId && !params.patientName) {
+    return NextResponse.json(
+      { error: "WhatsApp requires a phone number, a patient id, or a patient name" },
+      { status: 400 }
+    );
+  }
+  if (!clinicId) {
+    return NextResponse.json({ error: "No clinic context" }, { status: 400 });
   }
 
-  // If patient name provided but no phone, look up
-  let phone = params.to;
-  let name = params.patientName || "";
+  let paciente: { id: string; phone: string | null; firstName: string | null; lastName: string | null } | null = null;
 
-  if (!phone && name) {
-    const patient = await prisma.user.findFirst({
+  if (params.patientId) {
+    paciente = await prisma.user.findFirst({
+      where: { id: params.patientId, role: "PATIENT", clinicId },
+      select: { id: true, phone: true, firstName: true, lastName: true },
+    });
+    if (!paciente) {
+      return NextResponse.json({ error: "Patient not found in this clinic." }, { status: 404 });
+    }
+  } else if (params.patientName) {
+    // Nunca escolher. Um nome parcial que casa com várias pessoas é uma
+    // pergunta, não uma resposta.
+    const candidatos = await prisma.user.findMany({
       where: {
         role: "PATIENT",
+        clinicId,
         OR: [
-          { firstName: { contains: name, mode: "insensitive" as any } },
-          { lastName: { contains: name, mode: "insensitive" as any } },
+          { firstName: { contains: params.patientName, mode: "insensitive" as any } },
+          { lastName: { contains: params.patientName, mode: "insensitive" as any } },
         ],
       },
-      select: { phone: true, firstName: true, lastName: true },
+      select: { id: true, phone: true, firstName: true, lastName: true },
+      take: 10,
     });
-    if (patient?.phone) {
-      phone = patient.phone;
-      name = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
-    } else {
-      return NextResponse.json({ error: `Patient "${name}" not found or has no phone number.` }, { status: 404 });
+    if (candidatos.length === 0) {
+      return NextResponse.json({ error: `No patient matches "${params.patientName}".` }, { status: 404 });
     }
+    if (candidatos.length > 1) {
+      return NextResponse.json({
+        success: false,
+        needsChoice: true,
+        message: `"${params.patientName}" matches ${candidatos.length} patients — pick one.`,
+        candidates: candidatos.map((c) => ({
+          id: c.id,
+          name: `${c.firstName || ""} ${c.lastName || ""}`.trim(),
+        })),
+      });
+    }
+    paciente = candidatos[0];
   }
 
-  if (!phone) {
-    return NextResponse.json({ error: "No phone number available" }, { status: 400 });
+  if (!paciente) {
+    return NextResponse.json(
+      { error: "A bare phone number has no patient to queue against — name the patient." },
+      { status: 400 }
+    );
+  }
+  if (!paciente.phone) {
+    return NextResponse.json({ error: "That patient has no phone number on file." }, { status: 400 });
+  }
+
+  const nome = `${paciente.firstName || ""} ${paciente.lastName || ""}`.trim() || "Patient";
+  const texto = params.message || params.context || "";
+  if (!texto.trim()) {
+    return NextResponse.json({ error: "Nothing to say — write the message." }, { status: 400 });
   }
 
   try {
-    const { sendAIWhatsAppMessage } = await import("@/lib/whatsapp");
-    const result = await sendAIWhatsAppMessage({
-      to: phone,
-      patientName: name || "Patient",
-      context: params.context || params.message || "general",
-      additionalInfo: params.message,
+    const { enqueueMessage } = await import("@/lib/automation/outbox");
+    const { messageId } = await enqueueMessage({
+      clinicId,
+      patientId: paciente.id,
+      ruleCode: "COMMAND_CHAT_WHATSAPP",
+      window: new Date().toISOString(),
+      channel: "WHATSAPP",
+      subjectEn: `WhatsApp to ${nome}`,
+      subjectPt: `WhatsApp para ${nome}`,
+      bodyEn: texto,
+      bodyPt: texto,
     });
-
-    if (result.success) {
-      return NextResponse.json({ success: true, message: `WhatsApp sent to ${name || phone}.` });
-    } else {
-      return NextResponse.json({ error: `WhatsApp failed: ${result.error}` }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      queued: true,
+      messageId,
+      message: `Queued for ${nome}. Nothing has been sent — approve it in the outbox to deliver.`,
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: `WhatsApp error: ${err.message}` }, { status: 500 });
+    return NextResponse.json({ error: `Could not queue the WhatsApp: ${err.message}` }, { status: 500 });
   }
 }
 

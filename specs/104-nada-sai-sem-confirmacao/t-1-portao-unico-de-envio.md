@@ -1,6 +1,6 @@
 # T-1: O portão único de envio ao paciente
 
-**Status:** pendente
+**Status:** concluído (QA aprovado 02/10 — ver `qa/report-t-1.md`)
 **Depende de:** nenhuma
 
 > **Revisto em 02/10/2026, depois de trazer o `main`.** Esta tarefa era

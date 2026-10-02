@@ -88,6 +88,198 @@ export function pediramEnviarAoPaciente(pedido: unknown): boolean {
   return pedido === true || pedido === "true";
 }
 
+/** Por onde a mensagem sai. Push conta: vibrar o telefone é mandar. */
+export type CanalDeEnvio = "email" | "push" | "whatsapp" | "telegram" | "sms";
+
+/**
+ * Como esta chamada foi confirmada por uma pessoa.
+ *
+ * `explicito` é o caso comum e delega a `pediramEnviarAoPaciente` — a
+ * comparação mora num lugar só, de propósito.
+ */
+export type ConfirmacaoDeEnvio =
+  | { modo: "explicito"; pedido: unknown }
+  | { modo: "preview"; hash: unknown; hashEsperado: string }
+  | { modo: "fila" }
+  | { modo: "transacional"; motivo: string };
+
+export type VereditoDeEnvio =
+  | { ok: true }
+  | { ok: false; status: number; error: string; code: string };
+
+/** Quantas mensagens um paciente pode receber por hora, somando os canais. */
+export const TETO_POR_HORA = 5;
+
+/**
+ * Esta mensagem pode sair para este paciente?
+ *
+ * Pergunta diferente da de `lib/outbound-guard.ts`. Aquele responde "este
+ * ambiente pode mandar?" e é a última linha; este responde "**uma pessoa
+ * pediu isto?**" e é a primeira. Um não dispensa o outro.
+ *
+ * Nasceu da varredura de 02/10/2026 (atividade 104), que achou treze botões
+ * do painel mandando mensagem como efeito colateral de outra coisa —
+ * prescrever exercício, anexar documento, criar tarefa. A regra do Bruno:
+ * *"nenhum botao é pra disparar na hora sem minha confirmação"*.
+ *
+ * O silêncio é **não**. Chamada sem confirmação, ou com confirmação que não
+ * se entende, não manda — e diz que não mandou, para a tela não mentir.
+ */
+export async function podeEnviarAoPaciente({
+  patientId,
+  canal,
+  confirmacao,
+  origem,
+}: {
+  patientId: string;
+  canal: CanalDeEnvio;
+  confirmacao: ConfirmacaoDeEnvio;
+  /** A rota, para o registro e para a tela de histórico. */
+  origem: string;
+}): Promise<VereditoDeEnvio> {
+  const registrar = (veredito: string, detalhe?: Record<string, unknown>) =>
+    anotarDecisaoDeEnvio({ patientId, canal, origem, veredito, detalhe });
+
+  if (!patientId) {
+    await registrar("barrado:sem-paciente");
+    return { ok: false, status: 400, error: "No patient to send to", code: "no_patient" };
+  }
+
+  switch (confirmacao?.modo) {
+    case "explicito":
+      if (!pediramEnviarAoPaciente(confirmacao.pedido)) {
+        await registrar("barrado:nao-pedido");
+        return {
+          ok: false,
+          status: 200,
+          error: "Nobody asked for this to reach the patient",
+          code: "not_requested",
+        };
+      }
+      break;
+
+    case "preview":
+      if (typeof confirmacao.hash !== "string" || !confirmacao.hash) {
+        await registrar("barrado:sem-preview");
+        return { ok: false, status: 400, error: "Preview it first", code: "preview_missing" };
+      }
+      if (confirmacao.hash !== confirmacao.hashEsperado) {
+        await registrar("barrado:preview-mudou");
+        return {
+          ok: false,
+          status: 409,
+          error: "It changed after the preview — preview it again before sending",
+          code: "PREVIEW_MISMATCH",
+        };
+      }
+      break;
+
+    case "fila":
+    case "transacional":
+      break;
+
+    default:
+      // Inclui `undefined`: quem esqueceu de passar não recebe o benefício
+      // da dúvida. Era esse esquecimento que virava e-mail.
+      await registrar("barrado:confirmacao-ausente");
+      return {
+        ok: false,
+        status: 400,
+        error: "This send needs a confirmation",
+        code: "confirmation_missing",
+      };
+  }
+
+  // O teto vale para o paciente, não para o canal: cinco mensagens em uma
+  // hora são cinco interrupções, venham por onde vierem.
+  if (confirmacao.modo !== "transacional") {
+    const desde = new Date(Date.now() - 60 * 60 * 1000);
+    const recentes = await contarEnviosRecentes(patientId, desde);
+    if (recentes >= TETO_POR_HORA) {
+      await registrar("barrado:teto", { recentes });
+      return {
+        ok: false,
+        status: 429,
+        error: `Already ${recentes} messages to this patient in the last hour`,
+        code: "hourly_cap",
+      };
+    }
+  }
+
+  await registrar("passou", { modo: confirmacao.modo });
+  return { ok: true };
+}
+
+/**
+ * Quantas mensagens este paciente já recebeu na janela.
+ *
+ * Devolve 0 se a contagem falhar, e isso é escolha, não descuido: o portão
+ * é chamado **depois** de a ação principal estar gravada, então um tropeço
+ * do banco aqui viraria 500 numa prescrição que já existe — e quem clicou
+ * clicaria de novo. O teto é proteção contra enxurrada; a confirmação da
+ * pessoa, que é a regra de verdade, já passou antes.
+ */
+async function contarEnviosRecentes(patientId: string, desde: Date): Promise<number> {
+  try {
+    const [emails, fila] = await Promise.all([
+      prisma.patientOutboundEmail.count({
+        where: { patientId, status: "sent", createdAt: { gte: desde } },
+      }),
+      prisma.systemLog.count({
+        where: {
+          source: ORIGEM_DO_PORTAO,
+          message: { startsWith: "passou" },
+          userId: patientId,
+          createdAt: { gte: desde },
+        },
+      }),
+    ]);
+    return emails + fila;
+  } catch (err) {
+    console.error("[patient-send-gate] falhou ao contar os envios da hora:", err);
+    return 0;
+  }
+}
+
+const ORIGEM_DO_PORTAO = "patient-send-gate";
+
+/**
+ * Registra a decisão — **inclusive a de barrar**.
+ *
+ * Uma tela que só mostra o que saiu esconde justamente o que se quer
+ * auditar. E o registro nunca derruba a chamada: falhar em anotar não pode
+ * virar falha em avisar o paciente de uma consulta.
+ */
+async function anotarDecisaoDeEnvio({
+  patientId,
+  canal,
+  origem,
+  veredito,
+  detalhe,
+}: {
+  patientId: string;
+  canal: CanalDeEnvio;
+  origem: string;
+  veredito: string;
+  detalhe?: Record<string, unknown>;
+}) {
+  try {
+    await prisma.systemLog.create({
+      data: {
+        level: veredito.startsWith("barrado") ? "WARN" : "INFO",
+        category: "USER_ACTION",
+        source: ORIGEM_DO_PORTAO,
+        message: veredito,
+        path: origem,
+        userId: patientId || null,
+        details: { canal, origem, ...(detalhe || {}) },
+      },
+    });
+  } catch (err) {
+    console.error("[patient-send-gate] falhou ao registrar a decisão:", err);
+  }
+}
+
 export async function notifyPatient({
   patientId,
   emailTemplateSlug,

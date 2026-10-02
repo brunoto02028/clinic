@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, pediramEnviarAoPaciente } from "@/lib/notify-patient";
 import { sendPushToUsers, countPushDevices, type PushResult } from "@/lib/push-send";
 import { pickForPatient, groupByLang } from "@/lib/patient-language";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
@@ -100,7 +100,11 @@ export async function POST(req: NextRequest) {
     const { clinicId } = tenantWhere(actor);
 
     const {
-      title, content, audience = "all", patientIds = [], notify = true, scheduledFor,
+      // `notify` nascia **`true`** aqui, e isto manda para todos os pacientes
+      // do inquilino. A caixa vinha marcada: quem não soubesse desmarcar
+      // mandava. Três linhas abaixo o `pushNotify` já fazia o certo — mesmo
+      // arquivo, padrões opostos. Agora os dois são opt-in (104, 02/10/2026).
+      title, content, audience = "all", patientIds = [], notify, scheduledFor,
       // A segunda versão. Inglês é a língua primária e o que todo mundo recebe
       // quando isto vem vazio; quem tem `preferredLocale` pt-BR recebe esta.
       titlePt = null, contentPt = null,
@@ -191,7 +195,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Notify each patient (email/WhatsApp per preference) — fire-and-forget
-    if (notify) {
+    if (pediramEnviarAoPaciente(notify)) {
       const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
       const preview = content.trim().slice(0, 100);
       Promise.allSettled(

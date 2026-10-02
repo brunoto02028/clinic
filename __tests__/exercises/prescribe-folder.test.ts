@@ -10,7 +10,13 @@
 
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
 jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
-jest.mock("@/lib/notify-patient", () => ({ notifyPatient: jest.fn() }));
+// `podeEnviarAoPaciente` (104) é o portão, e a rota o chama antes de avisar.
+// Precisa ser o de verdade: substituí-lo por um `jest.fn()` apagaria
+// justamente a regra que estes testes agora têm de respeitar.
+jest.mock("@/lib/notify-patient", () => ({
+  ...jest.requireActual("@/lib/notify-patient"),
+  notifyPatient: jest.fn(),
+}));
 jest.mock("@/lib/db", () => ({
   prisma: {
     // findUnique is the therapist's name for the audit entry (activity 51);
@@ -20,6 +26,9 @@ jest.mock("@/lib/db", () => ({
     exerciseFolder: { findFirst: jest.fn(), findMany: jest.fn() },
     exercise: { findMany: jest.fn() },
     exercisePrescription: { findMany: jest.fn(), create: jest.fn() },
+    // Lidos pelo portão de envio: o teto por hora e o registro da decisão.
+    patientOutboundEmail: { count: jest.fn().mockResolvedValue(0) },
+    systemLog: { count: jest.fn().mockResolvedValue(0), create: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn(),
   },
 }));
@@ -163,7 +172,7 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
   });
 
   it("notifies the patient once for the whole folder, not once per exercise", async () => {
-    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    await POST(request({ patientId: "pat-1", folderId: "f1", notify: true }));
 
     expect(notify).toHaveBeenCalledTimes(1);
     const arg = notify.mock.calls[0][0];
@@ -189,7 +198,7 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
     // `displayGroup` é *"o que o paciente vê este exercício filado sob"*.
     // Quando quem prescreve escolhe um, é esse nome que a mensagem leva.
     await POST(
-      request({ patientId: "pat-1", folderId: "f1", displayGroup: "Semana 1 — Ombro" })
+      request({ patientId: "pat-1", folderId: "f1", displayGroup: "Semana 1 — Ombro", notify: true })
     );
     const arg = notify.mock.calls.at(-1)![0];
     expect(arg.emailVars.programmeName).toBe("Semana 1 — Ombro");
@@ -198,7 +207,7 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
   it("counts only what was actually prescribed, not what was skipped", async () => {
     db.exercisePrescription.findMany.mockResolvedValue([{ exerciseId: "e2" }]);
 
-    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    await POST(request({ patientId: "pat-1", folderId: "f1", notify: true }));
 
     expect(notify.mock.calls[0][0].emailVars.exerciseCount).toBe("2");
   });
@@ -217,7 +226,7 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
   it("keeps the prescriptions when the notification fails", async () => {
     notify.mockRejectedValue(new Error("WhatsApp down"));
 
-    const res = await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    const res = await POST(request({ patientId: "pat-1", folderId: "f1", notify: true }));
     const body = await res.json();
 
     expect(res.status).toBe(201);
@@ -225,11 +234,25 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
   });
 
   it("carries a message for both languages", async () => {
-    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    await POST(request({ patientId: "pat-1", folderId: "f1", notify: true }));
 
     const arg = notify.mock.calls[0][0];
     expect(arg.plainMessage).toContain("3 new exercises");
     expect(arg.plainMessagePt).toContain("3 novos exercícios");
+  });
+
+  /**
+   * O inverso dos quatro acima, e o que a atividade 104 acrescentou: sem
+   * `notify`, prescrever é só prescrever. Era isto que obrigava a escrever
+   * no banco por fora para montar o programa de alguém em silêncio.
+   */
+  it("sem `notify`, prescreve a pasta inteira e não avisa ninguém", async () => {
+    const res = await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    const body = await res.json();
+
+    expect(notify).not.toHaveBeenCalled();
+    expect(body.count).toBe(3);
+    expect(body.notifySkipped).toBe("not_requested");
   });
 
   it("rejects a caller who is not staff", async () => {

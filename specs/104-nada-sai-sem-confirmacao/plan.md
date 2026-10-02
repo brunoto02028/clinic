@@ -153,10 +153,10 @@ Nunca o contrário.
 
 | T-N | nome | status |
 |---|---|---|
-| T-1 | O portão único de envio ao paciente | pendente |
-| T-2 | O Command Center para de enviar | pendente |
-| T-3 | Defaults invertidos e o rótulo que mente | pendente |
-| T-4 | Os treze botões passam a pedir confirmação | pendente |
+| T-1 | O portão único de envio ao paciente | **concluído** (02/10) |
+| T-2 | O Command Center para de enviar | implementado, QA pendente |
+| T-3 | Defaults invertidos e o rótulo que mente | implementado, QA pendente |
+| T-4 | Os treze botões passam a pedir confirmação | 1 de 10 rotas (prescrição); resto pendente |
 | T-5 | O upsell automático e o e-mail sem marca | pendente |
 | T-6 | Trava em código nos quatro crons | pendente |
 | T-7 | A tela única de tudo que saiu | pendente |

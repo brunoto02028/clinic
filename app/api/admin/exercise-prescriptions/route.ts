@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { resolveClinicId } from "@/lib/exercise-folders";
-import { notifyPatient } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
 import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
@@ -304,12 +304,31 @@ export async function POST(req: NextRequest) {
       description: `${created.length} exercise${created.length === 1 ? "" : "s"} prescribed${folderName ? ` (${folderName})` : ""} by ${prescribedBy ? `${prescribedBy.firstName} ${prescribedBy.lastName}` : therapistId}`,
     });
 
+    /**
+     * Avisar o paciente é um **segundo ato**, e precisa ser pedido.
+     *
+     * Isto mandava sempre. Prescrever é trabalho de bastidor — montar o
+     * programa, trocar um exercício por outro, repor o que a pessoa ainda
+     * faz — e cada salvada virava e-mail. Em 02/10/2026 foi preciso escrever
+     * oito prescrições **direto no banco** para não disparar nada, e aí
+     * ficou claro de quem era o defeito: quando a ferramenta obriga a
+     * contornar a si mesma, é ela que está errada.
+     *
+     * Ausência de `notify` é **não**. Ver `podeEnviarAoPaciente` (104).
+     */
+    let notified: { channel: string; success: boolean } | null = null;
+    const permissao = await podeEnviarAoPaciente({
+      patientId,
+      canal: "email",
+      confirmacao: { modo: "explicito", pedido: body?.notify },
+      origem: "POST /api/admin/exercise-prescriptions",
+    });
+
     // Tell the patient the work arrived. Once per call, never once per
     // exercise: prescribing a folder of twenty would otherwise land as twenty
     // separate messages. notifyPatient routes to whichever channel the patient
     // chose, and a failure here must not undo prescriptions already written.
-    let notified: { channel: string; success: boolean } | null = null;
-    try {
+    if (permissao.ok) try {
       const count = created.length;
       /**
        * O nome que o **paciente** vê, e não o da nossa estante (QA da 095 T-5).
@@ -351,7 +370,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { prescriptions: created, count: created.length, skipped, restored, folderName, notified },
+      {
+        prescriptions: created,
+        count: created.length,
+        skipped,
+        restored,
+        folderName,
+        notified,
+        // A tela não pode supor que avisou. Quando o portão barrou, ela
+        // precisa saber o porquê para dizer a verdade ao usuário.
+        notifySkipped: permissao.ok ? null : (permissao as any).code,
+      },
       { status: 201 }
     );
   } catch (err: any) {
