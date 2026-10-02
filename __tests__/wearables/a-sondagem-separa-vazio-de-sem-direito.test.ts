@@ -182,6 +182,36 @@ describe("o que ela pergunta", () => {
     expect(pedido).toBeUndefined();
   });
 
+  it("**o minuto a minuto pede um dia, não a semana**", async () => {
+    /*
+     * O `getintradayactivity` devolve até 1440 pontos por dia e recusa janelas
+     * largas devolvendo **vazio, sem erro**. A primeira sondagem pediu sete
+     * dias, leu `vazio`, e isso teria dado a conclusão errada — "não está no
+     * plano" — para um endpoint que já sabíamos funcionar.
+     *
+     * Era exactamente o erro que esta sondagem existe para evitar, cometido
+     * por ela própria.
+     */
+    chamar.mockResolvedValue(corpoCheio());
+    const ate = new Date("2026-10-02T12:00:00Z");
+    await sondarTudo("t", { esperaMs: 0, ate, desde: new Date("2026-09-25T12:00:00Z") });
+
+    const intraday = chamar.mock.calls.find(
+      (c) => c[0] === "/v2/measure" && c[1].action === "getintradayactivity"
+    )!;
+    const horas =
+      (Number(intraday[1].enddate) - Number(intraday[1].startdate)) / 3600;
+    expect(horas).toBe(24);
+
+    /* E as outras continuam a pedir a janela inteira que lhes foi dada. */
+    const sono = chamar.mock.calls.find(
+      (c) => c[0] === "/v2/sleep" && c[1].action === "get"
+    )!;
+    const horasDoSono =
+      (Number(sono[1].enddate) - Number(sono[1].startdate)) / 3600;
+    expect(horasDoSono).toBe(24 * 7);
+  });
+
   it("todas as perguntas levam o token", async () => {
     chamar.mockResolvedValue(corpoCheio({ series: [{ ecg: { signalid: 7 } }] }));
     await sondar();

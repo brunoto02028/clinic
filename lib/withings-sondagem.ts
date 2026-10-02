@@ -145,10 +145,24 @@ export async function sondarTudo(
     }, (c) => c?.measuregrps ?? [])
   );
 
+  /*
+   * **Janela de um dia**, não da semana inteira.
+   *
+   * O `getintradayactivity` devolve até 1440 pontos por dia por pessoa, e
+   * recusa janelas largas devolvendo **vazio** — sem erro. A primeira sondagem
+   * pediu sete dias e leu `vazio`, o que daria a conclusão errada ("não está no
+   * plano") para um endpoint que já sabíamos funcionar: medido em produção em
+   * 01/10, `intradayDays: 1`.
+   *
+   * Foi exactamente o erro que esta sondagem existe para evitar, cometido pela
+   * própria sondagem. A janela passa a ser o último dia.
+   */
+  const umDia = new Date(ate.getTime() - 86_400_000);
   await correr(
     perguntar("Frequência minuto a minuto", "/v2/measure#getintradayactivity", {
       ...token,
-      ...janela,
+      startdate: seg(umDia),
+      enddate: seg(ate),
       data_fields: "heart_rate,steps,calories",
     }, (c) => Object.values(c?.series ?? {}))
   );

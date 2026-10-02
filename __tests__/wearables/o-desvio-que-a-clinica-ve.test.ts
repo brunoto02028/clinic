@@ -121,7 +121,16 @@ describe("a fibrilação atrial", () => {
     const achados = desviosDosPontos([ecg(1)]);
     expect(achados).toHaveLength(1);
     expect(achados[0].tipo).toBe("ecg");
-    expect(achados[0].chave).toBe("ecg_afib:2026-09-20");
+    /*
+     * A chave carrega o **instante**, não o dia — mudou em 02/10/2026 para que
+     * duas fibrilhações no mesmo dia sejam dois achados.
+     *
+     * **A consequência, dita e aceite:** um achado de fibrilhação que alguém já
+     * tinha marcado como visto volta à fila de pendentes uma vez, porque o
+     * `MonitoringAlertAck` guarda a chave antiga. É ruído, e é o lado certo
+     * para errar: um alerta que reaparece é melhor do que um que some.
+     */
+    expect(achados[0].chave).toBe("ecg_afib:2026-09-20T08:00:00Z");
   });
 
   it("ritmo sinusal não vira achado", () => {
@@ -218,5 +227,109 @@ describe("a aba de monitoramento (T-3)", () => {
     expect(aba).toMatch(/report\?days=\$\{days\}/);
     const relatorio = lerCodigo("app", "api", "admin", "patients", "[id]", "report", "route.ts");
     expect(relatorio).toMatch(/getPatientReportData\(params\.id, \{ days \}\)/);
+  });
+});
+
+/**
+ * ## O defeito que estes testes **deixaram passar** (02/10/2026)
+ *
+ * Em 02/10 o ECG mudou de casa: a ingestão passou a escrever no `EcgRecording`
+ * e deixou de escrever `WearableDataPoint{dataType:"ECG"}`. Esta função
+ * continuou a ler só os pontos diários.
+ *
+ * Resultado: uma fibrilhação nova aparecia a vermelho no app do paciente e a
+ * fila *"Worth a look"* da clínica ficava **vazia**. O estado anterior à
+ * 099 T-6 — *"o ScanWatch conclui fibrilação atrial, nós guardamos, e ninguém
+ * era avisado"* — reposto por outra porta, no mesmo dia em que se fechou outra.
+ *
+ * **E os 3.383 testes ficaram verdes**, porque os daqui fabricavam um
+ * `WearableDataPoint` com `rawPayload` — um estado que o banco já não produz.
+ * Um mock que descreve o passado testa o passado.
+ */
+describe("a fibrilhação vem das gravações, não dos pontos diários", () => {
+  const gravacao = (
+    recordedAt: string,
+    conclusao: string,
+    heartRate: number | null = 96
+  ) => ({ id: `e-${recordedAt}`, recordedAt, heartRate, conclusao });
+
+  it("**uma fibrilhação gravada hoje chega à clínica**", () => {
+    const achados = desviosDosPontos([], [gravacao("2026-10-01T22:54:15.000Z", "fibrilacao")]);
+    expect(achados).toHaveLength(1);
+    expect(achados[0].tipo).toBe("ecg");
+    expect(achados[0].conclusao).toBe("fibrilacao");
+    expect(achados[0].dia).toBe("2026-10-01");
+    expect(achados[0].valor).toBe(96);
+  });
+
+  it("e o ritmo sinusal continua a não ser achado", () => {
+    expect(desviosDosPontos([], [gravacao("2026-10-01T22:54:15.000Z", "normal")])).toHaveLength(0);
+  });
+
+  it("nem o que o relógio não conseguiu classificar", () => {
+    expect(
+      desviosDosPontos([], [gravacao("2026-10-01T22:54:15.000Z", "inconclusivo")])
+    ).toHaveLength(0);
+  });
+
+  it("**duas fibrilhações no mesmo dia são dois achados**", () => {
+    /*
+     * A chave era `ecg_afib:<dia>` e colapsava-as numa. Era o mesmo erro que a
+     * 119 T-2 tirou do banco, repetido na fila da clínica: a segunda gravação
+     * desaparecia sem deixar buraco.
+     */
+    const achados = desviosDosPontos([], [
+      gravacao("2026-10-01T21:44:56.000Z", "fibrilacao", 78),
+      gravacao("2026-10-01T22:54:15.000Z", "fibrilacao", 63),
+    ]);
+    expect(achados).toHaveLength(2);
+    expect(new Set(achados.map((a) => a.chave)).size).toBe(2);
+  });
+
+  it("aceita um `Date`, que é o que o Prisma devolve", () => {
+    const achados = desviosDosPontos([], [
+      { id: "x", recordedAt: new Date("2026-10-01T22:54:15.000Z"), heartRate: 63, conclusao: "fibrilacao" },
+    ]);
+    expect(achados).toHaveLength(1);
+    expect(achados[0].dia).toBe("2026-10-01");
+  });
+
+  it("**a mesma gravação nas duas fontes conta uma vez**", () => {
+    // Durante a transição, um registo pode estar no ponto diário **e** na
+    // tabela nova. Dois achados para a mesma gravação fariam a clínica pensar
+    // que houve dois episódios.
+    const instante = "2026-10-01T22:54:15.000Z";
+    const achados = desviosDosPontos(
+      [
+        {
+          dataType: "ECG",
+          dataDate: "2026-10-01",
+          restingHr: 63,
+          rawPayload: JSON.stringify({ afibClassification: 1, recordedAt: instante }),
+        },
+      ],
+      [gravacao(instante, "fibrilacao", 63)]
+    );
+    expect(achados).toHaveLength(1);
+  });
+
+  it("um ponto antigo sozinho ainda vale — o histórico não se apaga", () => {
+    const achados = desviosDosPontos(
+      [
+        {
+          dataType: "ECG",
+          dataDate: "2026-09-20",
+          restingHr: 96,
+          rawPayload: JSON.stringify({ afibClassification: 1, recordedAt: "2026-09-20T08:00:00Z" }),
+        },
+      ],
+      []
+    );
+    expect(achados).toHaveLength(1);
+  });
+
+  it("sem gravações nenhumas, não estoura", () => {
+    expect(desviosDosPontos([])).toEqual([]);
+    expect(desviosDosPontos([], [])).toEqual([]);
   });
 });

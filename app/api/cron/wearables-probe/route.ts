@@ -14,11 +14,20 @@ export const maxDuration = 300;
  * O segredo do cron já existe, já protege oito rotas, e é passado por `?key=`.
  * O mesmo caminho, a mesma guarda.
  *
- * ## O que ela não faz
+ * ## O que ela escreve, e o que não escreve
  *
- * **Não escreve nada.** Nem um `upsert`, nem um ponto, nem uma série. Medir não
- * pode alterar o que está a ser medido — se a sondagem gravasse, a execução
- * seguinte estaria a medir a anterior.
+ * **Não escreve dado de saúde nenhum.** Nem um ponto, nem uma série, nem um
+ * ECG. Medir não pode alterar o que está a ser medido — se a sondagem gravasse,
+ * a execução seguinte estaria a medir a anterior.
+ *
+ * **Mas escreve uma coisa, e dizer que não escrevia era falso:** se o token
+ * estiver a expirar, o `withingsAccessToken` renova-o e grava o par novo. Os
+ * refresh tokens da Withings são de **uso único**, portanto duas renovações
+ * sobrepostas — esta e a do `wearables-sync` — deixam a ligação do paciente a
+ * precisar de reautorização. Por uma medição.
+ *
+ * Por isso a sondagem **só renova quando não há alternativa**, e diz no
+ * resultado se o fez. Correr com o token fresco não toca em nada.
  *
  * O token **é desembrulhado e renovado se precisar**, e isto mudou de ideia a
  * meio: a primeira versão recusava renovar, argumentando que um token expirado
@@ -44,10 +53,74 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  /**
+   * `?listar=1` — quem tem ligação Withings, e com que aparelho.
+   *
+   * Existe para responder a uma pergunta de plano, não de pessoa: *o traçado do
+   * ECG depende do Withings+ do paciente, ou do nosso pacote na API?* Só se
+   * decide medindo alguém **sem** assinatura, e para isso é preciso saber quem
+   * há.
+   *
+   * Devolve **só metadados** — nunca uma medição, nunca um valor de saúde. O
+   * e-mail vem truncado: dá para o Bruno reconhecer quem é sem que a lista seja
+   * um despejo de contactos.
+   */
+  if (req.nextUrl.searchParams.get("listar") === "1") {
+    /*
+     * **Uma consulta só, cruzada por `userId`.**
+     *
+     * A primeira versão fazia duas consultas quase iguais e juntava-as por
+     * e-mail — o que colapsaria duas ligações que partilhem e-mail numa linha
+     * só, e numa clínica onde um responsável gere outra pessoa isso não é
+     * hipótese teórica. O `userId` é a chave, e já vem na mesma consulta.
+     */
+    const ligacoes = await prisma.wearableConnection.findMany({
+      where: { provider: "WITHINGS" },
+      select: {
+        userId: true,
+        status: true,
+        isClinicDevice: true,
+        lastSyncedAt: true,
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+
+    /* Quantos ECG cada um tem — é o que diz se o relógio sequer faz ECG. */
+    const contagens = await prisma.ecgRecording.groupBy({
+      by: ["userId"],
+      _count: { _all: true },
+    });
+    const ecgsPorUser = new Map(contagens.map((c) => [c.userId, c._count._all]));
+
+    return NextResponse.json({
+      quantas: ligacoes.length,
+      ligacoes: ligacoes.map((l) => {
+        const email = l.user?.email ?? "";
+        const [antes, dominio] = email.split("@");
+        return {
+          quem: `${(antes ?? "").slice(0, 4)}…@${dominio ?? "?"}`,
+          nome: `${l.user?.firstName ?? ""} ${(l.user?.lastName ?? "").slice(0, 1)}.`.trim(),
+          status: l.status,
+          aparelhoDaClinica: l.isClinicDevice,
+          ultimaSincronizacao: l.lastSyncedAt,
+          /**
+           * Zero aqui costuma querer dizer *"o relógio dele não faz ECG"* — e
+           * é por isso que esta coluna existe: um vazio na sondagem de alguém
+           * sem aparelho de ECG não distingue "sem direito" de "sem aparelho",
+           * e serviria para concluir a coisa errada.
+           */
+          ecgsGuardados: ecgsPorUser.get(l.userId) ?? 0,
+        };
+      }),
+    });
+  }
+
   const email = req.nextUrl.searchParams.get("email");
   if (!email) {
     return NextResponse.json(
-      { error: "diga de quem: ?email=..." },
+      { error: "diga de quem: ?email=... — ou ?listar=1 para ver quem há" },
       { status: 400 }
     );
   }
