@@ -1,5 +1,6 @@
 "use client";
 
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -70,6 +71,9 @@ export default function PatientDocumentsPage() {
   const [uploadType, setUploadType] = useState("OTHER");
   const [uploadDoctor, setUploadDoctor] = useState("");
   const [uploadDate, setUploadDate] = useState("");
+  // Anexar ao prontuário vibrava o celular do paciente a cada upload — até
+  // nos administrativos (104). Agora é escolha, e nasce desligada.
+  const [avisarPaciente, setAvisarPaciente] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Camera
@@ -120,6 +124,8 @@ export default function PatientDocumentsPage() {
         formData.append("doctorName", uploadDoctor);
         formData.append("source", "ADMIN_UPLOAD");
         if (uploadDate) formData.append("documentDate", uploadDate);
+        // Anexar ao prontuário é arquivo, não recado (104).
+        formData.append("notify", String(avisarPaciente));
 
         const res = await fetch(`/api/admin/patients/${patientId}/documents`, {
           method: "POST",
@@ -181,6 +187,8 @@ export default function PatientDocumentsPage() {
         formData.append("doctorName", uploadDoctor);
         formData.append("source", "ADMIN_CAMERA");
         if (uploadDate) formData.append("documentDate", uploadDate);
+        // Anexar ao prontuário é arquivo, não recado (104).
+        formData.append("notify", String(avisarPaciente));
 
         const res = await fetch(`/api/admin/patients/${patientId}/documents`, {
           method: "POST",
@@ -380,6 +388,11 @@ export default function PatientDocumentsPage() {
                 </div>
               )}
             </div>
+            <CaixaDeAviso
+              marcada={avisarPaciente}
+              aoMudar={setAvisarPaciente}
+              explicacao="Off by default — filing a document is clinic-side work. Tick this to buzz their phone."
+            />
             <div className="flex items-center gap-2">
               <Button onClick={handleUpload} disabled={uploading || selectedFiles.length === 0}>
                 {uploading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</> : <><FileUp className="h-4 w-4 mr-2" /> Upload</>}

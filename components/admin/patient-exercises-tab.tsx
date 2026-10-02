@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Loader2, Dumbbell, Play, Pencil, Trash2, Save, X, FileVideo, FolderPlus, Folder, Plus, LayoutGrid, ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -554,7 +555,11 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           </div>
         )}
 
-        <CaixaDeAviso marcada={avisarPaciente} aoMudar={setAvisarPaciente} />
+        <CaixaDeAviso
+          marcada={avisarPaciente}
+          aoMudar={setAvisarPaciente}
+          explicacao="Off by default — prescribing is clinic-side work. Tick this to e-mail them that the exercises arrived."
+        />
 
         <DialogFooter>
           {browsing ? (
@@ -669,7 +674,11 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
           </div>
         )}
 
-        <CaixaDeAviso marcada={avisarPaciente} aoMudar={setAvisarPaciente} />
+        <CaixaDeAviso
+          marcada={avisarPaciente}
+          aoMudar={setAvisarPaciente}
+          explicacao="Off by default — prescribing is clinic-side work. Tick this to e-mail them that the exercises arrived."
+        />
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setUmAberto(false)} disabled={prescribing}>
@@ -810,39 +819,6 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
         </div>
       ))}
     </div>
-  );
-}
-
-/**
- * A caixa que decide se o paciente fica sabendo.
- *
- * Nasce **desmarcada**, e isso é o ponto inteiro: antes de 02/10/2026
- * prescrever mandava e-mail sempre, e não havia como não mandar sem
- * escrever no banco por fora.
- */
-function CaixaDeAviso({
-  marcada,
-  aoMudar,
-}: {
-  marcada: boolean;
-  aoMudar: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer select-none">
-      <input
-        type="checkbox"
-        checked={marcada}
-        onChange={(e) => aoMudar(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 accent-current"
-      />
-      <span>
-        <span className="font-medium">Tell the patient now</span>
-        <span className="block text-xs text-muted-foreground">
-          Off by default — prescribing is clinic-side work. Tick this to e-mail
-          them that the exercises arrived.
-        </span>
-      </span>
-    </label>
   );
 }
 

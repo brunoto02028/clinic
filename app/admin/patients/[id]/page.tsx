@@ -2658,6 +2658,16 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           context: "Atlas treatment plan",
           language: "pt",
           type: "report",
+          /**
+           * `notify: true` fixo, e **não** uma caixa (104, 02/10/2026).
+           *
+           * As telas em que o aviso era efeito colateral — prescrever,
+           * anexar, criar tarefa — ganharam a caixa "avisar o paciente".
+           * Esta não é uma delas: o único caminho até aqui é um botão que
+           * diz **"Send plan to patient"**. Perguntar de novo seria a mesma pergunta duas
+           * vezes, sempre respondida igual.
+           */
+          notify: true,
         }),
       });
       if (!r.ok) throw new Error("Failed to share");
@@ -2849,7 +2859,22 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: lines, context: qType === "report" ? "Report/Feedback" : "Pre-assessment questions", language: qLang, type: qType }),
+        body: JSON.stringify({
+          questions: lines,
+          context: qType === "report" ? "Report/Feedback" : "Pre-assessment questions",
+          language: qLang,
+          type: qType,
+          /**
+           * `notify: true` fixo, e **não** uma caixa (104, 02/10/2026).
+           *
+           * As telas em que o aviso era efeito colateral — prescrever,
+           * anexar, criar tarefa — ganharam a caixa "avisar o paciente".
+           * Esta não é uma delas: o único caminho até aqui é um botão que
+           * diz **"Confirm and Send to Patient"**. Perguntar de novo seria a mesma pergunta duas
+           * vezes, sempre respondida igual.
+           */
+          notify: true,
+        }),
       });
       if (!r.ok) throw new Error("Failed");
       setQSentOk(true);

@@ -162,7 +162,20 @@ export default function ExerciseSubmissionsPanel({ patientId }: { patientId: str
       const res = await fetch(`/api/admin/exercise-submissions/${id}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: texto, replyKind: tipo }),
+        /**
+         * `notify: true` fixo aqui, e **não** uma caixa (104, 02/10/2026).
+         *
+         * As outras oito telas ganharam a caixa "avisar o paciente" porque
+         * nelas o aviso era efeito colateral de outra coisa — prescrever,
+         * anexar, criar tarefa. Esta é diferente: o único caminho até aqui
+         * passa por "Revisar e enviar", mostra a prévia do que vai sair, e
+         * o botão diz **"Enviar ao paciente"**. Perguntar de novo seria a
+         * mesma pergunta duas vezes, com a segunda sempre respondida igual.
+         *
+         * A rota ainda recusa quando não há resposta nenhuma — nota vazia e
+         * sem anexo não vira *"seu Terapeuta respondeu"*.
+         */
+        body: JSON.stringify({ note: texto, replyKind: tipo, notify: true }),
       });
       if (!res.ok) throw new Error(String(res.status));
       setAnexo((a) => ({ ...a, [id]: null }));

@@ -1,6 +1,7 @@
 "use client";
 
 // Admin — Patient Action Requests (tasks) with multi-recipient + custom types + read receipts
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ export default function PatientTasksPage() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // Criar a tarefa é um ato interno; avisar é um segundo ato (104).
+  const [avisarPaciente, setAvisarPaciente] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
 
@@ -169,6 +172,7 @@ export default function PatientTasksPage() {
           defaultDescription: description || undefined,
           defaultDescriptionPt: descriptionPt || undefined,
           actionUrl: actionUrl || undefined,
+          notify: avisarPaciente,
         }),
       });
       if (!r.ok) throw new Error("Failed");
@@ -235,7 +239,9 @@ export default function PatientTasksPage() {
 
       toast({
         title: `Sent to ${data.count} patient${data.count > 1 ? "s" : ""}!`,
-        description: `${data.notified} notified by email/WhatsApp.`,
+        description: avisarPaciente
+          ? `${data.notified} notified by email/WhatsApp.`
+          : "Nobody was notified — tick the box to let them know.",
       });
 
       setShowForm(false);
@@ -495,6 +501,19 @@ export default function PatientTasksPage() {
               <Label className="text-xs font-semibold text-foreground">Action URL (optional — where should the patient go?)</Label>
               <Input placeholder="e.g. /dashboard/recordings or /dashboard/profile" value={actionUrl} onChange={(e) => setActionUrl(e.target.value)} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
             </div>
+
+            <CaixaDeAviso
+              marcada={avisarPaciente}
+              aoMudar={setAvisarPaciente}
+              titulo={
+                audience === "all"
+                  ? `Tell all ${allPatients.length} patients now`
+                  : audience === "selected"
+                  ? `Tell the ${selectedIds.size} selected patient${selectedIds.size !== 1 ? "s" : ""} now`
+                  : "Tell the patient now"
+              }
+              explicacao="Off by default. Ticking this sends one e-mail and one push per patient."
+            />
 
             {/* Submit */}
             <div className="flex gap-2 pt-2">

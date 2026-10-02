@@ -1,5 +1,6 @@
 "use client";
 
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -985,6 +986,9 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
     finally { setAtlasBusy(""); }
   };
 
+  // Pedir pagamento é um segundo ato, e nasce desligado (104).
+  const [avisarPacote, setAvisarPacote] = useState(false);
+
   const createPackage = async () => {
     setPkgSaving(true); setPkgMsg("");
     try {
@@ -1005,6 +1009,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
           inClinicSessions: editDelivery === "IN_CLINIC" ? editTotalSessions : (hasElectro ? Math.ceil(editTotalSessions * 0.4) : 0),
           remoteSessions: editDelivery === "REMOTE" ? editTotalSessions : 0,
           homeVisitSessions: editDelivery === "HOME_VISIT" ? editTotalSessions : 0,
+          // O pacote nasce `DRAFT`: cobrar um rascunho era o defeito (104).
+          notify: avisarPacote,
         }),
       });
       const data = await res.json();
@@ -1406,6 +1412,14 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   }</span>
                 </div>
               </div>
+
+              <CaixaDeAviso
+                marcada={avisarPacote}
+                aoMudar={setAvisarPacote}
+                titulo="Ask the patient to pay now"
+                explicacao="Off by default — the package is created as a draft. Tick this to e-mail them the payment request."
+                className="mb-2"
+              />
 
               <div className="flex gap-2">
                 <Button size="sm" onClick={createPackage} disabled={pkgSaving}>

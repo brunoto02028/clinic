@@ -1,4 +1,5 @@
 "use client";
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,9 @@ export default function MembershipsPage() {
     } catch {}
   };
 
+  // Nasce desligada, e some ao fechar o diálogo (104).
+  const [avisarPaciente, setAvisarPaciente] = useState(false);
+
   const resetForm = () => setForm({ name: "", description: "", price: 9.90, interval: "MONTHLY", isFree: false, features: [], patientId: "", patientScope: "all", sessionDiscount: 0 });
   const openCreate = () => { setEditing(null); resetForm(); setShowDialog(true); };
   const openEdit = (p: MembershipPlan) => {
@@ -166,11 +170,16 @@ export default function MembershipsPage() {
     setSubmitting(true);
     try {
       const url = editing ? `/api/admin/memberships/${editing.id}` : "/api/admin/memberships";
-      const res = await fetch(url, { method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      // Criar o plano é cadastro; avisar quem vai pagar é outro ato (104).
+      const res = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, notify: avisarPaciente }),
+      });
       const data = await res.json();
       if (res.ok) {
         toast({ title: editing ? "Updated" : "Created", description: `"${form.name}" saved${!editing && data.stripeProductId ? " + Stripe subscription created" : ""}` });
-        setShowDialog(false); fetchPlans();
+        setShowDialog(false); setAvisarPaciente(false); fetchPlans();
       } else toast({ title: "Error", description: data.error || "Failed", variant: "destructive" });
     } catch { toast({ title: "Error", description: "Failed to save", variant: "destructive" }); }
     finally { setSubmitting(false); }
@@ -497,6 +506,15 @@ export default function MembershipsPage() {
               </p>
             </div>
           </div>
+          {/* Só faz pergunta quando há um paciente para avisar. */}
+          {form.patientScope === "specific" && form.patientId && !editing && (
+            <CaixaDeAviso
+              marcada={avisarPaciente}
+              aoMudar={setAvisarPaciente}
+              explicacao="Off by default — creating the plan is a record. Tick this to e-mail them about it."
+              className="mb-2"
+            />
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={submitting} className="bg-violet-600 hover:bg-violet-700 gap-2">

@@ -1,28 +1,33 @@
 # T-4: Os botões passam a pedir confirmação
 
-**Status:** API feita em 02/10/2026 · **telas pela metade** · QA pendente
+**Status:** ✅ **concluída** em 02/10/2026 — API, telas e QA
 **Depende de:** T-1
 
-> ## O que está feito e o que não está — leia antes de marcar concluída
+> ## As telas — e por que só quatro ganharam caixa
 >
-> **Feito:** as nove rotas passam pelo portão. Chamada sem `notify` executa
-> a ação e não manda nada.
+> A caixa virou um componente só: `components/admin/caixa-de-aviso.tsx`.
+> Nove cópias divergem na primeira semana, e a que divergir vai ser a que
+> nasce marcada.
 >
-> **Não feito: a caixa só existe em uma tela.** Só
-> `components/admin/patient-exercises-tab.tsx` ganhou o "Tell the patient
-> now". Nas outras oito — tarefas, documentos, revisão de vídeo, pacotes,
-> perguntas, protocolo-modelo, planos e artigos — a tela não manda `notify`,
-> então hoje elas **nunca avisam o paciente**.
+> | tela | o que recebeu | por quê |
+> |---|---|---|
+> | Exercícios | caixa | prescrever é trabalho de bastidor |
+> | Tarefas | caixa, com a contagem no rótulo | criar tarefa é ato interno |
+> | Documentos | caixa | anexar ao prontuário é arquivo, não recado |
+> | Pacote | caixa — *"Ask the patient to pay now"* | nasce `DRAFT` |
+> | Protocolo-modelo | caixa, **e o botão parou de dizer `Assign & Notify`** | o rótulo juntava os dois atos; agora diz `Assign`, e vira `Assign & Notify` quando marcada |
+> | Revisão de vídeo | `notify: true` fixo | o caminho passa por prévia e o botão diz *"Enviar ao paciente"* |
+> | Perguntas / relatório | `notify: true` fixo | o botão diz *"Confirm and Send to Patient"* |
+> | Plano de assinatura | caixa, só quando há paciente nomeado | plano "para todos" não tem quem avisar |
+> | Artigo | **nem caixa nem booleano** | a confirmação é o **número** |
 >
-> Isso erra para o lado seguro, e de propósito: o defeito que a atividade
-> conserta é mandar sem querer, não deixar de mandar. Mas é meia entrega, e
-> alguém vai precisar da caixa nessas telas. Enquanto não existir, avisar
-> por esses caminhos só é possível pelo compositor de e-mail.
+> A régua é a mesma que deixou `body-assessments` fora: o problema nunca foi
+> "manda", foi **"manda enquanto você achava que estava fazendo outra
+> coisa"**. Onde o botão já diz "enviar", perguntar de novo é cerimônia.
 >
-> **Parcial: `packages`.** O passo 5 manda mover o aviso da criação para a
-> transição de status. Eu só pus o portão: sem `notify` não cobra, mas com
-> `notify: true` ainda cobraria um rascunho `DRAFT`. O caminho certo
-> continua sendo prender o aviso à transição.
+> **Ainda parcial: `packages`.** O passo 5 manda mover o aviso da criação
+> para a transição de status. Hoje sem `notify` não cobra, mas com
+> `notify: true` ainda cobraria um rascunho `DRAFT`.
 
 ## Objetivo
 

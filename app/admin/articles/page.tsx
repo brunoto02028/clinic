@@ -222,13 +222,39 @@ export default function AdminArticlesPage() {
     }
   };
 
+  /**
+   * O número **antes** do clique (104, 02/10/2026).
+   *
+   * A confirmação aqui não é um `notify: true` — isso provaria que alguém
+   * clicou, não que viu para quantas pessoas ia. A rota devolve a contagem
+   * num `GET`, a tela mostra, e o `POST` só dispara com o mesmo número de
+   * volta. Se a lista cresceu entre olhar e apertar, para com 409 e manda
+   * conferir — a ideia da prévia do e-mail, aplicada a quantidade.
+   */
   const sendStandaloneNotify = async () => {
     if (!notifyArticle) return;
     setNotifyWorking(true);
     try {
-      const res = await fetch(`/api/admin/articles/${notifyArticle.id}/notify`, { method: "POST" });
+      const contagem = await fetch(`/api/admin/articles/${notifyArticle.id}/notify`);
+      const { subscribers } = await contagem.json().catch(() => ({ subscribers: null }));
+      if (typeof subscribers !== "number") {
+        toast({ title: "Could not check the list size", variant: "destructive" });
+        return;
+      }
+      if (!confirm(`This e-mails ${subscribers} subscriber${subscribers === 1 ? "" : "s"} about "${notifyArticle.title}". Send it?`)) {
+        return;
+      }
+      const res = await fetch(`/api/admin/articles/${notifyArticle.id}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmedCount: subscribers }),
+      });
       if (res.ok) {
-        toast({ title: "Notification sent", description: `Subscribers are being notified about "${notifyArticle.title}".` });
+        const d = await res.json().catch(() => ({}));
+        toast({
+          title: "Notification sent",
+          description: `${d.subscribers ?? "The"} subscribers are being notified about "${notifyArticle.title}".`,
+        });
         setNotifyArticle(null);
       } else {
         const d = await res.json();

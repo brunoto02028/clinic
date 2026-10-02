@@ -3,6 +3,7 @@
 // Assign a protocol template to a patient. Opened from the template library
 // (template already chosen) or from the patient's Protocol tab (patient
 // already chosen) — the other one is picked here.
+import { CaixaDeAviso } from "@/components/admin/caixa-de-aviso";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search, Send, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,12 @@ export default function AssignProtocolDialog({
   const [visibility, setVisibility] = useState<string>("2");
   const [note, setNote] = useState("");
   const [assigning, setAssigning] = useState(false);
+  /**
+   * Atribuir o modelo e avisar o paciente eram um botão só — "Assign &
+   * Notify" (104, 02/10/2026). Montar o plano é trabalho de bastidor;
+   * contar para a pessoa é outro ato, e nasce desligado.
+   */
+  const [avisarPaciente, setAvisarPaciente] = useState(false);
   const [conflict, setConflict] = useState<ExistingProtocol[] | null>(null);
 
   // Fresh form (and fresh lists) every time the dialog opens. Keyed on ids so
@@ -160,6 +167,7 @@ export default function AssignProtocolDialog({
           language,
           visibleThroughWeek,
           onExisting,
+          notify: avisarPaciente,
         }),
       });
       const data = await r.json().catch(() => ({}));
@@ -332,12 +340,18 @@ export default function AssignProtocolDialog({
           )}
         </div>
 
+        <CaixaDeAviso
+          marcada={avisarPaciente}
+          aoMudar={setAvisarPaciente}
+          explicacao="Off by default — assigning builds the plan. Tick this to tell them it is ready."
+        />
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           {!conflict && (
             <Button onClick={() => submit()} disabled={assigning || !chosenPatient || !chosenTemplate} className="gap-2">
               {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Assign & Notify
+              {avisarPaciente ? "Assign & Notify" : "Assign"}
             </Button>
           )}
         </DialogFooter>
