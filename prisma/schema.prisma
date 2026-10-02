@@ -7590,6 +7590,12 @@ enum ReportCadence {
   NONE
   DAILY
   WEEKLY
+
+  /// O paciente pediu um, agora (118 T-5) — não é uma cadência, é um pedido.
+  /// Fica no mesmo enum porque é a mesma tabela e o mesmo retrato; o que muda é
+  /// quem disparou. O cron ignora este valor: ele só olha para a cadência
+  /// configurada da clínica, que nunca é `ON_DEMAND`.
+  ON_DEMAND
 }
 
 /**

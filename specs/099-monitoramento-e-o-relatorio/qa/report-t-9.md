@@ -236,7 +236,38 @@ nenhuma sobreviveu**.
 | | |
 |---|---|
 | **H1 — o botão na tela** | React Native, sem navegador onde correr. Fica para o aparelho do Bruno depois do `eas update`: o botão por gravação, o bloqueio do duplo toque, a frase de erro, e a linha *"traçado não obtido"*. O caminho do servidor que ele consome está testado. |
-| **D7 — o `with_filtered` é honrado?** | A chamada pede filtrado por **inferência** (o PDF deles é limpo e o rodapé diz *"Enhanced Filter"*), nunca por medida. O probe passou a aceitar `?sinal=<signalid>` e compara as duas versões do mesmo sinal por estatística — amostras, extremos, aspereza. **A medir em produção**, contra o `signalid` 763283988. |
+| ~~**D7 — o `with_filtered` é honrado?**~~ | **Medido em produção, 02/10 09:41Z — fechado. Não é.** Ver abaixo. |
+
+## D7, medido: o `with_filtered` não faz nada
+
+Pedido contra a gravação `763283988` do Bruno, as duas versões do **mesmo** sinal
+com onze segundos entre elas:
+
+| | com filtro | sem filtro |
+|---|---|---|
+| amostras | 9.000 | 9.000 |
+| buracos | 0 | 0 |
+| frequência | 300 Hz | 300 Hz |
+| posição | 1 (pulso esquerdo) | 1 |
+| min / max | −277 / 690 µV | −277 / 690 µV |
+| aspereza (RMS entre vizinhas) | 24,555750593490114 | 24,555750593490114 |
+
+Idênticas até à última casa decimal — não são parecidas, são **a mesma
+resposta**. As chaves do corpo também: `signal`, `sampling_frequency`,
+`wearposition`, `model`, `heart_rate`.
+
+**O que isto fecha, e o que não.** Fecha a pergunta "o parâmetro faz alguma
+coisa": não faz. **Não** diz qual das versões recebemos — pode ser que só exista
+uma. Do sinal que chega sabemos que tem ~967 µV de ponta a ponta, amplitude
+plausível de pulso, e aspereza baixa entre amostras vizinhas.
+
+O comentário do `sinalDoEcg` passou a dizer isto em vez da inferência que lá
+estava (*"é improvável que seja o sinal cru"*). A medição repete-se com
+`/api/cron/wearables-probe?sinal=<signalid>`.
+
+**De brinde, outra inferência fechada:** o campo é `signal` no topo do corpo — a
+versão anterior aceitava `signal`, `ecg.signal` e `series.signal` porque *"esta é
+a primeira chamada real"*. Agora é a segunda, e sabe-se qual é.
 
 ## Nota sobre ficheiros
 

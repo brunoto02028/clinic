@@ -47,6 +47,16 @@ export async function GET() {
       // confusao que fez a tela dizer "ultimo sync: hoje" com dias de silencio
       // atras (114 T-2).
       lastReadingAt: true,
+      /*
+       * **A mensagem da última falha** (119 T-8, achado do QA).
+       *
+       * A coluna existe desde sempre e esta rota nunca a devolveu — por isso a
+       * pendência `falha_na_sincronizacao` da app nunca podia nascer, e a frase
+       * *"A última sincronização falhou"* era código morto. O admin e o cron
+       * liam-na; o paciente não.
+       */
+      lastSyncError: true,
+      lastSyncErrorAt: true,
       createdAt: true,
       notifyConfirmedAppli: true,
       notifyCheckedAt: true,
@@ -122,6 +132,9 @@ export async function GET() {
       status: c.status,
       lastSyncedAt: c.lastSyncedAt,
       lastReadingAt: c.lastReadingAt,
+      /** Porque a última tentativa falhou — ou `null` se correu bem. */
+      lastSyncError: c.lastSyncError ?? null,
+      lastSyncErrorAt: c.lastSyncErrorAt ?? null,
       // Autorizado, a entregar, e mesmo assim calado ha dias: o aparelho pode
       // estar fora da tomada, ou a pessoa pode ter parado de medir. A promessa
       // do provedor e a chegada do dado sao perguntas diferentes, e a tela

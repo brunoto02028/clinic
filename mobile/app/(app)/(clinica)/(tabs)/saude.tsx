@@ -25,13 +25,14 @@
  */
 import React from "react";
 import { View, Pressable, ScrollView, RefreshControl } from "react-native";
-import { Stack, router } from "expo-router";
+import { Stack, router, useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { fetchWearableData, fetchConnections, fetchMetas } from "@/api/wearables";
+import { fetchWearableData, fetchConnections, fetchMetas, syncProvider } from "@/api/wearables";
+import { valeASincronizacao } from "@/lib/sincronizar-se-vale-a-pena";
 import { LoadFailure } from "@/components/LoadFailure";
 import {
   destaques,
@@ -104,6 +105,99 @@ export default function SaudeScreen() {
   });
   const metas = useQuery({ queryKey: ["metas"], queryFn: fetchMetas });
 
+  /**
+   * **Puxar a tela fala com a Withings** (119 T-8).
+   *
+   * Antes isto era `dados.refetch()` + `ligacoes.refetch()`, que relê o **nosso
+   * banco**: se a última sincronização foi às 07:05, puxar às 10:20 relia os
+   * números de 07:05 com toda a diligência e devolvia o mesmo ecrã, depois de
+   * mostrar a roda a girar. Foi o que produziu a contradição que o Bruno viu —
+   * *"Steps 182"* aqui e *"391"* no app deles, o mesmo contador em dois
+   * instantes.
+   *
+   * A ida à fonte tem tecto, e a regra de quando vale a pena vive no
+   * `sincronizar-se-vale-a-pena.ts` — o limite deles é por minuto e por
+   * `client_id`, ou seja **nosso**, partilhado por todos os pacientes.
+   */
+  const [aSincronizar, setASincronizar] = React.useState(false);
+
+  /**
+   * **Quando nós pedimos**, e não quando o servidor conseguiu.
+   *
+   * Um `ref` e não um estado: mudá-lo não precisa de redesenhar nada, e precisa
+   * de ser lido **no instante** da chamada. Um `aSincronizar` lido do estado é o
+   * do render em que ele foi capturado — foi assim que o QA mostrou que a
+   * guarda `if (aSincronizar)` não era quem travava o segundo disparo.
+   *
+   * E é este relógio que faz o tecto existir: o `lastSyncedAt` da ligação só é
+   * escrito quando a ingestão termina **bem**, portanto numa falha ele congela e
+   * a idade nunca cresce. Medido pelo QA: `valeASincronizacao` devolvia `true`
+   * para sempre depois da primeira falha.
+   */
+  const ultimoPedidoMs = React.useRef<number | null>(null);
+  const aPedir = React.useRef(false);
+
+  const atualizar = React.useCallback(
+    async (gesto: boolean) => {
+      /* Lido do `ref`, que é o valor de agora e não o do render. */
+      if (aPedir.current) return;
+
+      const relerTudo = () =>
+        Promise.all([dados.refetch(), ligacoes.refetch(), metas.refetch()]).catch(() => {});
+
+      const vale = valeASincronizacao(ligacoes.data as any[], {
+        ultimoPedidoMs: ultimoPedidoMs.current,
+      });
+      if (!vale) {
+        /* Sem ida à fonte, mas relê na mesma — era o que o gesto já fazia. */
+        if (gesto) await relerTudo();
+        return;
+      }
+
+      aPedir.current = true;
+      ultimoPedidoMs.current = Date.now();
+      setASincronizar(true);
+      try {
+        await syncProvider("withings");
+      } catch {
+        /*
+         * **Sem alerta novo.** Se a Withings não respondeu, a tela mostra o que
+         * tem e a pendência diz que a última sincronização falhou — agora diz
+         * mesmo: a rota passou a gravar `lastSyncError` e a rota das ligações
+         * passou a devolvê-lo. Até 02/10 essa frase era inalcançável, e o QA
+         * mediu-o: `pendencias(payload com status ERROR) = []`.
+         *
+         * Um erro vermelho por cima de um gesto que a pessoa faz por hábito
+         * ensina a não fazer o gesto.
+         */
+      } finally {
+        /*
+         * **A roda pára antes do `await`.** Estava depois, e se aquele `await`
+         * rejeitasse a roda ficava a girar para sempre. Hoje o `refetch` do
+         * React Query resolve com `isError` em vez de rejeitar — medido pelo QA
+         * na 5.101.0 — mas isso é uma garantia da biblioteca que o código não
+         * pedia, e uma palavra (`throwOnError`) chegava para a perder.
+         */
+        setASincronizar(false);
+        aPedir.current = false;
+        /* Relê sempre: a sincronização pode ter gravado antes de falhar. */
+        await relerTudo();
+      }
+    },
+    [dados, ligacoes, metas]
+  );
+
+  /*
+   * **Ao entrar na aba**, a mesma regra. O tecto é o que faz trocar de aba três
+   * vezes ser uma sincronização e não três.
+   */
+  useFocusEffect(
+    React.useCallback(() => {
+      void atualizar(false);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ligacoes.data])
+  );
+
   const saudacao = (): string => {
     const h = new Date().getHours();
     if (h < 12) return tr(lang, { en: "Good morning", pt: "Bom dia" });
@@ -175,11 +269,13 @@ export default function SaudeScreen() {
         contentContainerStyle={{ gap: 18, paddingBottom: 28 }}
         refreshControl={
           <RefreshControl
-            refreshing={dados.isRefetching}
-            onRefresh={() => {
-              dados.refetch();
-              ligacoes.refetch();
-            }}
+            /*
+              * A roda gira **até ao fim**, e não até o nosso banco responder: com
+              * a sincronização no meio, parar aí diria que acabou enquanto a
+              * parte lenta ainda corre.
+              */
+            refreshing={aSincronizar || dados.isRefetching}
+            onRefresh={() => void atualizar(true)}
             tintColor={t.colors.textSecondary}
           />
         }

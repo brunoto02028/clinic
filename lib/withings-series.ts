@@ -296,12 +296,32 @@ export async function sinalDoEcg(
    * se tem um notch de 50/60 Hz.
    *
    * Pedimo-lo porque o traçado do PDF deles é visivelmente limpo e o rodapé
-   * desse PDF diz *"Enhanced Filter, Main filter"* — é improvável que seja o
-   * sinal cru. Um ECG impresso com ruído de rede por cima é um ECG que o médico
-   * devolve.
+   * desse PDF diz *"Enhanced Filter, Main filter"* — era improvável que fosse o
+   * sinal cru. **Isso era inferência. Agora está medido, e o parâmetro não faz
+   * nada.**
    *
-   * Se o campo não vier filtrado, nada se perde: o corpo é o mesmo e o `bruto`
-   * guarda-o inteiro para se poder comparar as duas versões.
+   * Medido em 02/10/2026 contra a gravação `763283988` do Bruno, pedindo as duas
+   * versões do **mesmo** sinal com onze segundos entre elas:
+   *
+   * | | com filtro | sem filtro |
+   * |---|---|---|
+   * | amostras | 9.000 | 9.000 |
+   * | min / max | −277 / 690 µV | −277 / 690 µV |
+   * | aspereza (RMS entre vizinhas) | 24,555750593490114 | 24,555750593490114 |
+   *
+   * Idênticas até à última casa — não são parecidas, são a mesma resposta. As
+   * chaves do corpo também: `signal`, `sampling_frequency`, `wearposition`,
+   * `model`, `heart_rate`.
+   *
+   * **O que isto diz, e o que não diz.** Diz que o `with_filtered` é ignorado.
+   * **Não** diz qual das versões recebemos — pode ser que só exista uma. O que
+   * sabemos do sinal que chega: ~967 µV de ponta a ponta, que é uma amplitude
+   * plausível de pulso, e aspereza baixa entre amostras vizinhas.
+   *
+   * Fica a ser pedido porque pedir não custa e um dia pode passar a valer. O que
+   * mudou foi o comentário deixar de afirmar o que ninguém tinha verificado.
+   *
+   * A medição repete-se com `/api/cron/wearables-probe?sinal=<signalid>`.
    */
   filtrado = true
 ): Promise<SinalDeEcg> {
@@ -313,9 +333,13 @@ export async function sinalDoEcg(
   });
 
   /*
-   * O nome do campo não é certo: a documentação fala de `signal`, e há relatos
-   * de `ecg.signal`. Como esta é a primeira chamada real, aceita-se os dois e
-   * guarda-se o corpo inteiro — descobrir o formato é metade do objetivo.
+   * **Medido em 02/10/2026: o campo é `signal`, no topo do corpo.** A resposta
+   * real traz `signal`, `sampling_frequency`, `wearposition`, `model` e
+   * `heart_rate`, e mais nada.
+   *
+   * Os outros dois caminhos ficam porque custam zero e cobrem relatos de
+   * `ecg.signal` que eu não consegui reproduzir — mas já não são a hipótese
+   * principal, e o `bruto` continua guardado por inteiro.
    */
   const cru = body?.signal ?? body?.ecg?.signal ?? body?.series?.signal ?? null;
 
