@@ -147,6 +147,7 @@ some ensina à pessoa que o produto está estragado.
 | T-5 | [**O relatório preso ao plano**](t-5-o-relatorio-preso-ao-plano.md) | T-1 | **concluído** (02/10) — [QA](qa/report-t-5.md) reprovado na 1ª rodada (o papel afirmava diagnóstico; o POST aceitava terapeuta), aprovado na 2ª; 13 mutações |
 | T-6 | Os anéis e as linhas — **só com build autorizado** | T-4, T-7 | pendente |
 | T-7 | **As metas são do paciente** | T-2 | **feito** (02/10) — QA 0 reprovados, 9 achados do review fechados |
+| T-8 | [**O relatório ganha gráfico**](t-8-o-relatorio-ganha-grafico.md) | T-5 | **concluído** (02/10) — linha por métrica que **não atravessa buracos**, fases do sono, triagem em grupos; 10 mutações |
 
 **Ordem pedida pelo Bruno:** *"vamos antes conectar tudo e ver esse
 layout/design"* — ou seja, T-1 a T-4 primeiro; a T-5 e a T-6 depois.
