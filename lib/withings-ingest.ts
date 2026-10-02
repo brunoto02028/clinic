@@ -197,6 +197,33 @@ async function upsertSeries(
  * ingestão gravava `withings` e o backfill `WITHINGS`, para a mesma gravação —
  * duas linhas onde devia haver uma, e sem nada a apontar o erro.
  */
+/**
+ * O que uma sincronização trouxe, contado.
+ *
+ * Tem nome em vez de ser um tipo escrito à mão na assinatura por uma razão
+ * prática: o cron soma estes campos nos totais dele, e **duas vezes** um
+ * contador novo foi acrescentado aqui e esquecido lá — primeiro o intraday, o
+ * hipnograma e os treinos, depois o ECG. Nas duas, o resultado da sincronização
+ * ficou mudo sobre exactamente aquilo que se tinha ido buscar.
+ *
+ * Com um nome, `__tests__/wearables/o-cron-conta-o-que-entrou.test.ts` consegue
+ * ler a lista e exigir que cada um apareça nos totais e na linha de log.
+ */
+export interface IngestCounts {
+  /** Leituras de pressão **guardadas** (as repetidas não contam). */
+  bloodPressure: number;
+  /** Leituras de pressão que a Withings devolveu, guardadas ou não. */
+  bloodPressureRead: number;
+  activityDays: number;
+  sleepNights: number;
+  vitalsDays: number;
+  /** Gravações de ECG — a conclusão, uma linha por gravação. */
+  ecgRecords: number;
+  intradayDays: number;
+  hypnogramNights: number;
+  workouts: number;
+}
+
 const PROVEDOR = "WITHINGS";
 
 async function upsertPoint(
@@ -257,7 +284,7 @@ export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
   opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series"> } = {}
-): Promise<{ bloodPressure: number; bloodPressureRead: number; activityDays: number; sleepNights: number; vitalsDays: number; ecgRecords: number; intradayDays: number; hypnogramNights: number; workouts: number }> {
+): Promise<IngestCounts> {
   const token = await withingsAccessToken(connection);
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals", "series"];
