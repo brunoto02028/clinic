@@ -150,7 +150,19 @@ describe("a fibrilação atrial", () => {
 
   it("e vem sempre no topo da lista", () => {
     const pontos: any[] = [
-      ...baseCom(48, 70).map((p) => ({ dataType: "BODY", dataDate: p.dia, restingHr: p.valor })),
+      /*
+       * **`SLEEP`, e não `BODY`** (119 T-9).
+       *
+       * Esta linha dizia `dataType: "BODY"` — e `BODY` **nunca é escrito** pela
+       * ingestão da Withings, que guarda a FC de repouso em `SLEEP` e em
+       * `VITALS`. Foi este mock que manteve o defeito vivo: o código procurava
+       * em `BODY`, o teste entregava `BODY`, e os dois concordavam sobre uma
+       * gaveta que o banco nunca enche.
+       *
+       * Em produção isso quis dizer que o alerta de FC de repouso, VFC e SpO2
+       * nunca disparou, para nenhum paciente.
+       */
+      ...baseCom(48, 70).map((p) => ({ dataType: "SLEEP", dataDate: p.dia, restingHr: p.valor })),
       ecg(1, "2026-09-01"),
     ];
     const achados = desviosDosPontos(pontos);
@@ -331,5 +343,52 @@ describe("a fibrilhação vem das gravações, não dos pontos diários", () => 
   it("sem gravações nenhumas, não estoura", () => {
     expect(desviosDosPontos([])).toEqual([]);
     expect(desviosDosPontos([], [])).toEqual([]);
+  });
+});
+
+describe("a gaveta onde a clínica procura é a que a ingestão enche", () => {
+  /**
+   * O defeito, e porque ele sobreviveu a uma suíte verde.
+   *
+   * A detecção lia `restingHr`, `hrv` e `spo2` de `dataType: "BODY"`. A ingestão
+   * da Withings escreve em `SLEEP`, `VITALS` e `ACTIVITY` — e **nunca** em
+   * `BODY`, cujo único escritor no repositório é o webhook da Terra, desligado.
+   *
+   * Uma série vazia é indistinguível de uma série estável: o alerta nunca
+   * disparou e nada no produto o denunciou. Quem o viu foi o Bruno, ao pôr o
+   * relatório ao lado da aba Saúde e notar que faltavam dois números que a aba
+   * mostrava.
+   */
+  /** Os mesmos pontos do `baseCom`, mas na forma que o banco guarda. */
+  const comoNoBanco = (tipo: string, campo: string, pontos: PontoDaSerie[]) =>
+    pontos.map((p) => ({ dataType: tipo, dataDate: p.dia, [campo]: p.valor })) as any[];
+
+  it("**a FC de repouso vem do sono** — onde a ingestão a escreve", () => {
+    const pontos = comoNoBanco("SLEEP", "restingHr", baseCom(48, 70));
+    expect(desviosDosPontos(pontos).some((d) => d.metrica === "restingHr")).toBe(true);
+  });
+
+  it("**e também dos sinais vitais**, para os dias sem noite registada", () => {
+    const pontos = comoNoBanco("VITALS", "restingHr", baseCom(48, 70));
+    expect(desviosDosPontos(pontos).some((d) => d.metrica === "restingHr")).toBe(true);
+  });
+
+  it("**o SpO2 vem dos sinais vitais**", () => {
+    const pontos = comoNoBanco("VITALS", "spo2", baseCom(89, 98));
+    expect(desviosDosPontos(pontos).some((d) => d.metrica === "spo2")).toBe(true);
+  });
+
+  it("**a VFC vem do sono**", () => {
+    const pontos = comoNoBanco("SLEEP", "hrv", baseCom(25, 60));
+    expect(desviosDosPontos(pontos).some((d) => d.metrica === "hrv")).toBe(true);
+  });
+
+  it("**e um ponto `BODY` não produz achado nenhum** — ninguém o escreve", () => {
+    /*
+     * Fica como registo de que o balde é uma ficção para a Withings. Se um dia
+     * alguém voltar a mapeá-lo, é o teste de cima que denuncia — e é esse que
+     * importa.
+     */
+    expect(desviosDosPontos(comoNoBanco("BODY", "restingHr", baseCom(48, 70)))).toHaveLength(0);
   });
 });

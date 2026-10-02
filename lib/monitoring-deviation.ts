@@ -1,4 +1,5 @@
 import { lerEcg, exigeAtencao } from "@/lib/ecg-record";
+import { serieDaMetrica } from "@/lib/onde-mora-a-metrica";
 
 /**
  * O desvio que a clínica precisa ver (099 T-6).
@@ -237,17 +238,23 @@ export function desviosDosPontos(
     }
   }
 
-  const serieDe = (tipo: string, campo: MetricaMonitorada): PontoDaSerie[] =>
-    pontos
-      .filter((p) => p.dataType === tipo)
-      .map((p) => ({ dia: String(p.dataDate ?? ""), valor: (p as any)[campo] ?? null }));
+  /**
+   * **O balde vem do mapa** (119 T-9).
+   *
+   * Isto procurava `restingHr`, `hrv` e `spo2` em `BODY` — um `dataType` que a
+   * ingestão da Withings **nunca escreve**. O alerta da clínica para essas três
+   * nunca disparou, para nenhum paciente, e não havia como saber: uma série
+   * vazia é indistinguível de uma série estável.
+   */
+  const serieDe = (campo: MetricaMonitorada): PontoDaSerie[] =>
+    serieDaMetrica(pontos as any[], campo).map((v) => ({ dia: v.dia, valor: v.valor }));
 
-  for (const [tipo, metricas] of [
-    ["BODY", ["restingHr", "hrv", "spo2"] as MetricaMonitorada[]],
-    ["SLEEP", ["sleepDuration"] as MetricaMonitorada[]],
+  for (const metricas of [
+    ["restingHr", "hrv", "spo2"] as MetricaMonitorada[],
+    ["sleepDuration"] as MetricaMonitorada[],
   ] as const) {
     for (const metrica of metricas) {
-      const d = detectarDesvio(metrica, serieDe(tipo, metrica));
+      const d = detectarDesvio(metrica, serieDe(metrica));
       if (d) achados.push(d);
     }
   }

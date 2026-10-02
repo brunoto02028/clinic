@@ -166,7 +166,8 @@ const P = {
     maisBaixo: "lower",
     maisAlto: "higher",
     queAPrimeiraMetade: "than the first half of the period",
-    diasComDados: (n: number) => `${n} day${n === 1 ? "" : "s"} with data`,
+    diasComDados: (n: number) =>
+      n === 1 ? "on the 1 day with data" : `average of the ${n} days with data`,
     naoEhDiagnostico:
       "<strong>This is not a diagnosis.</strong> It shows what was measured and what was recorded, and it has not been read by a doctor. Talk to your therapist, or to the doctor you bring it to, about what it means.",
     rodape:
@@ -224,7 +225,8 @@ const P = {
     maisBaixo: "abaixo",
     maisAlto: "acima",
     queAPrimeiraMetade: "da primeira metade do período",
-    diasComDados: (n: number) => `${n} dia${n === 1 ? "" : "s"} com dados`,
+    diasComDados: (n: number) =>
+      n === 1 ? "no único dia com dado" : `média dos ${n} dias com dados`,
     naoEhDiagnostico:
       "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registrado, e não foi lido por um médico. Fale com seu terapeuta, ou com o médico a quem entregar este documento, sobre o que ele significa.",
     rodape:
