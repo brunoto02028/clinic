@@ -36,20 +36,30 @@ pacote, ou procurar um defeito nosso que não existe.
 
 **Por isso a T-1 é medição, e nada mais.** Nenhuma tela antes de saber.
 
-## O que já sabemos, e não é suposição
+## O que sabemos — **medido em 02/10**, não suposto
 
-- **Funciona hoje:** frequência minuto a minuto (`intradayDays: 1` medido),
-  SpO₂ pontual, temperatura, passos/calorias/minutos activos, pressão arterial,
-  peso e composição, e a **conclusão** do ECG.
-- **Volta vazio, sem erro:** hipnograma (`v2/sleep get`), treinos, e as
-  **amostras** do ECG (`v2/heart get`).
-- **Nunca apareceu:** HRV, pontuação de sono, frequência durante o sono,
-  respiração.
+A tabela completa está em [`qa/o-que-a-api-devolve.md`](qa/o-que-a-api-devolve.md).
+O essencial:
 
-A sobreposição entre "volta vazio" e "está no pacote pago" é exacta. Mas
-*exacta* não é *provada* — pode ser escopo OAuth, pode ser o modelo do relógio,
-pode ser um parâmetro nosso errado (já aconteceu: um `data_fields` inválido
-derrubou as três chamadas de série de uma vez).
+**Quase tudo vem.** Incluindo as duas coisas que estavam dadas como perdidas:
+
+- **O traçado do ECG: 9.000 amostras** (30 s a 300 Hz). O PDF para levar ao
+  médico é montável.
+- **O hipnograma: 12 fases**, com a frequência cardíaca dentro de cada uma — o
+  que traz a curva da noite junto.
+- Frequência do sono (55), respiração (12 rpm), pontuação deles (47), duração
+  (3h43) — todos conferidos contra as capturas do próprio Bruno.
+
+**O único que não veio: o HRV.** Pedido por `rmssd` e `sdnn_1`, ausente do
+corpo. Pode ser plano, pode ser nome de campo.
+
+**E a suposição anterior estava errada.** Eu tinha escrito aqui que hipnograma,
+treinos e traçado "voltam vazios, sem erro" e que a sobreposição com o pacote
+pago era exacta. Não era: o hipnograma e o traçado **vêm**. O que havia era
+parâmetro nosso errado — um `data_fields` inválido que derrubava três chamadas
+de uma vez. A sondagem foi construída para não repetir isso, e **repetiu-o uma
+vez**: pediu sete dias ao `getintradayactivity`, que só aceita um, e leu o vazio
+como se fosse falta de plano.
 
 ## O que **não** vamos copiar, e porquê
 
@@ -67,7 +77,7 @@ derrubou as três chamadas de série de uma vez).
 
 | T-N | nome | depende de | status |
 |---|---|---|---|
-| T-1 | [**Medir, biomarcador a biomarcador, o que a API devolve**](t-1-medir-o-que-a-api-devolve.md) | — | pendente |
+| T-1 | [**Medir, biomarcador a biomarcador, o que a API devolve**](t-1-medir-o-que-a-api-devolve.md) | — | **medido** (02/10) — [a tabela](qa/o-que-a-api-devolve.md) |
 | T-2 | O ECG deixa de ser um por dia — tabela própria, uma linha por registo | — | **feito** (02/10) |
 | T-3 | O ECG dentro da página Heart, com a lista e a hora | T-2 | **feito** (02/10) |
 | T-4 | O hipnograma da noite, se a T-1 disser que vem | T-1 | pendente |
