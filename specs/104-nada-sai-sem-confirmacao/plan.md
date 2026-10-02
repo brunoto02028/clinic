@@ -159,7 +159,7 @@ Nunca o contrário.
 | T-4 | Os treze botões passam a pedir confirmação | **implementada** — 9 rotas; a 10ª fora do escopo com motivo |
 | T-5 | O upsell automático e o e-mail sem marca | **implementada**, QA pendente |
 | T-6 | Trava em código nos quatro crons | **implementada**, QA pendente |
-| T-7 | A tela única de tudo que saiu | pendente |
+| T-7 | A tela única de tudo que saiu | **implementada**, QA pendente |
 | T-8 | As três decisões em aberto | **concluído** (02/10) |
 
 Ordem: T-1 primeiro (todas dependem dele). T-2 e T-3 em seguida, que são

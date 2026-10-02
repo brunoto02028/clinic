@@ -1,6 +1,19 @@
 # T-7: A tela única de tudo que saiu
 
-**Status:** pendente
+**Status:** implementada em 02/10/2026 — QA pendente
+
+> **Decidido no passo 1:** estender a aba **Activity** que já existe
+> (`components/admin/patient-activity-tab.tsx` +
+> `app/api/admin/patients/[id]/activity/route.ts`), e não criar uma sexta
+> superfície. Ela já juntava seis fontes; ganhou três — o que saiu
+> (`PatientOutboundEmail`), o veredito do portão (`SystemLog` com
+> `source: "patient-send-gate"`, **inclusive as recusas**) e a fila
+> (`OutboundMessage`).
+>
+> **O que ficou de fora e precisa de outra passada:** o corpo completo do
+> e-mail só aparece truncado em 160 caracteres na descrição — o passo 4
+> pede poder abrir a mensagem inteira, e isso exige um diálogo que não
+> construí.
 **Depende de:** T-1
 
 ## Objetivo

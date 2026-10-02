@@ -16,10 +16,24 @@ type ActivityEvent = {
     | "SCREENING_UPDATED"
     | "DOCUMENT_UPLOADED"
     | "CHECK_IN"
+    /** Saiu para o paciente — e-mail, push, WhatsApp, o que for (104). */
+    | "SEND_OUT"
+    /** O portão barrou. Fica na linha do tempo de propósito: uma tela que só
+     *  mostra o que saiu esconde justamente o que se quer auditar. */
+    | "SEND_BLOCKED"
+    /** Enfileirado, esperando alguém aprovar. */
+    | "SEND_QUEUED"
     | "OTHER";
   title: string;
   description: string | null;
   at: string;
+  /**
+   * Quem apertou o gatilho. Separa as três naturezas que a mesma linha do
+   * tempo mistura: o que a clínica disparou, o que o próprio paciente
+   * provocou (código de acesso, confirmação de upload) e o que o sistema
+   * mandou sozinho (alerta de crise de pressão).
+   */
+  origin?: "clinic" | "patient" | "system" | null;
 };
 
 // Any AuditLog action not listed here falls back to OTHER/the raw action
@@ -59,7 +73,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // whichever source it belongs to.
   const take = offset + limit + 1;
 
-  const [auditLogs, completionLogs, messages, screening, documents, checkIns] = await Promise.all([
+  const [
+    auditLogs, completionLogs, messages, screening, documents, checkIns,
+    emailsEnviados, decisoesDoPortao, naFila,
+  ] = await Promise.all([
     prisma.auditLog.findMany({
       where: { userId: patientId },
       orderBy: { createdAt: "desc" },
@@ -101,6 +118,32 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         id: true, checkinDate: true, painLevel: true, moodLevel: true,
         exercisesDone: true, notes: true, createdAt: true,
       },
+    }),
+    // ── As três fontes de envio (104) ──
+    // O que de facto saiu, pelo compositor de e-mail.
+    prisma.patientOutboundEmail.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: {
+        id: true, subject: true, status: true, locale: true, bothLanguages: true,
+        providerError: true, bodyText: true, createdAt: true,
+        sentBy: { select: { firstName: true, lastName: true } },
+      },
+    }),
+    // O veredito do portão, inclusive o de barrar.
+    prisma.systemLog.findMany({
+      where: { source: "patient-send-gate", userId: patientId },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: { id: true, message: true, path: true, details: true, createdAt: true },
+    }),
+    // O que espera aprovação.
+    prisma.outboundMessage.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: { id: true, subjectEn: true, status: true, channel: true, createdAt: true },
     }),
   ]);
 
@@ -169,6 +212,52 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       title: `Uploaded "${doc.fileName}"`,
       description: null,
       at: doc.createdAt.toISOString(),
+    });
+  }
+
+  for (const e of emailsEnviados) {
+    const quem = e.sentBy ? `${e.sentBy.firstName} ${e.sentBy.lastName}` : "the clinic";
+    events.push({
+      id: e.id,
+      type: "SEND_OUT",
+      title: e.status === "sent" ? `E-mail sent: "${e.subject}"` : `E-mail FAILED: "${e.subject}"`,
+      description: [
+        `by ${quem}`,
+        e.bothLanguages ? "EN + PT" : e.locale,
+        e.providerError || null,
+        e.bodyText?.slice(0, 160) || null,
+      ].filter(Boolean).join(" · "),
+      at: e.createdAt.toISOString(),
+      origin: "clinic",
+    });
+  }
+
+  for (const d of decisoesDoPortao) {
+    const barrado = d.message.startsWith("barrado");
+    const det = (d.details || {}) as any;
+    const modo = det?.modo;
+    // O transacional é resposta ao que o próprio paciente acabou de fazer.
+    const origem = modo === "transacional" ? "patient" : "clinic";
+    events.push({
+      id: d.id,
+      type: barrado ? "SEND_BLOCKED" : "SEND_OUT",
+      title: barrado
+        ? `Not sent (${d.message.replace("barrado:", "")}) — ${det?.canal || "message"}`
+        : `Allowed to send — ${det?.canal || "message"}`,
+      description: d.path || null,
+      at: d.createdAt.toISOString(),
+      origin: origem,
+    });
+  }
+
+  for (const m of naFila) {
+    events.push({
+      id: m.id,
+      type: "SEND_QUEUED",
+      title: `Queued (${m.status}): "${m.subjectEn}"`,
+      description: m.channel,
+      at: m.createdAt.toISOString(),
+      origin: "clinic",
     });
   }
 
