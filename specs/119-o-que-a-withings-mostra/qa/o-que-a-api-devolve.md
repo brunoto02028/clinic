@@ -3,11 +3,35 @@
 **Medido em:** 02/10/2026, 05:12 UTC, em **produção**, na ligação do Bruno.
 **Como:** `POST /api/cron/wearables-probe`, janela de 7 dias.
 **Ligação:** `CONNECTED`, token válido (não precisou renovar), aparelho pessoal.
-**Withings+ do consumidor:** **activo** (teste gratuito, activado nessa noite).
+**Withings+ do consumidor:** **activo** — o Bruno activou o teste gratuito **no
+próprio dia 02/10/2026**. Catorze dias: acaba por volta de **16/10/2026**.
 
-> Esta tabela tem data porque a resposta muda quando o plano muda. Quando o
-> teste do Withings+ terminar, remedir — a diferença entre as duas tabelas diz
-> se a assinatura do consumidor abre a API ou não.
+> ## ⚠️ Esta tabela foi medida **com o Withings+ ligado**
+>
+> Não prova que estes dados vêm no plano gratuito. Pode ser a assinatura do
+> consumidor a abri-los.
+>
+> **E há um indício de que é mesmo isso.** Em 01/10, *antes* do teste, o traçado
+> do ECG voltou **vazio** — registei-o na altura como *"VAZIO SEM ERRO
+> (ambíguo)"*. Hoje, com o teste ligado, vieram **9.000 amostras**.
+>
+> O hipnograma também voltou vazio em 01/10, mas essa leitura está
+> **contaminada**: nessa chamada havia um `data_fields` inválido (`spo2`) que
+> derrubava as três séries de uma vez. Não serve de linha de base.
+>
+> **O traçado não tem essa desculpa.** `v2/heart get` era uma chamada isolada, e
+> voltou vazia.
+>
+> ### O que fazer com isso
+>
+> **Remedir depois de 16/10**, com o teste expirado. Se o traçado desaparecer, o
+> PDF do ECG depende de uma assinatura **que é do paciente, não nossa** — e isso
+> é uma decisão de produto, não de engenharia: não se pode exigir que cada
+> paciente assine o Withings+ para a clínica ler o ECG dele.
+>
+> Até lá, construir — mas construir de forma que **um campo que desapareça seja
+> dito**, não escondido. É a 119 T-6, e deixa de ser um extra: passa a ser o que
+> impede a tela de mentir quando a assinatura cair.
 
 ## A tabela
 
