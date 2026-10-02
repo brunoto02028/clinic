@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { serieDaMetrica, comoSeEscreve } from "@/lib/onde-mora-a-metrica";
 import { lerEcg, type RegistroDeEcg } from "@/lib/ecg-record";
 
 /**
@@ -42,7 +43,17 @@ export interface ResumoDaMetrica {
  * nada sobre um mês, e uma seta para baixo em cima de dois pontos é pior que
  * nenhuma seta.
  */
-export function resumirSerie(valores: Array<{ dia: string; valor: number | null }>): ResumoDaMetrica {
+export function resumirSerie(
+  valores: Array<{ dia: string; valor: number | null }>,
+  /**
+   * O nome do campo, quando ele muda a forma do número.
+   *
+   * `Steps 919.5` foi ao papel do paciente: a média do período impressa como se
+   * fosse uma contagem. Ninguém deu meio passo — e um número assim faz duvidar
+   * dos outros que estão ao lado, que estão certos. Ver `SAO_CONTAGEM`.
+   */
+  campo?: string
+): ResumoDaMetrica {
   const comDado = valores.filter((v) => v.valor !== null && v.valor !== undefined);
   const dias = comDado.length;
   if (dias === 0) return { atual: null, anterior: null, variacao: null, dias: 0 };
@@ -55,11 +66,14 @@ export function resumirSerie(valores: Array<{ dia: string; valor: number | null 
   const anterior = ordenados.length >= 4 ? media(ordenados.slice(0, meio)) : null;
   const atual = ordenados.length >= 4 ? media(ordenados.slice(meio)) : media(ordenados);
 
+  const umaCasa = (n: number | null) => (n === null ? null : Math.round(n * 10) / 10);
+  const escrever = (n: number | null) => (campo ? comoSeEscreve(campo, umaCasa(n)) : umaCasa(n));
+
   return {
-    atual: atual === null ? null : Math.round(atual * 10) / 10,
-    anterior: anterior === null ? null : Math.round(anterior * 10) / 10,
+    atual: escrever(atual),
+    anterior: escrever(anterior),
     variacao:
-      atual === null || anterior === null ? null : Math.round((atual - anterior) * 10) / 10,
+      atual === null || anterior === null ? null : escrever(atual - anterior),
     dias,
   };
 }
@@ -151,17 +165,23 @@ export async function getMonitoringData(
     }).catch(() => []),
   ]);
 
-  const serie = (tipo: string, campo: string) =>
-    (pontos as any[])
-      .filter((p) => p.dataType === tipo)
-      .map((p) => ({ dia: p.dataDate as string, valor: (p[campo] ?? null) as number | null }));
-
+  /**
+   * **O balde vem do mapa, não da memória de quem escreve a linha** (119 T-9).
+   *
+   * Isto dizia `serie("BODY", "restingHr")` — e `BODY` **nunca é escrito** pela
+   * ingestão da Withings, que guarda em `SLEEP`, `VITALS` e `ACTIVITY`. O único
+   * escritor de `BODY` no repositório é o webhook da Terra, desligado.
+   *
+   * O resultado: FC de repouso, VFC e SpO2 vazias no relatório de **todos** os
+   * pacientes, indistinguíveis de quem nunca mediu. O Bruno viu-o ao pôr o
+   * relatório ao lado da aba Saúde, que mostrava os dois números.
+   */
   const sinais = {
-    sono: resumirSerie(serie("SLEEP", "sleepDuration")),
-    fcRepouso: resumirSerie(serie("BODY", "restingHr")),
-    hrv: resumirSerie(serie("BODY", "hrv")),
-    spo2: resumirSerie(serie("BODY", "spo2")),
-    passos: resumirSerie(serie("ACTIVITY", "steps")),
+    sono: resumirSerie(serieDaMetrica(pontos as any[], "sleepDuration")),
+    fcRepouso: resumirSerie(serieDaMetrica(pontos as any[], "restingHr")),
+    hrv: resumirSerie(serieDaMetrica(pontos as any[], "hrv")),
+    spo2: resumirSerie(serieDaMetrica(pontos as any[], "spo2")),
+    passos: resumirSerie(serieDaMetrica(pontos as any[], "steps"), "steps"),
   };
 
   /**

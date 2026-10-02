@@ -242,17 +242,52 @@ describe("o relatório", () => {
     expect(render).not.toMatch(proibidas);
   });
 
-  it("e diz quantos dias têm dado, porque trinta noites e duas não são a mesma frase", () => {
-    /* Medido na saída: o singular e o plural, que é o que a pessoa lê. */
-    expect(renderPatientReportHTML(comAcompanhamento({ dias: 1 }))).toMatch(/1 day with data/);
-    expect(renderPatientReportHTML(comAcompanhamento({ dias: 30 }))).toMatch(/30 days with data/);
+  it("**e diz que o número é uma média**, porque senão contradiz a tela", () => {
+    /*
+     * O Bruno pôs as duas lado a lado: a aba Saúde dizia **1.590 passos** (hoje)
+     * e o relatório **919,5** (a média dos dias com dado). Os dois certos, e
+     * contraditórios para quem lê — a frase dizia só *"2 days with data"*, que
+     * não explica de onde vem o número.
+     */
+    const en = (n: number) => renderPatientReportHTML(comAcompanhamento({ dias: n }));
+    expect(en(30)).toMatch(/average of the 30 days with data/);
+    /* Com um dia só não há média nenhuma, e dizer "média de 1 dia" seria pior. */
+    expect(en(1)).toMatch(/on the 1 day with data/);
+    expect(en(1)).not.toMatch(/average/);
   });
 
-  it("**e em português também conta certo**", () => {
+  it("**e em português também**", () => {
     const pt = (n: number) =>
       renderPatientReportHTML(comAcompanhamento({ dias: n }), { idioma: "pt" });
-    expect(pt(1)).toMatch(/1 dia com dados/);
-    expect(pt(30)).toMatch(/30 dias com dados/);
+    expect(pt(30)).toMatch(/média dos 30 dias com dados/);
+    expect(pt(1)).toMatch(/no único dia com dado/);
+    expect(pt(1)).not.toMatch(/média/);
+  });
+
+  it("**e passos não têm casa decimal** — ninguém deu meio passo", () => {
+    /*
+     * `Steps 919.5` foi ao papel do paciente: a média de dois dias impressa como
+     * se fosse uma contagem. Medido onde a conta acontece, e não na saída — o
+     * helper deste ficheiro monta o resumo à mão e nunca passaria por aqui.
+     *
+     * 1.230 e 609 dão 919,5 de média, que é exactamente o número da tela dele.
+     */
+    const dias = [
+      { dia: "2026-10-01", valor: 1230 },
+      { dia: "2026-10-02", valor: 609 },
+    ];
+    expect(resumirSerie(dias).atual).toBe(919.5);
+    expect(resumirSerie(dias, "steps").atual).toBe(920);
+  });
+
+  it("e o que **é** medido fica com a casa decimal", () => {
+    // Arredondar uma média de pressão ou de VFC perderia informação real.
+    const dias = [
+      { dia: "2026-10-01", valor: 138 },
+      { dia: "2026-10-02", valor: 139 },
+    ];
+    expect(resumirSerie(dias, "spo2").atual).toBe(138.5);
+    expect(resumirSerie(dias, "hrv").atual).toBe(138.5);
   });
 
   it("o ECG entra como fato, e a ausência do traçado é dita", () => {

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { serieDaMetrica } from "@/lib/onde-mora-a-metrica";
 import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from "@/lib/ecg-limite";
 import {
   getActor,
@@ -128,10 +129,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         .catch(() => ILEGIVEL),
     ]);
 
-    const serie = (tipo: string, campo: string) =>
-      (pontos as any[])
-        .filter((p) => p.dataType === tipo && p[campo] != null)
-        .map((p) => ({ dia: p.dataDate as string, valor: p[campo] as number }));
+    /**
+     * **O balde vem do mapa** (119 T-9).
+     *
+     * Isto chamava `serie("BODY", …)` para as três, e `BODY` nunca é escrito
+     * pela ingestão da Withings. A tela da clínica mostrava FC de repouso, VFC e
+     * SpO2 vazias para **todos** os pacientes — e nada distinguia *"não mediu"*
+     * de *"estamos a olhar para a gaveta errada"*.
+     */
+    const serie = (campo: string) =>
+      serieDaMetrica(pontos as any[], campo).filter((v) => v.valor !== null);
 
     return NextResponse.json({
       patient: paciente,
@@ -166,11 +173,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         ecgs === ILEGIVEL ? [] : (ecgs as any[])
       ),
       series: {
-        sleepDuration: serie("SLEEP", "sleepDuration"),
-        restingHr: serie("BODY", "restingHr"),
-        hrv: serie("BODY", "hrv"),
-        spo2: serie("BODY", "spo2"),
-        steps: serie("ACTIVITY", "steps"),
+        sleepDuration: serie("sleepDuration"),
+        restingHr: serie("restingHr"),
+        hrv: serie("hrv"),
+        spo2: serie("spo2"),
+        steps: serie("steps"),
         pain: (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.painLevel })),
         mood: (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.moodLevel })),
         systolic: (pressao as any[]).map((r) => ({

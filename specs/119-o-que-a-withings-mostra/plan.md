@@ -85,6 +85,7 @@ como se fosse falta de plano.
 | T-6 | O que faltar: dizer **porquê** na tela, em vez de esconder | T-1 | pendente — **subiu de prioridade**, ver abaixo |
 | T-7 | A contrapartida de tudo isto no painel da clínica | T-2..T-6 | pendente |
 | T-8 | [**Puxar a tela fala com a Withings**](t-8-puxar-fala-com-a-withings.md) | — | **concluído** (02/10) — [QA](qa/report-t-8.md) reprovado na 1ª rodada, aprovado na 2ª; 11 mutações |
+| T-9 | [**A gaveta vazia**](t-9-a-gaveta-vazia.md) | — | **concluído** (02/10) — três leitores procuravam `restingHr`/`hrv`/`spo2` em `BODY`, que ninguém escreve; 9 mutações |
 
 **A T-2 não espera pela T-1.** É um defeito provado e independente do plano da
 Withings: `upsertPoint` grava o ECG com chave `(utilizador, dia, tipo)` e faz
