@@ -36,6 +36,7 @@ import {
   aparelhoPorExtenso,
   MM_POR_SEGUNDO,
   MM_POR_MILIVOLT,
+  alturaQueOSinalPede,
 } from "@/lib/ecg-tracado";
 
 export interface DadosDoEcgParaPapel {
@@ -224,9 +225,14 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
     y += 8;
   }
 
+  /*
+   * **A faixa cresce com o sinal.** Ver `alturaQueOSinalPede`: 36 mm são
+   * ±1,8 mV, e o ECG real do Bruno chega a 3,38 — as ondas R batiam no tecto e
+   * ficavam de topo plano, com o papel a avisar do corte mas a medir menos.
+   */
   const tracado = tracadoEmPapel(dados.signal, dados.samplingHz, {
     segundosPorFaixa: 10,
-    alturaMm: 36,
+    alturaMm: alturaQueOSinalPede(dados.signal as any),
   });
 
   if (!tracado) {

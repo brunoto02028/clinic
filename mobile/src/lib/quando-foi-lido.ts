@@ -90,10 +90,28 @@ export function fraseDaUltimaLeitura(
    * Passada uma hora, a hora do relógio diz mais do que os minutos: "atualizado
    * às 09:05" compara-se directamente com o que o app da Withings mostra, que é
    * exactamente a comparação que a pessoa vai fazer.
+   *
+   * **Mas só no próprio dia** (achado do code review). Uma ligação partida nunca
+   * mais actualiza o carimbo — ele só é escrito quando a ingestão termina bem —,
+   * e três dias depois o cabeçalho dizia *"Atualizado às 07:05"*, que se lê como
+   * hoje às 07:05.
+   *
+   * É o defeito que este ficheiro existe para resolver, uma casa à frente: *"um
+   * número sem hora apresenta-se como agora"* → uma hora sem dia apresenta-se
+   * como hoje.
    */
-  const hora = horaLocal(lido.quando);
-  if (hora) {
-    return { en: `Updated at ${hora}`, pt: `Atualizado às ${hora}` };
+  if (lido.minutos < 24 * 60) {
+    const hora = horaLocal(lido.quando);
+    if (hora) {
+      return { en: `Updated at ${hora}`, pt: `Atualizado às ${hora}` };
+    }
+  }
+
+  const dias = Math.floor(lido.minutos / (24 * 60));
+  if (dias >= 1) {
+    return dias === 1
+      ? { en: "Updated yesterday", pt: "Atualizado ontem" }
+      : { en: `Updated ${dias} days ago`, pt: `Atualizado há ${dias} dias` };
   }
 
   const horas = Math.round(lido.minutos / 60);
