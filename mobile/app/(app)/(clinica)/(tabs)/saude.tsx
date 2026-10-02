@@ -229,7 +229,7 @@ export default function SaudeScreen() {
         return {
           texto: tr(lang, {
             en: "No device connected yet. Nothing is being measured.",
-            pt: "Nenhum aparelho ligado ainda. Nada está a ser medido.",
+            pt: "Nenhum aparelho conectado ainda. Nada está sendo medido.",
           }),
           acao: tr(lang, { en: "Connect", pt: "Ligar" }),
           para: "/(app)/(clinica)/wearables",

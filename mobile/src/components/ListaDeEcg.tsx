@@ -45,7 +45,7 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
       setErro(
         tr(lang, {
           en: "Could not prepare the PDF. Try again.",
-          pt: "Não foi possível preparar o PDF. Tente outra vez.",
+          pt: "Não foi possível preparar o PDF. Tente de novo.",
         })
       );
     } finally {
@@ -78,7 +78,7 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
         <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 13, lineHeight: 19 }}>
           {tr(lang, {
             en: "No recordings yet. They arrive from your watch as it syncs.",
-            pt: "Ainda sem registos. Chegam do seu relógio à medida que ele sincroniza.",
+            pt: "Ainda sem registros. Chegam do seu relógio conforme ele sincroniza.",
           })}
         </Text>
       </View>
@@ -104,7 +104,7 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
           <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11 }}>
             {rotuloDoDia(d)}
             {d.registos.length > 1
-              ? ` · ${d.registos.length} ${tr(lang, { en: "recordings", pt: "registos" })}`
+              ? ` · ${d.registos.length} ${tr(lang, { en: "recordings", pt: "registros" })}`
               : ""}
           </Text>
 
@@ -154,7 +154,7 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
                 >
                   <Text variant="caption" color={t.colors.primary} style={{ fontSize: 12, fontWeight: "600" }}>
                     {aAbrir === r.id
-                      ? tr(lang, { en: "Preparing…", pt: "A preparar…" })
+                      ? tr(lang, { en: "Preparing…", pt: "Preparando…" })
                       : tr(lang, { en: "Open as PDF", pt: "Abrir em PDF" })}
                   </Text>
                 </Pressable>
@@ -177,7 +177,7 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
       <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11, lineHeight: 16 }}>
         {tr(lang, {
           en: "This is what the watch concluded. Talk to your therapist about it — we do not read the trace.",
-          pt: "Isto foi o que o relógio concluiu. Fale com o seu terapeuta — nós não lemos o traçado.",
+          pt: "Isto foi o que o relógio concluiu. Fale com seu terapeuta — nós não lemos o traçado.",
         })}
       </Text>
     </View>

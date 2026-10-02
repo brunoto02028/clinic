@@ -63,7 +63,7 @@ function ReportsScreen() {
       setErro(
         tr(lang, {
           en: "Could not prepare the report. Try again.",
-          pt: "Não foi possível preparar o relatório. Tente outra vez.",
+          pt: "Não foi possível preparar o relatório. Tente de novo.",
         })
       );
     } finally {
@@ -107,7 +107,7 @@ function ReportsScreen() {
           style={{ fontWeight: "600" }}
         >
           {aPedir
-            ? tr(lang, { en: "Preparing…", pt: "A preparar…" })
+            ? tr(lang, { en: "Preparing…", pt: "Preparando…" })
             : tr(lang, { en: "Create a report now", pt: "Gerar um relatório agora" })}
         </Text>
       </Pressable>
@@ -153,7 +153,7 @@ function ReportsScreen() {
           <Text variant="body" color={t.colors.textSecondary}>
             {tr(lang, {
               en: "No reports yet. Your clinic sends them on a schedule — or you can create one now, below.",
-              pt: "Ainda não há relatórios. A sua clínica envia-os periodicamente — ou pode gerar um agora, abaixo.",
+              pt: "Ainda não há relatórios. Sua clínica envia periodicamente — ou você pode gerar um agora, abaixo.",
             })}
           </Text>
         </Card>
@@ -167,7 +167,7 @@ function ReportsScreen() {
                 r.therapistNote
                   ? tr(lang, { en: "With a note from your therapist", pt: "Com um recado do seu terapeuta" })
                   : r.cadence === "ON_DEMAND"
-                    ? tr(lang, { en: "You asked for this one", pt: "Pedido por si" })
+                    ? tr(lang, { en: "You asked for this one", pt: "Você pediu este" })
                     : r.cadence === "DAILY"
                       ? tr(lang, { en: "Daily", pt: "Diário" })
                       : tr(lang, { en: "Weekly", pt: "Semanal" })
