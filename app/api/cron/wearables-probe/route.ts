@@ -20,14 +20,21 @@ export const maxDuration = 300;
  * pode alterar o que está a ser medido — se a sondagem gravasse, a execução
  * seguinte estaria a medir a anterior.
  *
- * E não renova tokens: usa o que está guardado. Um token expirado é uma
- * resposta legítima da sondagem — *"não deu para perguntar, e eis porquê"* —, e
- * escondê-la renovando por baixo faria a medição mentir sobre o estado real da
- * ligação.
+ * O token **é desembrulhado e renovado se precisar**, e isto mudou de ideia a
+ * meio: a primeira versão recusava renovar, argumentando que um token expirado
+ * era um achado legítimo. É, para uma sondagem de *saúde da ligação* — mas a
+ * pergunta aqui é outra: *o que o plano devolve*. Com o token morto, todas as
+ * linhas diriam `erro` e eu não aprendia nada sobre o plano. A renovação fica,
+ * e o relatório diz se ela foi precisa.
+ *
+ * E o token está **cifrado em repouso** (`lib/crypto-at-rest.ts`), por isso nem
+ * havia como o usar cru: mandá-lo assim daria erro de autenticação em tudo, e
+ * eu teria lido isso como "não tenho direito a nada".
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withingsAccessToken } from "@/lib/withings";
 import { sondarTudo, tabelaDaSondagem } from "@/lib/withings-sondagem";
 
 export async function POST(req: NextRequest) {
@@ -51,9 +58,17 @@ export async function POST(req: NextRequest) {
   });
   if (!user) return NextResponse.json({ error: "não achei essa pessoa" }, { status: 404 });
 
-  const ligacao = await (prisma as any).wearableConnection.findFirst({
-    where: { userId: user.id, provider: "withings" },
-    select: { id: true, accessToken: true, expiresAt: true, status: true, isClinicDevice: true },
+  /* O provedor é guardado em maiúsculas — "withings" não encontra nada. */
+  const ligacao = await prisma.wearableConnection.findFirst({
+    where: { userId: user.id, provider: "WITHINGS" },
+    select: {
+      id: true,
+      accessToken: true,
+      refreshToken: true,
+      tokenExpiresAt: true,
+      status: true,
+      isClinicDevice: true,
+    },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -64,22 +79,49 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const expirado = ligacao.expiresAt ? new Date(ligacao.expiresAt) < new Date() : false;
+  const expirado = ligacao.tokenExpiresAt
+    ? new Date(ligacao.tokenExpiresAt).getTime() - Date.now() < 60_000
+    : true;
 
-  const linhas = await sondarTudo(ligacao.accessToken);
+  let token: string;
+  try {
+    token = await withingsAccessToken(ligacao);
+  } catch (e: any) {
+    /* Não dá para perguntar nada — e isso é uma resposta, não um 500. */
+    return NextResponse.json(
+      {
+        error: "não foi possível obter um token utilizável",
+        detalhe: String(e?.message ?? e),
+        ligacao: {
+      status: ligacao.status ?? null,
+      /** Estava expirado quando chegámos — foi renovado para poder perguntar. */
+      tokenPrecisouRenovar: expirado,
+      aparelhoDaClinica: ligacao.isClinicDevice,
+    },
+      },
+      { status: 409 }
+    );
+  }
+
+  const linhas = await sondarTudo(token);
 
   /*
    * Para o log do contentor, que é como isto se lê sem sessão nenhuma — e fica
    * registado com a data, porque a resposta muda no dia em que o plano mudar.
    */
   console.log(`[sondagem] === ${user.email} — ${new Date().toISOString()} ===`);
-  console.log(`[sondagem] ligação: ${ligacao.status ?? "?"}, token expirado: ${expirado}`);
+  console.log(`[sondagem] ligação: ${ligacao.status ?? "?"}, precisou renovar: ${expirado}`);
   console.log(tabelaDaSondagem(linhas));
 
   return NextResponse.json({
     quem: user.email,
     quando: new Date().toISOString(),
-    ligacao: { status: ligacao.status ?? null, tokenExpirado: expirado },
+    ligacao: {
+      status: ligacao.status ?? null,
+      /** Estava expirado quando chegámos — foi renovado para poder perguntar. */
+      tokenPrecisouRenovar: expirado,
+      aparelhoDaClinica: ligacao.isClinicDevice,
+    },
     /** Um resumo para quem lê de relance, antes da tabela inteira. */
     resumo: {
       veio: linhas.filter((l) => l.desfecho === "veio").length,

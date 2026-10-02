@@ -4,7 +4,8 @@ import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
-import { fetchWearableData, fetchConnections } from "@/api/wearables";
+import { fetchWearableData, fetchConnections, fetchEcgs } from "@/api/wearables";
+import { ListaDeEcg } from "@/components/ListaDeEcg";
 import { Pressable } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -158,7 +159,14 @@ function WearableDataScreen() {
    * existe no banco e em lugar nenhum dá a impressão de cobertura que não
    * existe. São vários por período, então aqui é lista, não o último.
    */
-  const ecgs = (data ?? []).filter((d) => d.dataType === "ECG" && d.ecg);
+  /*
+   * A lista de gravações, uma linha por ECG (119 T-2). Antes isto filtrava os
+   * pontos diários, que só guardavam um por dia.
+   */
+  const ecgs = useQuery({
+    queryKey: ["ecgs", janela],
+    queryFn: () => fetchEcgs(janela),
+  });
 
   /**
    * A série de uma métrica, **um ponto por dia do período**.
@@ -491,75 +499,17 @@ function WearableDataScreen() {
               </View>
             )}
 
-            {ecgs.length > 0 && (
-              <View
-                style={{
-                  padding: 16,
-                  backgroundColor: t.colors.surface,
-                  borderRadius: t.radius.lg,
-                  borderWidth: 1,
-                  borderColor: t.colors.border,
-                  gap: 12,
-                }}
-              >
-                <Text
-                  variant="caption"
-                  color={t.colors.textSecondary}
-                  style={{ textTransform: "uppercase", letterSpacing: 1, fontSize: 11, fontWeight: "700" }}
-                >
-                  ECG
-                </Text>
-                {ecgs.map((d) => {
-                  const e = d.ecg!;
-                  // A conclusão é **do aparelho**. Não lemos traçado — não temos
-                  // um, de propósito — e não acrescentamos opinião.
-                  const grave = e.conclusao === "fibrilacao";
-                  const frase =
-                    e.conclusao === "normal"
-                      /*
-                       * **Sem a palavra "normal".** O QA da T-8 reprovou esta
-                       * linha: a conclusão é do aparelho, mas a regra da tela
-                       * do paciente é categórica sobre vocabulário — nem
-                       * "normal", nem "alterado". Dizer o que o relógio **não
-                       * assinalou** é relato; dizer que está "normal" é nota.
-                       */
-                      ? tr(lang, { en: "The watch flagged nothing", pt: "O relógio não assinalou nada" })
-                      : grave
-                        ? tr(lang, {
-                            en: "The watch found signs of atrial fibrillation",
-                            pt: "O relógio encontrou sinais de fibrilhação atrial",
-                          })
-                        /*
-                         * Não classificável. A frase diz **o que o relógio não
-                         * conseguiu fazer**, e não um estado do coração: um
-                         * registo que não dá para classificar não é um achado.
-                         */
-                        : tr(lang, {
-                            en: "The watch could not classify this recording",
-                            pt: "O relógio não conseguiu classificar este registo",
-                          });
-                  return (
-                    <View key={d.id} style={{ gap: 2 }}>
-                      <Text variant="body" color={grave ? t.colors.bad : t.colors.text} style={{ fontWeight: grave ? "700" : "400" }}>
-                        {frase}
-                      </Text>
-                      <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
-                        {(e.recordedAt ?? d.dataDate).slice(0, 10)}
-                        {e.heartRate != null ? ` · ${Math.round(e.heartRate)} bpm` : ""}
-                      </Text>
-                    </View>
-                  );
-                })}
-                {/* Dito na tela, e não só nos termos: o aparelho conclui, nós
-                    guardamos, e quem lê um ECG é um profissional. */}
-                <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 11 }}>
-                  {tr(lang, {
-                    en: "This is what the watch concluded. Talk to your therapist about it — we do not read the trace.",
-                    pt: "É o que o relógio concluiu. Fale com o seu terapeuta sobre isso — nós não lemos o traçado.",
-                  })}
-                </Text>
-              </View>
-            )}
+            {/*
+              * O ECG vem da **lista de gravações** (119 T-2), não dos pontos
+              * diários.
+              *
+              * Esta tela mostrava um por dia, porque era assim que ficavam
+              * guardados — dois ECG no mesmo dia davam um. Agora lê a mesma
+              * lista que a página Heart lê, senão as duas telas mostrariam
+              * contagens diferentes do mesmo dia e nenhuma delas estaria
+              * obviamente errada.
+              */}
+            <ListaDeEcg registos={ecgs.data ?? []} />
 
             <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", marginTop: 8 }}>
               {/* A janela real, não "7 dias" fixo: a tela abria em 30 a dizer 7 (QA da T-8). */}
