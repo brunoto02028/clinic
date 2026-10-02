@@ -95,6 +95,18 @@ describe("o lado que importa", () => {
   });
 });
 
+/**
+ * Os códigos aqui estavam trocados até 02/10/2026.
+ *
+ * Estes testes usavam `2` para fibrilhação e `1` para ritmo normal. No campo
+ * `ecg.afib` da Withings, **`1` é fibrilhação**, `0` é sem sinais dela e `2` é
+ * *não classificável*. Ou seja: o achado que a clínica vê disparava num
+ * registo que o relógio apenas não conseguiu classificar, e **ficava calado
+ * numa fibrilhação de verdade**.
+ *
+ * O defeito era o mesmo de `lib/ecg-record.ts`, num segundo sítio — e os
+ * testes dos dois lados estavam verdes a garanti-lo.
+ */
 describe("a fibrilação atrial", () => {
   const ecg = (classificacao: number, dia = "2026-09-20") => ({
     dataType: "ECG",
@@ -106,20 +118,31 @@ describe("a fibrilação atrial", () => {
   it("**aparece sem depender de linha de base**", () => {
     // Exigir dez dias de histórico para mostrá-la seria esconder exatamente o
     // achado que existe para ser visto.
-    const achados = desviosDosPontos([ecg(2)]);
+    const achados = desviosDosPontos([ecg(1)]);
     expect(achados).toHaveLength(1);
     expect(achados[0].tipo).toBe("ecg");
     expect(achados[0].chave).toBe("ecg_afib:2026-09-20");
   });
 
-  it("ritmo normal não vira achado", () => {
-    expect(desviosDosPontos([ecg(1)])).toHaveLength(0);
+  it("ritmo sinusal não vira achado", () => {
+    expect(desviosDosPontos([ecg(0)])).toHaveLength(0);
+  });
+
+  it("**um registo não classificável também não vira achado**", () => {
+    // `2` é "o relógio não conseguiu classificar". Pôr isso na fila da clínica
+    // como fibrilhação é um alarme por uma coisa que ninguém afirmou.
+    expect(desviosDosPontos([ecg(2)])).toHaveLength(0);
+  });
+
+  it("**e um código desconhecido não vira fibrilhação nem silêncio enganoso**", () => {
+    // Cai em inconclusivo, que não é achado — mas também não é "normal".
+    expect(desviosDosPontos([ecg(7)])).toHaveLength(0);
   });
 
   it("e vem sempre no topo da lista", () => {
     const pontos: any[] = [
       ...baseCom(48, 70).map((p) => ({ dataType: "BODY", dataDate: p.dia, restingHr: p.valor })),
-      ecg(2, "2026-09-01"),
+      ecg(1, "2026-09-01"),
     ];
     const achados = desviosDosPontos(pontos);
     expect(achados.length).toBeGreaterThan(1);
@@ -127,8 +150,8 @@ describe("a fibrilação atrial", () => {
   });
 
   it("a chave carrega a data, então um episódio novo volta para a fila", () => {
-    const a = desviosDosPontos([ecg(2, "2026-09-20")])[0];
-    const b = desviosDosPontos([ecg(2, "2026-09-21")])[0];
+    const a = desviosDosPontos([ecg(1, "2026-09-20")])[0];
+    const b = desviosDosPontos([ecg(1, "2026-09-21")])[0];
     expect(a.chave).not.toBe(b.chave);
   });
 });

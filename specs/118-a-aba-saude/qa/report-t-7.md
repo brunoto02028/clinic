@@ -671,3 +671,46 @@ npx tsc --noEmit  raiz: 0 erros            ✅
 ```
 
 Mutações do ciclo inteiro da t-7: **27, todas mortas**.
+
+---
+
+# QA online — 02/10/2026, 00:52
+
+Feito depois do merge, como a regra manda. **Parcial, e digo exactamente onde
+para.**
+
+## O que está provado em produção
+
+| o que | prova |
+|---|---|
+| O commit certo está lá | `GET /deployments/applications/<uuid>` → `finished`, commit `bffd6c74c`, fim 00:48:40Z. Não usei `buildDate`, que não prova deploy |
+| A imagem tem os scripts que o boot usa | passo `[runner 55/55]`: *"All start.sh boot scripts verified present in image"* |
+| **A tabela nova entrou** | log do contentor: `🚀 Your database is now in sync with your Prisma schema. Done in 2.12s`, datasource `bpr_clinic` em `86.48.18.88:5490`. É a verificação que o `db push` exige, porque o `start.sh` engole a falha com `\|\| echo warning` |
+| O contentor novo é o que serve | `/api/health` → `healthy`, `uptime: 224s`, `database: ok` |
+| A rota existe e está atrás do portão | `GET /api/patient/goals` sem sessão → `401` |
+
+> O `401` acima **não prova que a rota foi deployada**: o middleware responde
+> antes da rota, e um caminho inventado dá `401` igual. O que prova é o
+> `in sync` e a lista de deployments.
+
+## O que **não** está provado em produção
+
+Tudo o que precisa de **sessão de paciente**: definir uma meta, apagá-la, a
+recusa fora do intervalo, o isolamento entre pacientes, e as metas a aparecerem
+no painel. Em local isso foi exercitado com três pacientes de teste e sessão
+real (20/20 cenários).
+
+**Porque parei aqui:** fazê-lo em produção exige um paciente de teste
+*identificado* lá — e não conheço nenhum. Criar um é escrita na base de
+produção, e isso não se faz sem o Bruno dizer, de madrugada e sem ele a ver.
+Semear num paciente real está fora de questão.
+
+**O que falta para fechar:** o Bruno diz qual é o paciente de teste de produção
+(ou cria um pela UI, que é como ele prefere as acções de admin) e eu corro os
+cenários 7.1–7.20 contra `bpr.clinic`.
+
+## Fora do escopo, registado e não tocado
+
+`[start.sh] guide seed warning — check logs` no arranque — o seed dos
+lead-magnet guides falha e o `|| echo warning` esconde a causa. É anterior a
+esta tarefa e não lhe mexi.

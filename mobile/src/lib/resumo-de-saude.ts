@@ -258,6 +258,37 @@ export function metaDoCampo(campo: string, metas: Metas | null | undefined): num
 }
 
 /**
+ * Há quantos dias foi medido — `0` é hoje.
+ *
+ * **O defeito que isto fecha, visto no telemóvel do Bruno em 02/10/2026:** a
+ * tela dizia *"Good morning · Friday 2 October"* e, debaixo disso, *"Steps
+ * 249"* — e os 249 eram **de 1 de outubro**. O número é o último medido, e um
+ * relógio que ficou na mesinha não produz um número novo; a tela apresentava o
+ * de ontem como se fosse o do dia que acabou de nomear.
+ *
+ * A barra já não desenhava fora de hoje (`ehDeHoje`), mas o **número** não
+ * dizia nada. Metade do conserto é pior do que nenhum: a barra desaparecer sem
+ * explicação parece defeito, e o número continua a mentir.
+ *
+ * Conta em **dias locais**, pelas partes da data — `new Date("2026-10-01")`
+ * seria meia-noite UTC e daria um dia a menos em qualquer fuso a oeste.
+ */
+export function diasDesdeAMedicao(
+  dia: string | null | undefined,
+  hoje: string = diaLocal()
+): number | null {
+  if (!dia) return null;
+  const parte = (s: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  };
+  const a = parte(dia);
+  const b = parte(hoje);
+  if (a === null || b === null) return null;
+  return Math.round((b - a) / 86_400_000);
+}
+
+/**
  * A largura da barra, em por cento — **cortada em 100**.
  *
  * O corte é física: um `View` de 4px não pode ser mais largo que o pai. O que

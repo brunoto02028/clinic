@@ -525,10 +525,19 @@ function WearableDataScreen() {
                        */
                       ? tr(lang, { en: "The watch flagged nothing", pt: "O relógio não assinalou nada" })
                       : grave
-                        ? tr(lang, { en: "Atrial fibrillation detected", pt: "Fibrilação atrial detectada" })
-                        : e.conclusao === "sem_sinal"
-                          ? tr(lang, { en: "No usable signal", pt: "Sem sinal utilizável" })
-                          : tr(lang, { en: "Inconclusive", pt: "Inconclusivo" });
+                        ? tr(lang, {
+                            en: "The watch found signs of atrial fibrillation",
+                            pt: "O relógio encontrou sinais de fibrilhação atrial",
+                          })
+                        /*
+                         * Não classificável. A frase diz **o que o relógio não
+                         * conseguiu fazer**, e não um estado do coração: um
+                         * registo que não dá para classificar não é um achado.
+                         */
+                        : tr(lang, {
+                            en: "The watch could not classify this recording",
+                            pt: "O relógio não conseguiu classificar este registo",
+                          });
                   return (
                     <View key={d.id} style={{ gap: 2 }}>
                       <Text variant="body" color={grave ? t.colors.bad : t.colors.text} style={{ fontWeight: grave ? "700" : "400" }}>

@@ -33,7 +33,14 @@ import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
 import { fetchWearableData, fetchConnections, fetchMetas } from "@/api/wearables";
 import { LoadFailure } from "@/components/LoadFailure";
-import { destaques, pendencias, metaDoDestaque, Destaque, Pendencia } from "@/lib/resumo-de-saude";
+import {
+  destaques,
+  pendencias,
+  metaDoDestaque,
+  diasDesdeAMedicao,
+  Destaque,
+  Pendencia,
+} from "@/lib/resumo-de-saude";
 import { BarraDeMeta } from "@/components/BarraDeMeta";
 
 /** As cinco famílias. A ordem é a do corpo, e é estável de propósito. */
@@ -183,10 +190,10 @@ export default function SaudeScreen() {
           * de manhã.
           *
           * **O que não tem aqui: anéis de progresso.** Os da referência medem
-          * contra metas, e nós não temos metas guardadas. Inventar "8.000
-          * passos" seria pôr um alvo que o paciente não escolheu — a mesma
-          * classe de coisa que a faixa de referência que saiu na 099 T-2. Os
-          * números de hoje aparecem grandes, sem barra a dizer se são pouco.
+          * contra metas — e a T-7 deu-nos metas, mas as do **paciente**, não um
+          * "8.000 passos" que ele nunca escolheu. Quem definiu uma vê a barra
+          * fina abaixo do número; quem não definiu vê o número sozinho, que é o
+          * que ele é. Anel propriamente dito é a T-6, e depende de build.
           */}
         <View style={{ gap: 3, paddingTop: 6 }}>
           <Text
@@ -285,6 +292,38 @@ export default function SaudeScreen() {
                           </Text>
                         ) : null}
                       </Text>
+                      {/*
+                        * **De quando é este número.**
+                        *
+                        * O valor é o último medido, e o cabeçalho acima diz
+                        * "Bom dia · sexta, 2 de outubro". Sem esta linha, os
+                        * 249 passos de 1 de outubro apareciam como se fossem
+                        * do dia que a tela acabou de nomear — foi o que o Bruno
+                        * viu no telemóvel dele em 02/10/2026.
+                        *
+                        * Só aparece quando **não** é de hoje: dizer "hoje" em
+                        * cada cartão todos os dias é ruído.
+                        */}
+                      {(() => {
+                        const dias = diasDesdeAMedicao(d.dia);
+                        if (dias === null || dias <= 0) return null;
+                        return (
+                          <Text
+                            variant="caption"
+                            color={t.colors.textMuted}
+                            style={{ fontSize: 11 }}
+                            testID={`quando-${d.chave}`}
+                          >
+                            {dias === 1
+                              ? tr(lang, { en: "yesterday's reading", pt: "leitura de ontem" })
+                              : tr(lang, {
+                                  en: `reading from ${dias} days ago`,
+                                  pt: `leitura de há ${dias} dias`,
+                                })}
+                          </Text>
+                        );
+                      })()}
+
                       {/*
                         * A barra **só existe quando há meta** (118 T-7), e a
                         * meta é do paciente. Sem meta, o número aparece sozinho

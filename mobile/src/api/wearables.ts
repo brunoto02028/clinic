@@ -69,7 +69,12 @@ export interface WearableDataPoint {
   ecg?: {
     recordedAt: string | null;
     heartRate: number | null;
-    conclusao: "sem_sinal" | "normal" | "fibrilacao" | "inconclusivo";
+    /*
+     * `normal` é o `afib: 0` da Withings — **sem sinais de fibrilhação**. Até
+     * 02/10/2026 a tradução lia `0` como "sem sinal utilizável" e `1` como
+     * "normal", e um ECG com fibrilhação aparecia como ritmo normal na tela.
+     */
+    conclusao: "normal" | "fibrilacao" | "inconclusivo";
     signalId: string | null;
   } | null;
 }

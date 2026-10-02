@@ -31,6 +31,7 @@ import {
   metaDoDestaque,
   metaDoCampo,
   ehDeHoje,
+  diasDesdeAMedicao,
   destaques,
   Metas,
 } from "../../mobile/src/lib/resumo-de-saude";
@@ -202,4 +203,58 @@ describe("o destaque carrega o dia do valor", () => {
     const lista = destaques([ponto(hoje, 5000)] as any);
     expect(ehDeHoje(lista.find((d) => d.chave === "passos")!.dia)).toBe(true);
   });
+});
+
+describe("de quando é o número do destaque", () => {
+  /*
+   * Visto no telemóvel do Bruno em 02/10/2026: a tela dizia "Good morning ·
+   * Friday 2 October" e, debaixo, "Steps 249" — e os 249 eram de **1 de
+   * outubro**. O número é o último medido; um relógio na mesinha não produz um
+   * número novo, e a tela apresentava o de ontem como o do dia que nomeou.
+   */
+  it("**hoje é zero** — e a tela não diz nada", () => {
+    expect(diasDesdeAMedicao("2026-10-02", "2026-10-02")).toBe(0);
+  });
+
+  it("**ontem é um** — e a tela diz 'leitura de ontem'", () => {
+    expect(diasDesdeAMedicao("2026-10-01", "2026-10-02")).toBe(1);
+  });
+
+  it("conta por cima da virada do mês", () => {
+    expect(diasDesdeAMedicao("2026-09-28", "2026-10-02")).toBe(4);
+    expect(diasDesdeAMedicao("2025-12-31", "2026-01-02")).toBe(2);
+  });
+
+  it("sem dia, não há conta a fazer", () => {
+    expect(diasDesdeAMedicao(null, "2026-10-02")).toBeNull();
+    expect(diasDesdeAMedicao(undefined, "2026-10-02")).toBeNull();
+    expect(diasDesdeAMedicao("ontem", "2026-10-02")).toBeNull();
+  });
+
+  it("um dia no futuro dá negativo, e a tela trata como hoje", () => {
+    // O relógio do telemóvel pode estar atrás do do servidor. Dizer "leitura
+    // de há -1 dias" seria pior do que não dizer nada.
+    expect(diasDesdeAMedicao("2026-10-03", "2026-10-02")).toBe(-1);
+  });
+
+  it("um dia é um dia **também nos dias em que o relógio muda**", () => {
+    // 29/03 e 25/10 são as viradas de hora na Europa: 23 e 25 horas. Uma conta
+    // por milissegundos sobre horas locais daria 0,96 e 1,04 dias.
+    expect(diasDesdeAMedicao("2026-03-29", "2026-03-30")).toBe(1);
+    expect(diasDesdeAMedicao("2026-10-25", "2026-10-26")).toBe(1);
+  });
+
+  /*
+   * **O que este ficheiro não consegue provar:** que a conta usa as partes da
+   * data em vez de `new Date(string)`.
+   *
+   * `new Date("2026-10-01")` é meia-noite **UTC**; num fuso a oeste cai no dia
+   * 30 às 19h e a diferença sai com um dia a menos. Mas o `jest.config.js` fixa
+   * `TZ=UTC`, e sob UTC as duas formas dão exactamente o mesmo — troquei uma
+   * pela outra e **os 27 testes continuaram verdes**.
+   *
+   * Fica dito aqui para o próximo não confiar num teste que não mede isto. O
+   * que está provado por troca de módulo é a origem do "hoje" — ver
+   * `o-hoje-sai-do-dia-local.test.ts`.
+   */
 });
