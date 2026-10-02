@@ -168,6 +168,9 @@ node /app/scripts/backfill-consent-accepted-at.js || echo "[start.sh] consent ba
 echo "[start.sh] Backfilling wearable last reading..."
 node /app/scripts/backfill-wearable-last-reading.js || echo "[start.sh] last-reading backfill warning — check logs"
 
+echo "[start.sh] Backfilling ECG recordings into their own table..."
+node /app/scripts/backfill-ecg-recordings.js || echo "[start.sh] ecg backfill warning — check logs"
+
 echo "[start.sh] Seeding automation rules..."
 node /app/scripts/seed-automation-rules.js || echo "[start.sh] automation rules seed warning — check logs"
 

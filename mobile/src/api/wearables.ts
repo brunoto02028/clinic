@@ -90,6 +90,30 @@ export async function fetchWearableData(days = 7): Promise<WearableDataPoint[]> 
 }
 
 /**
+ * Um registo de ECG — **um por gravação** (119 T-2).
+ *
+ * `recordedAt` é um instante em ISO. O dia é de quem mostra: o telemóvel agrupa
+ * no fuso da pessoa, o painel no da clínica. Guardar um "dia" no servidor
+ * obrigava a escolher um fuso por toda a gente, e a escolha era UTC — um ECG
+ * das 00:30 em Londres no verão ficava no dia anterior.
+ */
+export interface RegistoDeEcg {
+  id: string;
+  recordedAt: string;
+  heartRate: number | null;
+  conclusao: "normal" | "fibrilacao" | "inconclusivo";
+  /** O caminho até ao sinal na Withings, não o sinal. */
+  signalId: string | null;
+}
+
+export async function fetchEcgs(days = 30): Promise<RegistoDeEcg[]> {
+  const res = await apiFetch<{ ecgRecordings?: RegistoDeEcg[] }>(
+    `/api/wearables/data?days=${days}`
+  );
+  return res.ecgRecordings ?? [];
+}
+
+/**
  * O que a sincronia trouxe, e **nao so que ela comecou**.
  *
  * A rota ja devolvia estes numeros; a tela deitava-os fora e dizia *"os seus

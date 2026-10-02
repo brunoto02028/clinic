@@ -1041,6 +1041,7 @@ model User {
   wearableConnections        WearableConnection[]        @relation("UserWearableConnections")
   wearableDataPoints         WearableDataPoint[]         @relation("UserWearableData")
   wearableSeries             WearableSeries[]            @relation("UserWearableSeries")
+  ecgRecordings              EcgRecording[]              @relation("UserEcgRecordings")
   goals                      PatientGoals?               @relation("UserGoals")
 
   // Study Assistant (AI tutor for coursework)
@@ -7474,6 +7475,8 @@ model WearableConnection {
   // aborta inteiro e o container sobe **sem** as tabelas novas, com deploy
   // verde e rotas dando 500. Volta assim que eu conferir duplicatas em prod.
   // Enquanto isso, a rota de conexão recusa o caso no código.
+  ecgRecordings EcgRecording[] @relation("ConnectionEcgRecordings")
+
   @@index([userId])
   @@index([terraUserId])
   @@index([owUserId])
@@ -7739,6 +7742,75 @@ model WearableSeries {
   @@unique([connectionId, dataDate, kind])
   @@index([userId, kind])
   @@index([dataDate])
+}
+
+/**
+ * Um registo de ECG — **um por gravação**, não um por dia (119 T-2).
+ *
+ * ## O que estava a acontecer
+ *
+ * O ECG era guardado no `WearableDataPoint`, cuja chave é
+ * `(utilizador, dia, tipo, provedor)`. Isso é a chave certa para um **total do
+ * dia**: passos, calorias, minutos activos. Um ECG não é um total — é um
+ * **evento**, com hora, e uma pessoa faz quantos quiser.
+ *
+ * Em 01/10/2026 o Bruno gravou dois, às 22:44 e às 23:54. O `upsertPoint`
+ * encontrou a linha do dia e fez `update`: **o segundo apagou o primeiro**. A
+ * tela mostrava um, e o que faltava não tinha como ser notado — não havia buraco
+ * nenhum, havia um registo perfeitamente plausível.
+ *
+ * ## Porque o dia não é guardado aqui
+ *
+ * O `recordedAt` é um instante, e é só isso que é verdade sobre o momento da
+ * gravação. O "dia" depende de **em que fuso se pergunta**: o mesmo ECG das
+ * 00:30 em Londres no verão é 1 de outubro para quem o fez e 30 de setembro em
+ * UTC. A ingestão anterior guardava `recordedAt.toISOString().split("T")[0]` e
+ * portanto decidia pelo fuso errado, sempre.
+ *
+ * Aqui guarda-se o instante. Quem mostra agrupa no seu próprio fuso — o
+ * telemóvel no da pessoa, o painel no da clínica — e nenhum dos dois herda a
+ * escolha do outro.
+ */
+model EcgRecording {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation("UserEcgRecordings", fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String?
+  connection   WearableConnection? @relation("ConnectionEcgRecordings", fields: [connectionId], references: [id], onDelete: SetNull)
+
+  provider String
+  /// O instante da gravação. O dia é de quem pergunta — ver o comentário acima.
+  recordedAt DateTime
+
+  /// A frequência que o aparelho reportou para esta gravação.
+  heartRate Int?
+
+  /**
+   * O valor **cru** do `ecg.afib` da Withings, como veio.
+   *
+   * Guardado por inteiro de propósito: em 02/10/2026 a tradução estava
+   * deslocada em um — `1` (fibrilhação) aparecia como "ritmo normal" — e só foi
+   * possível perceber porque o número cru sobrevivia no payload. Uma tabela de
+   * tradução pode voltar a estar errada; o que o aparelho disse, não.
+   */
+  afibRaw Int?
+
+  /// `normal` | `fibrilacao` | `inconclusivo` — a leitura de `afibRaw`.
+  conclusao String
+
+  /// O identificador do sinal na Withings. Não é o traçado; é o caminho até ele.
+  signalId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /*
+   * Duas gravações não partilham o instante. É esta chave que torna a ingestão
+   * idempotente **sem** apagar a gravação anterior do mesmo dia.
+   */
+  @@unique([userId, provider, recordedAt])
+  @@index([userId, recordedAt])
+  @@index([connectionId])
 }
 
 /**
