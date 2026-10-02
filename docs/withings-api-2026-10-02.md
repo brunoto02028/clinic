@@ -1529,3 +1529,86 @@ Nomes de tags/grupos, na ordem da Withings: `oauth2`, `dropshipment`, `order`,
 Glossário: a Withings remete para
 `https://developer.withings.com/developer-guide/glossary/glossary` — **essa URL
 não está no sitemap**, e não a verifiquei. **[OMISSO]**
+
+---
+
+# ANEXO — o que o painel de programador diz, com sessão iniciada (02/10/2026, 08:05 UTC)
+
+O Bruno iniciou sessão no Partner Hub e eu li o painel e a página de planos de
+dentro. **Isto resolve a hipótese (a)** e traz duas coisas que não estavam em
+lado nenhum da documentação pública.
+
+## A nossa aplicação
+
+| | |
+|---|---|
+| Nome | **BPR Clinic**, ambiente **Production** |
+| Organização | BPR · contacto `admin@bpr.clinic` |
+| Callback | `https://bpr.clinic/api/wearables/callback` |
+| Webhook | `https://bpr.clinic/api/wearables/withings/webhook` |
+| Endpoint | `https://wbsapi.withings.net` |
+
+**O painel não mostra plano nenhum.** Não há selector de plano, não há botão de
+upgrade, não há quota à vista — nem na aplicação, nem em *Organization
+Settings*. Estamos no **Start for Free** por omissão, e o painel não o diz.
+
+## A tabela de planos, lida de dentro
+
+| | Start for Free | Enterprise | Advanced Biomarkers |
+|---|---|---|---|
+| Utilizadores activos | **10** · mais após revisão | ilimitado | ilimitado |
+| Withings+ exigido ao utilizador final | **Sim**, contas criadas após 12/10/2026 | pode ser removido | pode ser removido |
+| **Biomarcadores FDA/CE — ECG, AFib, SpO₂, idade vascular, AHI** | **✗** | **✗** | **✓** |
+
+## ⚠️ As duas notícias
+
+### 1. O ECG não está, no papel, em nenhum plano que não seja o *Advanced Biomarkers*
+
+A linha *"FDA/CE cleared biomarkers: ECG, AFib, SpO₂, vascular age, AHI"* tem
+**✗ no Start for Free e ✗ no Enterprise**. Só o *Advanced Biomarkers* a tem.
+
+**E nós recebemos os dois** — a conclusão em 01/10, o traçado em 02/10.
+
+Isso resolve a hipótese (a) **ao contrário do esperado**: não é que o nosso
+plano inclua o ECG. É que a tabela descreve o **direito contratual** e a API,
+hoje, não o está a impedir. O que se recebe hoje pode deixar de se receber sem
+aviso e sem erro — porque **é assim que eles tiram dado fora do plano: o campo
+só não vem**.
+
+**Consequência para a 119 T-6:** deixa de ser um extra e passa a ser a única
+coisa que impede a tela de mentir no dia em que isto mudar.
+
+### 2. A partir de 12/10/2026, cada paciente novo precisa de Withings+
+
+**[VERBATIM]**, do FAQ da página de planos:
+
+> "Your existing users are fine. Withings accounts created before October 12,
+> 2026 keep sharing data with no membership required, and your app keeps its
+> current user limit."
+>
+> "Withings accounts created after that date will need an active Withings+
+> membership to connect, **unless your app is on Enterprise or Advanced
+> Biomarkers**."
+
+Em claro: **um paciente que criar conta Withings depois de 12/10 não consegue
+ligar o relógio à clínica sem pagar o Withings+** (£99,99/ano). Os actuais — o
+Bruno incluído — ficam como estão.
+
+Faltam **dez dias**.
+
+### 3. O limite de 10 utilizadores levanta-se com um formulário
+
+**[VERBATIM]** *"Requires Withings app review to go past 10 users. Submit your
+app, 10 questions, about 5 minutes."* — `https://within.gs/api-app-review`
+
+Não é dinheiro: é uma revisão. **É a acção mais barata e mais urgente da lista**,
+e é do Bruno, porque é a conta dele.
+
+### E qual plano eles indicam para uma clínica
+
+**[VERBATIM]** *"Enterprise covers scale, compliance and logistics. Add Advanced
+Biomarkers when your protocol needs cleared biomarkers or risk scores."*
+
+Ou seja, pela leitura deles: **Enterprise** resolve o limite de utilizadores e o
+Withings+ dos pacientes novos; **Advanced Biomarkers** é o que dá direito ao
+ECG. Os dois são `Custom` — preço por conversa.
