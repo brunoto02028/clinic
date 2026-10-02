@@ -9,7 +9,8 @@ import { apiFetch } from "./client";
  */
 export interface RelatorioDoPaciente {
   id: string;
-  cadence: "DAILY" | "WEEKLY";
+  /** `ON_DEMAND` é o que o próprio paciente pediu (118 T-5). */
+  cadence: "DAILY" | "WEEKLY" | "ON_DEMAND";
   periodStart: string;
   periodEnd: string;
   createdAt: string;
@@ -27,4 +28,27 @@ export interface RelatorioDoPaciente {
 export async function fetchRelatorios(): Promise<RelatorioDoPaciente[]> {
   const res = await apiFetch<{ reports: RelatorioDoPaciente[] }>("/api/patient/reports");
   return Array.isArray(res?.reports) ? res.reports : [];
+}
+
+/**
+ * O paciente pede um relatório dele, agora (118 T-5).
+ *
+ * > *"Quero poder gerar esses reports detalhados que servirão para os pacientes
+ * > buscarem ajuda médica ou de outros profissionais quando quiserem."* — Bruno
+ *
+ * A trava é do servidor — `mod_records`, o mesmo módulo da lista. Esconder o
+ * botão não fecha a porta, e esta tela já vive dentro de um `PlanGate` que diz
+ * **porquê** quando está desligado.
+ *
+ * `reaproveitado` vem `true` quando o servidor devolveu o último em vez de
+ * gerar outro — há um tecto de dez minutos, porque gerar são nove consultas
+ * pesadas ao banco.
+ */
+export async function pedirRelatorio(
+  days?: number
+): Promise<{ id: string; url: string; reaproveitado: boolean }> {
+  return apiFetch<{ id: string; url: string; reaproveitado: boolean }>("/api/patient/reports", {
+    method: "POST",
+    body: JSON.stringify(days ? { days } : {}),
+  });
 }
