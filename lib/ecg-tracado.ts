@@ -314,11 +314,19 @@ export function frasePadraoDaEscala(
  * quando alguém o supuser.
  */
 export const MODELOS: Record<number, string> = {
-  93: "Withings ScanWatch",
-  94: "Withings ScanWatch",
-  1061: "Withings BPM Core",
-  1062: "Withings ScanWatch 2",
-  1063: "Withings ScanWatch Light",
+  /*
+   * **Só o que foi visto numa resposta real.**
+   *
+   * Eu tinha aqui cinco linhas montadas de memória, e o QA comparativo apanhou:
+   * o `94` estava como "ScanWatch", e a API devolveu `modelid: 94` com
+   * `model: "ScanWatch 2"` — três vezes, na mesma sondagem. O papel chamava
+   * ScanWatch a um ScanWatch 2.
+   *
+   * Esta tabela passou a ser **recurso**: quem nomeia o aparelho é a própria
+   * Withings, pelo campo `model`, guardado em `EcgRecording.deviceName`. Aqui
+   * fica só o que foi medido, e cresce quando um código novo for **visto**.
+   */
+  94: "Withings ScanWatch 2",
 };
 
 /**

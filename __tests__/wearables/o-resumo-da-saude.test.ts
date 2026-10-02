@@ -33,13 +33,54 @@ const vazio: Omit<PontoDiario, "dataDate" | "dataType"> = {
 };
 
 /** `n` dias, do mais antigo ao mais novo, com um campo preenchido. */
+/**
+ * O balde onde cada campo **mesmo** vive, espelhando o mapa.
+ *
+ * A versão anterior punha tudo em `VITALS`, incluindo `sleepDuration` e `hrv` —
+ * um estado que o banco nunca produz, porque a ingestão escreve o sono em
+ * `SLEEP`. Os testes passavam porque os leitores também não olhavam ao balde; a
+ * partir do momento em que passaram a olhar, a fixture deixou de descrever
+ * realidade nenhuma.
+ */
+const BALDE: Record<string, string> = {
+  sleepDuration: "SLEEP",
+  deepMinutes: "SLEEP",
+  remMinutes: "SLEEP",
+  hrv: "SLEEP",
+  restingHr: "SLEEP",
+  spo2: "VITALS",
+  bodyTemperature: "VITALS",
+  steps: "ACTIVITY",
+  activeCalories: "ACTIVITY",
+  activeMinutes: "ACTIVITY",
+};
+
 function dias(campo: keyof PontoDiario, valores: Array<number | null>): PontoDiario[] {
   return valores.map((v, i) => ({
     ...vazio,
     dataDate: `2026-09-${String(i + 1).padStart(2, "0")}`,
-    dataType: "VITALS",
+    dataType: BALDE[campo as string] ?? "VITALS",
     [campo]: v,
   })) as PontoDiario[];
+}
+
+/**
+ * Um dia inteiro, **repartido pelos baldes que a ingestão usa**.
+ *
+ * Um dia real não é uma linha: são três, uma por `dataType`.
+ */
+function diaCompleto(
+  dia: string,
+  campos: Partial<Record<keyof PontoDiario, number>>
+): PontoDiario[] {
+  const porBalde = new Map<string, Record<string, number>>();
+  for (const [campo, valor] of Object.entries(campos)) {
+    const balde = BALDE[campo] ?? "VITALS";
+    porBalde.set(balde, { ...(porBalde.get(balde) ?? {}), [campo]: valor as number });
+  }
+  return [...porBalde.entries()].map(
+    ([dataType, c]) => ({ ...vazio, dataDate: dia, dataType, ...c }) as PontoDiario
+  );
 }
 
 describe("a variação do resumo", () => {
@@ -74,13 +115,16 @@ describe("a variação do resumo", () => {
 });
 
 describe("os destaques", () => {
-  const completo: PontoDiario[] = dias("restingHr", [62, 61, 60, 59, 58, 58]).map((p, i) => ({
-    ...p,
-    sleepDuration: 380 + i,
-    hrv: 44 + i,
-    spo2: 96,
-    steps: 6000 + i * 100,
-  }));
+  /* Seis dias, cada um repartido pelos três baldes — como o banco os guarda. */
+  const completo: PontoDiario[] = [62, 61, 60, 59, 58, 58].flatMap((fc, i) =>
+    diaCompleto(`2026-09-${String(i + 1).padStart(2, "0")}`, {
+      restingHr: fc,
+      sleepDuration: 380 + i,
+      hrv: 44 + i,
+      spo2: 96,
+      steps: 6000 + i * 100,
+    })
+  );
 
   it("**a ordem é fixa: sono, FC, HRV, SpO2, passos**", () => {
     // Não é por "o que mais mudou": isso põe o ruído no topo e muda de assunto

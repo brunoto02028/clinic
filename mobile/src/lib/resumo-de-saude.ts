@@ -50,16 +50,78 @@ export interface Destaque {
   familia: "coracao" | "sono" | "atividade";
 }
 
+/**
+ * Onde cada métrica mora, **por ordem de preferência**.
+ *
+ * Espelha o `ONDE_MORA` do servidor (`lib/onde-mora-a-metrica.ts`), e há um
+ * teste a exigir que os dois concordem — senão isto volta a divergir, que foi
+ * exactamente o defeito da 119 T-9.
+ *
+ * `restingHr` mora em dois: a do **sono** é a frequência em repouso como as
+ * palavras significam — a noite inteira, deitado —, e a das **medições** é a
+ * média de quando a pessoa calhou de medir.
+ */
+export const PREFERENCIA_DE_BALDE: Record<string, readonly string[]> = {
+  sleepDuration: ["SLEEP"],
+  deepMinutes: ["SLEEP"],
+  remMinutes: ["SLEEP"],
+  hrv: ["SLEEP"],
+  restingHr: ["SLEEP", "VITALS"],
+  spo2: ["VITALS"],
+  bodyTemperature: ["VITALS"],
+  steps: ["ACTIVITY"],
+  activeCalories: ["ACTIVITY"],
+  activeMinutes: ["ACTIVITY"],
+};
+
+/**
+ * Um valor por dia, pelo balde preferido (achado do code review, 02/10).
+ *
+ * A ingestão escreve `restingHr` em `SLEEP` **e** em `VITALS` para o mesmo dia.
+ * Sem isto, o número grande do cartão podia ser a média diurna enquanto as
+ * barras logo abaixo desenhavam a série do sono — **duas frequências de repouso
+ * no mesmo cartão** —, e a variação contava cada dia a dobrar.
+ *
+ * O servidor foi corrigido hoje de manhã; este quarto leitor ficou para trás, e
+ * foi o gráfico novo ao lado do número que tornou a divergência visível.
+ */
+export function porDiaPreferido(
+  pontos: PontoDiario[],
+  campo: keyof PontoDiario
+): Array<{ dia: string; valor: number }> {
+  const baldes = PREFERENCIA_DE_BALDE[campo as string] ?? [];
+  const porDia = new Map<string, number>();
+
+  const considerar = (p: PontoDiario) => {
+    const v = p[campo];
+    if (typeof v !== "number" || !Number.isFinite(v)) return;
+    if (porDia.has(p.dataDate)) return;
+    porDia.set(p.dataDate, v);
+  };
+
+  for (const balde of baldes) {
+    for (const p of pontos) if (p.dataType === balde) considerar(p);
+  }
+  /*
+   * Um campo que o mapa não conhece não é motivo para não mostrar nada: aceita
+   * de qualquer balde, continuando a contar o dia uma vez só.
+   */
+  if (baldes.length === 0) for (const p of pontos) considerar(p);
+
+  return [...porDia.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dia, valor]) => ({ dia, valor }));
+}
+
 /** O valor mais recente de um campo, e o dia em que foi medido. */
 function maisRecente(
   pontos: PontoDiario[],
   campo: keyof PontoDiario
 ): { valor: number; dia: string } | null {
-  const comValor = pontos
-    .filter((p) => typeof p[campo] === "number")
-    .sort((a, b) => b.dataDate.localeCompare(a.dataDate));
-  if (comValor.length === 0) return null;
-  return { valor: comValor[0][campo] as number, dia: comValor[0].dataDate };
+  const serie = porDiaPreferido(pontos, campo);
+  if (serie.length === 0) return null;
+  const ultimo = serie[serie.length - 1];
+  return { valor: ultimo.valor, dia: ultimo.dia };
 }
 
 /**
@@ -73,10 +135,8 @@ export function variacao(
   pontos: PontoDiario[],
   campo: keyof PontoDiario
 ): { delta: number; diasComparados: number } | null {
-  const serie = pontos
-    .filter((p) => typeof p[campo] === "number")
-    .sort((a, b) => a.dataDate.localeCompare(b.dataDate))
-    .map((p) => p[campo] as number);
+  /* Um valor por dia — senão um dia com duas fontes pesa a dobrar na média. */
+  const serie = porDiaPreferido(pontos, campo).map((p) => p.valor);
   if (serie.length < 6) return null;
 
   const n = Math.max(2, Math.floor(serie.length / 3));

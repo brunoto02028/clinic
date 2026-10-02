@@ -63,8 +63,28 @@ export function resumirSerie(
   const media = (xs: typeof ordenados) =>
     xs.length ? xs.reduce((s, x) => s + (x.valor as number), 0) / xs.length : null;
 
-  const anterior = ordenados.length >= 4 ? media(ordenados.slice(0, meio)) : null;
-  const atual = ordenados.length >= 4 ? media(ordenados.slice(meio)) : media(ordenados);
+  /**
+   * **`atual` é a média de todos os dias com dado** (achado do QA comparativo).
+   *
+   * Era a média da **segunda metade** quando havia 4 ou mais dias — enquanto a
+   * legenda impressa dizia, e continua a dizer, *"média dos N dias com dados"*,
+   * com `N` a contar **todos** eles.
+   *
+   * Medido no papel: passos de 4000, 3000, 249 e 1590 imprimiam **920**
+   * rotulados *"média dos 4 dias"*; a média dos quatro é **2209,75**. Um erro de
+   * 2,4× num documento clínico, com a legenda a descrevê-lo mal.
+   *
+   * E a mesma linha carregava as duas descrições em contradição: a variação
+   * dizia *"2580 abaixo da primeira metade do período"* — honesto — e a legenda
+   * ao lado dizia outra coisa.
+   *
+   * A comparação entre metades continua a existir, e é de onde a **variação**
+   * sai: ela está rotulada como comparação e não como média.
+   */
+  const metadeAntiga = ordenados.length >= 4 ? media(ordenados.slice(0, meio)) : null;
+  const metadeRecente = ordenados.length >= 4 ? media(ordenados.slice(meio)) : null;
+  const anterior = metadeAntiga;
+  const atual = media(ordenados);
 
   const umaCasa = (n: number | null) => (n === null ? null : Math.round(n * 10) / 10);
   const escrever = (n: number | null) => (campo ? comoSeEscreve(campo, umaCasa(n)) : umaCasa(n));
@@ -72,8 +92,16 @@ export function resumirSerie(
   return {
     atual: escrever(atual),
     anterior: escrever(anterior),
+    /*
+     * A variação continua a ser **metade contra metade** — é o que a frase
+     * impressa diz: *"N abaixo da primeira metade do período"*. Compará-la com a
+     * média do período inteiro daria um número menor do que a mudança real,
+     * porque a própria média já contém a metade antiga.
+     */
     variacao:
-      atual === null || anterior === null ? null : escrever(atual - anterior),
+      metadeRecente === null || metadeAntiga === null
+        ? null
+        : escrever(metadeRecente - metadeAntiga),
     dias,
   };
 }
@@ -311,10 +339,35 @@ export async function getMonitoringData(
    * Uma "média de conclusões" não existe: cada registro é um evento, e o que
    * importa é qual deles disse o quê e quando.
    */
-  const ecg = (pontos as any[])
-    .map((p) => lerEcg(p))
-    .filter((r): r is RegistroDeEcg => r !== null)
-    .sort((a, b) => String(b.recordedAt).localeCompare(String(a.recordedAt)));
+  /**
+   * **O ECG vem da tabela dele** (achado do code review, 02/10).
+   *
+   * Isto lia `pontos.map(lerEcg)`, e o `lerEcg` exige `dataType: "ECG"` — um
+   * balde que **ninguém escreve** desde que a 119 T-2 mudou o ECG para o
+   * `EcgRecording`, uma linha por gravação.
+   *
+   * Logo `ecg` era sempre `[]`, o `if (mon.ecg.length > 0)` nunca entrava, e a
+   * secção de ECG **não saía no relatório de nenhum paciente** — incluindo um a
+   * quem o relógio tivesse detectado fibrilhação. O app mostrava as gravações;
+   * o papel que vai ao médico, não.
+   *
+   * É a gaveta vazia outra vez, e com o agravante de eu ter corrigido a mesma
+   * coisa ao lado hoje — na rota do painel, com um comentário a explicar
+   * exactamente isto — e não ter corrigido aqui.
+   */
+  const gravacoes = await (prisma as any).ecgRecording
+    .findMany({
+      where: { userId: patientId, recordedAt: { gte: desde } },
+      orderBy: { recordedAt: "desc" },
+      select: { recordedAt: true, conclusao: true, heartRate: true },
+    })
+    .catch(() => []);
+
+  const ecg = (gravacoes as any[]).map((g) => ({
+    recordedAt: g.recordedAt instanceof Date ? g.recordedAt.toISOString() : String(g.recordedAt),
+    conclusao: g.conclusao,
+    heartRate: typeof g.heartRate === "number" ? g.heartRate : null,
+  })) as RegistroDeEcg[];
 
   const diasComExercicio = new Set(
     (exercicio as any[]).map((e) => new Date(e.completedDate).toISOString().split("T")[0])
@@ -329,18 +382,30 @@ export async function getMonitoringData(
     temSinais: Object.values(sinais).some((m) => m.dias > 0),
     pressao: {
       leituras: (pressao as any[]).length,
-      sistolica: resumirSerie(
-        (pressao as any[]).map((r) => ({
-          dia: new Date(r.measuredAt).toISOString().split("T")[0],
-          valor: r.systolic,
-        }))
-      ),
-      diastolica: resumirSerie(
-        (pressao as any[]).map((r) => ({
-          dia: new Date(r.measuredAt).toISOString().split("T")[0],
-          valor: r.diastolic,
-        }))
-      ),
+      /**
+       * **O resumo sai da mesma série que o gráfico** (achado do code review).
+       *
+       * Isto entregava ao `resumirSerie` **uma entrada por leitura**, enquanto a
+       * linha logo ao lado já usava um ponto por dia. Com três medições numa
+       * manhã e uma noutro dia, o papel imprimia:
+       *
+       * - `135 mmHg · 5 mmHg acima da primeira metade · média dos 4 dias`
+       * - e desenhava a linha a **descer** de 140 para 110.
+       *
+       * Três erros num bloco: o **sinal da variação invertido** — o
+       * `resumirSerie` parte ao meio por índice de leitura, e as três da manhã
+       * ficam 2 numa metade e 1 na outra —, *"4 dias"* quando foram 2, e o dia
+       * diligente a pesar 3× na média.
+       *
+       * Era exactamente o que o comentário do `pressaoPorDia` diz que não pode
+       * acontecer: *"a linha diz que a pressão subiu quando o que subiu foi o
+       * cuidado"*. A linha ficou protegida hoje de manhã; o número não.
+       *
+       * Num papel que vai ao médico, a direcção da pressão é o item em que
+       * errar não é aceitável.
+       */
+      sistolica: resumirSerie(pressaoPorDia(pressao as any[], "systolic")),
+      diastolica: resumirSerie(pressaoPorDia(pressao as any[], "diastolic")),
       ultima: (pressao as any[]).length
         ? (pressao as any[])[(pressao as any[]).length - 1]
         : null,

@@ -131,10 +131,32 @@ describe("comparar a pessoa com ela mesma", () => {
     expect(r.atual).toBe(68);
   });
 
-  it("com dado suficiente, parte o período ao meio", () => {
+  it("**o número é a média de todos os dias** — é isso que o papel diz dele", () => {
+    /*
+     * **Achado do QA comparativo, 02/10.** O `atual` era a média da **segunda
+     * metade** a partir de 4 dias, enquanto a legenda impressa dizia *"média dos
+     * N dias com dados"*, com `N` a contar todos.
+     *
+     * Medido no papel: passos de 4000, 3000, 249 e 1590 imprimiam **920**
+     * rotulados *"média dos 4 dias"*. A média dos quatro é **2209,75** — um erro
+     * de 2,4× num documento clínico, com a legenda a descrevê-lo mal.
+     */
+    const r = resumirSerie(serie(70, 70, 60, 60));
+    expect(r.atual).toBe(65);
+
+    const passos = resumirSerie(serie(4000, 3000, 249, 1590), "steps");
+    expect(passos.atual).toBe(2210);
+  });
+
+  it("**e a variação continua a comparar metade com metade**", () => {
+    /*
+     * Ela está rotulada como comparação — *"10 abaixo da primeira metade do
+     * período"* —, não como média. Compará-la com a média do período inteiro
+     * daria um número menor do que a mudança real, porque a média já contém a
+     * metade antiga.
+     */
     const r = resumirSerie(serie(70, 70, 60, 60));
     expect(r.anterior).toBe(70);
-    expect(r.atual).toBe(60);
     expect(r.variacao).toBe(-10);
   });
 

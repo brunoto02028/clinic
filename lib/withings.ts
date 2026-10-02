@@ -269,6 +269,21 @@ export interface WithingsSleepNight {
 }
 
 /** Withings reports sleep stages in seconds; this table stores minutes. */
+/**
+ * O rMSSD da noite: a média do início e do fim, ou o que houver.
+ *
+ * `null` quando nenhum dos dois veio — e `null` é um buraco, não um zero: uma
+ * VFC de 0 ms não é a de ninguém, e puxaria a média do período para baixo sem
+ * nada a denunciar.
+ */
+function mediaDeRmssd(d: any): number | null {
+  const valores = [d?.rmssd_start_avg, d?.rmssd_end_avg].filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v)
+  );
+  if (valores.length === 0) return null;
+  return Math.round((valores.reduce((s, v) => s + v, 0) / valores.length) * 10) / 10;
+}
+
 export async function withingsSleep(
   accessToken: string,
   since: Date
@@ -279,7 +294,25 @@ export async function withingsSleep(
     access_token: accessToken,
     startdateymd: iso(since),
     enddateymd: iso(new Date()),
-    data_fields: "deepsleepduration,lightsleepduration,remsleepduration,wakeupduration,hr_average,rr_average,sdnn_1",
+    /**
+     * **`rmssd_start_avg`, e não `sdnn_1`** (achado do QA comparativo, 02/10).
+     *
+     * Pedíamos `sdnn_1` — um campo que **não existe** no `v2/sleep getsummary`.
+     * A documentação, medida e escrita nesta mesma pasta hoje
+     * (`docs/withings-api-2026-10-02.md`), diz-o por extenso: *"Não há `rmssd`,
+     * não há `sdnn_1`, não há `sdnn`"*. Os nomes são `rmssd_start_avg` e
+     * `rmssd_end_avg`.
+     *
+     * Consequência: a coluna `hrv` ficou **sempre nula**, e com ela a linha da
+     * VFC no relatório, as barras na aba e o alerta de desvio da clínica. A
+     * 119 T-9 tirou a VFC da gaveta `BODY` e pôs na `SLEEP` — onde também
+     * ninguém escrevia, porque o escritor perguntava pelo nome errado.
+     *
+     * O app da Withings mostrava **14 ms** no mesmo dia em que o nosso mostrava
+     * nada.
+     */
+    data_fields:
+      "deepsleepduration,lightsleepduration,remsleepduration,wakeupduration,hr_average,rr_average,rmssd_start_avg,rmssd_end_avg",
   });
 
   const mins = (seconds: unknown) =>
@@ -299,7 +332,18 @@ export async function withingsSleep(
       remMinutes: rem,
       lightMinutes: light,
       awakeMinutes: awake,
-      hrv: typeof d.sdnn_1 === "number" ? d.sdnn_1 : null,
+      /**
+       * **A VFC da noite, em rMSSD** — que é o que a coluna diz guardar.
+       *
+       * A Withings dá dois: o do início e o do fim da noite. A média dos dois é
+       * a noite inteira, que é a unidade de todas as outras métricas deste
+       * ficheiro; usar só um faria a série saltar conforme a pessoa adormecesse
+       * mais cedo ou mais tarde.
+       *
+       * Se só vier um, usa-se esse — meia noite medida é melhor do que nenhuma,
+       * e o relatório já diz quantos dias têm dado.
+       */
+      hrv: mediaDeRmssd(d),
       restingHr: typeof d.hr_average === "number" ? d.hr_average : null,
     };
   });

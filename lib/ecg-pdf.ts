@@ -54,6 +54,8 @@ export interface DadosDoEcgParaPapel {
   wearPosition?: number | null;
   /** O código do aparelho, como a Withings o manda. */
   deviceModel?: number | null;
+  /** O nome que a Withings deu ao aparelho. Preferido ao código. */
+  deviceName?: string | null;
   /** O nome da clínica, no cabeçalho. */
   clinica?: string | null;
   idioma?: "en" | "pt";
@@ -151,8 +153,8 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
 
   /* Deitada: 10 segundos a 25 mm/s são 250 mm, e só assim cabem. */
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  /* 12 mm davam para o texto; o pulso de calibração pede mais 7 à esquerda. */
-  const margem = 19;
+  /* 12 mm davam para o texto; o pulso de calibração pede mais 9 à esquerda. */
+  const margem = 21;
   let y = margem;
 
   doc.setFont("helvetica", "bold");
@@ -186,7 +188,16 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
    * O aparelho, **só quando sabemos o nome**. Um código desconhecido não vira
    * "modelo 1234" nem um palpite: a linha simplesmente não sai.
    */
-  const aparelho = aparelhoPorExtenso(dados.deviceModel);
+  /*
+   * **O nome que a Withings deu**, e só depois a tabela de códigos.
+   *
+   * A minha tabela chamava "ScanWatch" ao código 94, que a API nomeia
+   * "ScanWatch 2". Quem sabe o nome do aparelho é quem o fez.
+   */
+  const aparelho =
+    (typeof dados.deviceName === "string" && dados.deviceName.trim()
+      ? dados.deviceName.trim()
+      : null) ?? aparelhoPorExtenso(dados.deviceModel);
   if (aparelho) linhas.push(`${t.aparelho}: ${aparelho}`);
 
   doc.text(linhas.join("   ·   "), margem, y);
@@ -274,13 +285,23 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
        * gravação.
        */
       const alturaDoPulso = MM_POR_MILIVOLT;
+      /* 5 mm = 200 ms a 25 mm/s, a largura convencional do degrau. */
+      const LARGURA_DO_PULSO = 5;
       const baseDaFaixa = y + tracado.alturaMm / 2;
-      const xp = margem - 7;
+      const xp = margem - (4 + LARGURA_DO_PULSO);
+      /*
+       * **5 mm de planalto, que é a convenção** — 200 ms a 25 mm/s.
+       *
+       * Estava a 3 mm (120 ms), e o comentário acima dizia *"uma régua posta
+       * nele tem de dar 10 mm de altura e 5 mm de largura; se não der, o papel
+       * inteiro é suspeito"*. Pela própria regra que eu escrevi, o papel era
+       * suspeito. Apanhado pelo QA comparativo, a medir os operadores do PDF.
+       */
       doc.lines(
         [
           [2, 0],
           [0, -alturaDoPulso],
-          [3, 0],
+          [LARGURA_DO_PULSO, 0],
           [0, alturaDoPulso],
           [2, 0],
         ],
