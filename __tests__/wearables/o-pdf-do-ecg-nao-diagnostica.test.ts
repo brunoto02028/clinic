@@ -159,10 +159,44 @@ describe("sem traçado, o papel ainda vale", () => {
 });
 
 describe("quando o traçado é reduzido, o papel diz", () => {
-  it("**avisa que cada ponto é uma média**", () => {
-    // Continua a medir certo, mas já não é o sinal — é um resumo dele, e quem
-    // lê tem direito a saber.
+  it("**diz que cada coluna é o mínimo e o máximo**, e não uma média", () => {
+    /*
+     * A frase mudou porque o desenho mudou, e a antiga passou a ser falsa.
+     *
+     * Com a média, uma espiga de 1,5 mV que durava uma amostra saía impressa a
+     * 0,5 mV — um terço da altura real — e o papel declarava `10mm/mV` como se
+     * nada fosse. Quem mede altura de R ou elevação de ST com uma régua lia um
+     * valor atenuado. Agora cada coluna desenha os dois extremos do punhado, e
+     * é isso que o papel afirma.
+     */
     const t = textoDoPdf(construirPdfDoEcg(base));
-    expect(t).toMatch(/mean of every \d+ samples/i);
+    expect(t).toMatch(/min and max of [0-9]+ samples/i);
+    expect(t).not.toMatch(/mean of/i);
+  });
+
+  it("**e avisa quando o traçado foi cortado**, com o pico que mediu", () => {
+    /*
+     * 2,5 mV numa faixa de 36 mm não cabem. Antes o excesso era desenhado por
+     * cima do cabeçalho e da faixa de cima; depois passou a ser preso ao tecto,
+     * o que dá ondas R de topo plano — à régua lia-se 1,8 mV num sinal de 2,5.
+     * Em silêncio, nos dois casos.
+     */
+    const dente = Array.from({ length: 9000 }, (_, i) => (i % 150 === 0 ? 2500 : 0));
+    const t = textoDoPdf(construirPdfDoEcg({ ...base, signal: dente }));
+    expect(t).toMatch(/clipped/i);
+    expect(t).toMatch(/2\.50 mV/);
+  });
+
+  it("**um sinal constante não sai como linha reta** — diz que não foi obtido", () => {
+    /*
+     * O achado do QA de 02/10/2026, medido por dentro do PDF: zeros passam o
+     * filtro da ingestão (`0` é número), e saíam como três faixas de papel
+     * milimetrado com uma linha perfeitamente reta, debaixo de "Sinus rhythm",
+     * com a escala declarada e nenhuma ressalva. Em papel de ECG lê-se como
+     * assistolia.
+     */
+    const t = textoDoPdf(construirPdfDoEcg({ ...base, signal: new Array(9000).fill(0) }));
+    expect(t).toMatch(/has not been retrieved/i);
+    expect(t).not.toMatch(/min and max of/i);
   });
 });

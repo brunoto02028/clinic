@@ -122,6 +122,20 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
                 <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
                   {horaLocalDe(r.recordedAt) ?? ""}
                   {r.heartRate != null ? ` · ${Math.round(r.heartRate)} bpm` : ""}
+                  {/*
+                    * **Dito antes do toque, não depois de abrir.**
+                    *
+                    * O papel sai de qualquer forma — com a conclusão do relógio e
+                    * a data —, mas sem o desenho. Quem toca à espera de um
+                    * traçado para levar ao médico tem direito a saber antes.
+                    *
+                    * Só quando a resposta é um `false` explícito: `undefined` é
+                    * uma versão da app anterior a este campo, e "não sei" não se
+                    * mostra como "não tem".
+                    */}
+                  {r.temTracado === false
+                    ? ` · ${tr(lang, { en: "trace not retrieved", pt: "traçado não obtido" })}`
+                    : ""}
                 </Text>
 
                 {/*

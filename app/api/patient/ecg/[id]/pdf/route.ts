@@ -73,7 +73,16 @@ export async function GET(
           firstName: true,
           lastName: true,
           dateOfBirth: true,
-          clinic: { select: { name: true } },
+          /*
+           * **A língua do paciente, não a nossa.** O papel saía com o cabeçalho
+           * e a conclusão sempre em inglês: a metade portuguesa do `ecg-pdf.ts`
+           * existia e nunca era alcançada, porque a rota não passava o idioma.
+           *
+           * É o mesmo campo que os relatórios usam — um paciente não tem uma
+           * língua para o relatório e outra para o ECG.
+           */
+          reportLanguage: true,
+          clinic: { select: { name: true, timezone: true } },
         },
       },
     },
@@ -96,6 +105,13 @@ export async function GET(
     samplingHz: registo.samplingHz,
     wearPosition: registo.wearPosition,
     clinica: registo.user?.clinic?.name ?? null,
+    idioma: registo.user?.reportLanguage === "pt" ? "pt" : "en",
+    /*
+     * O fuso da clínica, e não o do servidor. *"Gravado: 01/10/2026, 23:54"* tem
+     * de ser a hora que a pessoa viu no relógio quando mediu — num servidor em
+     * UTC seriam 22:54, e o papel diria que ela mediu uma hora antes.
+     */
+    fuso: registo.user?.clinic?.timezone || "Europe/London",
   });
 
   /*
@@ -104,7 +120,24 @@ export async function GET(
    * `Content-Disposition` parte-o em alguns clientes.
    */
   const dia = registo.recordedAt.toISOString().slice(0, 10);
-  const limpo = (nome || "ecg").normalize("NFD").replace(/[^\x20-\x7E]/g, "").trim() || "ecg";
+  /*
+   * ASCII imprimível **menos** o que tem significado dentro do cabeçalho.
+   *
+   * O filtro anterior deixava passar `"` e `;`, que são exactamente os dois
+   * caracteres que delimitam o valor e separam os parâmetros do
+   * `Content-Disposition`. Um nome como `a";b` fechava a aspa a meio e o resto
+   * do nome passava a ser lido como outro parâmetro do cabeçalho. O nome vem do
+   * perfil, que a pessoa escreve.
+   *
+   * A barra e a contrabarra saem também: em `attachment` elas são caminho, e
+   * alguns clientes guardariam o ficheiro noutra pasta.
+   */
+  const limpo =
+    (nome || "ecg")
+      .normalize("NFD")
+      .replace(/[^\x20-\x7E]/g, "")
+      .replace(/["';\\/]/g, "")
+      .trim() || "ecg";
   const ficheiro = `ECG ${limpo} ${dia}.pdf`.replace(/\s+/g, "-");
 
   return new NextResponse(Buffer.from(pdf), {

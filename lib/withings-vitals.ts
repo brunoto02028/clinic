@@ -163,10 +163,26 @@ export async function withingsEcg(
       enddate: String(Math.floor((until ?? new Date()).getTime() / 1000)),
     });
   } catch (e: any) {
-    // A device without ECG, or a scope that does not include it, answers with
-    // an error. That is not a sync failure — the rest of the data is fine.
-    console.log("[withings-vitals] no ECG available:", e?.message);
-    return [];
+    /*
+     * **Nem todo erro é "este paciente não tem ECG".**
+     *
+     * Isto engolia *qualquer* falha e devolvia lista vazia: um 429 por termos
+     * passado do limite, um token expirado, uma avaria deles — tudo chegava à
+     * tela como *"ainda sem registos"*, que é a frase que descreve um paciente
+     * que nunca gravou um ECG. Duas situações opostas com a mesma resposta, e a
+     * errada é a que não leva ninguém a investigar.
+     *
+     * E a ausência verdadeira **não vem por erro**: uma conta sem ECG responde
+     * `status: 0` com `series` vazia. É por isso que engolir aqui nunca serviu
+     * para o caso que o comentário antigo invocava.
+     *
+     * O limite publicado é de 120 pedidos por minuto por `client_id` — com
+     * vários pacientes a sincronizar ao mesmo tempo, o 601 é a falha mais
+     * provável desta chamada, e era exactamente a que desaparecia.
+     */
+    const msg = String(e?.message ?? e);
+    console.error("[withings-vitals] ECG list failed:", msg);
+    throw e;
   }
 
   const series = body?.series ?? [];

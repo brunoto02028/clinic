@@ -176,6 +176,80 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  /**
+   * `?sinal=<signalid>` — **o `with_filtered` é honrado?**
+   *
+   * A nossa chamada pede `with_filtered: "1"` com este raciocínio: o PDF deles é
+   * visivelmente limpo e o rodapé diz *"Enhanced Filter, Main filter"*, logo é
+   * improvável que seja o sinal cru. Mas isso era **inferência**, nunca medida.
+   * A documentação só diz *"Request filtered version of the signal"* e não diz
+   * que filtro é, nem o que acontece se não tivermos direito a ele.
+   *
+   * Se não for honrado, imprimimos o sinal cru num papel que vai para um médico
+   * — com ruído de rede por cima, que é um ECG que o médico devolve. E a
+   * diferença não se vê daqui: as duas respostas têm a mesma forma.
+   *
+   * Compara-se pedindo as duas versões do **mesmo** `signalid`. Devolve só
+   * **estatística**: quantas amostras, os extremos, e quanta energia há acima de
+   * 40 Hz — onde vive o ruído de 50/60 Hz da rede eléctrica e onde um ECG tem
+   * pouco que seja. Nenhuma amostra sai na resposta.
+   */
+  const signalid = req.nextUrl.searchParams.get("sinal");
+  if (signalid) {
+    const { sinalDoEcg } = await import("@/lib/withings-series");
+    const medir = async (filtrado: boolean) => {
+      try {
+        const s = await sinalDoEcg(token, signalid, filtrado);
+        const bons = s.amostras.filter((v): v is number => typeof v === "number");
+        /*
+         * A energia da diferença entre amostras vizinhas cresce com a
+         * frequência. É um passa-alto de uma linha, e chega para dizer se uma
+         * das versões vem mais lisa do que a outra — não pretende ser análise
+         * espectral.
+         */
+        let soma = 0;
+        for (let i = 1; i < bons.length; i++) soma += (bons[i] - bons[i - 1]) ** 2;
+        return {
+          amostras: s.amostras.length,
+          buracos: s.amostras.length - bons.length,
+          frequencia: s.frequencia,
+          posicao: s.posicao,
+          minUv: bons.length ? Math.min(...bons) : null,
+          maxUv: bons.length ? Math.max(...bons) : null,
+          /** Raiz da média do quadrado da diferença — quanto mais alto, mais áspero. */
+          asperezaUv: bons.length > 1 ? Math.sqrt(soma / (bons.length - 1)) : null,
+          chavesDoCorpo: Object.keys(s.bruto ?? {}),
+        };
+      } catch (e: any) {
+        return { erro: String(e?.message ?? e) };
+      }
+    };
+
+    const comFiltro = await medir(true);
+    /* Onze segundos entre as duas: o limite deles é por minuto e é nosso. */
+    await new Promise((r) => setTimeout(r, 11_000));
+    const semFiltro = await medir(false);
+
+    return NextResponse.json({
+      quem: user.email,
+      signalid,
+      quando: new Date().toISOString(),
+      comFiltro,
+      semFiltro,
+      /**
+       * `true` só quando as duas respostas são **mensuravelmente diferentes**.
+       * Iguais querem dizer que o parâmetro não fez nada — e aí o papel está a
+       * imprimir o cru, e o comentário do `sinalDoEcg` tem de dizer isso.
+       */
+      oFiltroFezAlgumaCoisa:
+        "asperezaUv" in comFiltro &&
+        "asperezaUv" in semFiltro &&
+        comFiltro.asperezaUv != null &&
+        semFiltro.asperezaUv != null &&
+        Math.abs(comFiltro.asperezaUv - semFiltro.asperezaUv) > 0.5,
+    });
+  }
+
   const linhas = await sondarTudo(token);
 
   /*

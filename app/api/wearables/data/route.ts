@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { lerEcg } from '@/lib/ecg-record';
 import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from '@/lib/ecg-limite';
+import { quaisTemTracado } from '@/lib/ecg-tem-sinal';
 
 export async function GET(request: NextRequest) {
   // Consentimento e plano valem no servidor, não só na tela (auditoria de paridade, 24/09/2026).
@@ -76,6 +77,21 @@ export async function GET(request: NextRequest) {
   });
   const ecgs = ateAoLimite(ecgsVieram);
 
+  /*
+   * **Quais têm traçado, dito aqui e não no toque.**
+   *
+   * O botão "Abrir em PDF" prometia avisar antes do toque que o traçado podia
+   * não estar lá, e não tinha como: o `temTracado` só vinha na resposta do link,
+   * que é pedida *no* toque. O comentário estava à frente do código.
+   *
+   * A pergunta é um booleano e custa um booleano — não as 9.000 amostras. Ver
+   * `lib/ecg-tem-sinal.ts`.
+   */
+  const comTracado = await quaisTemTracado(
+    eff.userId,
+    ecgs.map((e) => e.id)
+  );
+
   return NextResponse.json({
     data: comEcg,
     /** Houve mais do que cabe — a tela diz, em vez de cortar calada. */
@@ -88,6 +104,14 @@ export async function GET(request: NextRequest) {
       conclusao: e.conclusao,
       /* O caminho até ao sinal, não o sinal. */
       signalId: e.signalId,
+      /**
+       * Se o papel sai com traçado ou só com a conclusão do aparelho.
+       *
+       * `signalId` não serve para isto: ele diz que a Withings **tem** o sinal,
+       * não que nós o fomos buscar — e entre as duas coisas há uma chamada que
+       * pode ter falhado, ou um plano que pode não nos dar acesso.
+       */
+      temTracado: comTracado.has(e.id),
     })),
   });
 }

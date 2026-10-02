@@ -68,6 +68,8 @@ const T = {
     fibrilacao: "The watch found signs of atrial fibrillation",
     inconclusivo: "The watch could not classify this recording",
     semTracado: "The trace for this recording has not been retrieved.",
+    cortado: "The trace goes beyond the band and is clipped here. Peak measured:",
+    colunas: (n: number) => ` · each column spans the min and max of ${n} samples`,
     rodape:
       "This is a recording made by a consumer device and the conclusion is the device's own. " +
       "It is not a diagnosis and it has not been read by a clinician. Bring it to a doctor.",
@@ -85,6 +87,8 @@ const T = {
     fibrilacao: "O relógio encontrou sinais de fibrilhação atrial",
     inconclusivo: "O relógio não conseguiu classificar este registo",
     semTracado: "O traçado deste registo ainda não foi obtido.",
+    cortado: "O traçado sai da faixa e está cortado aqui. Pico medido:",
+    colunas: (n: number) => ` · cada coluna cobre o mínimo e o máximo de ${n} amostras`,
     rodape:
       "Este é um registo feito por um aparelho de consumo e a conclusão é do próprio aparelho. " +
       "Não é um diagnóstico e não foi lido por um clínico. Leve-o a um médico.",
@@ -105,11 +109,29 @@ function desenharGrelha(doc: jsPDF, x: number, y: number, larguraMm: number, alt
   for (let j = 0; j <= alturaMm; j += 5) doc.line(x, y + j, x + larguraMm, y + j);
 }
 
+const localeDe = (idioma: "en" | "pt") => (idioma === "pt" ? "pt-BR" : "en-GB");
+
 const comoData = (d: Date | string | null | undefined, fuso: string, idioma: "en" | "pt") => {
   if (!d) return null;
   const data = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(data.getTime())) return null;
-  return data.toLocaleString(idioma === "pt" ? "pt-BR" : "en-GB", { timeZone: fuso });
+  return data.toLocaleString(localeDe(idioma), { timeZone: fuso });
+};
+
+/**
+ * Só o dia — sem a hora, e **sem a vírgula que sobrava**.
+ *
+ * Saía `Date of birth: 15/01/1980,` nos dois idiomas: o `toLocaleString` dá
+ * `"15/01/1980, 00:00:00"` e um `split(" ")[0]` corta no espaço, deixando a
+ * vírgula colada à data. Numa folha que vai para a mão de um médico, um erro de
+ * pontuação no identificador do paciente é o tipo de coisa que faz duvidar do
+ * resto do papel.
+ */
+const comoDia = (d: Date | string | null | undefined, fuso: string, idioma: "en" | "pt") => {
+  if (!d) return null;
+  const data = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.toLocaleDateString(localeDe(idioma), { timeZone: fuso });
 };
 
 export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
@@ -140,8 +162,8 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
   doc.setTextColor(40, 40, 40);
 
   const linhas: string[] = [`${t.paciente}: ${dados.nome}`];
-  const nascimento = comoData(dados.dataDeNascimento, fuso, idioma);
-  if (nascimento) linhas.push(`${t.nascimento}: ${nascimento.split(" ")[0]}`);
+  const nascimento = comoDia(dados.dataDeNascimento, fuso, idioma);
+  if (nascimento) linhas.push(`${t.nascimento}: ${nascimento}`);
   const gravado = comoData(dados.recordedAt, fuso, idioma);
   if (gravado) linhas.push(`${t.gravado}: ${gravado}`);
   if (typeof dados.heartRate === "number") {
@@ -163,6 +185,14 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
     doc.setFont("helvetica", dados.conclusao === "fibrilacao" ? "bold" : "normal");
     doc.setTextColor(dados.conclusao === "fibrilacao" ? 170 : 40, 40, 40);
     doc.text(`${t.conclusao}: ${frase}`, margem, y);
+    /*
+     * **O negrito volta ao normal aqui.** O estilo da fonte é estado do
+     * documento, não da chamada: no papel de uma fibrilhação o `bold` nunca era
+     * reposto e a escala e o rodapé saíam os dois a negrito — num papel de ECG,
+     * dar o mesmo peso gráfico ao achado e à letra miudinha desfaz a diferença
+     * entre os dois.
+     */
+    doc.setFont("helvetica", "normal");
     y += 8;
   }
 
@@ -180,21 +210,57 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
     doc.setFont("helvetica", "italic");
     doc.setTextColor(110, 110, 110);
     doc.text(t.semTracado, margem, y + 4);
+    /*
+     * E o itálico volta atrás. O `jsPDF` guarda o estilo da fonte no documento,
+     * não na chamada: sem isto o rodapé — a frase que diz que o papel não é um
+     * diagnóstico — saía em itálico, com ar de legenda em vez de afirmação.
+     */
+    doc.setFont("helvetica", "normal");
   } else {
     doc.setTextColor(30, 30, 30);
+    /*
+     * **Quebra de página.** O papel assumia três faixas e nada mais. Medido em
+     * 02/10/2026: com seis faixas o rodapé caía em y=303 mm numa folha de
+     * 210 mm — ou seja, a frase *"não é um diagnóstico e não foi lido por um
+     * clínico"* **não aparecia no papel**, e as faixas 5 e 6 também não.
+     *
+     * E o teste passava, porque lia os **bytes** do PDF: o operador de texto
+     * existe no fluxo mesmo desenhado fora da página.
+     *
+     * Basta uma gravação de 31 segundos, ou um `sampling_frequency` reportado
+     * abaixo do real, para lá chegar.
+     */
+    const alturaDaPagina = 210;
+    const rodapeMm = 22;
     for (const faixa of tracado.faixas) {
+      if (y + tracado.alturaMm + rodapeMm > alturaDaPagina) {
+        doc.addPage("a4", "landscape");
+        y = margem;
+      }
       desenharGrelha(doc, margem, y, tracado.larguraMm, tracado.alturaMm);
 
       doc.setDrawColor(20, 20, 20);
       doc.setLineWidth(0.25);
-      const pts = faixa.pontos;
-      for (let i = 1; i < pts.length; i++) {
-        doc.line(
-          margem + pts[i - 1].x,
-          y + pts[i - 1].y,
-          margem + pts[i].x,
-          y + pts[i].y
-        );
+      const cols = faixa.colunas;
+      let anterior: { x: number; yMin: number; yMax: number } | null = null;
+      for (const c of cols) {
+        if (c.yMin === null || c.yMax === null) {
+          /* Buraco: a linha interrompe-se, em vez de o atravessar. */
+          anterior = null;
+          continue;
+        }
+        /*
+         * A barra vertical da coluna é o que preserva a espiga: o mínimo e o
+         * máximo daquele punhado de amostras, e não a média deles.
+         */
+        if (c.yMin !== c.yMax) {
+          doc.line(margem + c.x, y + c.yMin, margem + c.x, y + c.yMax);
+        }
+        /* E a ligação à coluna anterior, para a linha ser contínua. */
+        if (anterior) {
+          doc.line(margem + anterior.x, y + anterior.yMax, margem + c.x, y + c.yMin);
+        }
+        anterior = { x: c.x, yMin: c.yMin, yMax: c.yMax };
       }
 
       /* Os segundos, por baixo da faixa — é por eles que se conta o tempo. */
@@ -211,22 +277,48 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
 
     doc.setFontSize(8);
     doc.setTextColor(90, 90, 90);
-    let escala = frasePadraoDaEscala(dados.samplingHz);
+    let escala = frasePadraoDaEscala(dados.samplingHz, idioma);
     if (tracado.amostrasPorPonto > 1) {
       /*
-       * Dito, e não escondido: o traçado impresso é a média de cada punhado de
-       * amostras. Continua a medir certo, mas já não é o sinal — é um resumo
-       * dele, e quem o lê tem direito a saber.
+       * Dito, e não escondido. E dito com precisão: cada coluna mostra o
+       * **mínimo e o máximo** do punhado, que é o que preserva a altura da
+       * espiga. A versão anterior fazia a média e escrevia que continuava a
+       * medir certo — certo no tempo, errado na amplitude, por um factor de
+       * até três.
        */
-      escala += ` · drawn as the mean of every ${tracado.amostrasPorPonto} samples`;
+      escala += t.colunas(tracado.amostrasPorPonto);
     }
     doc.text(escala, margem, y);
     y += 4;
+
+    if (tracado.cortado) {
+      /*
+       * **O corte tem de ser dito.** Um traçado preso à faixa mede a amplitude
+       * errada para menos, e quem lê não tem como saber.
+       */
+      doc.setTextColor(170, 60, 60);
+      doc.text(
+        `${t.cortado} ${tracado.picoMv.toFixed(2)} mV`,
+        margem,
+        y
+      );
+      y += 4;
+    }
   }
 
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
-  doc.text(doc.splitTextToSize(t.rodape, 297 - margem * 2), margem, Math.max(y + 2, 190));
+  /*
+   * O rodapé vai **na página onde o traçado acabou**, e nunca abaixo do limite
+   * da folha. Antes era `Math.max(y + 2, 190)`, que com faixas a mais empurrava
+   * a frase para fora da A4 — e com ela o aviso que impede o papel de ser lido
+   * como mais do que é.
+   */
+  doc.text(
+    doc.splitTextToSize(t.rodape, 297 - margem * 2),
+    margem,
+    Math.min(Math.max(y + 2, 190), 200)
+  );
 
   return doc.output("arraybuffer");
 }

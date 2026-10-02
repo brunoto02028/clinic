@@ -1,6 +1,19 @@
 # T-9: O traçado do ECG, e o *play*
 
-**Status:** pendente
+**Status:** concluído (02/10/2026)
+
+> **O que ficou feito, e o que não.** O **papel** está feito e medido: o PDF de
+> cada gravação, em 25 mm/s e 10 mm/mV de verdade, com grelha de 1 e 5 mm, três
+> faixas de dez segundos, quebra de página, aviso de corte e a frase que diz que
+> não é um diagnóstico. Lido por dentro do content stream: os saltos de 1000 µV
+> medem **10,000 mm** e as subidas de um segundo estão a **25,000 mm** uma da
+> outra, sem excepção.
+>
+> O ***play*** — o traçado a correr no tempo, como no vídeo que o Bruno mandou —
+> **não** entrou: desenhar 9.000 amostras no telemóvel exige uma biblioteca de
+> desenho que não está lá, e acrescentá-la muda o *fingerprint* nativo, o que faz
+> o `eas update` deixar de chegar aos binários instalados. O papel é o que serve
+> ao pedido real ("levar a um médico"); o *play* fica como pedido próprio.
 **Depende de:** T-1 (que já guarda o registo e a conclusão)
 
 ## O pedido
