@@ -31,7 +31,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
-import { fetchWearableData, fetchConnections, fetchMetas, syncProvider } from "@/api/wearables";
+import {
+  fetchWearableData,
+  fetchConnections,
+  fetchMetas,
+  syncProvider,
+  fetchSeriesDosSinais,
+} from "@/api/wearables";
 import { valeASincronizacao } from "@/lib/sincronizar-se-vale-a-pena";
 import { LoadFailure } from "@/components/LoadFailure";
 import {
@@ -43,6 +49,7 @@ import {
   Pendencia,
 } from "@/lib/resumo-de-saude";
 import { BarraDeMeta } from "@/components/BarraDeMeta";
+import { BarrasDaMetrica } from "@/components/BarrasDaMetrica";
 import { ultimaLeitura, fraseDaUltimaLeitura } from "@/lib/quando-foi-lido";
 import { horaLocalDe } from "@/lib/ecg-lista";
 
@@ -104,6 +111,10 @@ export default function SaudeScreen() {
     queryFn: fetchConnections,
   });
   const metas = useQuery({ queryKey: ["metas"], queryFn: fetchMetas });
+  const series = useQuery({
+    queryKey: ["wearable-series", 30],
+    queryFn: () => fetchSeriesDosSinais(30),
+  });
 
   /**
    * **Puxar a tela fala com a Withings** (119 T-8).
@@ -119,6 +130,16 @@ export default function SaudeScreen() {
    * `sincronizar-se-vale-a-pena.ts` — o limite deles é por minuto e por
    * `client_id`, ou seja **nosso**, partilhado por todos os pacientes.
    */
+  /**
+   * A série diária de cada sinal, **resolvida pelo servidor** (118 T-9).
+   *
+   * O app não repete o mapa de onde cada métrica mora: foi exactamente esse o
+   * defeito da 119 T-9 — três leitores a escolherem o balde de memória, e a
+   * clínica inteira cega a FC de repouso, VFC e SpO2 durante semanas. Um
+   * critério, um sítio.
+   */
+  const serieDe = (chave: string) => series.data?.[chave] ?? null;
+
   const [aSincronizar, setASincronizar] = React.useState(false);
 
   /**
@@ -143,7 +164,9 @@ export default function SaudeScreen() {
       if (aPedir.current) return;
 
       const relerTudo = () =>
-        Promise.all([dados.refetch(), ligacoes.refetch(), metas.refetch()]).catch(() => {});
+        Promise.all([dados.refetch(), ligacoes.refetch(), metas.refetch(), series.refetch()]).catch(
+          () => {}
+        );
 
       const vale = valeASincronizacao(ligacoes.data as any[], {
         ultimoPedidoMs: ultimoPedidoMs.current,
@@ -184,7 +207,7 @@ export default function SaudeScreen() {
         await relerTudo();
       }
     },
-    [dados, ligacoes, metas]
+    [dados, ligacoes, metas, series]
   );
 
   /*
@@ -468,6 +491,22 @@ export default function SaudeScreen() {
                         dia={d.dia}
                         testID={`progresso-${d.chave}`}
                       />
+
+                      {/*
+                        * **A tendência** (118 T-9).
+                        *
+                        * O cartão dizia um número e, quando havia meta, o quanto
+                        * dele estava feito. Não dizia **o que mudou** — que é a
+                        * pergunta que leva alguém a olhar para isto, e o que a
+                        * referência que o Bruno escolheu mostra.
+                        *
+                        * Em barras e não em linha: `react-native-svg` não está
+                        * instalado, e acrescentá-lo mudaria o *fingerprint*
+                        * nativo — o update deixaria de chegar aos binários
+                        * instalados. A restrição dá o visual mais honesto: uma
+                        * barra que falta é inequívoca.
+                        */}
+                      <BarrasDaMetrica serie={serieDe(d.chave)} />
 
                       {/*
                         * A variação **sem cor**: subir não é bom nem mau, e
