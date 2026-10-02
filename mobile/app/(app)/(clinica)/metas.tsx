@@ -83,7 +83,7 @@ export default function MetasScreen() {
           ? e.localizada(lang)
           : tr(lang, {
               en: "Could not save your goals. Try again.",
-              pt: "Não foi possível guardar as suas metas. Tente outra vez.",
+              pt: "Não foi possível salvar suas metas. Tente de novo.",
             })
       ),
   });
@@ -185,8 +185,8 @@ export default function MetasScreen() {
             >
               <Text variant="body" color={t.colors.background} style={{ fontWeight: "700" }}>
                 {guardar.isPending
-                  ? tr(lang, { en: "Saving…", pt: "A guardar…" })
-                  : tr(lang, { en: "Save", pt: "Guardar" })}
+                  ? tr(lang, { en: "Saving…", pt: "Salvando…" })
+                  : tr(lang, { en: "Save", pt: "Salvar" })}
               </Text>
             </Pressable>
             )}

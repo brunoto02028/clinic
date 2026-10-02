@@ -76,21 +76,21 @@ const T = {
     segundos: "s",
   },
   pt: {
-    titulo: "Registo de ECG",
+    titulo: "Registro de ECG",
     paciente: "Paciente",
     nascimento: "Data de nascimento",
     gravado: "Gravado",
     frequencia: "Frequência cardíaca média",
     posicao: "Medido em",
     conclusao: "O que o relógio concluiu",
-    normal: "Ritmo sinusal — o relógio não encontrou sinais de fibrilhação atrial",
-    fibrilacao: "O relógio encontrou sinais de fibrilhação atrial",
-    inconclusivo: "O relógio não conseguiu classificar este registo",
-    semTracado: "O traçado deste registo ainda não foi obtido.",
+    normal: "Ritmo sinusal — o relógio não encontrou sinais de fibrilação atrial",
+    fibrilacao: "O relógio encontrou sinais de fibrilação atrial",
+    inconclusivo: "O relógio não conseguiu classificar este registro",
+    semTracado: "O traçado deste registro ainda não foi obtido.",
     cortado: "O traçado sai da faixa e está cortado aqui. Pico medido:",
     colunas: (n: number) => ` · cada coluna cobre o mínimo e o máximo de ${n} amostras`,
     rodape:
-      "Este é um registo feito por um aparelho de consumo e a conclusão é do próprio aparelho. " +
+      "Este é um registro feito por um aparelho de consumo e a conclusão é do próprio aparelho. " +
       "Não é um diagnóstico e não foi lido por um clínico. Leve-o a um médico.",
     segundos: "s",
   },

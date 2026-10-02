@@ -126,11 +126,11 @@ export const FRASE_DA_CONCLUSAO: Record<
   },
   fibrilacao: {
     en: "The watch found signs of atrial fibrillation",
-    pt: "O relógio encontrou sinais de fibrilhação atrial",
+    pt: "O relógio encontrou sinais de fibrilação atrial",
   },
   inconclusivo: {
     en: "The watch could not classify this recording",
-    pt: "O relógio não conseguiu classificar este registo",
+    pt: "O relógio não conseguiu classificar este registro",
   },
 };
 

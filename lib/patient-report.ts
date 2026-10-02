@@ -176,12 +176,12 @@ const P = {
     titulo: "Relatório clínico",
     gerado: "Gerado em",
     paciente: "Dados do paciente",
-    triagem: "Triagem de saúde — relatada pelo paciente",
+    triagem: "Triagem de saúde — informada pelo paciente",
     postural: "Avaliação biomecânica / postural",
     pontuacao: "Pontuação geral",
     recomendacoes: "Recomendações",
     avaliacao:
-      "Avaliação clínica registada pelo seu terapeuta (com apoio de IA, revista por um clínico)",
+      "Avaliação clínica registrada pelo seu terapeuta (com apoio de IA, revisada por um clínico)",
     estado: "Estado",
     condicoes: "Condições",
     achados: "Principais achados",
@@ -200,14 +200,14 @@ const P = {
     em: "em",
     ecg: "ECG",
     ecgRessalva:
-      "Estas são as conclusões do próprio relógio. O traçado não é guardado aqui e não é interpretado por nós.",
+      "Estas são as conclusões do próprio relógio. O traçado não é salvo aqui e não é interpretado por nós.",
     exercicio: "Exercício",
     diasComExercicio: "Dias com exercício feito",
-    exerciciosFeitos: "Exercícios registados",
+    exerciciosFeitos: "Exercícios registrados",
     comoSeSentiu: "Como se sentiu",
     dor: "Dor",
     humor: "Humor",
-    checkins: "Registos no período",
+    checkins: "Registros no período",
     consultas: "Consultas no período",
     porVideo: "por vídeo",
     emCasa: "em casa",
@@ -226,9 +226,9 @@ const P = {
     queAPrimeiraMetade: "da primeira metade do período",
     diasComDados: (n: number) => `${n} dia${n === 1 ? "" : "s"} com dados`,
     naoEhDiagnostico:
-      "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registado, e não foi lido por um médico. Fale com o seu terapeuta, ou com o médico a quem o entregar, sobre o que significa.",
+      "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registrado, e não foi lido por um médico. Fale com seu terapeuta, ou com o médico a quem entregar este documento, sobre o que ele significa.",
     rodape:
-      "Este relatório foi gerado pela Bruno Physical Rehabilitation (bpr.clinic). Reflete a informação clínica registada até à data de geração e destina-se ao paciente e aos profissionais de saúde que o acompanham. Para dúvidas, contacte a clínica.",
+      "Este relatório foi gerado pela Bruno Physical Rehabilitation (bpr.clinic). Reflete as informações clínicas registradas até a data de geração e é destinado ao paciente e aos profissionais de saúde que o acompanham. Em caso de dúvida, fale com a clínica.",
   },
 } as const;
 

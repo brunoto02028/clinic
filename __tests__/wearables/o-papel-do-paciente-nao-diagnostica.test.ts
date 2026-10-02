@@ -199,7 +199,20 @@ describe("o papel fala a língua do paciente", () => {
   });
 
   it("e o cabeçalho da avaliação é atribuído nas duas línguas", () => {
-    expect(html("pt")).toMatch(/registada pelo seu terapeuta/i);
-    expect(html("pt")).toMatch(/revista por um clínico/i);
+    /*
+     * Sem fixar a grafia: o que se guarda é **a atribuição**, e não a forma do
+     * particípio. Este mesmo teste caiu quando o PT passou de europeu para
+     * brasileiro — uma mudança que não tocou no que ele existe para guardar.
+     */
+    expect(html("pt")).toMatch(/registr\w* pelo seu terapeuta/i);
+    expect(html("pt")).toMatch(/revis\w+ por um clínico/i);
+
+    /*
+     * **E não promove quem revê.** Na primeira passagem para PT-BR eu escrevi
+     * "revisada por um **médico**" — quem revê é o clínico que acompanha, e
+     * dizer médico seria elevar a afirmação no papel que a pessoa leva a um
+     * médico de verdade.
+     */
+    expect(html("pt")).not.toMatch(/revis\w+ por um médico/i);
   });
 });
