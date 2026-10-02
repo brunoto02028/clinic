@@ -1612,3 +1612,72 @@ Biomarkers when your protocol needs cleared biomarkers or risk scores."*
 Ou seja, pela leitura deles: **Enterprise** resolve o limite de utilizadores e o
 Withings+ dos pacientes novos; **Advanced Biomarkers** é o que dá direito ao
 ECG. Os dois são `Custom` — preço por conversa.
+
+## O FAQ inteiro, lido com sessão — as quatro perguntas que decidem
+
+**[VERBATIM]**
+
+### O que é um "utilizador activo"
+
+> "An end user whose Withings account is currently connected to your app with a
+> valid authorization. **When a user disconnects, the slot frees up.**"
+
+São **dez ligações simultâneas**, não dez pessoas para sempre. Hoje temos
+**duas** — o Bruno e a braçadeira da clínica. Sobram oito.
+
+**O que para no 11.º não é o relógio.** O relógio continua a medir e a
+sincronizar com o app da Withings exactamente como antes; o paciente não perde
+nada do lado dele. O que não acontece é a **ligação à clínica** — e portanto nós
+deixamos de ver aquele paciente.
+
+### O Apple Health não contorna
+
+> "**No.** The requirement covers those routes too. Integrating directly with
+> the Withings API on Enterprise is the only way to guarantee your users can
+> share data without their own membership."
+
+Era a saída óbvia e está fechada de propósito.
+
+### Quem paga o Withings+ dos pacientes
+
+> "**No.** On Enterprise and Advanced Biomarkers the requirement is lifted for
+> the specific use cases in your agreement. Your users do not subscribe
+> individually and **there is no per-member charge**."
+
+Ou seja: ou cada paciente novo paga £99,99/ano, ou a clínica passa a Enterprise
+e **nenhum** paga.
+
+### Se a assinatura de um paciente caducar
+
+> "Sharing pauses until the membership is active again. **Historical data is not
+> deleted**, and sharing resumes where it left off."
+
+Pausa, não apaga. Mas "pausa" aqui é a mesma coisa que já conhecemos: **o campo
+deixa de vir, sem erro**.
+
+---
+
+## Os custos — e a resposta honesta é que não há preço publicado
+
+| plano | preço | base de cálculo |
+|---|---|---|
+| Start for Free | **Grátis** | 10 utilizadores activos; mais após revisão |
+| Enterprise | **Custom** | *"Based on number of active users"* |
+| Advanced Biomarkers | **Custom** | *"Based on active users and biomarkers"* |
+
+**Não existe um número publicado em lado nenhum** — nem na página de planos, nem
+no painel, nem na documentação. Os dois planos que resolvem o nosso caso são
+**por orçamento**, e para ter um número é preciso falar com eles.
+
+O que eles vão querer saber, pela forma como os planos são descritos:
+
+1. **Quantos utilizadores activos** — pacientes com relógio ligados ao mesmo
+   tempo. Hoje 2; o número que interessa é o de daqui a um ano;
+2. **Que biomarcadores** — e aqui a resposta é curta e cara: **ECG e AFib**, que
+   só o *Advanced Biomarkers* dá;
+3. **Que uso** — clínico, com o terapeuta a ver os dados. Eles próprios indicam
+   *Enterprise + Advanced Biomarkers* para isso, e mencionam o **Withings RPM**
+   como produto de prateleira para plataformas viradas ao clínico.
+
+**A decisão é do Bruno, e eu não assino nem peço orçamento por ele.** O que lhe
+posso dar é isto: o que se perde em cada cenário, e quando.
