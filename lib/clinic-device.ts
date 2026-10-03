@@ -20,6 +20,7 @@ import type { WithingsBpReading } from "@/lib/withings";
 import {
   MATCHABLE_SESSION_STATUSES,
   SESSION_GRACE_MS,
+  pickSession,
   sessionCovers,
 } from "@/lib/clinic-session-match";
 
@@ -110,6 +111,45 @@ async function matchingSessions(connectionId: string, measuredAt: Date) {
   // A consulta já filtra pelo mesmo intervalo; passar pela regra pura mantém
   // uma única definição de "esta janela cobre esta medição".
   return candidatas.filter((c: any) => sessionCovers(c, measuredAt));
+}
+
+/**
+ * **De quem é esta medição, quando ela não é pressão** (122 T-2).
+ *
+ * O BeamO mede ECG, temperatura e SpO₂ no mesmo aparelho que mede pressão, e a
+ * janela que já dizia de quem era a pressão diz o mesmo de tudo o resto. O que
+ * falta a essas medidas não é a regra — é uma caixa de entrada: a
+ * `UnassignedMeasurement` tem `systolic` e `diastolic` **obrigatórios**, logo
+ * só serve a pressão.
+ *
+ * Por isso aqui a resposta é só *quem*, e quem chama decide o que fazer com
+ * `none`. A regra de ouro não muda: **ambiguidade nunca vira palpite** — duas
+ * janelas a cobrir o mesmo instante devolvem `ambiguous`, e nada é escrito.
+ */
+export type JanelaDaMedicao =
+  | { kind: "assigned"; patientId: string; sessionId: string; openedById: string; context: string }
+  | { kind: "none" }
+  | { kind: "ambiguous"; count: number };
+
+export async function janelaDaMedicao(
+  connectionId: string,
+  quando: Date
+): Promise<JanelaDaMedicao> {
+  const sessions = await matchingSessions(connectionId, quando);
+  /*
+   * Pela mesma função que decide a pressão. Duas contagens do mesmo conjunto
+   * são duas regras a divergir, e a diferença aparece num prontuário.
+   */
+  const escolha = pickSession(sessions, quando);
+  if (escolha.kind !== "assigned") return escolha;
+  const s = escolha.session as any;
+  return {
+    kind: "assigned",
+    patientId: s.patientId,
+    sessionId: s.id,
+    openedById: s.openedById,
+    context: s.context,
+  };
 }
 
 /**

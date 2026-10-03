@@ -145,6 +145,20 @@ export interface WithingsEcgRecord {
   afibClassification: string | number | null;
   heartRate: number | null;
   signalId: string | null;
+  /**
+   * **Qual aparelho gravou** (122 T-1).
+   *
+   * O `v2/heart list` manda `deviceid` e `model` em cada registo, e é isso que
+   * torna possível o que o Bruno pediu: *"o relógio cai em mim sempre. O BeamO
+   * pode ir tanto pra mim quanto para o paciente, eu escolho na hora de usar."*
+   *
+   * Sem isto, a única coisa que distinguia uma medição dele de uma medição num
+   * paciente era **o instante** — e um ECG do relógio dele gravado durante uma
+   * janela de medição seria desviado para o paciente. O relógio está no pulso
+   * dele; não há instante que o torne de outra pessoa.
+   */
+  deviceId: string | null;
+  deviceModel: number | null;
   /** The whole entry, because the mapping above is not verified yet. */
   raw: unknown;
 }
@@ -201,6 +215,8 @@ export async function withingsEcg(
     afibClassification: s?.ecg?.afib ?? s?.afib ?? null,
     heartRate: typeof s?.heart_rate === "number" ? s.heart_rate : null,
     signalId: s?.ecg?.signalid != null ? String(s.ecg.signalid) : null,
+    deviceId: s?.deviceid != null ? String(s.deviceid) : null,
+    deviceModel: typeof s?.model === "number" ? s.model : null,
     raw: s,
   }));
 }

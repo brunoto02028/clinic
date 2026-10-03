@@ -231,6 +231,8 @@ export async function correrSincronizacaoDeWearables() {
      * vez que esta mesma omissão morde nesta rota.
      */
     ecgRecords: 0,
+    ecgRead: 0,
+    ecgNaoAtribuidos: 0,
   };
 
   // O scheduled task do Coolify corta em 300s. Parar por conta própria antes
@@ -306,6 +308,14 @@ export async function correrSincronizacaoDeWearables() {
       totals.hypnogramNights += counts.hypnogramNights ?? 0;
       totals.workouts += counts.workouts ?? 0;
       totals.ecgRecords += counts.ecgRecords ?? 0;
+      totals.ecgRead += counts.ecgRead ?? 0;
+      /*
+       * **O que ninguém reclamou.** Uma gravação que a Withings devolveu e que
+       * não entrou em prontuário nenhum — sem janela, com duas, ou com as
+       * janelas por ler. Enquanto não houver caixa de entrada para o que não é
+       * pressão (122 T-4), é este número que a torna visível.
+       */
+      totals.ecgNaoAtribuidos += counts.ecgNaoAtribuidos ?? 0;
       /**
        * **O que não se conseguiu ler, por nome** (120 T-4).
        *
@@ -454,7 +464,8 @@ export async function correrSincronizacaoDeWearables() {
       `atividade=${totals.activityDays} sono=${totals.sleepNights} ` +
       `vitais=${totals.vitalsDays} intraday=${totals.intradayDays} ` +
       `hipnograma=${totals.hypnogramNights} treinos=${totals.workouts} ` +
-      `ecg=${totals.ecgRecords} ` +
+      `ecg=${totals.ecgRecords}/${totals.ecgRead} ` +
+      `ecgNaoAtribuidos=${totals.ecgNaoAtribuidos} ` +
       /* Vazio é notícia boa, e é por isso que se escreve sempre. */
       `naoLidos=${[...totals.falhas].join(",") || "-"} comFalha=${comFalha}`
   );

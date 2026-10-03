@@ -40,6 +40,27 @@ export const SESSION_GRACE_MS = 30 * 1000;
  */
 export const MATCHABLE_SESSION_STATUSES = ["OPEN", "EXPIRED"] as const;
 
+/**
+ * Os estados que ainda podem receber uma medição que **não é pressão** (122 T-2,
+ * achado do code review).
+ *
+ * `COMPLETED` entra aqui e não acima, e a diferença é o defeito que isto
+ * conserta. Acima, `COMPLETED` quer dizer *"esta janela já recebeu a sua
+ * leitura de pressão"* — e aceitar uma segunda faria a medição repetida cair no
+ * mesmo paciente sem ninguém confirmar.
+ *
+ * Sobre um ECG isso não diz nada. Pior: o BeamO mede os dois nos mesmos três
+ * minutos, a pressão é processada **antes** do ECG na mesma passagem, e fecha a
+ * janela. Resultado medido pelo review: no uso normal do aparelho, **o ECG do
+ * paciente era deitado fora** — e a passagem seguinte encontrava a janela na
+ * mesma `COMPLETED`, logo não havia segunda oportunidade.
+ *
+ * `CANCELLED` continua de fora, pela razão de sempre: é o terapeuta a dizer
+ * **não atribua isto**, e uma intenção explícita não é vencida por um horário
+ * que bate.
+ */
+export const ESTADOS_QUE_RECEBEM_EVENTO = ["OPEN", "EXPIRED", "COMPLETED"] as const;
+
 export interface SessionWindow {
   id: string;
   status: string;
@@ -49,9 +70,20 @@ export interface SessionWindow {
 
 const ms = (d: Date | string) => new Date(d).getTime();
 
-/** Se esta janela contém o instante da medição. */
-export function sessionCovers(session: SessionWindow, measuredAt: Date | string): boolean {
-  if (!(MATCHABLE_SESSION_STATUSES as readonly string[]).includes(session.status)) return false;
+/**
+ * Se esta janela contém o instante da medição.
+ *
+ * `estados` diz **que tipo de medição** está a perguntar: a pressão usa a lista
+ * estreita, o ECG e os vitais usam a que inclui `COMPLETED`. Os dois lados da
+ * régua — a ligação pessoal que se cala e a da clínica que atribui — **têm de
+ * passar a mesma lista**, senão a medição é guardada duas vezes ou nenhuma.
+ */
+export function sessionCovers(
+  session: SessionWindow,
+  measuredAt: Date | string,
+  estados: readonly string[] = MATCHABLE_SESSION_STATUSES
+): boolean {
+  if (!estados.includes(session.status)) return false;
   const t = ms(measuredAt);
   return ms(session.openedAt) <= t + SESSION_GRACE_MS && ms(session.expiresAt) >= t;
 }
@@ -71,9 +103,10 @@ export type SessionPick =
  */
 export function pickSession(
   sessions: readonly SessionWindow[],
-  measuredAt: Date | string
+  measuredAt: Date | string,
+  estados: readonly string[] = MATCHABLE_SESSION_STATUSES
 ): SessionPick {
-  const cobrem = sessions.filter((s) => sessionCovers(s, measuredAt));
+  const cobrem = sessions.filter((s) => sessionCovers(s, measuredAt, estados));
   if (cobrem.length === 1) return { kind: "assigned", session: cobrem[0] };
   if (cobrem.length === 0) return { kind: "none" };
   return { kind: "ambiguous", count: cobrem.length };

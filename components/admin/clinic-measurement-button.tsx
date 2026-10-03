@@ -46,6 +46,10 @@ const UI = {
     fetching: "Fetching…",
     fetchedNone: "Nothing from the device yet. Give it a moment and try again.",
     fetchedElsewhere: "A reading arrived but matched no window — it is in the inbox.",
+    fetchedEcg: (n: number) =>
+      n === 1
+        ? "No blood pressure yet — one ECG was saved to this record."
+        : `No blood pressure yet — ${n} ECGs were saved to this record.`,
   },
   "pt-BR": {
     measure: "Medir pressão",
@@ -68,6 +72,10 @@ const UI = {
     fetching: "Buscando…",
     fetchedNone: "Nada veio do aparelho ainda. Espere um instante e tente de novo.",
     fetchedElsewhere: "Chegou uma leitura, mas fora desta janela — está na caixa de entrada.",
+    fetchedEcg: (n: number) =>
+      n === 1
+        ? "Nenhuma pressão ainda — um ECG foi salvo neste histórico."
+        : `Nenhuma pressão ainda — ${n} ECG foram salvos neste histórico.`,
   },
 } as const;
 
@@ -169,6 +177,10 @@ export default function ClinicMeasurementButton({
    * - a leitura casou esta janela → é o caminho feliz, mesma tela de sempre;
    * - **veio leitura, mas fora da janela** → foi para a caixa de entrada, e a
    *   pessoa precisa saber onde procurar em vez de achar que sumiu;
+   * - **não veio pressão, mas veio ECG** → o aparelho da clínica passou a ler
+   *   ECG também (122 T-2), e um terapeuta que gravou um ECG e ouvisse "nada
+   *   veio do aparelho" iria procurar o defeito que não existe. Esta frase
+   *   **soma-se** à da caixa de entrada em vez de a esconder;
    * - não veio nada → o aparelho ainda não subiu; tentar de novo em instantes.
    */
   const buscarAgora = async () => {
@@ -186,7 +198,19 @@ export default function ClinicMeasurementButton({
         setPhase("done");
         onReading?.();
       } else {
-        setAviso(data?.lidas > 0 ? ui.fetchedElsewhere : ui.fetchedNone);
+        /*
+         * **As frases somam-se, não se escondem.**
+         *
+         * Com o ramo do ECG antes do ramo do `lidas`, uma pressão que foi para
+         * a caixa de entrada desaparecia da tela assim que houvesse um ECG — e
+         * de três mensagens possíveis, a da caixa é a única que pede uma acção
+         * humana.
+         */
+        const partes: string[] = [];
+        if (data?.ecg > 0) partes.push(ui.fetchedEcg(data.ecg));
+        if (data?.lidas > 0) partes.push(ui.fetchedElsewhere);
+        setAviso(partes.length ? partes.join(" ") : ui.fetchedNone);
+        if (data?.ecg > 0) onReading?.();
       }
     } catch {
       setAviso(ui.failed);

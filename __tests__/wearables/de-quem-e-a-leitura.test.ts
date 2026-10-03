@@ -27,7 +27,17 @@ describe("num aparelho compartilhado, só a clínica processa pressão", () => {
     // exatamente a armadilha que a função pura deveria evitar — mudar uma
     // deixaria o teste verde medindo a outra.
     const ingest = ler("lib", "withings-ingest.ts");
-    expect(ingest).toMatch(/import \{ ignoraPressao \} from "@\/lib\/withings-routing"/);
+    /*
+     * **A chamada, e não a grafia do `import`.**
+     *
+     * Isto fixava a linha inteira — `import { ignoraPressao } from ...` — e
+     * quebrou no dia em que o mesmo módulo passou a exportar a regra do
+     * aparelho partilhado (122 T-1), **sem que nada do que este teste protege
+     * tivesse mudado**. O que importa é que a regra vem de lá e é chamada, não
+     * reimplementada ao lado.
+     */
+    expect(ingest).toMatch(/from "@\/lib\/withings-routing"/);
+    expect(ingest).toMatch(/ignoraPressao/);
     expect(ingest).toMatch(/ignoraPressao\(\{/);
     expect(ingest).toMatch(/ehDaClinica: forClinic,/);
   });

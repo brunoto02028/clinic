@@ -109,7 +109,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     counts = await ingestWithings(connection.userId, connection, {
       since,
       until,
-      kinds: ["bp"],
+      /*
+       * **E o ECG** (122 T-2). O BeamO mede os dois nos mesmos três minutos, e
+       * `since`/`until` já limitam a leitura a esta janela — logo a gravação que
+       * vier é da pessoa que esta janela nomeia, atribuída pela mesma regra que
+       * atribui a pressão.
+       */
+      kinds: ["bp", "ecg"],
     });
   } catch (e: any) {
     console.error("[measurement-fetch] withings failed:", e?.message);
@@ -122,6 +128,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 502 }
     );
   }
+
+  /*
+   * O ECG **deste paciente** dentro desta janela, depois da atribuição.
+   *
+   * Uma falha aqui não pode derrubar a resposta — a pressão já foi atribuída e
+   * é o que o terapeuta está à espera de ver. `null` quer dizer *"não sei"*, e
+   * a tela não afirma nada sobre o ECG nesse caso.
+   */
+  const ecgDoPaciente: number | null = await (prisma as any).ecgRecording
+    .count({
+      where: {
+        userId: session.patientId,
+        provider: "WITHINGS",
+        recordedAt: { gte: since, lte: until },
+      },
+    })
+    .catch((e: any) => {
+      console.error("[measurement-fetch] contar ECG falhou:", e?.message ?? e);
+      return null;
+    });
 
   // Relê a sessão: `ingestWithings` roda a atribuição, e se a leitura casou
   // esta janela ela já está ligada aqui.
@@ -143,5 +169,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // "nada veio do aparelho". O terapeuta apertaria para sempre com a leitura
     // já esperando na caixa. Achado do review de 27/09/2026.
     lidas: counts.bloodPressureRead,
+    /*
+     * **Quantas gravações de ECG este paciente tem nesta janela.**
+     *
+     * Sem este número a tela dizia *"nada veio do aparelho"* a um terapeuta que
+     * tinha acabado de gravar um ECG e de o ver guardado no prontuário — a
+     * mesma ausência silenciosa que o `lidas` conserta para a pressão.
+     *
+     * E é contado **no prontuário deste paciente**, não no `counts` da
+     * passagem: o `since`/`until` é a janela ±5 min, e uma gravação atribuída a
+     * **outro** paciente por uma janela vizinha também subiria o contador da
+     * passagem. O terapeuta lia "um ECG foi salvo neste histórico" sobre a
+     * ficha errada — e é por essa frase que ele decide não repetir a medição.
+     * Contar linhas também torna o segundo toque no botão honesto: o `upsert`
+     * não cria nada, mas o contador da passagem subia na mesma.
+     */
+    ecg: ecgDoPaciente,
   });
 }
