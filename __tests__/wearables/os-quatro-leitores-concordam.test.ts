@@ -21,7 +21,10 @@
  * abaixo do outro — duas frequências de repouso no mesmo cartão.
  */
 
-import { ONDE_MORA } from "../../lib/onde-mora-a-metrica";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { ONDE_MORA, SAO_CONTAGEM } from "../../lib/onde-mora-a-metrica";
 import {
   PREFERENCIA_DE_BALDE,
   porDiaPreferido,
@@ -71,6 +74,75 @@ describe("o mapa do app e o do servidor são o mesmo mapa", () => {
     for (const baldes of Object.values(PREFERENCIA_DE_BALDE)) {
       expect([...baldes]).not.toContain("BODY");
     }
+  });
+
+  /**
+   * **A guarda que faltava: cada chave do mapa é uma coluna que existe.**
+   *
+   * O mapa do servidor tinha `calories` e `distance` — nomes escritos de
+   * memória, colunas que não existem no `WearableDataPoint`. Quem os pedisse
+   * recebia uma série sempre vazia, e uma série vazia lê-se como *"o paciente
+   * não mediu"*.
+   *
+   * O teste de concordância acima **não podia** tê-los apanhado: percorre o
+   * mapa da app, e eles só estavam no do servidor. A mensagem do commit deu-lhe
+   * um mérito que não era dele — apanhado pelo QA.
+   *
+   * Lê-se o `schema.prisma` como texto, de propósito: o cliente gerado pode
+   * estar atrás do schema (já mordeu hoje), e o que interessa é o que o banco
+   * vai ter.
+   */
+  it("**cada campo dos dois mapas é uma coluna do `WearableDataPoint`**", () => {
+    const schema = readFileSync(
+      join(__dirname, "..", "..", "prisma", "schema.prisma"),
+      "utf8"
+    );
+    const bloco = schema.match(/model\s+WearableDataPoint\s*\{([\s\S]*?)\n\}/);
+    expect(bloco).not.toBeNull();
+
+    const colunas = new Set(
+      bloco![1]
+        .split("\n")
+        .map((l) => l.trim().split(/\s+/)[0])
+        .filter((n) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n))
+    );
+    /* Se o bloco não foi lido a sério, o resto do teste não mede nada. */
+    expect(colunas.has("dataType")).toBe(true);
+    expect(colunas.has("calories")).toBe(false);
+
+    for (const campo of Object.keys(ONDE_MORA)) {
+      expect(colunas.has(campo)).toBe(true);
+    }
+    for (const campo of Object.keys(PREFERENCIA_DE_BALDE)) {
+      expect(colunas.has(campo)).toBe(true);
+    }
+    /*
+     * **E o `SAO_CONTAGEM` também** (achado §17 da 2ª rodada do review).
+     *
+     * Era o único dos três mapas sem guarda — e foi **ele** que tinha o
+     * `calories` fantasma. O buraco que produziu o achado era o que ficava
+     * descoberto.
+     */
+    for (const campo of SAO_CONTAGEM) {
+      expect(colunas.has(campo)).toBe(true);
+    }
+  });
+
+  it("**e o mapa do servidor não tem métricas que a app não conhece**", () => {
+    /*
+     * O sentido que faltava. `totalCalories` entrou no mapa do servidor e não
+     * está no da app — e nada o verificava. Não é defeito: a app não mostra
+     * calorias totais. Mas a diferença tem de ser **declarada**, senão o
+     * próximo acrescento divergente passa calado.
+     */
+    const soNoServidor = Object.keys(ONDE_MORA).filter(
+      (c) => !PREFERENCIA_DE_BALDE[c]
+    );
+    expect(soNoServidor.sort()).toEqual([
+      "awakeMinutes",
+      "lightMinutes",
+      "totalCalories",
+    ]);
   });
 });
 

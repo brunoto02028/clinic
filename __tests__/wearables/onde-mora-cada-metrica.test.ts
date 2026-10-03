@@ -152,7 +152,18 @@ describe("o que se conta e o que se mede", () => {
   it("**passos arredondam** — ninguém deu meio passo", () => {
     // `Steps 919.5` foi ao papel do paciente.
     expect(comoSeEscreve("steps", 919.5)).toBe(920);
-    expect(comoSeEscreve("calories", 310.4)).toBe(310);
+    expect(comoSeEscreve("activeMinutes", 47.6)).toBe(48);
+  });
+
+  it("**e as calorias também**, pelos nomes que existem", () => {
+    /*
+     * Este teste pedia `calories` — um campo que **não existe** no
+     * `WearableDataPoint`, e por isso o `SAO_CONTAGEM` protegia um nome morto
+     * enquanto `activeCalories` e `totalCalories` ficavam de fora. O teste
+     * passava verde a provar uma garantia inexistente.
+     */
+    expect(comoSeEscreve("activeCalories", 310.4)).toBe(310);
+    expect(comoSeEscreve("totalCalories", 2104.6)).toBe(2105);
   });
 
   it("**e o que é medido fica como está**", () => {

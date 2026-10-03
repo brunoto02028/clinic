@@ -4988,6 +4988,23 @@ model BloodPressureReading {
   systolic   Int // mmHg
   diastolic  Int // mmHg
   heartRate  Int? // bpm
+
+  /// O fuso em que a medição foi feita, como a Withings o manda (120 T-3).
+  ///
+  /// Um identificador IANA ("Europe/London"), e **não** um offset: o offset
+  /// muda com a hora de verão e o identificador não.
+  ///
+  /// Existe porque o dia da pressão saía de `toISOString()` — UTC — enquanto
+  /// desde 02/10/2026 o `VITALS` usa o fuso da própria medição e o sono usa o
+  /// `date` que a Withings manda. A pressão era a única série em UTC: uma
+  /// leitura às 00:30 de Londres no verão arquivava no dia anterior, com o sono
+  /// da mesma noite no dia certo — dois gráficos no mesmo papel com a mesma
+  /// noite em dias diferentes.
+  ///
+  /// `null` nas leituras antigas e nas digitadas à mão, e aí o dia **continua a
+  /// ser UTC**: é o que elas sempre foram, e reinterpretá-las moveria dados
+  /// existentes de dia.
+  timezone   String?
   method     BloodPressureMethod @default(MANUAL)
   notes      String?             @db.Text
   measuredAt DateTime            @default(now())
@@ -7401,6 +7418,53 @@ model WearableConnection {
   lastSyncError   String?   @db.Text
   lastSyncErrorAt DateTime?
 
+  /**
+   * O que a última passagem **não conseguiu ler**, por nome (120, 2ª rodada).
+   *
+   * **Não é o mesmo que `lastSyncError`**, e foi por confundir os dois que isto
+   * nasceu: eu escrevi `lastSyncError: "não lido: ecg"` numa passagem em que o
+   * sono, a actividade e a pressão **entraram**. A tela do paciente lê o
+   * `lastSyncError` e imprime-o verbatim — *"The last sync failed: não lido:
+   * tracado-do-ecg"*, frase em inglês com slug em português — e, pior, essa
+   * pendência **suprime** o aviso de "o relógio está calado há N dias", que é o
+   * que o paciente pode de facto resolver.
+   *
+   * Uma falha parcial não é uma sincronização falhada. Fica aqui, para a clínica
+   * ver, e não na linha que diz ao paciente que algo correu mal.
+   *
+   * Valores: `vitais`, `ecg`, `tracado-do-ecg`, separados por vírgula.
+   */
+  lastPartialRead   String?
+  lastPartialReadAt DateTime?
+
+  /**
+   * Quem está a renovar o token **agora** (121 T-1).
+   *
+   * A Withings troca o refresh token a cada uso — é de **uso único**. Quatro
+   * caminhos chamam o `withingsAccessToken`, cada um com o seu retrato da
+   * ligação: o cron, o webhook, o puxar-a-tela e a sondagem. Dois ao mesmo
+   * tempo fazem dois refreshes com o mesmo token, e o segundo faz a Withings
+   * invalidar **a cadeia inteira**. Depois disso nenhuma repetição ajuda: só
+   * reautorizar.
+   *
+   * Foi o que matou a ligação do Bruno em ~05/09/2026 — *"27 days without a
+   * reading"* — com o log a dizer `Invalid Params: invalid refresh_token`.
+   *
+   * A trava é no banco porque o produto corre em mais de um contentor: um
+   * `Set` em memória não vê o outro. Expira sozinha, para um processo que morra
+   * a meio não trancar a ligação para sempre.
+   */
+  refreshLockedAt DateTime?
+
+  /**
+   * A ligação precisa de ser reautorizada pela pessoa (121 T-3).
+   *
+   * Nada marcava isto: `grep status: "ERROR"` nesse caminho dava **zero**, e a
+   * ligação ficava `CONNECTED` e morta. A tela do paciente lia `CONNECTED` e
+   * mostrava um mês de buracos como se ele não tivesse medido.
+   */
+  needsReauthAt DateTime?
+
   // Direct OAuth2 providers (Withings) hold their own tokens here rather than
   // delegating to an aggregator. Encrypted at rest: these grant read access to
   // a patient's health record at the provider, and a database dump should not
@@ -7628,6 +7692,25 @@ model PatientReport {
    * que nenhum relatório.
    */
   hasData Boolean @default(true)
+
+  /**
+   * O resumo do conteúdo — `sha256` do HTML, em hexadecimal (120 T-8).
+   *
+   * **Dois relatórios do mesmo paciente podem coexistir**, e é escolha do Bruno:
+   * o `periodStart` carrega a hora de propósito, para quem pede ao meio-dia não
+   * ficar preso ao retrato das nove. O que ele precisa de saber é *"se não são
+   * iguais"*, e dois papéis iguais não se distinguem pela data nem pelo tamanho.
+   *
+   * Então guarda-se o resumo. A lista mostra-o, e um pedido cujo HTML bate com o
+   * do último devolve `igualAoAnterior: true` em vez de deixar a pessoa a
+   * comparar duas folhas à vista.
+   *
+   * **Não é chave única.** Fazê-lo proibiria o caso que o Bruno diz ser legítimo.
+   *
+   * `null` nas linhas anteriores a 02/10/2026, e `null` não quer dizer "igual" —
+   * quer dizer "não se sabe".
+   */
+  contentHash String?
 
   /// O trecho que um terapeuta escreveu, quando escreveu. Sai com o nome dele.
   therapistNote   String? @db.Text

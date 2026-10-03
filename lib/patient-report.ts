@@ -5,48 +5,135 @@
 import { prisma } from "@/lib/db";
 import { getMonitoringData, type DadosDeMonitoramento, type ResumoDaMetrica } from "@/lib/patient-monitoring";
 import { graficoDeLinha, graficoDeLinhas, barraDasFases } from "@/lib/grafico-de-linha";
+import { comoFoiCalculado } from "@/lib/onde-mora-a-metrica";
 import { TEXTO_DA_CONCLUSAO } from "@/lib/ecg-record";
 
+/**
+ * **O que não se conseguiu ler, também aqui** (120 T-1, achado do code review).
+ *
+ * A T-1 fechou os seis `.catch(() => [])` do `patient-monitoring.ts` e deixou
+ * os oito deste `Promise.all`. O pior era o do `medicalScreening`: uma falha
+ * ali apaga **os sinais de alerta** — a secção que faz alguém procurar um
+ * médico — e nada no papel distinguia isso de uma triagem sem nenhum sinal
+ * marcado.
+ *
+ * E o do `getMonitoringData` apagava a própria ressalva da T-1: ela vive dentro
+ * da função que não corre, e o rodapé lê `monitoring?.naoLidos`, que seria
+ * `null`. Zero avisos, acompanhamento inteiro fora do papel.
+ */
+const lerOuFalhar = async <T>(
+  nome: string,
+  /**
+   * A leitura, **como função** e não como promessa (achado da 2ª rodada).
+   *
+   * Recebia a promessa já construída, e uma promessa é um **argumento**:
+   * avaliada antes de o corpo desta função correr. Sete das oito leituras são
+   * `(prisma as any).<modelo>.<método>(…)` — se o modelo for `undefined` no
+   * cliente gerado (um `prisma generate` esquecido, um modelo renomeado), o
+   * `TypeError` sobe do literal do array, o `Promise.all` nunca é construído, e
+   * `naoLidos` fica **vazio**. Medido: `TypeError: Cannot read properties of
+   * undefined (reading 'findUnique')` com `naoLidos = []`.
+   *
+   * Ou seja: coluna em falta → apanhada; **modelo** em falta → 500 silencioso.
+   * Era o único caminho que escapava à função escrita para o apanhar.
+   */
+  ler: () => Promise<T>,
+  vazio: T,
+  naoLidos: string[]
+): Promise<T> => {
+  try {
+    return await ler();
+  } catch (e: any) {
+    naoLidos.push(nome);
+    console.error(`[patient-report] ${nome} não pôde ser lido:`, e?.message ?? e);
+    return vazio;
+  }
+};
+
 export async function getPatientReportData(patientId: string, opts: { days?: number } = {}) {
+  const naoLidos: string[] = [];
+
   const [patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChat, monitoring] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: patientId },
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true,
-        // A língua em que o papel sai — ver `IdiomaDoRelatorio`. Sem este
-        // campo no `select`, quem chama lê `undefined` e cai sempre em inglês,
-        // que é a tradução a existir e nunca ser alcançada.
-        reportLanguage: true,
-        /*
-         * **A clínica, para o papel não dizer o nome errado** (achado do QA).
-         *
-         * O cabeçalho e o rodapé escreviam "Bruno Physical Rehabilitation ·
-         * Ipswich, Suffolk" à mão, para **qualquer** inquilino. Um paciente de
-         * outro estúdio recebia um documento clínico assinado por uma clínica
-         * que não é a dele — e agora quem gera o papel é o próprio paciente, por
-         * isso a quantidade deles vai subir.
-         */
-        clinic: { select: { name: true, city: true, country: true, slug: true } } } as any,
-    }).catch(() => null),
-    (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }).catch(() => null),
-    (prisma as any).bodyAssessment.findFirst({
-      where: { patientId }, orderBy: { createdAt: "desc" },
-    }).catch(() => null),
-    (prisma as any).aIDiagnosis.findFirst({
-      where: { patientId }, orderBy: { createdAt: "desc" },
-    }).catch(() => null),
-    (prisma as any).treatmentProtocol.findMany({
-      where: { patientId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        therapist: { select: { firstName: true, lastName: true } },
-        items: { orderBy: [{ phase: "asc" }, { sortOrder: "asc" }] },
-      },
-    }).catch(() => [] as any[]),
-    (prisma as any).sOAPNote.findMany({
-      where: { patientId }, orderBy: { createdAt: "desc" }, take: 10,
-      include: { therapist: { select: { firstName: true, lastName: true } } },
-    }).catch(() => [] as any[]),
-    (prisma as any).atlasChatMessage.count({ where: { patientId } }).catch(() => 0),
+    lerOuFalhar(
+      "paciente",
+      () =>
+        prisma.user.findUnique({
+        where: { id: patientId },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true,
+          // A língua em que o papel sai — ver `IdiomaDoRelatorio`. Sem este
+          // campo no `select`, quem chama lê `undefined` e cai sempre em inglês,
+          // que é a tradução a existir e nunca ser alcançada.
+          reportLanguage: true,
+          /*
+           * **A clínica, para o papel não dizer o nome errado** (achado do QA).
+           *
+           * O cabeçalho e o rodapé escreviam "Bruno Physical Rehabilitation ·
+           * Ipswich, Suffolk" à mão, para **qualquer** inquilino. Um paciente de
+           * outro estúdio recebia um documento clínico assinado por uma clínica
+           * que não é a dele — e agora quem gera o papel é o próprio paciente,
+           * por isso a quantidade deles vai subir.
+           */
+          clinic: { select: { name: true, city: true, country: true, slug: true } } } as any,
+      }),
+      null as any,
+      naoLidos
+    ),
+    lerOuFalhar(
+      "triagem",
+      () =>
+        (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }),
+      null,
+      naoLidos
+    ),
+    lerOuFalhar(
+      "avaliacao",
+      () =>
+        (prisma as any).bodyAssessment.findFirst({
+        where: { patientId }, orderBy: { createdAt: "desc" },
+      }),
+      null,
+      naoLidos
+    ),
+    lerOuFalhar(
+      "avaliacao-clinica",
+      () =>
+        (prisma as any).aIDiagnosis.findFirst({
+        where: { patientId }, orderBy: { createdAt: "desc" },
+      }),
+      null,
+      naoLidos
+    ),
+    lerOuFalhar(
+      "protocolos",
+      () =>
+        (prisma as any).treatmentProtocol.findMany({
+        where: { patientId },
+        orderBy: { createdAt: "desc" },
+        include: {
+          therapist: { select: { firstName: true, lastName: true } },
+          items: { orderBy: [{ phase: "asc" }, { sortOrder: "asc" }] },
+        },
+      }),
+      [] as any[],
+      naoLidos
+    ),
+    lerOuFalhar(
+      "notas",
+      () =>
+        (prisma as any).sOAPNote.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" }, take: 10,
+        include: { therapist: { select: { firstName: true, lastName: true } } },
+      }),
+      [] as any[],
+      naoLidos
+    ),
+    lerOuFalhar(
+      "atlas",
+      () =>
+        (prisma as any).atlasChatMessage.count({ where: { patientId } }),
+      0,
+      naoLidos
+    ),
     /**
      * O acompanhamento do período (099 T-4).
      *
@@ -54,10 +141,35 @@ export async function getPatientReportData(patientId: string, opts: { days?: num
      * pressão, dor por data ou exercício feito entrava nele. Isto é o que o
      * paciente viveu, com datas.
      */
-    getMonitoringData(patientId, { days: opts.days ?? 30 }).catch(() => null),
+    lerOuFalhar(
+      "acompanhamento",
+      () =>
+        getMonitoringData(patientId, { days: opts.days ?? 30 }),
+      null as any,
+      naoLidos
+    ),
   ]);
 
-  return { patient, screening, bodyAssessment, diagnosis, protocols, soapNotes, atlasChatCount: atlasChat, monitoring };
+  /*
+   * As duas listas juntam-se: a de dentro do acompanhamento e a daqui. Quem
+   * imprime lê uma só, e o paciente vê uma frase só.
+   */
+  const todosOsNaoLidos = [
+    ...new Set([...naoLidos, ...(((monitoring as any)?.naoLidos ?? []) as string[])]),
+  ];
+
+  return {
+    patient,
+    screening,
+    bodyAssessment,
+    diagnosis,
+    protocols,
+    soapNotes,
+    atlasChatCount: atlasChat,
+    monitoring,
+    /** Ver `lerOuFalhar`: a diferença entre "não há" e "não conseguimos ler". */
+    naoLidos: todosOsNaoLidos,
+  };
 }
 
 const esc = (s: any) =>
@@ -133,10 +245,65 @@ const row = (label: string, value: any) =>
  * paciente brasileiro — *"Short-Term (Acute) — Weeks 1-4"* no meio de um
  * documento em português. Faziam parte das 23 cadeias que o code review contou.
  */
+/**
+ * Os sinais de alerta da triagem, **nas duas línguas**.
+ *
+ * A ordem é a da lista original, e a chave é o campo do `screening`. Estava
+ * escrita só em inglês, dentro da função, e saía assim num papel português.
+ */
+const RED_FLAG_LABELS: Record<"en" | "pt", Record<string, string>> = {
+  en: {
+    unexplainedWeightLoss: "Unexplained weight loss",
+    nightPain: "Night pain",
+    traumaHistory: "Trauma history",
+    neurologicalSymptoms: "Neurological symptoms",
+    bladderBowelDysfunction: "Bladder/bowel dysfunction",
+    recentInfection: "Recent infection",
+    cancerHistory: "Cancer history",
+    steroidUse: "Steroid use",
+    osteoporosisRisk: "Osteoporosis risk",
+    cardiovascularSymptoms: "Cardiovascular symptoms",
+    severeHeadache: "Severe headache",
+    dizzinessBalanceIssues: "Dizziness / balance issues",
+  },
+  pt: {
+    unexplainedWeightLoss: "Perda de peso sem explicação",
+    nightPain: "Dor noturna",
+    traumaHistory: "Histórico de trauma",
+    neurologicalSymptoms: "Sintomas neurológicos",
+    bladderBowelDysfunction: "Alteração urinária ou intestinal",
+    recentInfection: "Infecção recente",
+    cancerHistory: "Histórico de câncer",
+    steroidUse: "Uso de corticoide",
+    osteoporosisRisk: "Risco de osteoporose",
+    cardiovascularSymptoms: "Sintomas cardiovasculares",
+    severeHeadache: "Dor de cabeça intensa",
+    dizzinessBalanceIssues: "Tontura ou desequilíbrio",
+  },
+};
+
+/**
+ * Uma fase que o mapa não conhece, escrita como texto e não como enum.
+ *
+ * O papel do paciente trazia `<h3>IN_CLINIC_X</h3>` — o código cru do banco.
+ * Isto não traduz nada nem adivinha o significado: só tira os sublinhados e as
+ * maiúsculas de constante, porque o enum é o que se sabe e inventar um nome
+ * seria pior do que mostrá-lo.
+ */
+function nomeDaFase(phase: string): string {
+  const limpo = String(phase).replace(/_/g, " ").trim().toLowerCase();
+  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : "—";
+}
+
 const PHASE_LABELS: Record<"en" | "pt", Record<string, string>> = {
   en: {
     SHORT_TERM: "Short-Term (Acute) — Weeks 1-4",
-    MEDIUM_TERM: "Medium-Term (Rehab) — Weeks 4-12",
+    /*
+     * **"Recovery", e não "Rehab"**: o termo remete a dependência química, e
+     * este rótulo está num papel que o paciente lê. O português já dizia
+     * "reabilitação".
+     */
+    MEDIUM_TERM: "Medium-Term (Recovery) — Weeks 4-12",
     LONG_TERM: "Long-Term (Maintenance) — Weeks 12+",
   },
   pt: {
@@ -181,7 +348,17 @@ function linhaDeSinal(
   unidade: string,
   /** A série diária, para a linha. Sem ela, mostra-se só o número. */
   serie?: Array<{ dia: string; valor: number | null }> | null,
-  idioma: IdiomaDoRelatorio = "en"
+  idioma: IdiomaDoRelatorio = "en",
+  /**
+   * O nome do campo, para o papel poder dizer **como o número foi feito**
+   * (120 T-6).
+   *
+   * Três métricas saem nesta coluna com a mesma aparência e três contas
+   * diferentes: o SpO₂ é média de médias, a FC de repouso das medições é o
+   * **mínimo** do dia, e a VFC é a média de duas janelas da noite. Imprimi-las
+   * iguais convida a compará-las como se fossem a mesma grandeza.
+   */
+  campo?: string
 ): string {
   const t = P[idioma];
   if (!m || m.dias === 0) return "";
@@ -207,6 +384,9 @@ function linhaDeSinal(
    * nenhuma**: um gráfico vazio com eixos lê-se como "medimos e deu isto",
    * quando o que houve foi não haver medida.
    */
+  /* Vazio quando a métrica não tem frase — nunca uma frase inventada. */
+  const comoFeito = campo ? comoFoiCalculado(campo, idioma) : null;
+
   const g = serie ? graficoDeLinha(serie) : null;
   const linha = g
     ? `<span class="linha">${g.svg}</span>
@@ -217,7 +397,7 @@ function linhaDeSinal(
     <span class="rotulo">${esc(rotulo)}</span>
     <span class="valor">${esc(numero)}${unidade.trim() ? `<span class="unidade">${esc(unidade.trim())}</span>` : ""}</span>
     ${linha}
-    <span class="nota">${mudanca ? `<span class="mudanca">${esc(mudanca)}</span> · ` : ""}${esc(t.diasComDados(m.dias))}</span>
+    <span class="nota">${mudanca ? `<span class="mudanca">${esc(mudanca)}</span> · ` : ""}${esc(t.diasComDados(m.dias))}${comoFeito ? ` · ${esc(comoFeito)}` : ""}</span>
   </div>`;
 }
 
@@ -343,6 +523,19 @@ const P = {
     detalhes: "Details",
     dosagem: "Dosage",
     semanasCol: "Weeks",
+    /**
+     * **A dosagem, nas duas línguas** (achado do QA comparativo de 02/10).
+     *
+     * A célula saía *"3x/semana · 3 sets · 10 reps · hold 30s · rest 45s"* num
+     * papel em português. Meio papel traduzido é pior do que nenhum: é a
+     * própria coluna que diz ao paciente quanto fazer.
+     */
+    series: (n: number) => `${n} sets`,
+    repeticoes: (n: number) => `${n} reps`,
+    sustentar: (n: number) => `hold ${n}s`,
+    descansar: (n: number) => `rest ${n}s`,
+    /* O item que o terapeuta marcou como interno — não é para o paciente. */
+    interno: "internal",
     dorNivel: "Pain",
     maisBaixo: "lower",
     maisAlto: "higher",
@@ -351,6 +544,53 @@ const P = {
       n === 1 ? "on the 1 day with data" : `average of the ${n} days with data`,
     naoEhDiagnostico:
       "<strong>This is not a diagnosis.</strong> It shows what was measured and what was recorded, and it has not been read by a doctor. Talk to your therapist, or to the doctor you bring it to, about what it means.",
+    /**
+     * **Parte dos dados não pôde ser lida** (120 T-1).
+     *
+     * Uma falha de leitura produzia secções vazias, indistinguíveis de um
+     * paciente que nunca mediu nada — e este papel vai à mão de um médico.
+     *
+     * A frase diz o que falta **pelo nome** e diz a coisa que importa: *o que
+     * falta aqui pode existir*. Sem essa segunda metade, um médico lê a
+     * ausência como informação.
+     *
+     * **Não manda gerar outra vez** (achado do code review). Mandava, e o
+     * `lerOuFalhar` apanha tanto o transitório — um `connection refused` — como
+     * o permanente: uma coluna que não existe, um modelo renomeado. Nesses
+     * casos o papel instruía o paciente a repetir uma acção que vai falhar
+     * igual, e **cada repetição cria um registo novo de `PatientReport`** — que
+     * é precisamente o defeito que a T-8 está a decidir como fechar. Um texto
+     * meu a empurrar para o comportamento que outra tarefa chama defeito.
+     */
+    naoFoiLido: (oQue: string) =>
+      `<strong>Part of this report could not be read.</strong> These sections failed to load when the report was generated: ${oQue}. What is missing here may well exist — ask your clinic before drawing any conclusion from a missing section.`,
+    naoFoiLidoNaSecao: "This section could not be read when the report was generated — it is not necessarily empty.",
+    /**
+     * **Os catorze nomes, e não seis** (achado da 2ª rodada do review).
+     *
+     * Este mapa tinha só as seis leituras do acompanhamento. O `lerOuFalhar` do
+     * `getPatientReportData` acrescentou oito nomes — `paciente`, `triagem`,
+     * `avaliacao`, `avaliacao-clinica`, `protocolos`, `notas`, `atlas`,
+     * `acompanhamento` — e o `?? k` fazia o documento clínico dizer *"Estas
+     * seções falharam: avaliacao-clinica, protocolos"*: slugs internos, sem
+     * acento, iguais nas duas línguas, no papel que vai à mão de um médico.
+     */
+    nomesDoQueFalhou: {
+      wearables: "watch and wearable measurements",
+      pressao: "blood pressure",
+      exercicio: "exercise logs",
+      checkins: "daily check-ins",
+      consultas: "the appointments in the period",
+      ecg: "ECG recordings",
+      paciente: "your details",
+      triagem: "the screening you filled in, including reported red flags",
+      avaliacao: "the body assessment",
+      "avaliacao-clinica": "the clinical assessment recorded by your therapist",
+      protocolos: "the treatment protocol",
+      notas: "the session notes",
+      atlas: "the assistant conversation count",
+      acompanhamento: "everything measured in the period",
+    } as Record<string, string>,
     rodape: (clinica: string) =>
         `This report was generated by ${clinica}. It reflects the clinical information recorded up to the generation date and is intended for the patient and their healthcare providers. For questions, contact the clinic.`,
   },
@@ -452,6 +692,11 @@ const P = {
     detalhes: "Detalhes",
     dosagem: "Dosagem",
     semanasCol: "Semanas",
+    series: (n: number) => `${n} séries`,
+    repeticoes: (n: number) => `${n} repetições`,
+    sustentar: (n: number) => `${n}s de sustentação`,
+    descansar: (n: number) => `${n}s de descanso`,
+    interno: "interno",
     dorNivel: "Dor",
     maisBaixo: "abaixo",
     maisAlto: "acima",
@@ -460,6 +705,30 @@ const P = {
       n === 1 ? "no único dia com dado" : `média dos ${n} dias com dados`,
     naoEhDiagnostico:
       "<strong>Isto não é um diagnóstico.</strong> Mostra o que foi medido e o que foi registrado, e não foi lido por um médico. Fale com seu terapeuta, ou com o médico a quem entregar este documento, sobre o que ele significa.",
+    naoFoiLido: (oQue: string) =>
+      `<strong>Parte deste relatório não pôde ser lida.</strong> Estas seções falharam ao carregar na geração do relatório: ${oQue}. O que falta aqui pode existir — fale com a sua clínica antes de concluir algo a partir de uma seção que falta.`,
+    naoFoiLidoNaSecao: "Esta seção não pôde ser lida na geração do relatório — não quer dizer que esteja vazia.",
+    nomesDoQueFalhou: {
+      wearables: "medições do relógio e dos aparelhos",
+      pressao: "pressão arterial",
+      exercicio: "registros de exercício",
+      checkins: "registros diários",
+      /*
+       * **"as consultas do período"**, e não "consultas" seco: a tradução era
+       * idêntica ao slug, logo nada distinguia um nome traduzido de um que
+       * escapou sem tradução — nem para quem lê o papel, nem para o teste.
+       */
+      consultas: "as consultas do período",
+      ecg: "gravações de ECG",
+      paciente: "seus dados",
+      triagem: "a triagem que você preencheu, incluindo os sinais de alerta relatados",
+      avaliacao: "a avaliação corporal",
+      "avaliacao-clinica": "a avaliação clínica registrada pelo seu terapeuta",
+      protocolos: "o protocolo de tratamento",
+      notas: "as notas das sessões",
+      atlas: "a contagem de conversas com o assistente",
+      acompanhamento: "tudo o que foi medido no período",
+    } as Record<string, string>,
     rodape: (clinica: string) =>
         `Este relatório foi gerado por ${clinica}. Reflete as informações clínicas registradas até a data de geração e é destinado ao paciente e aos profissionais de saúde que o acompanham. Em caso de dúvida, fale com a clínica.`,
   },
@@ -470,13 +739,38 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
   const t = P[idioma];
   const partes: string[] = [];
 
-  if (mon.temSinais) {
+  /**
+   * **A marca no lugar da secção que não pôde ser lida** (120 T-1, achado do QA).
+   *
+   * A frase `naoFoiLidoNaSecao` foi escrita nas duas línguas e **nunca era
+   * usada** — código morto, e uma promessa escrita que nada cumpria. O QA
+   * mediu-o: a secção simplesmente desaparecia, o que é melhor do que mostrar
+   * zeros, mas deixa quem olha para o meio do papel sem saber que ali havia
+   * algo.
+   *
+   * Aqui ela sai **no lugar** da secção, com o título dela. Um médico que folhe
+   * o papel vê *"Pressão arterial — esta seção não pôde ser lida"* onde veria a
+   * tabela, em vez de não ver nada.
+   */
+  const falhou = new Set(Array.isArray(mon.naoLidos) ? mon.naoLidos : []);
+  const marcaDaFalha = (chave: string, titulo: string) => {
+    if (!falhou.has(chave)) return false;
+    partes.push(
+      `<div class="section naolido"><h2>${esc(titulo)}</h2>` +
+        `<p>${esc(t.naoFoiLidoNaSecao)}</p></div>`
+    );
+    return true;
+  };
+
+  if (marcaDaFalha("wearables", t.sinais(mon.periodo?.dias ?? 30))) {
+    /* A secção dos sinais não se desenha: a marca ficou no lugar dela. */
+  } else if (mon.temSinais) {
     const linhas = [
-      linhaDeSinal(t.sono, mon.sinais.sono, " min", mon.series?.sono, idioma),
-      linhaDeSinal(t.fcRepouso, mon.sinais.fcRepouso, " bpm", mon.series?.fcRepouso, idioma),
-      linhaDeSinal(t.hrv, mon.sinais.hrv, " ms", mon.series?.hrv, idioma),
-      linhaDeSinal(t.spo2, mon.sinais.spo2, "%", mon.series?.spo2, idioma),
-      linhaDeSinal(t.passos, mon.sinais.passos, "", mon.series?.passos, idioma),
+      linhaDeSinal(t.sono, mon.sinais.sono, " min", mon.series?.sono, idioma, "sleepDuration"),
+      linhaDeSinal(t.fcRepouso, mon.sinais.fcRepouso, " bpm", mon.series?.fcRepouso, idioma, "restingHr"),
+      linhaDeSinal(t.hrv, mon.sinais.hrv, " ms", mon.series?.hrv, idioma, "hrv"),
+      linhaDeSinal(t.spo2, mon.sinais.spo2, "%", mon.series?.spo2, idioma, "spo2"),
+      linhaDeSinal(t.passos, mon.sinais.passos, "", mon.series?.passos, idioma, "steps"),
     ].join("");
     /*
      * As fases da última noite que as trouxe. Sete horas com uma de profundo e
@@ -513,7 +807,7 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
     partes.push(`<div class="section"><h2>${t.sinais(mon.periodo.dias)}</h2><div class="metricas">${linhas}</div>${legenda}</div>`);
   }
 
-  if (mon.pressao.leituras > 0) {
+  if (!marcaDaFalha("pressao", t.pressao) && mon.pressao.leituras > 0) {
     /*
      * **As duas na mesma caixa, com a mesma escala.**
      *
@@ -543,8 +837,8 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
       : "";
 
     partes.push(`<div class="section"><h2>${t.pressao}</h2><div class="metricas">
-      ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", null, idioma)}
-      ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", null, idioma)}
+      ${linhaDeSinal(t.sistolica, mon.pressao.sistolica, " mmHg", mon.series?.sistolica, idioma, "systolic")}
+      ${linhaDeSinal(t.diastolica, mon.pressao.diastolica, " mmHg", mon.series?.diastolica, idioma, "diastolic")}
     </div>
     ${grafPressao}
     <table>
@@ -553,7 +847,7 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
     </table></div>`);
   }
 
-  if (mon.ecg.length > 0) {
+  if (!marcaDaFalha("ecg", t.ecg) && mon.ecg.length > 0) {
     /**
      * O ECG entra como **fato**, com a conclusão do aparelho — nunca o
      * traçado, e nunca uma leitura nossa dele.
@@ -568,26 +862,26 @@ function renderMonitoringHTML(mon: DadosDeMonitoramento | null, idioma: IdiomaDo
       <p class="meta">${t.ecgRessalva}</p></div>`);
   }
 
-  if (mon.exercicio.registros > 0) {
+  if (!marcaDaFalha("exercicio", t.exercicio) && mon.exercicio.registros > 0) {
     partes.push(`<div class="section"><h2>${t.exercicio}</h2><table>
       ${row(t.diasComExercicio, String(mon.exercicio.diasComExercicio))}
       ${row(t.exerciciosFeitos, String(mon.exercicio.registros))}
     </table></div>`);
   }
 
-  if (mon.comoSeSentiu.registros > 0) {
+  if (!marcaDaFalha("checkins", t.comoSeSentiu) && mon.comoSeSentiu.registros > 0) {
     const ultimos = mon.comoSeSentiu.ultimos
       .map((c) => `<li>${esc(c.dia)} — ${t.dor.toLowerCase()} ${c.dor}/10, ${t.humor.toLowerCase()} ${c.humor}/5</li>`)
       .join("");
     partes.push(`<div class="section"><h2>${t.comoSeSentiu}</h2><div class="metricas">
-      ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", null, idioma)}
-      ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", null, idioma)}
+      ${linhaDeSinal(t.dor, mon.comoSeSentiu.dor, "/10", null, idioma, "painLevel")}
+      ${linhaDeSinal(t.humor, mon.comoSeSentiu.humor, "/5", null, idioma, "moodLevel")}
     </div>
     <table>${row(t.checkins, String(mon.comoSeSentiu.registros))}</table>
     <h3>${t.maisRecente}</h3><ul>${ultimos}</ul></div>`);
   }
 
-  if (mon.consultas.length > 0) {
+  if (!marcaDaFalha("consultas", t.consultas) && mon.consultas.length > 0) {
     const itens = mon.consultas
       .map(
         (a) =>
@@ -639,30 +933,88 @@ export function renderPatientReportHTML(
    * Pôr um nome que pode ser de outra pessoa num documento clínico é pior do que
    * não pôr nenhum.
    */
+  /**
+   * **A ressalva do que não pôde ser lido, no documento e não na secção**
+   * (120 T-1, corrigido pelo code review).
+   *
+   * Ela vivia dentro do `renderMonitoringHTML`, que devolve `""` quando o
+   * acompanhamento é `null` — ou seja, no caso em que **tudo** falhou a ressalva
+   * também desaparecia. E só conhecia o `naoLidos` do acompanhamento, logo uma
+   * falha na triagem apagava os sinais de alerta sem uma palavra.
+   *
+   * Agora lê a lista inteira, que o `getPatientReportData` junta, e sai acima de
+   * tudo o resto.
+   */
+  const naoLidosDoPapel: string[] = Array.isArray((data as any)?.naoLidos)
+    ? (data as any).naoLidos
+    : Array.isArray((data as any)?.monitoring?.naoLidos)
+      ? (data as any).monitoring.naoLidos
+      : [];
+  const aRessalvaDoQueFalhou = naoLidosDoPapel.length
+    ? `<div class="section naolido">${P[opts?.idioma === "pt" ? "pt" : "en"].naoFoiLido(
+        esc(
+          naoLidosDoPapel
+            .map((k: string) => P[opts?.idioma === "pt" ? "pt" : "en"].nomesDoQueFalhou[k] ?? k)
+            .join(", ")
+        )
+      )}</div>`
+    : "";
+
   const clinicaDoPaciente = (data as any)?.patient?.clinic ?? null;
   const nomeDaClinica: string =
     clinicaDoPaciente?.name || (idioma === "pt" ? "a sua clínica" : "your clinic");
   /* A cidade situa; um código ISO de país numa linha de marca é ruído. */
   const ondeFica: string = clinicaDoPaciente?.city ?? "";
   const { patient, screening: ms, bodyAssessment: ba, diagnosis: dx, protocols, soapNotes, monitoring } = data as any;
-  if (!patient) return "<html><body>Patient not found</body></html>";
+  if (!patient) {
+    /**
+     * **"Não conseguimos ler" não é "esta pessoa não existe"** (achado G3 do QA).
+     *
+     * Isto devolvia 43 caracteres — `<html><body>Patient not found</body></html>`
+     * — nas duas línguas, e o `naoLidos` já tinha `"paciente"` dentro. Toda a
+     * máquina da T-1 era calculada e descartada por este `return`.
+     *
+     * É a frase do plano ao contrário: o produto não pode dizer *"não há"*
+     * quando houve foi uma falha nossa — e aqui dizia *"esta pessoa não
+     * existe"*, que é pior.
+     *
+     * Agora separa os dois casos. Sem o nome na lista, é de facto um paciente
+     * que não existe e a frase antiga fica (há chamadores a contar com ela).
+     */
+    if (naoLidosDoPapel.includes("paciente")) {
+      const t = P[opts?.idioma === "pt" ? "pt" : "en"];
+      return (
+        `<html><body><div class="section naolido">` +
+        t.naoFoiLido(esc(t.nomesDoQueFalhou["paciente"] ?? "paciente")) +
+        `</div></body></html>`
+      );
+    }
+    return "<html><body>Patient not found</body></html>";
+  }
 
   const age = patient.dateOfBirth ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear() : null;
 
   // ── Red flags ──
+  /**
+   * **Os sinais de alerta falam a língua do papel** (achado do QA comparativo).
+   *
+   * O cabeçalho da secção já estava traduzido e os itens debaixo dele não: o
+   * papel PT dizia *"Sinais de alerta relatados"* e depois *"Trauma history"*,
+   * *"Cardiovascular symptoms"*. É a secção mais importante da folha — a que
+   * faz alguém procurar um médico — e era a que estava meio traduzida.
+   *
+   * E o teste não apanhava: a fixture tem `screening: null`, logo este bloco
+   * **nunca era renderizado** na varredura. A palavra proibida estava na lista
+   * e era inalcançável.
+   */
   const redFlags: string[] = [];
   if (ms) {
-    const flags: [string, string][] = [
-      ["unexplainedWeightLoss", "Unexplained weight loss"], ["nightPain", "Night pain"],
-      ["traumaHistory", "Trauma history"], ["neurologicalSymptoms", "Neurological symptoms"],
-      ["bladderBowelDysfunction", "Bladder/bowel dysfunction"], ["recentInfection", "Recent infection"],
-      ["cancerHistory", "Cancer history"], ["steroidUse", "Steroid use"],
-      ["osteoporosisRisk", "Osteoporosis risk"], ["cardiovascularSymptoms", "Cardiovascular symptoms"],
-      ["severeHeadache", "Severe headache"], ["dizzinessBalanceIssues", "Dizziness / balance issues"],
-    ];
-    flags.forEach(([key, label]) => {
-      if (ms[key]) redFlags.push(`${label}${ms[`${key}Details`] ? ` — ${ms[`${key}Details`]}` : ""}`);
-    });
+    for (const [key, label] of Object.entries(RED_FLAG_LABELS[idioma])) {
+      if (ms[key]) {
+        const detalhe = ms[`${key}Details`];
+        redFlags.push(`${label}${detalhe ? ` — ${detalhe}` : ""}`);
+      }
+    }
   }
 
   // ── Protocols ──
@@ -684,16 +1036,16 @@ export function renderPatientReportHTML(
       ${precautions.length ? `<div class="precautions"><h3>⚠ ${t.precaucoes}</h3><ul>${precautions.map((pr: any) => `<li>${esc(pr.precaution || pr.description || pr)}</li>`).join("")}</ul></div>` : ""}
 
       ${Object.entries(phases).map(([phase, items]) => `
-        <h3>${esc(PHASE_LABELS[idioma][phase] || phase)}</h3>
+        <h3>${esc(PHASE_LABELS[idioma][phase] || nomeDaFase(phase))}</h3>
         <table class="items">
           <thead><tr><th>${t.tipo}</th><th>${t.item}</th><th>${t.detalhes}</th><th>${t.dosagem}</th><th>${t.semanasCol}</th></tr></thead>
           <tbody>
           ${(items as any[]).map((it) => `
             <tr>
               <td>${esc(ITEM_TYPES[idioma][it.itemType] || it.itemType)}</td>
-              <td><strong>${esc(it.title)}</strong>${it.hiddenFromPatient ? " <em>(internal)</em>" : ""}</td>
+              <td><strong>${esc(it.title)}</strong>${it.hiddenFromPatient ? ` <em>(${t.interno})</em>` : ""}</td>
               <td>${esc(it.description || "")}${it.instructions ? `<br/><em>${esc(it.instructions)}</em>` : ""}</td>
-              <td>${[it.frequency, it.sets ? `${it.sets} sets` : "", it.reps ? `${it.reps} reps` : "", it.holdSeconds ? `hold ${it.holdSeconds}s` : "", it.restSeconds ? `rest ${it.restSeconds}s` : "", it.sessionDuration ? `${it.sessionDuration}min` : ""].filter(Boolean).map(esc).join(" · ") || "—"}</td>
+              <td>${[it.frequency, it.sets ? t.series(it.sets) : "", it.reps ? t.repeticoes(it.reps) : "", it.holdSeconds ? t.sustentar(it.holdSeconds) : "", it.restSeconds ? t.descansar(it.restSeconds) : "", it.sessionDuration ? `${it.sessionDuration}min` : ""].filter(Boolean).map(esc).join(" · ") || "—"}</td>
               <td>${it.startWeek || 1}${it.endWeek ? `–${it.endWeek}` : "+"}</td>
             </tr>`).join("")}
           </tbody>
@@ -1065,6 +1417,7 @@ ${printBar}
   </div>
   <div class="brand">${esc(nomeDaClinica)}${ondeFica ? `<small>${esc(ondeFica)}</small>` : ""}</div>
 </div>
+${aRessalvaDoQueFalhou}
 
 <div class="section">
   <h2>${t.paciente}</h2>
@@ -1150,6 +1503,19 @@ ${soapHtml}
 
 <div class="footer">
   ${t.naoEhDiagnostico}
+  ${
+    /*
+     * **E no rodapé também** (120 T-1). Quem lê um papel de várias páginas pode
+     * entrar por qualquer uma; a ressalva no topo da secção não alcança quem
+     * olha só para o fim. É o mesmo raciocínio que pôs a escala em cada folha
+     * do ECG.
+     */
+    naoLidosDoPapel.length
+      ? `<br><br>${t.naoFoiLido(
+          esc(naoLidosDoPapel.map((k: string) => t.nomesDoQueFalhou[k] ?? k).join(", "))
+        )}`
+      : ""
+  }
   <br><br>
   ${esc(t.rodape(nomeDaClinica))}
 </div>

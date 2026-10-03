@@ -127,30 +127,205 @@ export async function saveWithingsTokens(connectionId: string, tokens: Tokens): 
   });
 }
 
+/** Quanto tempo uma trava de renovação vale antes de se considerar morta. */
+const TRAVA_DO_REFRESH_MS = 30_000;
+
 /**
- * A usable access token, refreshing first if it is close to expiring.
+ * **Em que linha a trava da conta vive.**
  *
- * Withings rotates the refresh token on every refresh, so the new one has to
- * be written back or the next refresh fails — the failure mode being a
- * connection that looks healthy and quietly stops syncing.
+ * A trava é da **conta Withings**, e não da ligação — duas ligações da mesma
+ * conta renovam contra o mesmo lado de lá. Como a coluna está na linha, escolhe-
+ * se uma linha por conta, sempre a mesma: a mais antiga. Determinística é o que
+ * importa; qual delas é, não.
+ *
+ * Sem `providerUserId` (ligações antigas, ou quem chama com um retrato parcial)
+ * cai na própria linha — o comportamento anterior, que é melhor do que nenhuma
+ * trava.
  */
-export async function withingsAccessToken(connection: {
+async function idDaTrava(connection: {
   id: string;
-  accessToken: string | null;
-  refreshToken: string | null;
-  tokenExpiresAt: Date | null;
+  providerUserId?: string | null;
 }): Promise<string> {
-  const current = unseal(connection.accessToken);
-  const notExpiring = connection.tokenExpiresAt
-    && connection.tokenExpiresAt.getTime() - Date.now() > 60_000;
-  if (current && notExpiring) return current;
+  const conta = connection.providerUserId;
+  if (!conta) return connection.id;
 
-  const refresh = unseal(connection.refreshToken);
-  if (!refresh) throw new Error("Withings connection needs to be reauthorised");
+  const lider = await (prisma as any).wearableConnection
+    .findFirst({
+      where: { provider: "WITHINGS", providerUserId: conta },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    })
+    .catch(() => null);
 
-  const tokens = await withingsRefresh(refresh);
-  await saveWithingsTokens(connection.id, tokens);
-  return tokens.accessToken;
+  return lider?.id ?? connection.id;
+}
+
+/** O token ainda serve? Sessenta segundos de folga para a chamada que vem. */
+const aindaServe = (accessToken: string | null, expiraEm: Date | null) =>
+  Boolean(accessToken) &&
+  Boolean(expiraEm) &&
+  (expiraEm as Date).getTime() - Date.now() > 60_000;
+
+/**
+ * **Um access token que serve, renovando no máximo um processo de cada vez.**
+ *
+ * ## O defeito que isto fecha (121 T-1)
+ *
+ * A Withings troca o refresh token a cada uso — é de **uso único**. Esta função
+ * recebia um retrato da ligação, renovava e gravava o novo par. Quatro caminhos
+ * a chamam: o cron, o webhook, o puxar-a-tela e a sondagem. **Dois ao mesmo
+ * tempo fazem dois refreshes com o mesmo token**, e o segundo faz a Withings
+ * invalidar a cadeia inteira. Depois disso nenhuma repetição ajuda: só
+ * reautorizar.
+ *
+ * Foi o que matou a ligação do Bruno em ~05/09/2026 — a Activity dele dizia
+ * *"27 days without a reading"* — com o log do contentor a repetir
+ * `Invalid Params: invalid refresh_token`. O pedido dele foi literal: *"não
+ * pode parar de sincronizar jamais"*.
+ *
+ * ## Como
+ *
+ * 1. **Relê a ligação do banco**, e não o retrato de quem chamou: outro
+ *    processo pode ter renovado há dois segundos, e aí já há token bom.
+ * 2. **Toma a trava com um `updateMany` condicional** — a condição e a escrita
+ *    numa operação, que é o que torna isto atómico entre contentores. Um `Set`
+ *    em memória não vê o outro contentor.
+ * 3. **Quem não ganha a trava espera e relê.** Não falha: o vencedor vai
+ *    escrever um token bom, e usá-lo é o certo.
+ * 4. A trava expira em 30 s, para um processo que morra a meio não trancar a
+ *    ligação para sempre.
+ */
+export async function withingsAccessToken(
+  connection: {
+    id: string;
+    accessToken: string | null;
+    refreshToken: string | null;
+    tokenExpiresAt: Date | null;
+    /**
+     * O id da **conta Withings** (`userid` deles), quando quem chama o tem.
+     *
+     * A trava é por conta e não por ligação — ver `idDaTrava`.
+     */
+    providerUserId?: string | null;
+  },
+  /**
+   * Quem está a pedir (121 T-5).
+   *
+   * A T-1 fecha a corrida que eu **consigo explicar**. O que não se sabe é se
+   * era a única causa: a ligação esteve morta ~27 dias e a única prova é uma
+   * linha a dizer `invalid refresh_token`, sem dizer quem chamou nem quando.
+   *
+   * Se voltar a parar, isto diz qual caminho estava a renovar. E, antes disso,
+   * o número de **esperas** diz se a corrida era mesmo esta: se for zero numa
+   * semana, a explicação é outra.
+   */
+  origem: "cron" | "webhook" | "manual" | "sondagem" | "desligar" | "?" = "?"
+): Promise<string> {
+  /* O caminho rápido, sem tocar no banco: o retrato de quem chamou já serve. */
+  const doRetrato = unseal(connection.accessToken);
+  if (aindaServe(doRetrato, connection.tokenExpiresAt)) return doRetrato as string;
+
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    /*
+     * **O estado de agora, e não o de quem chamou.** É esta releitura que faz
+     * o segundo processo encontrar o token que o primeiro acabou de gravar.
+     */
+    const agora = await (prisma as any).wearableConnection.findUnique({
+      where: { id: connection.id },
+      select: { accessToken: true, refreshToken: true, tokenExpiresAt: true, refreshLockedAt: true },
+    });
+    if (!agora) throw new Error("Withings connection needs to be reauthorised");
+
+    const atual = unseal(agora.accessToken);
+    if (aindaServe(atual, agora.tokenExpiresAt)) return atual as string;
+
+    const refresh = unseal(agora.refreshToken);
+    if (!refresh) throw new Error("Withings connection needs to be reauthorised");
+
+    /*
+     * **A trava.** O `where` com a condição e o `data` na mesma operação: ou
+     * este processo a toma, ou outro já a tinha. `count` é a resposta.
+     */
+    const limite = new Date(Date.now() - TRAVA_DO_REFRESH_MS);
+    /**
+     * **A trava é da conta Withings, não da linha.**
+     *
+     * Medido no log de produção em 03/10/2026, com duas ligações da conta do
+     * Bruno — o relógio dele e a braçadeira da clínica:
+     *
+     * ```
+     * [cron/wearables-sync] connections=2 synced=1 withData=1 failed=1
+     * [withings/webhook] error: 503: Invalid Params: invalid refresh_token
+     * [withings/webhook] error: 601: Same arguments in less than 10 seconds
+     * ```
+     *
+     * O `601` é a própria Withings a dizer *"a mesma chamada com os mesmos
+     * argumentos em menos de dez segundos"* — as duas ligações a falar ao mesmo
+     * instante. E uma delas leva `invalid refresh_token`.
+     *
+     * Uma trava por linha não fecha isso: cada ligação toma a sua e as duas
+     * renovam na mesma. O cron já serializa por conta para o `601`
+     * (`esperarAVezDaConta`), e a renovação tem de ser pela mesma chave.
+     *
+     * **O que é medido e o que é inferido:** o log mostra duas ligações da mesma
+     * conta a chamar ao mesmo tempo, uma a falhar. Que a Withings invalide a
+     * cadeia de uma autorização quando outra da mesma conta renova é a
+     * explicação que isto assume — e é a T-5 que a confirma ou desmente, pelo
+     * número de esperas.
+     */
+    const alvo = await idDaTrava(connection);
+    const { count } = await (prisma as any).wearableConnection.updateMany({
+      where: {
+        id: alvo,
+        OR: [{ refreshLockedAt: null }, { refreshLockedAt: { lt: limite } }],
+      },
+      data: { refreshLockedAt: new Date() },
+    });
+
+    if (count === 0) {
+      /*
+       * Outro processo está a renovar. Esperar e reler é melhor do que pedir
+       * outro token: o refresh dele é de uso único, e pedir seria queimá-lo.
+       */
+      console.log(
+        `[withings/token] ${origem} esperou a trava de ${connection.id} (volta ${tentativa + 1})`
+      );
+      await new Promise((r) => setTimeout(r, 600));
+      continue;
+    }
+
+    try {
+      console.log(`[withings/token] ${origem} renova ${connection.id}`);
+      const tokens = await withingsRefresh(refresh);
+      await saveWithingsTokens(connection.id, tokens);
+      /*
+       * **A renovação que corre bem apaga o estado** (121 T-3). Sem isto, quem
+       * reconecta continua a ver *"precisa reconectar"* — e um aviso que fica
+       * depois de resolvido mente tanto quanto um que nunca aparece.
+       */
+      const { limparEstadoDaLigacao } = await import("@/lib/withings-estado-da-ligacao");
+      await limparEstadoDaLigacao(connection.id);
+      return tokens.accessToken;
+    } catch (e) {
+      /*
+       * **E a que falha marca** — aqui é onde a cadeia invalidada se descobre,
+       * em todos os caminhos de uma vez: cron, webhook, puxar-a-tela e sondagem.
+       */
+      const { registarFalhaDaLigacao } = await import("@/lib/withings-estado-da-ligacao");
+      await registarFalhaDaLigacao(connection.id, e);
+      throw e;
+    } finally {
+      await (prisma as any).wearableConnection
+        .updateMany({ where: { id: alvo }, data: { refreshLockedAt: null } })
+        .catch(() => {});
+    }
+  }
+
+  /*
+   * Três voltas sem token bom e sem conseguir a trava: o outro processo está
+   * preso ou falhou. Dizê-lo é melhor do que renovar por cima dele.
+   */
+  throw new Error("Withings token refresh is busy; try again");
 }
 
 export interface WithingsBpReading {
@@ -158,6 +333,20 @@ export interface WithingsBpReading {
   diastolic: number;
   heartRate: number | null;
   measuredAt: Date;
+  /**
+   * O fuso em que a medição foi feita, como a Withings o manda (120 T-3).
+   *
+   * Vinha na mesma resposta do `getmeas`, em `group.timezone`, e era
+   * **descartado**. O dia da pressão saía de `toISOString()` — UTC —, enquanto
+   * desde 02/10 o `VITALS` usa o fuso da própria medição e o sono usa o `date`
+   * que eles mandam. A pressão ficou a única série em UTC: uma leitura às 00:30
+   * de Londres no verão arquivava no dia anterior, com o sono da mesma noite no
+   * dia certo.
+   *
+   * É um identificador IANA (`"Europe/London"`), e não um offset: o offset muda
+   * com a hora de verão e o identificador não.
+   */
+  timezone: string | null;
   /**
    * Withings' own id for the measure group (`grpid`).
    *
@@ -218,6 +407,8 @@ export async function withingsBloodPressure(
       diastolic: Math.round(diastolic),
       heartRate: heartRate != null ? Math.round(heartRate) : null,
       measuredAt: new Date(Number(group.date) * 1000),
+      /* Ver `timezone` na interface: vinha aqui e era jogado fora. */
+      timezone: typeof group.timezone === "string" && group.timezone ? group.timezone : null,
       measureId: group.grpid != null ? String(group.grpid) : null,
     });
   }
@@ -335,13 +526,30 @@ export async function withingsSleep(
       /**
        * **A VFC da noite, em rMSSD** — que é o que a coluna diz guardar.
        *
-       * A Withings dá dois: o do início e o do fim da noite. A média dos dois é
-       * a noite inteira, que é a unidade de todas as outras métricas deste
-       * ficheiro; usar só um faria a série saltar conforme a pessoa adormecesse
-       * mais cedo ou mais tarde.
+       * A Withings dá dois: `rmssd_start_avg` e `rmssd_end_avg`, documentados
+       * como *"Heart rate variability – Start average"* e *"End average"*.
        *
-       * Se só vier um, usa-se esse — meia noite medida é melhor do que nenhuma,
-       * e o relatório já diz quantos dias têm dado.
+       * Guardamos a **média dos dois**, e isso é um número nosso: a
+       * documentação não diz o tamanho das duas janelas, logo a média não
+       * ponderada só é a média da noite se elas forem iguais — e isso não está
+       * afirmado em lado nenhum. Escolhemo-la porque a unidade de todas as
+       * outras métricas deste ficheiro é a noite, e porque usar só um dos dois
+       * faria a série saltar conforme a pessoa adormecesse mais cedo ou mais
+       * tarde.
+       *
+       * Medido em 02/10/2026 contra o app deles: `start 15`, `end 14`, a média
+       * **14,5**, e o app da Withings mostrava **14 ms** na mesma noite. Qual
+       * dos dois ele mostra, ou se arredonda a média, não se sabe.
+       *
+       * **E se só vier um, usa-se esse** — meia noite medida é melhor do que
+       * nenhuma. Mas isso faz a série mudar de origem entre dias sem nada a
+       * distinguir, que é a mesma ressalva escrita no `onde-mora-a-metrica.ts`
+       * sobre o `restingHr`: *"um número que muda de origem entre dois dias não
+       * é bem uma série"*. Fica dito; separá-los exige uma coluna.
+       *
+       * **Os dois campos são escopo Total (Withings+)**, em teste até ~16/10.
+       * Quando caducar, `hrv` volta a `null` para todos — indistinguível de
+       * *"não usou o relógio"*. Nada na tela separa ainda os dois casos.
        */
       hrv: mediaDeRmssd(d),
       restingHr: typeof d.hr_average === "number" ? d.hr_average : null,

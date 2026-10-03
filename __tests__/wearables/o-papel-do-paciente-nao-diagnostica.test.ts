@@ -59,7 +59,25 @@ const dados = () =>
       dateOfBirth: new Date("1980-01-15T00:00:00.000Z"),
       createdAt: new Date("2026-01-02T00:00:00.000Z"),
     },
-    screening: null,
+    /**
+     * **A triagem preenchida, e não `null`** (achado do QA comparativo).
+     *
+     * Com `screening: null` o bloco dos sinais de alerta **nunca era
+     * renderizado**: a palavra proibida *"Red Flags Reported"* estava na lista
+     * da varredura e era inalcançável, e os doze rótulos debaixo dela — *"Night
+     * pain"*, *"Trauma history"*, *"Cardiovascular symptoms"* — saíam em inglês
+     * num papel português sem nada a acusar.
+     *
+     * Três sinais com `true`, um deles com detalhe, porque a frase é
+     * `rótulo — detalhe` e o detalhe é o que o paciente escreveu: esse **não**
+     * se traduz.
+     */
+    screening: {
+      nightPain: true,
+      nightPainDetails: "Acorda de madrugada",
+      traumaHistory: true,
+      cardiovascularSymptoms: true,
+    },
     bodyAssessment: null,
     diagnosis: {
       id: "cmuqdx0001",
@@ -94,15 +112,47 @@ const dados = () =>
         goals: JSON.stringify([{ timeline: "4 semanas", goal: "Subir escadas sem dor" }]),
         precautions: JSON.stringify([{ precaution: "Evitar impacto nas duas primeiras semanas" }]),
         items: [
+          /**
+           * **`itemType` e `title`, que é o que o render lê** (achado do QA).
+           *
+           * A fixture passava `type` e `name`. As células *Tipo* e *Item* saíam
+           * **vazias** no teste, logo nada do que elas imprimem era medido — e
+           * `(internal)`, que vive na célula do item, era invisível.
+           */
           {
             phase: "SHORT_TERM",
-            type: "HOME_EXERCISE",
-            name: "Agachamento isométrico",
+            itemType: "HOME_EXERCISE",
+            title: "Agachamento isométrico",
             description: "Parede, 45 graus",
             sets: 3,
             reps: 10,
             holdSeconds: 30,
-            weeks: 4,
+            restSeconds: 45,
+            sessionDuration: 20,
+            hiddenFromPatient: true,
+            startWeek: 1,
+            endWeek: 4,
+          },
+          /**
+           * **Uma fase média e uma fase que o mapa não conhece.**
+           *
+           * Com só `SHORT_TERM` na fixture, duas mutações sobreviviam: o rótulo
+           * inglês da fase média (que diz *"Rehab"* — o termo que não se usa) e
+           * o enum cru de uma fase desconhecida, que saía como
+           * `<h3>IN_CLINIC_X</h3>` no papel do paciente. Nenhum dos dois era
+           * renderizado, logo nenhum era medido.
+           */
+          {
+            phase: "MEDIUM_TERM",
+            itemType: "IN_CLINIC",
+            title: "Fortalecimento progressivo",
+            startWeek: 5,
+          },
+          {
+            phase: "IN_CLINIC_X",
+            itemType: "HOME_EXERCISE",
+            title: "Caminhada",
+            startWeek: 1,
           },
         ],
       },
@@ -304,6 +354,23 @@ describe("o papel em português não fica meio traduzido", () => {
     "Treatment Protocol", "Therapist comments", "Treatment Goals", "Precautions",
     "Session Notes", "Red Flags Reported", "Home Exercise", "Short-Term",
     "Created", "Details", "Dosage", "Weeks",
+    /*
+     * A célula da dosagem e a marca de item interno — alcançáveis desde que a
+     * fixture usa `itemType`/`title` e preenche `restSeconds`/`hiddenFromPatient`.
+     */
+    "sets", "reps", "hold", "rest", "internal",
+    /*
+     * E os doze sinais de alerta, alcançáveis desde que a fixture tem
+     * `screening`. A triagem é a secção que faz alguém procurar um médico.
+     */
+    "Night pain", "Trauma history", "Cardiovascular symptoms",
+    "Unexplained weight loss", "Neurological symptoms", "Recent infection",
+    "Cancer history", "Steroid use", "Osteoporosis risk", "Severe headache",
+    /*
+     * E o termo que não se usa em texto nenhum do paciente: remete a
+     * dependência química. Estava no rótulo da fase média, em inglês.
+     */
+    "Rehab",
   ];
 
   it("**nenhum rótulo nosso fica em inglês**", () => {
@@ -318,6 +385,25 @@ describe("o papel em português não fica meio traduzido", () => {
     const pt = html("pt");
     const escaparam = NOSSAS_PALAVRAS_EM_INGLES.filter((w) => palavraInteira(w, pt));
     expect(escaparam).toEqual([]);
+  });
+
+  it('**"Rehab" não aparece em nenhuma das línguas**', () => {
+    /*
+     * O termo remete a dependência química, e este rótulo está num papel que o
+     * paciente lê. O inglês dizia *"Medium-Term (Rehab)"* e o português já
+     * dizia *"reabilitação"* — logo a varredura do papel PT nunca o veria.
+     */
+    expect(html("pt")).not.toMatch(/\bRehab\b/);
+    expect(html("en")).not.toMatch(/\bRehab\b/);
+  });
+
+  it("**uma fase que o mapa não conhece não sai como enum**", () => {
+    /* Saía `<h3>IN_CLINIC_X</h3>` no papel do paciente. */
+    for (const idioma of ["pt", "en"] as const) {
+      const doc = html(idioma);
+      expect(doc).not.toContain("IN_CLINIC_X");
+      expect(doc).toContain("In clinic x");
+    }
   });
 
   it("e a varredura **não acusa uma tradução correcta**", () => {

@@ -57,6 +57,18 @@ export async function GET() {
        */
       lastSyncError: true,
       lastSyncErrorAt: true,
+      /**
+       * **O estado, e não só a mensagem** (121 T-3).
+       *
+       * A app decidia *"a autorização expirou"* casando a **mensagem de texto**
+       * com `/refresh_token|invalid_grant|unauthor/i`. Funciona enquanto a frase
+       * da Withings não mudar — e uma tela que fica muda porque uma mensagem de
+       * terceiro mudou de palavras é a ausência silenciosa com outro nome.
+       *
+       * Agora há um estado: `needsReauthAt`. A mensagem fica, para dizer **o
+       * quê**; a decisão passa a ser do estado.
+       */
+      needsReauthAt: true,
       createdAt: true,
       notifyConfirmedAppli: true,
       notifyCheckedAt: true,
@@ -135,6 +147,13 @@ export async function GET() {
       /** Porque a última tentativa falhou — ou `null` se correu bem. */
       lastSyncError: c.lastSyncError ?? null,
       lastSyncErrorAt: c.lastSyncErrorAt ?? null,
+      /**
+       * **A ligação precisa da pessoa** — e desde quando (121 T-3).
+       *
+       * É o que a app usa para decidir, em vez de casar a mensagem de texto da
+       * Withings. A mensagem continua a ir, para dizer **o quê**.
+       */
+      needsReauthAt: c.needsReauthAt ?? null,
       // Autorizado, a entregar, e mesmo assim calado ha dias: o aparelho pode
       // estar fora da tomada, ou a pessoa pode ter parado de medir. A promessa
       // do provedor e a chegada do dado sao perguntas diferentes, e a tela

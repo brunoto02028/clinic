@@ -224,6 +224,7 @@ código está inerte esperando:
 |---|---|
 | `STRIPE_SECRET_KEY` **live** e `STRIPE_WEBHOOK_SECRET` | **028** (cobrança do personal) e o pagamento de £1. Atualizado 27/09: o `.env` local tem chave `sk_test_` e ela **funciona** (produto e Checkout de £1 criados). Produção segue sem nenhuma `STRIPE_*`, de propósito — chave de teste lá confirmaria consulta de verdade com cartão de brinquedo. E a conta tem **zero webhooks**: sem o secret, pagamento entra e a consulta fica `PENDING` para sempre |
 | `LML_API_KEY` + `LAB_ORDERING_ENABLED` | **081 T-5..T-9**, os exames de laboratório |
+| `WEARABLES_PROBE_SECRET` + `WEARABLES_PROBE_EMAILS` | **120 T-2**. A sondagem dos wearables lê fases do sono, VFC, FC de repouso, SpO₂ e passos de uma pessoa **nomeada por e-mail**. Validava contra `CRON_SECRET \|\| NEXTAUTH_SECRET` — ou seja, sem `CRON_SECRET` a chave era o **segredo que assina as sessões**, a viajar numa query string. Agora exige um segredo próprio (de preferência no header `x-probe-secret`) e o e-mail numa lista. **Fechado por omissão:** sem os dois envs a rota responde 503/403, e a sondagem não funciona em produção |
 | ~~`DAILY_API_KEY` + `VIDEO_CALLS_ENABLED`~~ | **resolvido em 27/09**: as duas estão no Coolify, e a videochamada responde em produção |
 - **103** — [A consulta que já passou: desfecho, falta e cancelamento](103-a-consulta-que-ja-passou/plan.md)
 - **104** — [O paciente escolhe, e o profissional atende](104-o-paciente-escolhe-e-o-profissional-atende/plan.md)
@@ -242,3 +243,5 @@ código está inerte esperando:
 - **117** — [Os termos aguentam a loja, e o paciente](117-os-termos-aguentam-a-loja/plan.md) — a política nomeia 2 processadores; o produto usa 10
 - **118** — [A aba Saúde](118-a-aba-saude/plan.md) — as medições saem de dentro do Menu; resumo, cinco famílias e **as metas que o paciente define**
 - **119** — [O que a Withings mostra, e o que a API nos dá](119-o-que-a-withings-mostra/plan.md) — paridade com o app deles; **a T-1 é medição**, porque dado fora do plano volta vazio sem erro
+- **120** — [A falha que parece ausência](120-a-falha-que-parece-ausencia/plan.md) — os oito achados do review/QA de 02/10 que sobraram; todos da mesma família: o produto não pode dizer "não há" quando houve foi uma falha nossa
+- **121** — [A sincronização não pode parar](121-a-sincronizacao-nao-pode-parar/plan.md) — o refresh token de uso único gasto duas vezes mata a ligação para sempre; 27 dias sem leitura no relógio do Bruno

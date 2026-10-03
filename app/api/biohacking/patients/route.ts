@@ -51,7 +51,17 @@ export async function GET() {
           orderBy: { createdAt: "desc" },
         },
         wearableConnections: {
-          where: { status: "CONNECTED" },
+          /**
+           * **`ERROR` entra, e é o que mais importa** (121 T-4).
+           *
+           * Era `status: "CONNECTED"` só. Desde que a T-3 passou a marcar uma
+           * cadeia invalidada como `ERROR`, esse filtro fazia o paciente
+           * **desaparecer do monitor** em vez de aparecer marcado — a ausência
+           * silenciosa criada pela própria correcção que existe para a fechar.
+           *
+           * `DISCONNECTED` continua de fora: quem desligou sabe que desligou.
+           */
+          where: { status: { in: ["CONNECTED", "ERROR"] } },
           select: {
             provider: true,
             lastSyncedAt: true,
@@ -61,6 +71,9 @@ export async function GET() {
             lastReadingAt: true,
             createdAt: true,
             status: true,
+            /* Precisa da pessoa, e desde quando — ver 121 T-3. */
+            needsReauthAt: true,
+            lastPartialRead: true,
           },
           take: 3,
         },
@@ -127,6 +140,15 @@ export async function GET() {
           // o manguito fica fora da tomada. Nada disso dá erro (075, T-11).
           daysSilent: daysSilent(c),
           silent: isSilent(c, limiteSilencio),
+          /*
+           * **Calado e morto não são a mesma coisa.** Um relógio pode estar
+           * calado porque a pessoa não o usa — e isso ela resolve usando-o — ou
+           * porque a autorização morreu, e aí só reconectando. Só o segundo tem
+           * uma acção do outro lado, e a tela tem de os separar.
+           */
+          needsReauth: Boolean(c.needsReauthAt),
+          needsReauthAt: c.needsReauthAt ?? null,
+          partialRead: c.lastPartialRead ? String(c.lastPartialRead).split(",") : [],
         })),
         latestWearable: p.wearableDataPoints?.[0] || null,
       };

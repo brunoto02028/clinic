@@ -20,6 +20,8 @@
  * que a tela faz não é verificável nesta base — por isso a conta vive aqui.
  */
 
+import { diaLocal } from "./dia-e-noite-calculo";
+
 export interface PontoDaSerie {
   dia: string;
   valor: number | null;
@@ -97,7 +99,21 @@ export function tendenciaEmBarras(
    * meio dela. Agora um relógio parado desenha barras **à esquerda** e espaço
    * vazio à direita, que é o que aconteceu.
    */
-  const hoje = new Date(agora.getTime()).toISOString().slice(0, 10);
+  /**
+   * **"Hoje" é o dia do telefone, não o dia em UTC** (achado do review).
+   *
+   * Isto era `toISOString().slice(0, 10)`. O ficheiro gémeo, na mesma pasta,
+   * diz por extenso o contrário — *"a chave em UTC já mordeu três vezes nesta
+   * base"* — e a ingestão grava o dia **local** de quem mediu.
+   *
+   * Medido: um paciente em UTC−3, com duas leituras a 19 e 20 de Setembro e
+   * uma janela de 14 dias, às 22:00 da sua noite tem `toISOString` já no dia
+   * seguinte. A janela anda uma casa para a frente, as duas leituras caem fora
+   * dela e **o gráfico desaparece** — para voltar à meia-noite, sem nada a
+   * explicar. E o `ate` passava a ser *amanhã* na data dele, que é o campo com
+   * que a tela decide se escreve "última leitura".
+   */
+  const hoje = diaLocal(agora);
   const ultimoMedido = validos[validos.length - 1].dia;
   /* Um carimbo no futuro não encolhe a janela para trás do que já se mediu. */
   const fim = ultimoMedido > hoje ? ultimoMedido : hoje;

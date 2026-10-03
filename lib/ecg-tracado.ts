@@ -60,6 +60,87 @@ export const MM_POR_MICROVOLT = MM_POR_MILIVOLT / 1000;
 export const AMPLITUDE_MINIMA_UV = 50;
 
 /**
+ * **A régua única: este sinal dá um traçado?** (120 T-5)
+ *
+ * Havia duas réguas para a mesma pergunta. `lib/ecg-tem-sinal.ts` respondia
+ * `signal IS NOT NULL` — *"há um JSON lá"* —, e o `tracadoEmPapel` recusava
+ * desenhar com menos de duas amostras desenháveis ou com amplitude abaixo de
+ * `AMPLITUDE_MINIMA_UV`.
+ *
+ * Logo um sinal de `[null, null]`, ou um sinal constante, fazia a lista dizer
+ * *"tem traçado"* e o papel sair com *"o traçado deste registro ainda não foi
+ * obtido"*. É a família de "esconder botão não é fechar porta": **um critério
+ * só, lido pelos dois lados**.
+ *
+ * O que esta função **não** sabe é a geometria — quantas colunas cabem depende
+ * da frequência e da largura da faixa. Por isso o `tracadoEmPapel` mantém o seu
+ * `desenhaveis < 2` como guarda de desenho; esta é a condição necessária, e é a
+ * que os dois lados afirmam.
+ */
+export function amostrasPorColuna(frequenciaHz: number, pontosPorMm = 4): number {
+  return Math.max(1, Math.round(frequenciaHz / (MM_POR_SEGUNDO * pontosPorMm)));
+}
+
+/**
+ * Quantas amostras numéricas são precisas para haver **duas colunas**.
+ *
+ * Duas, porque uma coluna sozinha não é um traço: é um ponto. É a mesma regra
+ * que o `tracadoEmPapel` aplica com o seu `desenhaveis < 2`, e vive aqui para
+ * os outros leitores a poderem aplicar antes de desenhar.
+ */
+export function amostrasMinimas(frequenciaHz: number, pontosPorMm = 4): number {
+  return amostrasPorColuna(frequenciaHz, pontosPorMm) * 2;
+}
+
+export function sinalEDesenhavel(
+  amostrasMicroVolts: Array<number | null> | null | undefined,
+  /**
+   * A frequência da gravação.
+   *
+   * **É obrigatória, e isso foi o achado do QA.** Sem ela esta função
+   * respondia pela amplitude e pelo número de amostras, e o papel respondia
+   * também pela **geometria**: a 300 Hz cada coluna come 3 amostras, logo um
+   * sinal de 2 ou 3 amostras produz **uma** coluna e o papel recusa. Medido:
+   * `pico50`, `pico51` e `negativas` — três dos doze casos — davam *"tem
+   * traçado"* na lista e *"o traçado ainda não foi obtido"* no papel, que é
+   * exactamente o defeito que a T-5 existe para fechar.
+   *
+   * E sem frequência o papel recusa de qualquer maneira: um ECG sem escala de
+   * tempo não é mensurável com régua. Logo a resposta aqui também é `false` —
+   * a assimetria que eu tinha documentado como *"legítima"* era o defeito.
+   */
+  frequenciaHz: number | null | undefined,
+  /**
+   * A densidade de colunas, só para quem desenha com outra.
+   *
+   * O valor de produção é **4**, e é o que o SQL do `quaisTemTracado` assume. A
+   * opção existe porque alguns testes de geometria usam uma coluna por amostra
+   * (`pontosPorMm: 100`) para medir a escala — e sem este parâmetro o predicado
+   * recusava-lhes o sinal com a conta da densidade normal.
+   */
+  pontosPorMm = 4
+): boolean {
+  if (!Array.isArray(amostrasMicroVolts)) return false;
+  if (typeof frequenciaHz !== "number" || !Number.isFinite(frequenciaHz) || frequenciaHz <= 0) {
+    return false;
+  }
+
+  let quantas = 0;
+  let menor: number | null = null;
+  let maior: number | null = null;
+  for (const v of amostrasMicroVolts) {
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    quantas++;
+    if (menor === null || v < menor) menor = v;
+    if (maior === null || v > maior) maior = v;
+  }
+
+  if (quantas < amostrasMinimas(frequenciaHz, pontosPorMm)) return false;
+  if (menor === null || maior === null) return false;
+  return maior - menor >= AMPLITUDE_MINIMA_UV;
+}
+
+/**
  * A altura que uma faixa precisa para o traçado **caber inteiro**.
  *
  * O ECG do Bruno chega a **3,38 mV**. Numa faixa de 36 mm — ±1,8 mV a 10 mm/mV —
@@ -68,12 +149,28 @@ export const AMPLITUDE_MINIMA_UV = 50;
  * medida.
  *
  * Então a faixa cresce com o sinal, em passos de 5 mm para continuar alinhada
- * com a grelha grande. O mínimo de 36 mm mantém o caso comum numa página; o
- * máximo de 80 mm (±4 mV) é o que ainda deixa duas faixas numa A4 deitada.
+ * com a grelha grande. O mínimo é **40 mm** — e não 36, porque 36 não é múltiplo
+ * de 5 e o alinhamento com a grelha deixaria de ser verdade.
  *
- * O mínimo é **40 e não 36** porque 36 não é múltiplo de 5, e o comentário acima
- * promete alinhamento com a grelha grande. Uma promessa que o próprio código não
- * cumpre é a classe de defeito que me mordeu três vezes hoje.
+ * ## Quantas folhas isto custa, medido
+ *
+ * Trinta segundos, três faixas de dez, A4 deitada (02/10/2026):
+ *
+ * | pico | faixa | folhas |
+ * |---|---|---|
+ * | até 1,5 mV | 40 mm | 1 |
+ * | 2,0 mV | 45 mm | 2 |
+ * | 3,38 mV (o ECG real) | 75 mm | 2 |
+ * | 4,0 mV ou mais | 80 mm | 3 |
+ *
+ * O comentário anterior dizia que 80 mm *"ainda deixa duas faixas numa A4
+ * deitada"*. **Não deixa**: a 80 mm é uma faixa por folha — 21 de margem mais
+ * 80 mais 22 de rodapé são 123, e a segunda pediria 211 numa folha de 210. O
+ * máximo de 80 mm existe por ±4 mV cobrirem o que um ECG de pulso produz, não
+ * por caber duas vezes.
+ *
+ * Mais folhas não é problema desde que **cada uma** traga a escala e a
+ * ressalva — ver `fecharFolha` no `ecg-pdf.ts`, que é onde isso falhou.
  *
  * **A escala não muda** — continua 10 mm/mV. O que muda é o espaço, não a régua.
  */
@@ -188,19 +285,19 @@ export function tracadoEmPapel(
   if (typeof frequenciaHz !== "number" || !Number.isFinite(frequenciaHz) || frequenciaHz <= 0) {
     return null;
   }
+  const pontosPorMm = opcoes.pontosPorMm ?? 4;
+  /* A régua é a mesma de quem lista — ver `sinalEDesenhavel` (120 T-5). */
+  if (!sinalEDesenhavel(amostras, frequenciaHz, pontosPorMm)) return null;
 
   const segundosPorFaixa = opcoes.segundosPorFaixa ?? 10;
   const alturaMm = opcoes.alturaMm ?? 40;
-  const pontosPorMm = opcoes.pontosPorMm ?? 4;
 
   const duracaoSegundos = amostras.length / frequenciaHz;
   const larguraMm = segundosPorFaixa * MM_POR_SEGUNDO;
   const linhaDeBase = alturaMm / 2;
 
-  const amostrasPorPonto = Math.max(
-    1,
-    Math.round(frequenciaHz / (MM_POR_SEGUNDO * pontosPorMm))
-  );
+  /* A mesma conta que o `amostrasMinimas` usa — uma função, não duas cópias. */
+  const amostrasPorPonto = amostrasPorColuna(frequenciaHz, pontosPorMm);
 
   const amostrasPorFaixa = Math.round(segundosPorFaixa * frequenciaHz);
   const quantasFaixas = Math.ceil(amostras.length / amostrasPorFaixa);

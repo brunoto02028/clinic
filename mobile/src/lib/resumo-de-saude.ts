@@ -58,8 +58,15 @@ export interface Destaque {
  * exactamente o defeito da 119 T-9.
  *
  * `restingHr` mora em dois: a do **sono** é a frequência em repouso como as
- * palavras significam — a noite inteira, deitado —, e a das **medições** é a
- * média de quando a pessoa calhou de medir.
+ * palavras significam — a noite inteira, deitado, e é a Withings que a mede —,
+ * e a das **medições** é o **mínimo** das frequências capturadas no dia.
+ *
+ * Esta frase dizia *"a média"*, e estava errada: `vitalsByDay` faz
+ * `Math.min(...)`, porque a média de um dia de frequências não é uma frequência
+ * de repouso por definição nenhuma. O gémeo do servidor corrigiu a mesma frase
+ * e esta ficou — num par de ficheiros que existe para ser a única fonte de
+ * verdade sobre a proveniência, e que tem um teste a forçá-los a concordar nos
+ * **dados** mas nenhum que olhe para a prosa.
  */
 export const PREFERENCIA_DE_BALDE: Record<string, readonly string[]> = {
   sleepDuration: ["SLEEP"],
@@ -184,6 +191,15 @@ export interface EstadoDaLigacao {
   lastSyncError?: string | null;
   lastReadingAt?: string | null;
   daysSilent?: number | null;
+  /**
+   * Quando a ligação passou a precisar da pessoa (121 T-3).
+   *
+   * **É um estado, e não uma mensagem.** A decisão era tomada casando o texto
+   * do erro com `/refresh_token|invalid_grant|unauthor/i` — funciona enquanto a
+   * frase da Withings não mudar de palavras, e uma tela que fica muda por isso
+   * é a ausência silenciosa com outro nome.
+   */
+  needsReauthAt?: string | null;
 }
 
 export type Pendencia =
@@ -209,7 +225,15 @@ export function pendencias(ligacoes: EstadoDaLigacao[]): Pendencia[] {
   const out: Pendencia[] = [];
   for (const c of ligacoes) {
     const erro = c.lastSyncError ?? "";
-    if (/refresh_token|invalid_grant|unauthor/i.test(erro)) {
+    /*
+     * **O estado primeiro, a mensagem como recurso.**
+     *
+     * O `needsReauthAt` é escrito no sítio onde a renovação falha, e é o mesmo
+     * para os quatro caminhos. A leitura da mensagem fica para as ligações
+     * marcadas antes de a coluna existir — e para o caso de alguém escrever o
+     * erro sem passar por lá.
+     */
+    if (c.needsReauthAt || /refresh_token|invalid_grant|unauthor/i.test(erro)) {
       out.push({ tipo: "autorizacao_expirada" });
       continue;
     }

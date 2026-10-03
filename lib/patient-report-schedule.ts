@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { getPatientReportData, renderPatientReportHTML } from "@/lib/patient-report";
 import { temAlgumDado } from "@/lib/patient-monitoring";
@@ -176,6 +177,32 @@ export async function gerarRelatoriosVencidos(
         const dados = await getPatientReportData(p.id, { days: diasDoPeriodo(cadencia) });
         if (!dados.patient) continue;
 
+        /**
+         * **Uma falha de leitura não tranca a semana** (achado G4 do QA).
+         *
+         * `temAlgumDado(null)` é `false`, logo com o acompanhamento a falhar
+         * isto escrevia uma linha com `html: ""` e `hasData: false`. Essa linha
+         * fica **escondida** da lista do paciente — *"um relatório semanal
+         * dizendo 'nada' é pior que nenhum relatório"* — e a existência dela faz
+         * a rodada seguinte dar `jaTem → continue`.
+         *
+         * Resultado: um tropeção de meio segundo no banco convertia uma semana
+         * em *"olhámos e não havia nada"*, de forma **permanente e invisível**.
+         *
+         * Agora salta sem escrever: a semana fica por gerar, e a rodada seguinte
+         * tenta outra vez. Uma semana em atraso é recuperável; uma semana
+         * trancada como vazia não é.
+         */
+        const naoLidos: string[] = (dados as any).naoLidos ?? [];
+        if (naoLidos.length > 0) {
+          r.falhas++;
+          console.error(
+            `[patient-report-schedule] ${cadencia} de ${p.id}: não lido (${naoLidos.join(", ")}) — ` +
+              `nada escrito, para a rodada seguinte poder tentar`
+          );
+          continue;
+        }
+
         const houveAlgo = temAlgumDado((dados as any).monitoring);
         /*
          * Na língua do paciente: este é lido por ele, não pela clínica. Ver
@@ -197,6 +224,19 @@ export async function gerarRelatoriosVencidos(
             periodEnd: fimDoPeriodo(cadencia, inicio),
             html,
             hasData: houveAlgo,
+            /**
+             * **O resumo também nos semanais** (achado G10 do QA).
+             *
+             * Só o caminho a pedido o escrevia, logo **toda** linha do cron
+             * ficava com `contentHash: null` — e a lista do paciente selecciona
+             * a coluna *"para a tela poder dizer que dois relatórios são o mesmo
+             * papel"*. Para metade das linhas ela nunca podia dizer.
+             *
+             * Um HTML vazio (o caso `hasData: false`) continua sem resumo: não
+             * há conteúdo para resumir, e um resumo de `""` seria igual em todos
+             * eles, o que é pior do que `null`.
+             */
+            contentHash: html ? createHash("sha256").update(html).digest("hex") : null,
           },
         });
         if (houveAlgo) r.gerados++;

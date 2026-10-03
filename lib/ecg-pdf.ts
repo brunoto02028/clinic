@@ -235,6 +235,29 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
     alturaMm: alturaQueOSinalPede(dados.signal as any),
   });
 
+  /**
+   * **A ressalva vai em cada folha.**
+   *
+   * A frase *"não é um diagnóstico e não foi lido por um clínico"* era escrita
+   * uma vez, depois do laço das faixas — ou seja, **só na última página**.
+   * Enquanto o papel tinha sempre uma página isso bastava; desde que a faixa
+   * cresce com o sinal, não tem: medido em 02/10/2026, o ECG real de 3,38 mV
+   * pede 75 mm e passa a duas folhas, e a primeira saía com uma tira de ECG
+   * milimetrada, com pulso de calibração, **sem a ressalva**.
+   *
+   * Uma folha de ECG que se separa das outras — e separa-se, porque é papel —
+   * tem de dizer em si mesma o que é.
+   */
+  const escreverRodape = (yAtual: number) => {
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      doc.splitTextToSize(t.rodape, 297 - margem * 2),
+      margem,
+      Math.min(Math.max(yAtual + 2, 190), 200)
+    );
+  };
+
   if (!tracado) {
     /*
      * Sem traçado o papel **ainda vale** — a gravação aconteceu, e a conclusão
@@ -250,6 +273,7 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
      * diagnóstico — saía em itálico, com ar de legenda em vez de afirmação.
      */
     doc.setFont("helvetica", "normal");
+    escreverRodape(y + 4);
   } else {
     doc.setTextColor(30, 30, 30);
     /*
@@ -266,8 +290,53 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
      */
     const alturaDaPagina = 210;
     const rodapeMm = 22;
+
+    /**
+     * **O que fecha uma folha**: a escala, o aviso de corte se houver, e a
+     * ressalva.
+     *
+     * Os três eram escritos uma vez, depois do laço — logo só na última página.
+     * A linha da escala é o que diz *"25 mm/s, 10 mm/mV"*, e sem ela quem põe
+     * uma régua na tira mede com a escala errada; o aviso de corte é o que
+     * impede alguém de ler 4 mV como 4 mV quando foram 5. Numa folha de ECG
+     * nenhum dos três é rodapé: é parte do traçado.
+     */
+    const fecharFolha = (yAtual: number) => {
+      doc.setFontSize(8);
+      doc.setTextColor(90, 90, 90);
+      let escala = frasePadraoDaEscala(dados.samplingHz, idioma);
+      if (tracado.amostrasPorPonto > 1) {
+        /*
+         * Dito, e não escondido. E dito com precisão: cada coluna mostra o
+         * **mínimo e o máximo** do punhado, que é o que preserva a altura da
+         * espiga. A versão anterior fazia a média e escrevia que continuava a
+         * medir certo — certo no tempo, errado na amplitude, por um factor de
+         * até três.
+         */
+        escala += t.colunas(tracado.amostrasPorPonto);
+      }
+      doc.text(escala, margem, yAtual);
+      let yy = yAtual + 4;
+
+      if (tracado.cortado) {
+        /*
+         * **O corte tem de ser dito.** Um traçado preso à faixa mede a
+         * amplitude errada para menos, e quem lê não tem como saber. E tem de
+         * ser dito em **todas** as folhas: o aviso é da gravação, não da
+         * página, e saía só na última enquanto as tiras cortadas estavam nas
+         * anteriores.
+         */
+        doc.setTextColor(170, 60, 60);
+        doc.text(`${t.cortado} ${tracado.picoMv.toFixed(2)} mV`, margem, yy);
+        yy += 4;
+      }
+
+      escreverRodape(yy);
+    };
+
     for (const faixa of tracado.faixas) {
       if (y + tracado.alturaMm + rodapeMm > alturaDaPagina) {
+        fecharFolha(y);
         doc.addPage("a4", "landscape");
         y = margem;
       }
@@ -367,50 +436,9 @@ export function construirPdfDoEcg(dados: DadosDoEcgParaPapel): ArrayBuffer {
       y += tracado.alturaMm + 8;
     }
 
-    doc.setFontSize(8);
-    doc.setTextColor(90, 90, 90);
-    let escala = frasePadraoDaEscala(dados.samplingHz, idioma);
-    if (tracado.amostrasPorPonto > 1) {
-      /*
-       * Dito, e não escondido. E dito com precisão: cada coluna mostra o
-       * **mínimo e o máximo** do punhado, que é o que preserva a altura da
-       * espiga. A versão anterior fazia a média e escrevia que continuava a
-       * medir certo — certo no tempo, errado na amplitude, por um factor de
-       * até três.
-       */
-      escala += t.colunas(tracado.amostrasPorPonto);
-    }
-    doc.text(escala, margem, y);
-    y += 4;
-
-    if (tracado.cortado) {
-      /*
-       * **O corte tem de ser dito.** Um traçado preso à faixa mede a amplitude
-       * errada para menos, e quem lê não tem como saber.
-       */
-      doc.setTextColor(170, 60, 60);
-      doc.text(
-        `${t.cortado} ${tracado.picoMv.toFixed(2)} mV`,
-        margem,
-        y
-      );
-      y += 4;
-    }
+    /* E a última folha fecha-se como as outras. */
+    fecharFolha(y);
   }
-
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  /*
-   * O rodapé vai **na página onde o traçado acabou**, e nunca abaixo do limite
-   * da folha. Antes era `Math.max(y + 2, 190)`, que com faixas a mais empurrava
-   * a frase para fora da A4 — e com ela o aviso que impede o papel de ser lido
-   * como mais do que é.
-   */
-  doc.text(
-    doc.splitTextToSize(t.rodape, 297 - margem * 2),
-    margem,
-    Math.min(Math.max(y + 2, 190), 200)
-  );
 
   return doc.output("arraybuffer");
 }

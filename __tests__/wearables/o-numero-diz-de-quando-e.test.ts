@@ -73,7 +73,11 @@ describe("qual é a leitura mais recente", () => {
 
 describe("a frase", () => {
   const frase = (minutos: number) =>
-    fraseDaUltimaLeitura(ultimaLeitura([{ lastSyncedAt: haMinutos(minutos) }], agora), horaLocal);
+    fraseDaUltimaLeitura(
+      ultimaLeitura([{ lastSyncedAt: haMinutos(minutos) }], agora),
+      horaLocal,
+      agora
+    );
 
   it("**abaixo de dois minutos não diz nada**", () => {
     // Quem acabou de puxar a tela sabe que acabou de puxar.
@@ -122,9 +126,21 @@ describe("o caso do Bruno, reproduzido", () => {
      * É esta linha que explica, sem ninguém ter de perguntar, porque é que o
      * nosso número e o do app da Withings não são iguais.
      */
+    /*
+     * **O `agora` fixo, e não o relógio da máquina.**
+     *
+     * Esta chamada não o passava, logo caía no `new Date()` por omissão: o teste
+     * passava no dia 02 e **falhou no dia 03**, a dizer "Atualizado ontem". Um
+     * teste cujo resultado muda com a data em que corre não mede a regra — mede
+     * o calendário. É a mesma família do `TZ=UTC` no `jest.config.js`.
+     *
+     * O parâmetro existe desde que a fronteira passou a ser a meia-noite; este
+     * sítio ficou para trás.
+     */
     const r = fraseDaUltimaLeitura(
       ultimaLeitura([{ lastSyncedAt: "2026-10-02T07:05:00.000Z" }], agora),
-      horaLocal
+      horaLocal,
+      agora
     );
     expect(r!.pt).toBe("Atualizado às 07:05");
   });
@@ -141,7 +157,11 @@ describe("uma hora sem dia apresenta-se como hoje", () => {
    * casa à frente.
    */
   const frase = (minutos: number) =>
-    fraseDaUltimaLeitura(ultimaLeitura([{ lastSyncedAt: haMinutos(minutos) }], agora), horaLocal);
+    fraseDaUltimaLeitura(
+      ultimaLeitura([{ lastSyncedAt: haMinutos(minutos) }], agora),
+      horaLocal,
+      agora
+    );
 
   it("**dentro do dia, a hora** — que é o que se compara com o app deles", () => {
     expect(frase(138)!.pt).toBe("Atualizado às 07:05");
@@ -160,8 +180,43 @@ describe("uma hora sem dia apresenta-se como hoje", () => {
     expect(frase(60 * 24 * 3)!.en).toBe("Updated 3 days ago");
   });
 
-  it("**a fronteira é o dia, não um número redondo de horas**", () => {
-    expect(frase(60 * 23)!.pt).toMatch(/às /);
-    expect(frase(60 * 25)!.pt).toBe("Atualizado ontem");
+  /**
+   * **A fronteira é a meia-noite, não 24 horas** (achado do review de 02/10).
+   *
+   * Este teste chamava-se assim e media outra coisa: assegurava 23 h → *"às
+   * …"* e 25 h → *"ontem"*, que é exactamente a regra das 24 horas redondas. O
+   * nome afirmava a propriedade certa, a asserção provava a errada, e o defeito
+   * passava verde no meio.
+   *
+   * Por isso agora os instantes são explícitos, em vez de "há N minutos": a
+   * pergunta é de que **dia** é o carimbo, e "há N minutos" não a sabe
+   * responder.
+   */
+  const em = (iso: string, quandoAgora: Date) =>
+    fraseDaUltimaLeitura(
+      ultimaLeitura([{ lastSyncedAt: iso }], quandoAgora),
+      horaLocal,
+      quandoAgora
+    );
+
+  it("**às 00:30, um carimbo das 23:00 de ontem já é 'ontem'** — e faltam 22,5 h para as 23:00", () => {
+    /*
+     * Uma hora e meia de distância, logo **dentro** das 24 horas: a regra
+     * antiga escrevia "Atualizado às 23:00" a quem lia às 00:30, uma hora no
+     * futuro.
+     */
+    const meiaNoiteEMeia = new Date("2026-10-03T00:30:00.000Z");
+    const r = em("2026-10-02T23:00:00.000Z", meiaNoiteEMeia)!;
+    expect(r.pt).not.toMatch(/às /);
+    expect(r.pt).toBe("Atualizado ontem");
+    expect(r.en).toBe("Updated yesterday");
+  });
+
+  it("**e 23 horas atrás, se foi ontem, é 'ontem'** — não 'às 10:23'", () => {
+    expect(em("2026-10-01T10:23:00.000Z", agora)!.pt).toBe("Atualizado ontem");
+  });
+
+  it("dentro do mesmo dia diz a hora, mesmo oito horas depois", () => {
+    expect(em("2026-10-02T00:30:00.000Z", agora)!.pt).toBe("Atualizado às 00:30");
   });
 });

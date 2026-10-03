@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { patientGate } from "@/lib/patient-gate";
@@ -37,7 +38,21 @@ export async function GET() {
     // Os vazios ficam para a clínica: um relatório semanal dizendo "nada" é
     // pior que nenhum relatório.
     where: { patientId: gate.gate!.userId, hasData: true },
-    orderBy: { periodStart: "desc" },
+    /**
+     * **A ordem é a de criação, não a do período** (120 T-7).
+     *
+     * Ordenava por `periodStart`. Um relatório a pedido cobre 90 dias por
+     * omissão, logo o `periodStart` dele é de há três meses — e um semanal
+     * gerado há duas semanas tem `periodStart` mais recente. A lista punha o
+     * semanal **antes** do que a pessoa acabou de pedir.
+     *
+     * Carregar o botão e não ver o resultado no topo lê-se como *"não
+     * funcionou"*, e a pessoa carrega outra vez.
+     *
+     * `createdAt` é a ordem em que ela os viu nascer, e é a que o
+     * `reaproveitarRelatorio` já usa para escolher o último.
+     */
+    orderBy: { createdAt: "desc" },
     take: 52,
     select: {
       id: true,
@@ -46,8 +61,34 @@ export async function GET() {
       periodEnd: true,
       createdAt: true,
       therapistNote: true,
+      /*
+       * **O resumo do conteúdo** (120 T-8), para a tela poder dizer que dois
+       * relatórios são o mesmo papel. Eles podem coexistir — é escolha do
+       * Bruno — e o que faltava era saber se não são iguais.
+       */
+      contentHash: true,
     },
-  }).catch(() => []);
+  }).catch((e: any) => {
+    /**
+     * **Uma falha de leitura não é "ainda não há relatórios"** (120 T-1).
+     *
+     * Isto era `.catch(() => [])`, e a tela do paciente escrevia *"ainda não há
+     * relatórios"* sobre uma lista que podia ter dez. É a mesma ausência
+     * silenciosa que fez o ECG desaparecer do papel: o estado de falha e o
+     * estado vazio eram a mesma resposta.
+     *
+     * `null` quer dizer *"não consegui ler"*; `[]` quer dizer *"não há"*.
+     */
+    console.error("[patient/reports] lista não pôde ser lida:", e?.message ?? e);
+    return null;
+  });
+
+  if (reports === null) {
+    return NextResponse.json(
+      { error: "Could not load your reports right now", code: "reports_unavailable" },
+      { status: 503 }
+    );
+  }
 
   // Cada um ja vem com o link que o navegador do telefone consegue abrir: o
   // bearer nao viaja para la, entao a permissao viaja no link (099 T-5).
@@ -153,6 +194,13 @@ export async function POST(req: NextRequest) {
   if (reaproveitado) {
     return NextResponse.json({
       id: reaproveitado,
+      /*
+       * **O quarto estado que faltava** (achado da 2ª rodada). Este ramo não
+       * devolvia `igualAoAnterior` nenhum, logo quem lê a resposta via
+       * `undefined` ao lado do `true | false | null` documentado. Aqui é
+       * trivialmente o mesmo papel: é o próprio.
+       */
+      igualAoAnterior: true,
       /** Dito, e não escondido: a tela pode querer explicar porque é o mesmo. */
       reaproveitado: true,
       url: linkDoRelatorio(reaproveitado, userId),
@@ -170,7 +218,24 @@ export async function POST(req: NextRequest) {
 
   const { getPatientReportData, renderPatientReportHTML } = await import("@/lib/patient-report");
   const dados = await getPatientReportData(userId, { days: dias });
-  if (!dados.patient) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!dados.patient) {
+    /**
+     * **404 só quando a pessoa não existe** (achado G3 do QA).
+     *
+     * O `lerOuFalhar` devolve `null` e nomeia `"paciente"` na lista. Isto
+     * respondia **404 `not_found`** a quem acabou de carregar no botão do
+     * próprio relatório — e ele existe, senão o `patientGate` não o teria
+     * deixado chegar aqui. Uma falha transitória entre as duas leituras dizia
+     * ao paciente que ele não existe.
+     */
+    if ((dados as any).naoLidos?.includes("paciente")) {
+      return NextResponse.json(
+        { error: "Could not read your details right now", code: "read_failed" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
   const { inicio, fim } = periodoDoRelatorio(dias);
 
@@ -183,32 +248,121 @@ export async function POST(req: NextRequest) {
    * carregou num botão é não responder, e a pessoa ficaria a carregar outra vez.
    * Um relatório que diz que o período esteve vazio é uma resposta.
    */
-  const criado = await (prisma as any).patientReport.create({
-    data: {
-      clinicId,
-      patientId: userId,
-      cadence: "ON_DEMAND",
-      periodStart: inicio,
-      periodEnd: fim,
-      /**
-       * **Na língua do paciente** (achado do QA, 02/10).
-       *
-       * `User.reportLanguage` existe desde sempre e este documento ignorava-o:
-       * com `"pt"` o HTML saía byte a byte igual ao inglês. O PDF do ECG e o da
-       * avaliação corporal já o respeitavam; este não — e é precisamente este
-       * que o paciente leva a um médico.
-       */
-      html: renderPatientReportHTML(dados, {
-        idioma: quem?.reportLanguage === "pt" ? "pt" : "en",
-      }),
-      hasData: true,
-    },
-    select: { id: true },
+  /**
+   * **Na língua do paciente** (achado do QA, 02/10).
+   *
+   * `User.reportLanguage` existe desde sempre e este documento ignorava-o: com
+   * `"pt"` o HTML saía byte a byte igual ao inglês. O PDF do ECG e o da
+   * avaliação corporal já o respeitavam; este não — e é precisamente este que o
+   * paciente leva a um médico.
+   */
+  const html = renderPatientReportHTML(dados, {
+    idioma: quem?.reportLanguage === "pt" ? "pt" : "en",
   });
+
+  /**
+   * **O resumo do conteúdo** (120 T-8).
+   *
+   * Dois relatórios do mesmo paciente **podem** coexistir — o `periodStart`
+   * carrega a hora de propósito, para quem pede ao meio-dia não ficar preso ao
+   * retrato das nove. O que faltava era saber *se não são iguais*, e dois papéis
+   * iguais não se distinguem pela data nem pelo tamanho.
+   */
+  const resumoDoConteudo = createHash("sha256").update(html).digest("hex");
+
+  /* O resumo do último a pedido, para a resposta poder dizer se mudou algo. */
+  const resumoAnterior = await (prisma as any).patientReport
+    .findFirst({
+      /*
+       * **Qualquer cadência, e não só o a pedido** (achado G10 do QA).
+       *
+       * Comparava só contra `ON_DEMAND`: o paciente cujo semanal chegou ontem e
+       * que carrega no botão recebia `igualAoAnterior: null` mesmo quando o
+       * papel era byte a byte igual ao semanal logo acima dele na lista — que é
+       * a comparação com mais chance de importar.
+       */
+      where: { patientId: userId },
+      orderBy: { createdAt: "desc" },
+      select: { contentHash: true },
+    })
+    .then((r: any) => r?.contentHash ?? null)
+    .catch(() => null);
+
+  let criado: { id: string };
+  try {
+    criado = await (prisma as any).patientReport.create({
+      data: {
+        clinicId,
+        patientId: userId,
+        cadence: "ON_DEMAND",
+        periodStart: inicio,
+        periodEnd: fim,
+        html,
+        contentHash: resumoDoConteudo,
+        hasData: true,
+      },
+      select: { id: true },
+    });
+  } catch (e: any) {
+    /**
+     * **Dois pedidos no mesmo milissegundo** (120 T-8).
+     *
+     * A chave é `(patientId, cadence, periodStart)` e o `periodStart` tem
+     * precisão de milissegundo, logo a colisão é rara — mas real com dois
+     * contentores a servir o mesmo paciente, e dava **500** a quem carregou no
+     * botão. O tecto de dez minutos não a fecha: ele lê antes de qualquer um
+     * dos dois ter escrito.
+     *
+     * O vencedor escreveu o mesmo papel. Devolver o dele é a resposta certa, e
+     * é o mesmo comportamento do reaproveitamento, pelo mesmo motivo: para quem
+     * pediu não faz diferença.
+     */
+    if (e?.code === "P2002") {
+      const existente = await (prisma as any).patientReport
+        .findFirst({
+          where: { patientId: userId, cadence: "ON_DEMAND", periodStart: inicio },
+          /* O resumo também: o `igualAoAnterior` tem de ser **medido**. */
+          select: { id: true, contentHash: true },
+        })
+        .catch(() => null);
+      if (existente) {
+        return NextResponse.json({
+          id: existente.id,
+          reaproveitado: true,
+          /*
+           * **Comparado, e não afirmado** (achado da 2ª rodada do review).
+           *
+           * Isto era `igualAoAnterior: true` fixo — e o campo é documentado como
+           * *"o HTML bate byte a byte"*. Neste ramo nada tinha sido comparado: o
+           * `existente` vinha com `select: { id: true }`. Era uma alegação sobre
+           * o conteúdo, feita sem olhar para o conteúdo, num campo que existe
+           * precisamente para o Bruno não ter de comparar à vista.
+           */
+          igualAoAnterior:
+            existente.contentHash == null
+              ? null
+              : existente.contentHash === resumoDoConteudo,
+          url: linkDoRelatorio(existente.id, userId),
+        });
+      }
+    }
+    throw e;
+  }
 
   return NextResponse.json({
     id: criado.id,
     reaproveitado: false,
+    /**
+     * **Se este papel é igual ao anterior.**
+     *
+     * A resposta do Bruno à T-8: *"podem sim existir, só preciso saber se não
+     * são iguais"*. `true` quer dizer que o HTML bate byte a byte com o do
+     * último a pedido; `false` que mudou algo. `null` quando não havia anterior,
+     * ou quando o anterior é de antes desta coluna existir — e `null` **não**
+     * quer dizer "igual".
+     */
+    igualAoAnterior:
+      resumoAnterior === null ? null : resumoAnterior === resumoDoConteudo,
     dias,
     url: linkDoRelatorio(criado.id, userId),
   });

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   if (provider.toUpperCase() === 'WITHINGS' && connection.accessToken) {
     subscriptionsRevoked = true;
     try {
-      const token = await withingsAccessToken(connection);
+      const token = await withingsAccessToken(connection, "desligar");
       const callbackUrl = withingsCallbackUrl();
       const results = await Promise.all(
         [WITHINGS_APPLI.BLOOD_PRESSURE, WITHINGS_APPLI.WEIGHT, WITHINGS_APPLI.ACTIVITY, WITHINGS_APPLI.SLEEP].map((appli) =>

@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { registarFalhaDaLigacao } from "@/lib/withings-estado-da-ligacao";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logSystem } from "@/lib/system-logger";
@@ -41,6 +42,8 @@ const KINDS_BY_APPLI: Record<number, Array<"bp" | "activity" | "sleep">> = {
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ status: 0 });
 
+  /* Fora do `try` para o `catch` o alcançar — ver o registo da falha, abaixo. */
+  let connection: any = null;
   try {
     const raw = await req.text();
     const form = new URLSearchParams(raw);
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
      * mesmo aparelho". Era o atalho que o review de 27/09/2026 derrubou: o
      * terapeuta que esquece de abrir a janela produz exatamente este estado.
      */
-    const connection = await (prisma as any).wearableConnection.findFirst({
+    connection = await (prisma as any).wearableConnection.findFirst({
       where: { provider: "WITHINGS", providerUserId: String(userid) },
       orderBy: { isClinicDevice: "desc" },
       select: {
@@ -139,6 +142,8 @@ export async function POST(req: NextRequest) {
       since,
       until,
       kinds: KINDS_BY_APPLI[appli] ?? ["bp"],
+      /* Quem pediu, para o log da renovação o dizer — ver 121 T-5. */
+      origem: "webhook",
     });
 
     // O carimbo de chegada é do `ingestWithings`, com a data da leitura — os
@@ -150,7 +155,20 @@ export async function POST(req: NextRequest) {
     );
     return ok();
   } catch (e: any) {
+    /**
+     * **O webhook deixa de engolir a falha** (121 T-2).
+     *
+     * Era `console.error` e mais nada: nem `lastSyncError`, nem estado, nem
+     * contador. A ligação do Bruno morreu assim — o log do contentor repetia
+     * `Invalid Params: invalid refresh_token` e a tela dele não mostrava
+     * pendência nenhuma, porque não havia nada guardado para ela mostrar.
+     *
+     * Continua a responder `ok()`: a Withings corta a assinatura de quem não
+     * responde `status: 0`, e perder a assinatura seria parar de sincronizar
+     * por causa de um erro a registar que parámos de sincronizar.
+     */
     console.error("[withings/webhook] error:", e?.message);
+    if (connection?.id) await registarFalhaDaLigacao(connection.id, e);
     return ok();
   }
 }

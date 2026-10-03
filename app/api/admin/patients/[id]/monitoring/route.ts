@@ -10,7 +10,7 @@ import {
   accessErrorResponse,
   AccessError,
 } from "@/lib/tenant-access";
-import { getMonitoringData } from "@/lib/patient-monitoring";
+import { getMonitoringData, pressaoPorDia, mediaPorDia } from "@/lib/patient-monitoring";
 import { desviosDosPontos } from "@/lib/monitoring-deviation";
 
 /**
@@ -85,7 +85,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       (prisma as any).bloodPressureReading.findMany({
         where: { patientId: paciente.id, measuredAt: { gte: desde } },
         orderBy: { measuredAt: "asc" },
-        select: { systolic: true, diastolic: true, measuredAt: true },
+        /* `timezone` é o que faz o dia da pressão ser o da medição (120 T-3). */
+        select: { systolic: true, diastolic: true, measuredAt: true, timezone: true },
       }).catch(() => []),
       /*
        * **As metas que o paciente definiu** (118 T-7).
@@ -178,12 +179,34 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         hrv: serie("hrv"),
         spo2: serie("spo2"),
         steps: serie("steps"),
-        pain: (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.painLevel })),
-        mood: (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.moodLevel })),
-        systolic: (pressao as any[]).map((r) => ({
-          dia: new Date(r.measuredAt).toISOString().split("T")[0],
-          valor: r.systolic,
-        })),
+        /*
+         * **Um ponto por dia, como a pressão duas linhas abaixo** (achado da 2ª
+         * rodada do review). O `DailyCheckIn` tem até três linhas por dia —
+         * manhã, tarde e noite —, e isto desenhava três pontos com o mesmo `x`.
+         */
+        pain: mediaPorDia((checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.painLevel }))),
+        mood: mediaPorDia((checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.moodLevel }))),
+        /**
+         * **A pressão da clínica usa a mesma conta do papel** (achado do code
+         * review, 120 T-3).
+         *
+         * Isto fazia `new Date(r.measuredAt).toISOString()` à mão — ou seja
+         * UTC, e **uma leitura por ponto**. Três defeitos de uma vez:
+         *
+         * - uma leitura às 00:30 de Londres no verão caía em `D−1` aqui e em
+         *   `D` no papel do paciente: o terapeuta e o paciente a ver dias
+         *   diferentes da mesma medição, no item em que errar não é aceitável;
+         * - um dia com três medições dava **três pontos com o mesmo `dia`**,
+         *   que é exactamente o que o `pressaoPorDia` existe para impedir;
+         * - não havia série diastólica nenhuma.
+         *
+         * `pressaoPorDia` é a função do papel. Uma segunda cópia da conta teria
+         * o mesmo defeito que a primeira, mais tarde — a regra do Bruno é que o
+         * que está no app está na clinic, e isso vale para a conta e não só
+         * para a tela.
+         */
+        systolic: pressaoPorDia(pressao as any[], "systolic"),
+        diastolic: pressaoPorDia(pressao as any[], "diastolic"),
       },
     });
   } catch (err) {

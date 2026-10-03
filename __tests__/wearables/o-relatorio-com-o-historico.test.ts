@@ -177,7 +177,9 @@ describe("comparar a pessoa com ela mesma", () => {
  * chamada: três deles caíram quando `renderMonitoringHTML` ganhou um parâmetro,
  * sem que nada do que eles guardam tivesse mudado.
  */
-const comAcompanhamento = (opts: { dias?: number } = {}) => {
+const semDado = { atual: null, anterior: null, variacao: null, dias: 0 };
+
+const comAcompanhamento = (opts: { dias?: number } = {}, sobrepor: Record<string, unknown> = {}) => {
   const dias = opts.dias ?? 30;
   const metrica = (atual: number) => ({ atual, variacao: 0, dias });
   return {
@@ -216,6 +218,7 @@ const comAcompanhamento = (opts: { dias?: number } = {}) => {
       exercicio: { registros: 0, diasComExercicio: 0 },
       comoSeSentiu: { registros: 0, dor: metrica(0), humor: metrica(0), ultimos: [] },
       consultas: [],
+          ...sobrepor,
     },
   } as any;
 };
@@ -247,16 +250,47 @@ describe("o relatório", () => {
   });
 
   it("**seção sem dado não aparece**", () => {
-    // Um relatório com seis "sem dados" é pior que um relatório curto.
-    expect(relatorio).toMatch(/if \(mon\.pressao\.leituras > 0\)/);
-    expect(relatorio).toMatch(/if \(mon\.ecg\.length > 0\)/);
-    expect(relatorio).toMatch(/if \(mon\.exercicio\.registros > 0\)/);
-    expect(relatorio).toMatch(/if \(mon\.temSinais\)/);
+    /*
+     * Um relatório com seis *"sem dados"* é pior que um relatório curto.
+     *
+     * **Medido no HTML, e não no fonte.** Isto afirmava
+     * `toMatch(/if \(mon\.pressao\.leituras > 0\)/)` — lia o código como texto, e
+     * quebrou no dia em que a condição ganhou uma guarda à frente, sem que nada
+     * do comportamento tivesse mudado. Um teste que quebra por um refactor
+     * inócuo é um teste que a próxima pessoa apaga.
+     */
+    const vazio = renderPatientReportHTML(
+      comAcompanhamento({}, {
+        temSinais: false,
+        pressao: { leituras: 0, sistolica: semDado, diastolica: semDado },
+        ecg: [],
+        exercicio: { registros: 0, diasComExercicio: 0 },
+        consultas: [],
+        comoSeSentiu: { registros: 0, ultimos: [], dor: semDado, humor: semDado },
+      })
+    );
+    for (const titulo of ["Blood pressure", "ECG", "Exercise", "How you felt"]) {
+      expect(vazio).not.toContain(`<h2>${titulo}</h2>`);
+    }
   });
 
   it("e falha na coleta não derruba o relatório inteiro", () => {
-    // O relatório clínico continua saindo mesmo se o monitoramento falhar.
-    expect(relatorio).toMatch(/getMonitoringData\([\s\S]{0,60}\.catch\(\(\) => null\)/);
+    /*
+     * **Medido pelo resultado.** Isto procurava o `.catch(() => null)` no fonte;
+     * ele saiu quando o `lerOuFalhar` entrou (120 T-1), e o comportamento que
+     * importa — o papel continua a sair — é o mesmo.
+     *
+     * E agora há mais: o papel **diz** que faltou algo, que é a parte que a
+     * versão anterior não tinha.
+     */
+    const semAcompanhamento = renderPatientReportHTML({
+      ...(comAcompanhamento() as any),
+      monitoring: null,
+      naoLidos: ["acompanhamento"],
+    } as any);
+    expect(semAcompanhamento).toContain("not a diagnosis");
+    expect(semAcompanhamento).toContain("could not be read");
+    expect(semAcompanhamento.length).toBeGreaterThan(2000);
   });
 
   it("**não há frase que conclua algo clínico**", () => {
@@ -284,7 +318,16 @@ describe("o relatório", () => {
     expect(en(30)).toMatch(/average of the 30 days with data/);
     /* Com um dia só não há média nenhuma, e dizer "média de 1 dia" seria pior. */
     expect(en(1)).toMatch(/on the 1 day with data/);
-    expect(en(1)).not.toMatch(/average/);
+    /*
+     * **A varredura é da legenda, não do documento** (120 T-6).
+     *
+     * Era `not.toMatch(/average/)` sobre o HTML inteiro, e passou a acusar à
+     * toa: o papel ganhou a frase de **como cada número foi feito**, e o SpO₂ é
+     * de facto *"average of the day's readings"*. Uma asserção larga que apanha
+     * texto correcto é uma asserção que a próxima pessoa desliga — e esta
+     * protege um número que já contradisse a tela do Bruno.
+     */
+    expect(en(1)).not.toMatch(/average of the 1 day/);
   });
 
   it("**e em português também**", () => {
@@ -292,7 +335,8 @@ describe("o relatório", () => {
       renderPatientReportHTML(comAcompanhamento({ dias: n }), { idioma: "pt" });
     expect(pt(30)).toMatch(/média dos 30 dias com dados/);
     expect(pt(1)).toMatch(/no único dia com dado/);
-    expect(pt(1)).not.toMatch(/média/);
+    /* Idem: a legenda, e não o documento — ver a nota acima. */
+    expect(pt(1)).not.toMatch(/média dos 1 dias/);
   });
 
   it("**e passos não têm casa decimal** — ninguém deu meio passo", () => {

@@ -436,7 +436,22 @@ describe("o aparelho que gravou", () => {
      * `model`. Esta tabela é recurso, e só tem o que foi medido.
      */
     expect(aparelhoPorExtenso(94)).toBe("Withings ScanWatch 2");
-    expect(Object.keys(MODELOS)).toHaveLength(1);
+    /*
+     * **Todo nome da tabela começa por "Withings"** — e não "a tabela tem uma
+     * linha".
+     *
+     * Fixava o tamanho: `toHaveLength(1)`. O ficheiro diz que *"a lista cresce
+     * quando um código novo for visto"*, logo o primeiro código legitimamente
+     * medido quebrava o teste — e um teste que quebra por o código estar certo
+     * ensina a próxima pessoa a apagar a asserção.
+     *
+     * O que importa é que nada entre aqui por palpite: um nome sem marca, ou um
+     * código que não seja um número, é a invenção a voltar.
+     */
+    for (const [codigo, nome] of Object.entries(MODELOS)) {
+      expect(Number.isInteger(Number(codigo))).toBe(true);
+      expect(nome).toMatch(/^Withings /);
+    }
   });
 
   it("**e os que eu tinha suposto saíram**", () => {

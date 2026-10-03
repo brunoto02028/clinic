@@ -89,8 +89,19 @@ export async function POST(request: NextRequest) {
   }
   const userId = eff.userId;
 
+  /**
+   * **`ERROR` entra** (121 T-3, terceiro sítio com o mesmo defeito).
+   *
+   * Era `status: 'CONNECTED'` só. Desde que uma cadeia invalidada é marcada
+   * `ERROR`, puxar a tela respondia **404 "Not connected"** a quem está ligado
+   * — e "não conectado" é a frase errada para quem tem o aparelho ligado e
+   * precisa de reautorizar. A tentativa falha na mesma, mas falha a dizer a
+   * verdade, e volta a marcar o estado.
+   *
+   * `DISCONNECTED` continua de fora: aí a frase está certa.
+   */
   const connection = await (prisma as any).wearableConnection.findFirst({
-    where: { userId, provider: provider.toUpperCase(), status: 'CONNECTED' },
+    where: { userId, provider: provider.toUpperCase(), status: { not: 'DISCONNECTED' } },
   });
 
   if (!connection) {
@@ -129,20 +140,36 @@ export async function POST(request: NextRequest) {
     }
     emCurso.add(connection.id);
     try {
-      const counts = await ingestWithings(userId, connection);
+      const counts = await ingestWithings(userId, connection, { origem: "manual" });
       /*
        * **A falha anterior é apagada quando esta corre.** Sem isto, uma falha de
        * há três semanas ficava a dizer "a última sincronização falhou" por cima
        * de dados que chegaram esta manhã.
        */
-      if (connection.lastSyncError) {
-        await (prisma as any).wearableConnection
-          .update({
-            where: { id: connection.id },
-            data: { lastSyncError: null, lastSyncErrorAt: null },
-          })
-          .catch(() => {});
-      }
+      /**
+       * **E a falha parcial é escrita aqui também** (gémeo esquecido, achado da
+       * 2ª rodada do review).
+       *
+       * O cron passou a guardar o que não conseguiu ler em `lastPartialRead`.
+       * Esta rota — a sincronização manual, o mesmo `ingestWithings` — não a
+       * escrevia **e** apagava o erro anterior: o cron marcava, o paciente
+       * puxava a tela, o ECG falhava outra vez, e isto limpava a marca. A única
+       * prova durável desaparecia por um gesto do paciente.
+       */
+      const naoLidos = [...(counts.falhas ?? [])];
+      await (prisma as any).wearableConnection
+        .update({
+          where: { id: connection.id },
+          data: {
+            lastPartialRead: naoLidos.length ? naoLidos.join(",") : null,
+            lastPartialReadAt: naoLidos.length ? new Date() : null,
+            ...(connection.lastSyncError
+              ? { lastSyncError: null, lastSyncErrorAt: null, needsReauthAt: null }
+              : {}),
+          },
+        })
+        .catch(() => {});
+
       return NextResponse.json({ ok: true, ...counts });
     } catch (e: any) {
       console.error('[wearables/sync] withings:', e?.message);

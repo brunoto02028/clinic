@@ -89,12 +89,29 @@ function PatientCard({ p, protocols, onAssign }: { p: any; protocols: any[]; onA
                   (pior: any, c: any) => (!pior || (c.daysSilent ?? 0) > (pior.daysSilent ?? 0) ? c : pior),
                   null as any
                 );
+                /**
+                 * **A que precisa da pessoa** (121 T-4).
+                 *
+                 * Calado e morto não são a mesma coisa: um relógio pode estar
+                 * calado porque ninguém o usa — e isso resolve-se usando-o — ou
+                 * porque a autorização morreu, e aí **só reconectando**. Só o
+                 * segundo tem uma acção do outro lado, e ficava indistinguível
+                 * do primeiro: a ligação do Bruno esteve 27 dias assim.
+                 */
+                const mortas = p.wearableConnections.filter((c: any) => c.needsReauth);
                 return (
-                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${mudos || calados.length ? "text-amber-400" : "text-violet-400"}`}>
+                  <p className={`text-xs mt-0.5 flex items-center gap-1 ${
+                    mortas.length ? "text-red-400" : mudos || calados.length ? "text-amber-400" : "text-violet-400"
+                  }`}>
                     <Watch className="h-3 w-3" /> {p.wearableConnections.length} device{p.wearableConnections.length > 1 ? 's' : ''}
                     {mudos > 0 && (
                       <span title="Authorised, but the provider has not confirmed it will send measurements">
                         · {mudos} not sending
+                      </span>
+                    )}
+                    {mortas.length > 0 && (
+                      <span title="The authorisation chain was invalidated — the patient has to reconnect; nothing we do brings it back">
+                        · {mortas.length > 1 ? `${mortas.length} need reconnecting` : "needs reconnecting"}
                       </span>
                     )}
                     {maisCalado && (

@@ -122,7 +122,23 @@ const SERIES: Array<{ chave: string; rotulo: string; cor: string; unidade: strin
   { chave: "spo2", rotulo: "SpO2", cor: "#0284c7", unidade: "%" },
   { chave: "steps", rotulo: "Steps", cor: "#65a30d", unidade: "" },
   { chave: "pain", rotulo: "Pain", cor: "#ea580c", unidade: "/10" },
+  /*
+   * **O humor, que a rota já devolvia e ninguém mostrava.** O paciente registra
+   * dor **e** humor no mesmo gesto; mostrar só a dor é mostrar metade do que ele
+   * respondeu.
+   */
+  { chave: "mood", rotulo: "Mood", cor: "#ca8a04", unidade: "/5" },
   { chave: "systolic", rotulo: "Systolic", cor: "#be123c", unidade: " mmHg" },
+  /*
+   * **A diastólica** (achado §11 da 2ª rodada do review).
+   *
+   * A rota passou a devolvê-la quando a pressão ganhou o `pressaoPorDia`, e a
+   * justificação escrita lá foi *"o que está no app está na clinic"* — mas a
+   * metade que torna isso verdade não tinha sido feita: o papel do paciente
+   * mostrava as duas e a aba da clínica continuava só com a sistólica. Dado
+   * novo que ninguém lê é dado que não existe.
+   */
+  { chave: "diastolic", rotulo: "Diastolic", cor: "#9f1239", unidade: " mmHg" },
 ];
 
 export function PatientMonitoringTab({ patientId }: { patientId: string }) {

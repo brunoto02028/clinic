@@ -51,11 +51,34 @@ describe("os contadores da ingestão chegam ao resultado do cron", () => {
    * minha envelhecia no dia em que alguém acrescentasse um contador, que é
    * precisamente o caso que este ficheiro existe para apanhar.
    */
-  const contadoresDaIngestao = (): string[] => {
+  const camposDaIngestao = (): Array<{ nome: string; tipo: string }> => {
     const bloco = /export interface IngestCounts \{([\s\S]*?)\n\}/.exec(ingest);
     if (!bloco) throw new Error("não achei a interface dos contadores na ingestão");
-    return [...bloco[1].matchAll(/^\s*(\w+)\??\s*:/gm)].map((m) => m[1]);
+    return [...bloco[1].matchAll(/^\s*(\w+)\??\s*:\s*([^;]+);/gm)].map((m) => ({
+      nome: m[1],
+      tipo: m[2].trim(),
+    }));
   };
+
+  /**
+   * Os **contadores**: os campos numéricos.
+   *
+   * A interface deixou de ser só contadores em 02/10 — ganhou `falhas: string[]`
+   * (120 T-4), que é uma lista do que **não** se conseguiu ler. Uma lista não se
+   * soma, logo a regra do `+=` não lhe serve; mas ela tem de aparecer no
+   * resultado e no log pelo mesmo motivo que os contadores, e isso tem o seu
+   * próprio teste abaixo.
+   */
+  const contadoresDaIngestao = (): string[] =>
+    camposDaIngestao()
+      .filter((c) => c.tipo === "number")
+      .map((c) => c.nome);
+
+  /** O que não é número: tem de chegar ao resultado por outro caminho. */
+  const listasDaIngestao = (): string[] =>
+    camposDaIngestao()
+      .filter((c) => c.tipo !== "number")
+      .map((c) => c.nome);
 
   it("a ingestão declara contadores", () => {
     const nomes = contadoresDaIngestao();
@@ -95,5 +118,30 @@ describe("os contadores da ingestão chegam ao resultado do cron", () => {
       (nome) => !linha.includes(`totals.${nome}`)
     );
     expect(faltam).toEqual([]);
+  });
+
+  /**
+   * **E o que não é contador também chega** (120 T-4).
+   *
+   * `falhas` é a lista do que não se conseguiu ler. Se ela ficar na ingestão e
+   * não subir ao cron, voltamos ao estado em que um `ecg=0` nos totais era as
+   * duas coisas — *"não gravou"* e *"não conseguimos ler"* — que é o defeito
+   * para que ela nasceu.
+   */
+  it("**e o que não é contador — a lista do que falhou — também sobe**", () => {
+    const listas = listasDaIngestao();
+    /* Se a interface voltar a ser só números, este teste não tem o que medir. */
+    expect(listas).toContain("falhas");
+
+    for (const nome of listas) {
+      /* Acumulado no cron… */
+      expect(cron).toMatch(new RegExp(`totals\\.${nome}\\.add\\(`));
+      /* …escrito no log… */
+      const i = cron.indexOf("connections=${connections.length}");
+      const fim = cron.indexOf(");", i);
+      expect(cron.slice(i, fim)).toContain(`totals.${nome}`);
+      /* …e na resposta, como lista e não como `{}`. */
+      expect(cron).toMatch(new RegExp(`${nome}:\\s*\\[\\.\\.\\.totals\\.${nome}\\]`));
+    }
   });
 });

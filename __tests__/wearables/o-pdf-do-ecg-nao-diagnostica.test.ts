@@ -27,6 +27,36 @@ import { construirPdfDoEcg, DadosDoEcgParaPapel } from "../../lib/ecg-pdf";
 const textoDoPdf = (buf: ArrayBuffer) =>
   Buffer.from(buf).toString("latin1");
 
+/**
+ * O conteúdo de **cada página**, separadamente.
+ *
+ * ## Porque o `textoDoPdf` não bastava
+ *
+ * Ele devolve o documento inteiro numa string. Toda a asserção sobre o papel —
+ * *"imprime a escala"*, *"não é um diagnóstico"*, *"avisa do corte"* — passava
+ * se a frase aparecesse em **qualquer** página. E era verdade: o papel escrevia
+ * as três coisas uma única vez, depois do laço das faixas, logo **só na última
+ * folha**.
+ *
+ * Enquanto o papel tinha uma página isso era a mesma coisa. Desde que a faixa
+ * cresce com o sinal, deixou de ser: o ECG real de 3,38 mV passa a duas folhas,
+ * e a primeira saía com uma tira milimetrada, com pulso de calibração, sem
+ * escala declarada e sem a ressalva. Achado do code review de 02/10/2026, e
+ * invisível a esta suíte por construção — o `base` tem pico de 400 µV, que é
+ * exactamente a amplitude que mantém tudo numa página só.
+ *
+ * O `jsPDF` não embute fontes (helvetica é padrão) nem imagens aqui, logo os
+ * únicos `stream` do ficheiro são os conteúdos das páginas, em ordem.
+ */
+const paginasDoPdf = (buf: ArrayBuffer): string[] => {
+  const cru = Buffer.from(buf).toString("latin1");
+  const paginas: string[] = [];
+  const re = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cru)) !== null) paginas.push(m[1]);
+  return paginas;
+};
+
 const base: DadosDoEcgParaPapel = {
   nome: "Bruno To",
   dataDeNascimento: new Date("1978-08-22T00:00:00Z"),
@@ -359,8 +389,12 @@ describe("a faixa cresce com o sinal", () => {
     expect(t).not.toMatch(/clipped/i);
   });
 
-  it("**mas não cresce para além do que cabe numa A4**", () => {
-    // 80 mm são ±4 mV e ainda deixam duas faixas na folha deitada.
+  it("**mas não cresce para além de ±4 mV**", () => {
+    /*
+     * 80 mm cobrem o que um ECG de pulso produz. **Não** são "duas faixas por
+     * folha", como este comentário dizia: a 80 mm é uma faixa por folha, e o
+     * papel aguenta-o porque cada folha fecha com a escala e a ressalva.
+     */
     expect(alturaQueOSinalPede(comPico(9000))).toBe(80);
   });
 
@@ -374,5 +408,83 @@ describe("a faixa cresce com o sinal", () => {
     expect(alturaQueOSinalPede(null)).toBe(40);
     expect(alturaQueOSinalPede([])).toBe(40);
     expect(alturaQueOSinalPede([null, null])).toBe(40);
+  });
+});
+
+describe("cada folha diz o que é — e não só a última", () => {
+  /**
+   * **Achado grave do code review de 02/10/2026.**
+   *
+   * A faixa passou a crescer com o sinal, e com isso o papel passou a ter mais
+   * de uma página. Mas a linha da escala, o aviso de corte e a ressalva
+   * continuavam escritos **uma vez, depois do laço** — ou seja, só na última
+   * folha.
+   *
+   * Isto é papel. Separa-se, fotografa-se, entrega-se uma folha só. Uma folha
+   * com uma tira de ECG milimetrada e um pulso de calibração, sem dizer a
+   * escala e sem dizer que não é um diagnóstico, é a coisa exacta que este
+   * ficheiro existe para impedir — e o ECG real do Bruno, 3,38 mV, caía nela.
+   */
+  const comPico = (uv: number) =>
+    Array.from({ length: 9000 }, (_, i) => (i % 150 === 0 ? uv : 0));
+
+  /** O que **toda** folha de traçado tem de carregar. */
+  const confereFolhas = (paginas: string[], extra?: RegExp) => {
+    expect(paginas.length).toBeGreaterThan(0);
+    for (const p of paginas) {
+      /* A escala, porque é ela que torna a tira mensurável com uma régua. */
+      expect(p).toContain("25mm/s, 10mm/mV");
+      /* E a ressalva, na língua do papel. */
+      expect(p).toContain("diagnosis");
+      if (extra) expect(p).toMatch(extra);
+    }
+  };
+
+  it("o pico de 400 µV cabe numa folha, e ela está completa", () => {
+    const paginas = paginasDoPdf(construirPdfDoEcg(base));
+    expect(paginas).toHaveLength(1);
+    confereFolhas(paginas);
+  });
+
+  it("**o ECG real do Bruno passa a duas folhas, e as duas estão completas**", () => {
+    const paginas = paginasDoPdf(
+      construirPdfDoEcg({ ...base, signal: comPico(3380) })
+    );
+    /* 3,38 mV pedem 75 mm de faixa: deixa de caber tudo numa página. */
+    expect(paginas.length).toBeGreaterThan(1);
+    confereFolhas(paginas);
+  });
+
+  it("**e quando corta, todas as folhas dizem que corta**", () => {
+    /*
+     * O aviso é da **gravação**, não da página. Saía na última, com as tiras
+     * cortadas nas anteriores — quem recebesse a primeira media 4 mV num sinal
+     * de 5.
+     */
+    const paginas = paginasDoPdf(
+      construirPdfDoEcg({ ...base, signal: comPico(5000) })
+    );
+    expect(paginas.length).toBeGreaterThan(1);
+    confereFolhas(paginas, /clipped here/);
+  });
+
+  it("em português, a ressalva também vai em cada folha", () => {
+    const paginas = paginasDoPdf(
+      construirPdfDoEcg({ ...base, signal: comPico(3380), idioma: "pt" })
+    );
+    expect(paginas.length).toBeGreaterThan(1);
+    for (const p of paginas) {
+      expect(p).toContain("25mm/s, 10mm/mV");
+      /* `Leve-o a um médico` — a parte sem acento, que o stream não escapa. */
+      expect(p).toContain("Leve-o");
+    }
+  });
+
+  it("**sem traçado, a folha única continua a trazer a ressalva**", () => {
+    const paginas = paginasDoPdf(construirPdfDoEcg({ ...base, signal: null }));
+    expect(paginas).toHaveLength(1);
+    expect(paginas[0]).toContain("diagnosis");
+    /* Sem traçado não há escala a declarar: não há nada para medir. */
+    expect(paginas[0]).not.toContain("25mm/s");
   });
 });
