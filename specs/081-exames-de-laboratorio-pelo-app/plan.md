@@ -1,6 +1,6 @@
 # Atividade 081 — Exames de laboratório pelo app (London Medical Laboratory)
 
-**Status:** em andamento — T-1 a T-4 e T-10 a T-12 concluídas; T-5 parcial; T-6 a T-9 esperam o token da LML; T-13 a T-15 abertas em 01/10 (os 421 exames no app) e **não** precisam do token
+**Status:** em andamento — T-1 a T-4, T-10 a T-13 e T-16/T-17 concluídas; T-5 parcial; T-6 a T-9 esperam **só a chave da API** (a conta já existe); T-14/T-15 e T-18/T-19 abertas e **não** precisam da chave
 **Data:** 25/09/2026
 
 ## Objetivo
@@ -190,6 +190,9 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 | T-14 | [Categoria para 421, sem inventar medicina](t-14-categoria-sem-inventar-medicina.md) | T-13 | parcial | **em QA** (01/10) — 443 em 25 categorias, nenhum em `other` |
 | T-15 | [A descoberta: como o paciente sabe tudo o que temos](t-15-a-descoberta-de-421-exames.md) | T-13, T-14 | **não** | pendente |
 | T-16 | O guia do Client Portal, lido: o que ele faz e o que não resolve | — | não | **feito** (03/10) — ver [docs/lml/o-portal-e-o-que-ele-nao-resolve.md](../../docs/lml/o-portal-e-o-que-ele-nao-resolve.md) |
+| T-17 | [O portal por dentro, página a página](referencia/o-portal-por-dentro.md) | — | não | **feito** (04/10) — 507 preços reais, a máquina de estados deles, e o portão do cartão |
+| T-18 | Os estados que o nosso mapa não cobre: `FAILED`, `CANCELLED`, `CLOSED` | T-17 | não | **pendente** — hoje um nome desconhecido vira `null`, sem tela |
+| T-19 | Preços de custo da planilha → os reais do portal (507 contra 443) | T-17 | não | **pendente** — ficheiro já guardado; falta o comparativo e a escrita |
 
 > Os arquivos `t-N-*.md` foram escritos na ordem anterior (API primeiro). A renumeração acompanha
 > esta tabela quando o plano for aprovado — o conteúdo de cada tarefa não muda, só a ordem.
