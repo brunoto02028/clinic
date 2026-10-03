@@ -59,13 +59,17 @@ export interface RegistroDeEcg {
 /** A palavra que o painel e o app mostram, nas duas línguas. */
 export const TEXTO_DA_CONCLUSAO: Record<ConclusaoDoEcg, { en: string; pt: string }> = {
   /*
-   * "Sinus rhythm" é a palavra do próprio relógio, e dizê-la é relatar. "Normal"
-   * sozinho soaria a nota nossa sobre o coração da pessoa — e a conclusão é do
-   * aparelho, não nossa.
+   * "Sinus rhythm" é a palavra do próprio aparelho, e dizê-la é relatar.
+   * "Normal" sozinho soaria a nota nossa sobre o coração da pessoa — e a
+   * conclusão é do aparelho, não nossa.
+   *
+   * **"O aparelho", e não "o relógio"** (122 T-9): desde que a clínica atribui
+   * ECG a pacientes, estas frases aparecem a quem pode nem ter relógio — e o
+   * que gravou pode ter sido o BeamO em cima de uma marquesa.
    */
-  normal: { en: "Sinus rhythm — the watch found no signs of AFib", pt: "Ritmo sinusal — o relógio não encontrou sinais de FA" },
-  fibrilacao: { en: "The watch found signs of atrial fibrillation", pt: "O relógio encontrou sinais de fibrilação atrial" },
-  inconclusivo: { en: "The watch could not classify this recording", pt: "O relógio não conseguiu classificar este registro" },
+  normal: { en: "Sinus rhythm — the device found no signs of AFib", pt: "Ritmo sinusal — o aparelho não encontrou sinais de FA" },
+  fibrilacao: { en: "The device found signs of atrial fibrillation", pt: "O aparelho encontrou sinais de fibrilação atrial" },
+  inconclusivo: { en: "The device could not classify this recording", pt: "O aparelho não conseguiu classificar este registro" },
 };
 
 export function traduzirClassificacao(v: unknown): ConclusaoDoEcg {

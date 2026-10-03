@@ -497,7 +497,7 @@ const P = {
        * A parte que continua verdadeira — e é a que importa — é que **não o
        * lemos**. É essa que fica, dita por inteiro.
        */
-      "These are the watch's own conclusions. We store the trace so you can print it; we do not read it.",
+      "These are the device's own conclusions. We store the trace so you can print it; we do not read it.",
     exercicio: "Exercise",
     diasComExercicio: "Days with exercise done",
     exerciciosFeitos: "Exercises logged",
@@ -576,7 +576,7 @@ const P = {
      * acento, iguais nas duas línguas, no papel que vai à mão de um médico.
      */
     nomesDoQueFalhou: {
-      wearables: "watch and wearable measurements",
+      wearables: "device and wearable measurements",
       pressao: "blood pressure",
       exercicio: "exercise logs",
       checkins: "daily check-ins",
@@ -666,7 +666,7 @@ const P = {
     em: "em",
     ecg: "ECG",
     ecgRessalva:
-      "Estas são as conclusões do próprio relógio. Guardamos o traçado para você poder imprimi-lo; nós não o lemos.",
+      "Estas são as conclusões do próprio aparelho. Guardamos o traçado para você poder imprimi-lo; nós não o lemos.",
     exercicio: "Exercício",
     diasComExercicio: "Dias com exercício feito",
     exerciciosFeitos: "Exercícios registrados",
@@ -709,7 +709,7 @@ const P = {
       `<strong>Parte deste relatório não pôde ser lida.</strong> Estas seções falharam ao carregar na geração do relatório: ${oQue}. O que falta aqui pode existir — fale com a sua clínica antes de concluir algo a partir de uma seção que falta.`,
     naoFoiLidoNaSecao: "Esta seção não pôde ser lida na geração do relatório — não quer dizer que esteja vazia.",
     nomesDoQueFalhou: {
-      wearables: "medições do relógio e dos aparelhos",
+      wearables: "medições dos aparelhos",
       pressao: "pressão arterial",
       exercicio: "registros de exercício",
       checkins: "registros diários",

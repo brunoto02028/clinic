@@ -64,7 +64,7 @@ prontuário de outra**. Nada no código de hoje distingue perfis da Withings.
 | T-6 | Os intervalos do ECG: QRS, PR, QT, QTc (`135`–`138`) | T-5 | pendente |
 | T-7 | Medir o que o BeamO manda, biomarcador a biomarcador | chegada | pendente |
 | T-8 | O estetoscópio: a API expõe alguma coisa? | T-7 | pendente |
-| T-9 | O app deixa de dizer "o relógio" sobre um ECG medido na clínica | T-2 | **pendente** — achado A-6 do QA do fluxo |
+| T-9 | [O app nomeia o que mediu](t-9-o-app-nomeia-o-que-mediu.md) | T-2 | **feita** (03/10) — a conclusão era atribuída ao relógio do paciente em **cinco** sítios |
 
 A numeração é a que está escrita no código e nos testes. As duas primeiras
 nasceram do pedido dele de 03/10 e já estão feitas; as outras seis são o que

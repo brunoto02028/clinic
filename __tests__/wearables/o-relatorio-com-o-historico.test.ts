@@ -104,13 +104,22 @@ describe("o ECG, lido do que o aparelho concluiu", () => {
     }
   });
 
-  it("**a frase diz que a conclusão é do relógio**, não nossa", () => {
+  it("**a frase diz que a conclusão é do aparelho**, não nossa", () => {
     // "Normal" sozinho soa a nota nossa sobre o coração da pessoa. Quem
     // concluiu foi o aparelho, e a frase tem de dizer isso — é a diferença
     // entre relatar e opinar, e é ela que nos mantém fora de dispositivo médico.
+    //
+    // Exigia **"relógio"**, e isso virou-se contra a regra: desde a 122 T-2 o
+    // ECG que o terapeuta grava num paciente com o aparelho da clínica entra na
+    // ficha dele, e o relatório dizia-lhe que o relógio **dele** tinha
+    // encontrado sinais de fibrilhação. Esta asserção passou a medir o que
+    // sempre quis medir — que o sujeito é o aparelho e não nós — sem cravar
+    // qual aparelho é.
     for (const k of ["normal", "fibrilacao", "inconclusivo"] as const) {
-      expect(TEXTO_DA_CONCLUSAO[k].en.toLowerCase()).toContain("watch");
-      expect(TEXTO_DA_CONCLUSAO[k].pt.toLowerCase()).toContain("relógio");
+      expect(TEXTO_DA_CONCLUSAO[k].en.toLowerCase()).toContain("the device");
+      expect(TEXTO_DA_CONCLUSAO[k].pt.toLowerCase()).toContain("o aparelho");
+      expect(TEXTO_DA_CONCLUSAO[k].en.toLowerCase()).not.toContain("the watch");
+      expect(TEXTO_DA_CONCLUSAO[k].pt.toLowerCase()).not.toContain("o relógio");
     }
   });
 });

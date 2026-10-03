@@ -83,6 +83,21 @@ export async function GET(request: NextRequest) {
       heartRate: true,
       conclusao: true,
       signalId: true,
+      /**
+       * **Quem mediu** (122 T-9).
+       *
+       * Sem estes dois, a tela do paciente chamava *"o relógio"* a tudo — e,
+       * desde a 122 T-2, o ECG que o terapeuta grava num paciente com o
+       * aparelho da clínica entra na ficha dele. O paciente lia que o relógio
+       * dele tinha encontrado sinais de fibrilhação auricular, e pode nem ter
+       * relógio.
+       *
+       * O nome vem da própria Withings, pela mesma razão que já vai ao papel:
+       * uma tabela de códigos minha chamou "ScanWatch" ao `94`, que a API
+       * nomeia "ScanWatch 2".
+       */
+      deviceName: true,
+      connection: { select: { isClinicDevice: true } },
     },
   });
   const ecgs = ateAoLimite(ecgsVieram);
@@ -134,6 +149,9 @@ export async function GET(request: NextRequest) {
       conclusao: e.conclusao,
       /* O caminho até ao sinal, não o sinal. */
       signalId: e.signalId,
+      /* O que mediu, para a frase não adivinhar — ver o `select`. */
+      deviceName: e.deviceName ?? null,
+      naClinica: e.connection?.isClinicDevice === true,
       /**
        * Se o papel sai com traçado ou só com a conclusão do aparelho.
        *

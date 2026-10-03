@@ -577,7 +577,7 @@ export default function AdminBiohackingPage() {
                     <p className="text-muted-foreground">
                       {d.tipo === "ecg" ? (
                         <strong className="text-amber-600">
-                          Atrial fibrillation detected by the watch on {d.dia}
+                          Atrial fibrillation detected by the device on {d.dia}
                         </strong>
                       ) : (
                         <>
