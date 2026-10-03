@@ -403,7 +403,18 @@ export default function PatientTreatmentPage() {
         </p>
       </div>
 
-      <ProfessionalReviewBanner />
+      {/**
+       * Sem o aviso de "aguarde a revisão" nesta tela (03/10/2026).
+       *
+       * Ele dizia *"Entraremos em contato com os seus resultados finais"* —
+       * uma frase de resultado pendente, em cima de um plano que a pessoa
+       * tem de fazer **hoje**. O plano só chega aqui depois de o Terapeuta
+       * liberar; não há nada pendente de revisão para ela esperar.
+       *
+       * O aviso continua onde faz sentido: na triagem (que ainda vai ser
+       * revisada), na pressão arterial (tendências acompanhadas) e na
+       * vitrine de serviços.
+       */}
 
       {/* Payment result banners */}
       {paymentBanner === "success" && (

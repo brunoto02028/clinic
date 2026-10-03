@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { pickEditable } from "@/lib/tenant-field-guard";
 import { callAIClinical } from "@/lib/ai-provider";
-import { notifyPatient, podeEnviarAoPaciente } from "@/lib/notify-patient";
+import { notifyPatient, podeEnviarAoPaciente, pediramEnviarAoPaciente } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -384,6 +384,48 @@ export async function PATCH(
     const body = await req.json();
     const { protocolId, status, therapistComments, itemId, itemUpdate, deleteItemId, newItem, bulkHidden } = body;
 
+    /**
+     * Avisar a paciente sobre um plano **que já está liberado**.
+     *
+     * A contrapartida do item acima: o botão "Notificar paciente" na ficha,
+     * para quando ele já revisou o que ela vê e só então quer que ela saiba.
+     */
+    if (body?.notifyOnly === true) {
+      const proto = await (prisma as any).treatmentProtocol.findFirst({
+        where: { id: protocolId, patientId: params.id },
+        select: { id: true, title: true, status: true, therapist: { select: { firstName: true, lastName: true } } },
+      });
+      if (!proto) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      if (proto.status !== "SENT_TO_PATIENT") {
+        return NextResponse.json(
+          { error: "Release the plan to the patient before telling her about it", code: "not_released" },
+          { status: 400 }
+        );
+      }
+      const permissao = await podeEnviarAoPaciente({
+        patientId: params.id,
+        canal: "email",
+        confirmacao: { modo: "explicito", pedido: true },
+        origem: "PATCH /api/admin/patients/[id]/protocol (notifyOnly)",
+      });
+      if (!permissao.ok) return NextResponse.json(permissao, { status: (permissao as any).status });
+
+      const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+      const r = await notifyPatient({
+        patientId: params.id,
+        emailTemplateSlug: "TREATMENT_PROTOCOL",
+        emailVars: {
+          protocolTitle: proto.title || "Treatment Protocol",
+          therapistName: proto.therapist ? `${proto.therapist.firstName} ${proto.therapist.lastName}` : "Your therapist",
+          portalUrl: `${BASE}/dashboard/treatment`,
+        },
+        plainMessage: `Your treatment plan "${proto.title}" is ready. Log in to your portal to see it.`,
+        plainMessagePt: `Seu plano de tratamento "${proto.title}" está pronto. Acesse o portal para vê-lo.`,
+      }).catch((e) => ({ success: false, channel: "none", error: String(e) }));
+
+      return NextResponse.json({ success: (r as any).success !== false, notified: r });
+    }
+
     // Delete a specific protocol item
     if (deleteItemId) {
       if (!(await recordOfPatient("protocolItem", deleteItemId, params.id))) {
@@ -656,8 +698,18 @@ export async function PATCH(
       } catch (e) { console.error("[protocol] create appointments error:", e); }
     }
 
-    // Notify patient when protocol is sent to them
-    if (firstSend) {
+    /**
+     * Liberar para a paciente e **avisar** a paciente são dois atos (104).
+     *
+     * Isto mandava e-mail no instante em que o status virava
+     * `SENT_TO_PATIENT`, e era o que impedia o fluxo que o Bruno pediu em
+     * 03/10/2026: *"quero ver todo protocolo na área dela pronto, mesmo sem
+     * disparar emails. Só vou disparar depois de ver tudo pronto"*.
+     *
+     * Agora liberar só libera. O aviso sai com `notify: true` — na mesma
+     * chamada, ou depois, pelo `notifyOnly` abaixo.
+     */
+    if (firstSend && pediramEnviarAoPaciente(body?.notify)) {
       try {
         const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         notifyPatient({

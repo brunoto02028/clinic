@@ -509,10 +509,26 @@ export default function PatientProfilePage() {
       setError("Incomplete scheduling: click Edit and set the start date, the days of the week and the time before sending to the patient.");
       return;
     }
-    if (!confirm(`Send protocol to the patient?\n\nStart: ${new Date(pr.startDate).toLocaleDateString("en-GB")}\nDays: ${days.join(", ")}\nTime: ${pr.sessionTime}\n\nThe calendar slots will be pre-blocked awaiting the patient's confirmation.`)) return;
+    if (!confirm(`Release this plan to the patient?\n\nStart: ${new Date(pr.startDate).toLocaleDateString("en-GB")}\nDays: ${days.join(", ")}\nTime: ${pr.sessionTime}\n\nIt becomes visible in her portal and the calendar slots are pre-blocked.\nNOBODY IS E-MAILED — use "Notify patient" once you have seen what she sees.`)) return;
     setSendingProto(true);
     const r = await patchProtocol(pr.id, { status: "SENT_TO_PATIENT" });
-    if (r) { flash("Protocol sent to the patient! Calendar pre-blocked."); fetchData(); }
+    if (r) { flash("Plan released — she can see it. Nobody was notified."); fetchData(); }
+    setSendingProto(false);
+  };
+
+  /**
+   * Avisar é um segundo ato (104, 03/10/2026).
+   *
+   * Liberar punha o plano na área dela **e** mandava e-mail no mesmo clique.
+   * O Bruno pediu o contrário: *"quero ver todo protocolo na área dela
+   * pronto, mesmo sem disparar emails. Só vou disparar depois de ver tudo
+   * pronto"*. Agora liberar só libera, e este botão é o aviso.
+   */
+  const notifyProtocol = async (pr: any) => {
+    if (!confirm(`E-mail the patient that "${pr.title}" is ready?\n\nShe can already see it — this only tells her.`)) return;
+    setSendingProto(true);
+    const r = await patchProtocol(pr.id, { notifyOnly: true });
+    if (r) { flash("Patient notified."); fetchData(); }
     setSendingProto(false);
   };
 
@@ -2196,9 +2212,13 @@ export default function PatientProfilePage() {
                         }}>
                           <Pencil className="h-3 w-3 mr-1" /> Edit
                         </Button>
-                        {pr.status !== "SENT_TO_PATIENT" && (
+                        {pr.status !== "SENT_TO_PATIENT" ? (
                           <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr)} disabled={sendingProto}>
-                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Send to Patient
+                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Release to Patient
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => notifyProtocol(pr)} disabled={sendingProto}>
+                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />} Notify patient
                           </Button>
                         )}
                       </>
