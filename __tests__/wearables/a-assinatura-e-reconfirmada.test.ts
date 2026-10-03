@@ -25,7 +25,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const RAIZ = path.join(__dirname, "..", "..");
-const CRON = path.join(RAIZ, "app", "api", "cron", "wearables-sync", "route.ts");
+const CRON = path.join(RAIZ, "lib", "wearables-sync-run.ts");
 
 function fonte(): string {
   return fs.readFileSync(CRON, "utf8");

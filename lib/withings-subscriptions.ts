@@ -63,7 +63,16 @@ export async function subscribeAndRecord(
   let answered = false;
 
   try {
-    const token = accessTokenOverride ?? (await withingsAccessToken(connection));
+    /*
+     * **`assinatura`, e não `?`** (121 T-5).
+     *
+     * Este chamador ficou de fora quando os outros se identificaram, e o log de
+     * produção mostrou-o: `[withings/token] ? renova ...`, logo acima do
+     * `cron renova` da mesma ligação. Duas renovações da mesma passagem, e a
+     * primeira sem nome — que é precisamente o que a T-5 existe para não voltar
+     * a acontecer.
+     */
+    const token = accessTokenOverride ?? (await withingsAccessToken(connection, "assinatura"));
 
     await Promise.all(
       WITHINGS_APPLI_WE_WANT.map((appli) =>

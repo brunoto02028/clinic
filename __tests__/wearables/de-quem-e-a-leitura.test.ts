@@ -83,7 +83,7 @@ describe("o webhook parou de sortear", () => {
   });
 
   it("a varredura diária leva também", () => {
-    expect(ler("app", "api", "cron", "wearables-sync", "route.ts")).toMatch(/providerUserId: true/);
+    expect(ler("lib", "wearables-sync-run.ts")).toMatch(/providerUserId: true/);
   });
 
   it("e o botão 'já medi' também, senão os três discordariam", () => {

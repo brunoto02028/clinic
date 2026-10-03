@@ -219,7 +219,7 @@ export async function withingsAccessToken(
    * o número de **esperas** diz se a corrida era mesmo esta: se for zero numa
    * semana, a explicação é outra.
    */
-  origem: "cron" | "webhook" | "manual" | "sondagem" | "desligar" | "?" = "?"
+  origem: "cron" | "webhook" | "manual" | "sondagem" | "assinatura" | "desligar" | "?" = "?"
 ): Promise<string> {
   /* O caminho rápido, sem tocar no banco: o retrato de quem chamou já serve. */
   const doRetrato = unseal(connection.accessToken);
