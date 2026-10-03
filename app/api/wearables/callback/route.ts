@@ -91,6 +91,21 @@ export async function GET(request: NextRequest) {
         `${BASE_URL}/api/wearables/callback`
       );
       await saveWithingsTokens(connection.id, tokens);
+      /**
+       * **Reconectar apaga o aviso de reconectar** (achado do QA, 03/10).
+       *
+       * `limparEstadoDaLigacao` só era chamada no caminho da **renovação**, e o
+       * comentário dela diz, com todas as letras, que existe para que *"quem
+       * reconecta não continue a ver 'precisa reconectar'"*. O caminho do
+       * reconectar não a chamava.
+       *
+       * Consequência: o Bruno reautoriza, a ligação volta a funcionar, e a
+       * ficha do paciente e o app continuam a pedir-lhe uma reconexão já feita
+       * — até à renovação seguinte, horas depois. Um aviso que fica depois de
+       * resolvido mente tanto quanto um que nunca aparece.
+       */
+      const { limparEstadoDaLigacao } = await import("@/lib/withings-estado-da-ligacao");
+      await limparEstadoDaLigacao(connection.id);
 
       // Ask Withings to tell us when a measurement is taken (T-9), and then
       // ask it what it actually agreed to send (075, T-10). Failing here must

@@ -129,6 +129,12 @@ export default function MeasurementInboxPage() {
       confirmedAppli?: number[];
     } | null | undefined
   >(undefined);
+  /** Há aparelho, mas não está a servir — ver `loadDevice` (121 T-10). */
+  const [parado, setParado] = useState<{
+    label: string | null;
+    status: string;
+    precisaReconectar: boolean;
+  } | null>(null);
   const [fixing, setFixing] = useState(false);
   const [deviceMsg, setDeviceMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,8 +174,21 @@ export default function MeasurementInboxPage() {
   const loadDevice = useCallback(() => {
     fetch("/api/admin/measurement-sessions")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setDevice(d?.device ?? null))
-      .catch(() => setDevice(null));
+      .then((d) => {
+        setDevice(d?.device ?? null);
+        /*
+         * **Há aparelho, e parou** — a rota diz isso desde a 121 T-10, e esta
+         * página deitava a informação fora. Resultado: a ficha do paciente
+         * mandava aqui com *"precisa ser reconectado"* e aqui lia-se
+         * *"No clinic device connected yet"*. Duas telas, duas verdades
+         * incompatíveis, sobre o mesmo aparelho.
+         */
+        setParado(d?.deviceParado ?? null);
+      })
+      .catch(() => {
+        setDevice(null);
+        setParado(null);
+      });
   }, []);
 
   useEffect(() => {
@@ -249,7 +268,27 @@ export default function MeasurementInboxPage() {
         <p className="text-sm bg-muted/40 border rounded-md px-3 py-2">{message}</p>
       )}
 
-      {device === null && (
+      {device === null && parado && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-medium">
+                {ui.deviceOn}{parado.label ? `: ${parado.label}` : ""}
+              </p>
+              {/* O texto escrito exactamente para este caso, e que nunca saía. */}
+              <p className="text-xs text-muted-foreground max-w-prose">{ui.tokenDead}</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => { window.location.href = "/api/wearables/connect/withings?clinic=1"; }}
+            >
+              {ui.reconnect}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {device === null && !parado && (
         <Card>
           <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
             <div>

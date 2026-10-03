@@ -106,6 +106,21 @@ async function matchingSessions(connectionId: string, measuredAt: Date) {
       openedAt: { lte: new Date(measuredAt.getTime() + SESSION_GRACE_MS) },
       expiresAt: { gte: measuredAt },
     },
+    /*
+     * **Os campos que quem chama usa, e mais nenhum.** Sem `select`, o Prisma
+     * relê todas as colunas do modelo — e uma coluna que falte no banco faz a
+     * consulta inteira estoirar, que é como um `db push` engolido se manifesta
+     * (ver `prisma-update-rele-todas-as-colunas`).
+     */
+    select: {
+      id: true,
+      status: true,
+      openedAt: true,
+      expiresAt: true,
+      patientId: true,
+      openedById: true,
+      context: true,
+    },
     orderBy: { openedAt: "desc" },
   });
   // A consulta já filtra pelo mesmo intervalo; passar pela regra pura mantém
@@ -113,44 +128,19 @@ async function matchingSessions(connectionId: string, measuredAt: Date) {
   return candidatas.filter((c: any) => sessionCovers(c, measuredAt));
 }
 
-/**
- * **De quem é esta medição, quando ela não é pressão** (122 T-2).
+/*
+ * **`janelaDaMedicao` saiu daqui** (achado do QA, 03/10).
  *
- * O BeamO mede ECG, temperatura e SpO₂ no mesmo aparelho que mede pressão, e a
- * janela que já dizia de quem era a pressão diz o mesmo de tudo o resto. O que
- * falta a essas medidas não é a regra — é uma caixa de entrada: a
- * `UnassignedMeasurement` tem `systolic` e `diastolic` **obrigatórios**, logo
- * só serve a pressão.
+ * Nasceu nesta noite para o ECG e ficou sem chamadores quando o caminho passou
+ * a carregar as janelas uma vez por passagem e a decidir com `pickSession`. Era
+ * código morto — e pior do que morto: usava `MATCHABLE_SESSION_STATUSES`, sem
+ * `COMPLETED`, logo quem a reutilizasse para um evento que não é pressão
+ * reintroduzia, inteiro, o defeito crítico que o review apanhou: a janela
+ * fechada pela pressão deixar de receber o ECG.
  *
- * Por isso aqui a resposta é só *quem*, e quem chama decide o que fazer com
- * `none`. A regra de ouro não muda: **ambiguidade nunca vira palpite** — duas
- * janelas a cobrir o mesmo instante devolvem `ambiguous`, e nada é escrito.
+ * Quem decide de quem é uma medição que não é pressão é
+ * `pickSession(..., ESTADOS_QUE_RECEBEM_EVENTO)`, em `withings-ingest.ts`.
  */
-export type JanelaDaMedicao =
-  | { kind: "assigned"; patientId: string; sessionId: string; openedById: string; context: string }
-  | { kind: "none" }
-  | { kind: "ambiguous"; count: number };
-
-export async function janelaDaMedicao(
-  connectionId: string,
-  quando: Date
-): Promise<JanelaDaMedicao> {
-  const sessions = await matchingSessions(connectionId, quando);
-  /*
-   * Pela mesma função que decide a pressão. Duas contagens do mesmo conjunto
-   * são duas regras a divergir, e a diferença aparece num prontuário.
-   */
-  const escolha = pickSession(sessions, quando);
-  if (escolha.kind !== "assigned") return escolha;
-  const s = escolha.session as any;
-  return {
-    kind: "assigned",
-    patientId: s.patientId,
-    sessionId: s.id,
-    openedById: s.openedById,
-    context: s.context,
-  };
-}
 
 /**
  * Files one reading from the clinic's device.
@@ -392,6 +382,16 @@ export async function expireStaleSessions(connectionId?: string): Promise<number
 export async function clinicDevice(clinicId: string) {
   return (prisma as any).wearableConnection.findFirst({
     where: { clinicId, isClinicDevice: true, status: "CONNECTED" },
+    /*
+     * **Qual deles, quando há mais do que um.** Era `findFirst` sem ordenação:
+     * o banco devolve uma linha arbitrária, e qual delas vence pode mudar de
+     * uma chamada para a outra — sorteio sobre qual aparelho a janela de
+     * medição nomeia. O mesmo sorteio que a 092 tirou do webhook, ainda de pé
+     * do lado da interface.
+     *
+     * Vence o que entregou mais recentemente; empate, o mais antigo.
+     */
+    orderBy: [{ lastReadingAt: "desc" }, { createdAt: "asc" }],
     select: {
       id: true, deviceLabel: true, provider: true, clinicId: true, isClinicDevice: true,
       // Se a Withings confirmou que manda. O manguito da recepção alimenta
@@ -405,6 +405,13 @@ export async function clinicDevice(clinicId: string) {
       // e nao ha como saber se a chamada sequer foi feita — foi o beco em que o
       // manguito do Bruno ficou durante seis dias.
       lastSyncedAt: true, lastSyncError: true, lastSyncErrorAt: true,
+      /*
+       * **E o estado de "precisa reautorizar"**. Sem este campo no `select`, a
+       * pergunta `!!device.needsReauthAt` lá em cima responde `undefined` para
+       * sempre — e um campo em falta num `select` é a mesma classe de defeito
+       * que, nesta mesma noite, apagou o filtro de uma contagem inteira.
+       */
+      needsReauthAt: true,
       accessToken: true, refreshToken: true, tokenExpiresAt: true,
     },
   });

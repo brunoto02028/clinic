@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import {
   WITHINGS_APPLI,
   WITHINGS_APPLI_WE_WANT,
+  WITHINGS_APPLI_ESSENCIAIS,
   confirmWithingsSubscriptions,
   withingsAccessToken,
   withingsCallbackUrl,
@@ -110,6 +111,11 @@ export async function subscribeAndRecord(
 
   return {
     confirmed,
+    /*
+     * Aqui é **tudo o que pedimos**, e não só os essenciais: este número
+     * diagnostica a subscrição em si — é por ele que se vê se o pedido do ECG
+     * pegou. Quem decide se há alarme é o `deliveryState`.
+     */
     missing: WITHINGS_APPLI_WE_WANT.filter((a) => !confirmed.includes(a)),
     answered,
     recorded,
@@ -180,7 +186,15 @@ export function deliveryState(
   if (!connection.notifyCheckedAt) return "unchecked";
   const confirmed = connection.notifyConfirmedAppli ?? [];
   if (confirmed.length === 0) return "silent";
-  const querem = opts.soPressao ? [WITHINGS_APPLI.BLOOD_PRESSURE] : WITHINGS_APPLI_WE_WANT;
+  /*
+   * **Os essenciais, e não tudo o que pedimos** (121 T-9).
+   *
+   * A lista de subscrições passou a incluir ECG, VFC e temperatura. Medi-las
+   * aqui faria toda a ligação existente aparecer como `partial` até à próxima
+   * reconfirmação — um aviso de que a Withings não vai entregar, sobre uma
+   * ligação que está a entregar tudo o que importa.
+   */
+  const querem = opts.soPressao ? [WITHINGS_APPLI.BLOOD_PRESSURE] : WITHINGS_APPLI_ESSENCIAIS;
   const hasAll = querem.every((a) => confirmed.includes(a));
   return hasAll ? "receiving" : "partial";
 }
@@ -190,7 +204,8 @@ export function missingKinds(connection: {
   notifyConfirmedAppli?: number[] | null;
 }): number[] {
   const confirmed = connection.notifyConfirmedAppli ?? [];
-  return WITHINGS_APPLI_WE_WANT.filter((a) => !confirmed.includes(a));
+  /* Os essenciais — pela mesma razão do `deliveryState`, acima. */
+  return WITHINGS_APPLI_ESSENCIAIS.filter((a) => !confirmed.includes(a));
 }
 
 /** Whether blood pressure specifically is not coming — the one that matters here. */

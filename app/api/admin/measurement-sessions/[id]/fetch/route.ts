@@ -34,7 +34,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const session = await (prisma as any).clinicMeasurementSession.findUnique({
     where: { id: params.id },
-    select: { id: true, clinicId: true, status: true, openedAt: true, expiresAt: true, connectionId: true },
+    /*
+     * `patientId` **tem de estar aqui**: é a chave da contagem lá em baixo, e
+     * um campo que falta no `select` chega lá como `undefined`. O Prisma
+     * **ignora** um `where` com `undefined` em vez de não casar nada — logo a
+     * contagem perdia o filtro e varria a tabela inteira, incluindo gravações
+     * de pacientes de **outras clínicas**. Achado do QA de 03/10.
+     */
+    select: {
+      id: true,
+      clinicId: true,
+      patientId: true,
+      status: true,
+      openedAt: true,
+      expiresAt: true,
+      connectionId: true,
+    },
   });
 
   // Sessão de outra clínica responde igual a inexistente — a mesma regra do
@@ -136,18 +151,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
    * é o que o terapeuta está à espera de ver. `null` quer dizer *"não sei"*, e
    * a tela não afirma nada sobre o ECG nesse caso.
    */
-  const ecgDoPaciente: number | null = await (prisma as any).ecgRecording
-    .count({
-      where: {
-        userId: session.patientId,
-        provider: "WITHINGS",
-        recordedAt: { gte: since, lte: until },
-      },
-    })
-    .catch((e: any) => {
-      console.error("[measurement-fetch] contar ECG falhou:", e?.message ?? e);
-      return null;
-    });
+  const ecgDoPaciente: number | null = !session.patientId
+    ? /*
+       * Sem paciente não há o que contar — e um `undefined` aqui não seria
+       * "zero", seria **sem filtro**. A guarda é explícita porque a diferença
+       * entre as duas é a tabela toda.
+       */
+      null
+    : await (prisma as any).ecgRecording
+        .count({
+          where: {
+            userId: session.patientId,
+            provider: "WITHINGS",
+            recordedAt: { gte: since, lte: until },
+          },
+        })
+        .catch((e: any) => {
+          console.error("[measurement-fetch] contar ECG falhou:", e?.message ?? e);
+          return null;
+        });
 
   // Relê a sessão: `ingestWithings` roda a atribuição, e se a leitura casou
   // esta janela ela já está ligada aqui.

@@ -321,8 +321,14 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
                 More recordings exist in this window than are shown here.
               </p>
             )}
+            {/*
+              Dizia "The trace is not stored", e **é** guardado — fica em
+              `EcgRecording.signal` e é ele que vai no PDF que o paciente leva
+              ao médico. Num produto que se define por não interpretar, uma
+              afirmação sobre o que guardamos não pode estar errada.
+            */}
             <p className="text-[11px] text-muted-foreground">
-              The trace is not stored and is not interpreted here.
+              The trace is stored for the report, and is not interpreted here.
             </p>
           </CardContent>
         </Card>
