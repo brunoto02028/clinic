@@ -43,12 +43,15 @@ antes de alguém o ter visto.
 
 **Existe forma de desligar esse envio automático**, ou de o dirigir só à clínica?
 
-**4. Como nos cobram**
+**4. Conta faturada em vez de pré-pago**
 
-O paciente paga-nos a nós, na nossa aplicação. Nós pagamos-vos o *List Price*.
+Vi no portal que, para clientes *pre-pay*, o cartão é cobrado ao *List Price* no
+momento em que o pedido é criado. A redação sugere que existem clientes que
+**não** são pré-pagos.
 
-É **conta corrente faturada** (mensal, por exemplo), ou é **cobrado por pedido**?
-No segundo caso, a API pede algum meio de pagamento no momento do pedido?
+**Podemos ficar numa conta faturada** (mensal, por exemplo)? O paciente paga-nos
+pelo Stripe, e o dinheiro só nos chega dias depois; a cobrança imediata do custo
+obriga-nos a adiantar capital em cada pedido.
 
 **5. Cancelamentos**
 
@@ -104,12 +107,15 @@ before anyone has looked at it.
 **Is there a way to switch that automatic email off**, or to send it to the
 clinic only?
 
-**4. How we are billed**
+**4. An invoiced account rather than pre-pay**
 
-The patient pays us, in our app. We pay you the List Price.
+I can see in the portal that, for *pre-pay* customers, the card is charged the
+List Price at the moment a test request is created. The wording suggests some
+customers are **not** pre-pay.
 
-Is that an **invoiced account** (monthly, say), or **charged per order**? If per
-order, does the API expect a payment method at order time?
+**Could we be put on an invoiced account** (monthly, say)? Patients pay us
+through Stripe and the funds only reach us days later, so an immediate charge
+means fronting the cost on every order.
 
 **5. Cancellations**
 
@@ -135,10 +141,17 @@ BPR Clinic
   para desligar, o desenho da liberação pelo terapeuta (081 T-4) tem de mudar, e
   é melhor saber antes de o construir do que depois.
 
-- **Como cobram** e **cancelamentos** entraram depois (03/10, pergunta do Bruno):
-  são as duas coisas que faltam para o fluxo de dinheiro fechar. O lado do
-  paciente já está decidido — paga-nos pelo Stripe, com o preço decidido no
-  servidor (081 T-6). O lado de lá é que não se sabe.
+- **Como cobram** deixou de ser pergunta: o portal diz, em
+  `/payment`, que o cartão é cobrado ao *List Price* quando o pedido é criado.
+  A pergunta passou a ser **se dá para ficar em conta faturada** — porque o
+  Stripe liberta o dinheiro do paciente só dias depois, e o pré-pago obriga a
+  adiantar o custo de cada exame.
+
+  *(Enquanto não houver resposta: cartão de **crédito** no portal em vez de
+  débito resolve sozinho — a fatura vence depois de o Stripe já ter pago.)*
+
+- **Cancelamentos** é a outra metade do mesmo: se o pedido já foi criado, o
+  custo já saiu.
 
 Ficou **de fora** de propósito, para não misturar comercial com acesso técnico:
 três preços que o portal mostra e que não fecham —
