@@ -75,7 +75,24 @@ export async function POST(req: NextRequest) {
      * mesmo aparelho". Era o atalho que o review de 27/09/2026 derrubou: o
      * terapeuta que esquece de abrir a janela produz exatamente este estado.
      */
-    connection = await (prisma as any).wearableConnection.findFirst({
+    /**
+     * **Todas as ligações desta conta, e não uma** (121 T-7).
+     *
+     * Era `findFirst` com a da clínica à frente — e a ordem resolvia o sorteio,
+     * mas criou um silêncio pior: a seguir, *"se esta não estiver `CONNECTED`,
+     * descarta"*. Com a mesma conta ligada duas vezes, **uma ligação doente
+     * calava a irmã sã**. Em produção, hoje: o manguito da clínica com o token
+     * morto, e cada empurrão da Withings para a conta pessoal do Bruno —
+     * `appli=16` (passos), `appli=44` (sono) — descartado, com a ligação
+     * pessoal a funcionar perfeitamente ao lado. O tempo real desapareceu e só
+     * a rede de 15 minutos o segurava.
+     *
+     * Processar as duas é **seguro desde a 122 T-1/T-2**: a régua garante que a
+     * pessoal se cala exactamente quando a da clínica atribui. Antes desta
+     * régua, duas ligações a processar o mesmo empurrão era o defeito que a 092
+     * corrigiu; agora é o conserto.
+     */
+    const ligacoes = await (prisma as any).wearableConnection.findMany({
       where: { provider: "WITHINGS", providerUserId: String(userid) },
       orderBy: { isClinicDevice: "desc" },
       select: {
@@ -84,6 +101,7 @@ export async function POST(req: NextRequest) {
         providerUserId: true,
       },
     });
+    const servem = (ligacoes ?? []).filter((c: any) => c.status === "CONNECTED");
 
     // A notification for an account we do not know is not an error on their
     // side or ours — it is a subscription left over from a disconnected
@@ -106,8 +124,13 @@ export async function POST(req: NextRequest) {
      * que notaria é a que não tem como olhar. Achado do QA da 092, cenário
      * 3.1b.
      */
-    if (!connection || connection.status !== "CONNECTED") {
-      const motivo = !connection ? "conta desconhecida" : `conexão ${connection.status}`;
+    if (servem.length === 0) {
+      /*
+       * O estado de **todas** elas, e não o da primeira: era isso que faltava
+       * para se ver, no log, que havia uma ligação sã a ser calada por outra.
+       */
+      const estados = (ligacoes ?? []).map((c: any) => c.status).join(",");
+      const motivo = (ligacoes ?? []).length === 0 ? "conta desconhecida" : `nenhuma ligacao servivel (${estados})`;
       console.warn(`[withings/webhook] descartada: ${motivo} userid=${userid} appli=${appli}`);
       await logSystem({
         level: "WARN",
@@ -116,17 +139,19 @@ export async function POST(req: NextRequest) {
         source: "api/wearables/withings/webhook",
         path: "/api/wearables/withings/webhook",
         method: "POST",
-        userId: connection?.userId,
+        userId: (ligacoes ?? [])[0]?.userId,
         details: {
           providerUserId: String(userid),
           appli,
-          connectionId: connection?.id ?? null,
-          connectionStatus: connection?.status ?? null,
-          isClinicDevice: connection?.isClinicDevice ?? null,
+          ligacoes: (ligacoes ?? []).length,
+          connectionId: (ligacoes ?? [])[0]?.id ?? null,
+          connectionStatus: (ligacoes ?? [])[0]?.status ?? null,
+          estados,
+          isClinicDevice: (ligacoes ?? [])[0]?.isClinicDevice ?? null,
           // Uma assinatura órfã de paciente desconectado é esperada e não é
           // defeito; a da clínica sumindo é o defeito. Quem lê o log precisa
           // distinguir as duas sem abrir o banco.
-          esperado: !connection,
+          esperado: (ligacoes ?? []).length === 0,
         },
       }).catch((e) => console.error("[withings/webhook] log falhou:", e?.message));
       return ok();
@@ -138,20 +163,38 @@ export async function POST(req: NextRequest) {
     const since = startdate ? new Date((startdate - 60) * 1000) : new Date(Date.now() - 24 * 3600_000);
     const until = enddate ? new Date((enddate + 60) * 1000) : new Date();
 
-    const counts = await ingestWithings(connection.userId, connection, {
-      since,
-      until,
-      kinds: KINDS_BY_APPLI[appli] ?? ["bp"],
-      /* Quem pediu, para o log da renovação o dizer — ver 121 T-5. */
-      origem: "webhook",
-    });
-
-    // O carimbo de chegada é do `ingestWithings`, com a data da leitura — os
-    // três chamadores usam o mesmo caminho, e dois deles carimbando por conta
-    // própria era como o terceiro ficava de fora.
+    /*
+     * **Uma falha de uma não pode parar a outra** (121 T-7). O `try` de fora
+     * apanhava a primeira e saía do laço — que é a mesma forma do defeito que
+     * esta tarefa conserta, um nível abaixo.
+     */
+    const resumo: string[] = [];
+    for (const c of servem) {
+      connection = c;
+      const quem = c.isClinicDevice ? "clinica" : "pessoal";
+      try {
+        const counts = await ingestWithings(c.userId, c, {
+          since,
+          until,
+          kinds: KINDS_BY_APPLI[appli] ?? ["bp"],
+          /* Quem pediu, para o log da renovação o dizer — ver 121 T-5. */
+          origem: "webhook",
+        });
+        // O carimbo de chegada é do `ingestWithings`, com a data da leitura — os
+        // três chamadores usam o mesmo caminho, e dois deles carimbando por conta
+        // própria era como o terceiro ficava de fora.
+        resumo.push(
+          `${quem} bp=${counts.bloodPressure} activity=${counts.activityDays} sleep=${counts.sleepNights}`
+        );
+      } catch (e: any) {
+        console.error(`[withings/webhook] ligacao ${c.id} (${quem}) falhou:`, e?.message);
+        await registarFalhaDaLigacao(c.id, e);
+        resumo.push(`${quem} FALHOU`);
+      }
+    }
 
     console.log(
-      `[withings/webhook] userid=${userid} appli=${appli} bp=${counts.bloodPressure} activity=${counts.activityDays} sleep=${counts.sleepNights}`
+      `[withings/webhook] userid=${userid} appli=${appli} ligacoes=${servem.length}/${(ligacoes ?? []).length} | ${resumo.join(" | ")}`
     );
     return ok();
   } catch (e: any) {

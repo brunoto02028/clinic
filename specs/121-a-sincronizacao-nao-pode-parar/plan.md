@@ -91,6 +91,9 @@ quem carrega no botão de reconectar é ele.
 | T-4 | [O relógio parado aparece na clínica](t-4-o-relogio-parado-na-clinica.md) | T-3 | **feita** (03/10) — e apanhou um defeito que a T-3 criou: o monitor escondia a ligação em `ERROR` |
 | T-5 | [Medir quanto tempo esteve parada, e porquê](t-5-medir-a-parada.md) | T-1..T-3 | **instrumentada** (03/10) — a medição espera uma semana |
 | T-6 | [A rede nunca esteve pendurada](t-6-a-rede-nunca-esteve-pendurada.md) | — | **feita** (03/10) — **o cron não era disparado por nada** |
+| T-7 | [Uma ligação doente não cala a irmã sã](t-7-uma-ligacao-doente-nao-cala-a-irma.md) | 122 T-1/T-2 | **feita** (03/10) — **o webhook descartava os empurrões da conta inteira** |
+| T-8 | [O estado que nunca mais saía](t-8-o-estado-que-nunca-mais-saia.md) | T-3 | **feita** (03/10) — o `ERROR` da T-3 desligava o tempo real de vez |
+| T-9 | Subscrever o ECG (`appli` 54/55) e a VFC (`62`) | T-7 | **pendente** — hoje o ECG só chega pela rede de 15 min |
 
 ## Suposições
 
