@@ -207,5 +207,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
      * não cria nada, mas o contador da passagem subia na mesma.
      */
     ecg: ecgDoPaciente,
+    /**
+     * **E as medições de vitais** (122 T-3, achado do review).
+     *
+     * Sem isto, medir **só a temperatura** com o BeamO guardava o
+     * `VitalReading` na ficha e a tela respondia *"nada veio do aparelho"* —
+     * porque `found` só olha a pressão e `ecg` só olha o ECG. O terapeuta mede
+     * outra vez, ou anota à mão, que é o que esta tarefa existe para acabar.
+     *
+     * É a terceira vez que este mesmo defeito aparece nesta tela: primeiro com
+     * o `lidas` (27/09), depois com o `ecg` (122 T-2), agora com os vitais.
+     */
+    vitais: counts.vitalReadings,
   });
 }

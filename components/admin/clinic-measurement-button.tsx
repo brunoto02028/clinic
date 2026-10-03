@@ -55,6 +55,10 @@ const UI = {
       n === 1
         ? "No blood pressure yet — one ECG was saved to this record."
         : `No blood pressure yet — ${n} ECGs were saved to this record.`,
+    fetchedVitais: (n: number) =>
+      n === 1
+        ? "One measurement (temperature / SpO₂) was saved to this record."
+        : `${n} measurements (temperature / SpO₂) were saved to this record.`,
   },
   "pt-BR": {
     measure: "Medir pressão",
@@ -86,6 +90,10 @@ const UI = {
       n === 1
         ? "Nenhuma pressão ainda — um ECG foi salvo neste histórico."
         : `Nenhuma pressão ainda — ${n} ECG foram salvos neste histórico.`,
+    fetchedVitais: (n: number) =>
+      n === 1
+        ? "Uma medição (temperatura / SpO₂) foi salva neste histórico."
+        : `${n} medições (temperatura / SpO₂) foram salvas neste histórico.`,
   },
 } as const;
 
@@ -228,9 +236,10 @@ export default function ClinicMeasurementButton({
          */
         const partes: string[] = [];
         if (data?.ecg > 0) partes.push(ui.fetchedEcg(data.ecg));
+        if (data?.vitais > 0) partes.push(ui.fetchedVitais(data.vitais));
         if (data?.lidas > 0) partes.push(ui.fetchedElsewhere);
         setAviso(partes.length ? partes.join(" ") : ui.fetchedNone);
-        if (data?.ecg > 0) onReading?.();
+        if (data?.ecg > 0 || data?.vitais > 0) onReading?.();
       }
     } catch {
       setAviso(ui.failed);

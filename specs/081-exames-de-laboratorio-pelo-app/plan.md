@@ -189,6 +189,7 @@ rodam contra catálogo semeado à mão a partir da lista de 2024. Quando o token
 | T-13 | [Os 421 exames no banco, da planilha](t-13-os-421-no-banco.md) | T-1 | **não** | **concluído** (01/10) — 421 carregados inativos, 443 no total |
 | T-14 | [Categoria para 421, sem inventar medicina](t-14-categoria-sem-inventar-medicina.md) | T-13 | parcial | **em QA** (01/10) — 443 em 25 categorias, nenhum em `other` |
 | T-15 | [A descoberta: como o paciente sabe tudo o que temos](t-15-a-descoberta-de-421-exames.md) | T-13, T-14 | **não** | pendente |
+| T-16 | O guia do Client Portal, lido: o que ele faz e o que não resolve | — | não | **feito** (03/10) — ver [docs/lml/o-portal-e-o-que-ele-nao-resolve.md](../../docs/lml/o-portal-e-o-que-ele-nao-resolve.md) |
 
 > Os arquivos `t-N-*.md` foram escritos na ordem anterior (API primeiro). A renumeração acompanha
 > esta tabela quando o plano for aprovado — o conteúdo de cada tarefa não muda, só a ordem.
