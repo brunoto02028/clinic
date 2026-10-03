@@ -770,10 +770,24 @@ export default function PatientTreatmentPage() {
 // ─── Video thumbnail button — a real preview instead of a plain text
 // button, so the exercise list reads like a proper video library. Falls
 // back to a plain play icon when the exercise has no thumbnail yet.
-function VideoThumb({ thumbnailUrl, onPlay, isPt }: {
+/**
+ * A miniatura do item — com vídeo, ou **só a foto** (03/10/2026).
+ *
+ * Isto só aparecia quando havia `videoUrl`, e por isso uma imagem de
+ * referência não tinha como chegar ao plano: ia para Meus Documentos,
+ * misturada aos exames da pessoa. Para quem precisa ver onde colar o
+ * eletrodo antes de cada sessão, o lugar da foto é a linha do item, não
+ * uma pasta de documentos.
+ *
+ * Sem vídeo não há botão de play nem "Ver vídeo" — seria prometer o que
+ * não existe; a foto abre em tamanho grande, que é o que serve.
+ */
+function VideoThumb({ thumbnailUrl, onPlay, isPt, temVideo = true, legenda }: {
   thumbnailUrl?: string | null;
   onPlay: () => void;
   isPt: boolean;
+  temVideo?: boolean;
+  legenda?: string | null;
 }) {
   return (
     <button
@@ -783,17 +797,19 @@ function VideoThumb({ thumbnailUrl, onPlay, isPt }: {
     >
       {thumbnailUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
+        <img src={thumbnailUrl} alt={legenda || ""} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full bg-muted" />
       )}
-      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center">
-        <span className="h-7 w-7 rounded-full bg-white shadow flex items-center justify-center">
-          <Play className="h-3.5 w-3.5 text-foreground ml-0.5" fill="currentColor" />
-        </span>
-      </div>
+      {temVideo && (
+        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center">
+          <span className="h-7 w-7 rounded-full bg-white shadow flex items-center justify-center">
+            <Play className="h-3.5 w-3.5 text-foreground ml-0.5" fill="currentColor" />
+          </span>
+        </div>
+      )}
       <span className="absolute bottom-1 left-1 right-1 text-[9px] font-medium text-white bg-black/55 rounded px-1 py-0.5 text-center truncate">
-        {isPt ? "Ver vídeo" : "Watch video"}
+        {temVideo ? (isPt ? "Ver vídeo" : "Watch video") : (isPt ? "Ver foto" : "View photo")}
       </span>
     </button>
   );
@@ -1024,10 +1040,14 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                     </div>
 
                     {/* Exercise video */}
-                    {item.exercise?.videoUrl && (
+                    {(item.exercise?.videoUrl || item.exercise?.thumbnailUrl) && (
                       <VideoThumb
                         thumbnailUrl={item.exercise.thumbnailUrl}
-                        onPlay={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false, item.exercise.thumbnailUrl, item.exercise.id)}
+                        temVideo={!!item.exercise.videoUrl}
+                        legenda={item.title}
+                        onPlay={() => item.exercise.videoUrl
+                          ? onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false, item.exercise.thumbnailUrl, item.exercise.id)
+                          : window.open(item.exercise.thumbnailUrl!, "_blank")}
                         isPt={isPt}
                       />
                     )}
