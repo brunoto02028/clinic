@@ -30,6 +30,14 @@
 export const MAXIMO_DE_ECGS = 100;
 
 /**
+ * O tecto das medições feitas na clínica (122 T-3).
+ *
+ * Mora aqui ao lado do do ECG pela mesma razão: um número escrito à mão numa
+ * rota é o começo de duas telas a contar diferente sobre o mesmo paciente.
+ */
+export const MAXIMO_DE_VITAIS = 50;
+
+/**
  * Houve mais do que cabe?
  *
  * Pede-se `MAXIMO + 1` ao banco e pergunta-se isto: se vieram mais do que o

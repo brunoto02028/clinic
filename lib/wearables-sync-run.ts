@@ -233,6 +233,8 @@ export async function correrSincronizacaoDeWearables() {
     ecgRecords: 0,
     ecgRead: 0,
     ecgNaoAtribuidos: 0,
+    vitalReadings: 0,
+    vitaisNaoAtribuidos: 0,
   };
 
   // O scheduled task do Coolify corta em 300s. Parar por conta própria antes
@@ -316,6 +318,9 @@ export async function correrSincronizacaoDeWearables() {
        * pressão (122 T-4), é este número que a torna visível.
        */
       totals.ecgNaoAtribuidos += counts.ecgNaoAtribuidos ?? 0;
+      /* As medições que a clínica atribuiu a um paciente, e as que não (122 T-3). */
+      totals.vitalReadings += counts.vitalReadings ?? 0;
+      totals.vitaisNaoAtribuidos += counts.vitaisNaoAtribuidos ?? 0;
       /**
        * **O que não se conseguiu ler, por nome** (120 T-4).
        *
@@ -466,6 +471,8 @@ export async function correrSincronizacaoDeWearables() {
       `hipnograma=${totals.hypnogramNights} treinos=${totals.workouts} ` +
       `ecg=${totals.ecgRecords}/${totals.ecgRead} ` +
       `ecgNaoAtribuidos=${totals.ecgNaoAtribuidos} ` +
+      `vitaisDaClinica=${totals.vitalReadings} ` +
+      `vitaisNaoAtribuidos=${totals.vitaisNaoAtribuidos} ` +
       /* Vazio é notícia boa, e é por isso que se escreve sempre. */
       `naoLidos=${[...totals.falhas].join(",") || "-"} comFalha=${comFalha}`
   );

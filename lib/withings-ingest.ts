@@ -287,6 +287,10 @@ export interface IngestCounts {
    * existir só numa linha de log.
    */
   ecgNaoAtribuidos: number;
+  /** Medições de vitais atribuídas a um paciente pela janela (122 T-3). */
+  vitalReadings: number;
+  /** E as que não foram — pela mesma razão do `ecgNaoAtribuidos`. */
+  vitaisNaoAtribuidos: number;
   intradayDays: number;
   hypnogramNights: number;
   workouts: number;
@@ -526,7 +530,7 @@ export async function ingestWithings(
   };
 
   const wanted: Array<"bp" | "activity" | "sleep" | "vitals" | "series" | "ecg"> = forClinic
-    ? ["bp", "ecg"]
+    ? ["bp", "ecg", "vitals"]
     : pulaPressaoDaClinica
       ? kinds.filter((k) => k !== "bp")
       : kinds;
@@ -577,6 +581,8 @@ export async function ingestWithings(
   let ecgRecords = 0;
   let ecgRead = 0;
   let ecgNaoAtribuidos = 0;
+  let vitalReadings = 0;
+  let vitaisNaoAtribuidos = 0;
   /**
    * As séries do dia e da noite (099 T-7).
    *
@@ -706,26 +712,69 @@ export async function ingestWithings(
        * dentro de uma janela da clínica, cairiam no prontuário do dono. Fora de
        * janela nada muda: é dele.
        */
-      const meus = vitals.filter((v: any) => !medidaNoutraPessoa(v.measuredAt));
-      const deOutros = vitals.length - meus.length;
-      if (deOutros > 0) {
-        console.log(
-          `[withings-ingest] ${deOutros} medicao(oes) dentro de janela da clinica — nao entram no dono`
-        );
-      }
-
-      for (const day of vitalsByDay(meus)) {
-        const fields: Record<string, unknown> = { rawPayload: JSON.stringify({ samples: day.samples }) };
-        if (day.spo2 !== undefined) fields.spo2 = day.spo2;
-        if (day.bodyTemperature !== undefined) fields.bodyTemperature = day.bodyTemperature;
-        // Não há coluna para temperatura de pele, e ela não é temperatura
-        // corporal — vai para o payload em vez de ser pedida e jogada fora.
-        if (day.skinTemperature !== undefined) {
-          fields.rawPayload = JSON.stringify({ samples: day.samples, skinTemperature: day.skinTemperature });
+      /**
+       * **A ligação da clínica atribui; a pessoal agrega o dia** (122 T-3).
+       *
+       * São duas formas de dado e dois destinos. O que o terapeuta mede num
+       * paciente é um **evento** com instante e dono, e vai para `VitalReading`.
+       * O que o aparelho do dono produz ao longo do dia é um **total**, e vai
+       * para o `WearableDataPoint` como sempre.
+       *
+       * Até aqui a clínica não lia vitais de todo, e a temperatura e o SpO₂ de
+       * um paciente não entravam em lado nenhum.
+       */
+      if (forClinic) {
+        const { atribuirVitalDaClinica } = await import("@/lib/clinic-vitals");
+        const conta = { guardados: 0, repetidos: 0, soPassivo: 0, semJanela: 0, ambiguo: 0 };
+        for (const v of vitals as any[]) {
+          if (janelasPorLer) {
+            /* Sem saber de quem é, não se escreve em ninguém. Ver `janelasPorLer`. */
+            conta.semJanela++;
+            continue;
+          }
+          if (!connection.clinicId) {
+            /* Um aparelho de clínica sem clínica não pode atribuir a ninguém. */
+            conta.semJanela++;
+            continue;
+          }
+          const r = await atribuirVitalDaClinica(connection.clinicId, janelasDaClinica, v);
+          if (r.kind === "assigned") conta.guardados++;
+          else if (r.kind === "duplicate") conta.repetidos++;
+          else if (r.reason === "so-passivo") conta.soPassivo++;
+          else if (r.reason === "ambiguo") conta.ambiguo++;
+          else conta.semJanela++;
         }
-        if (day.restingHr !== undefined) fields.restingHr = day.restingHr;
-        await upsertPoint(userId, connection.id, "VITALS", day.dataDate, fields);
-        vitalsDays++;
+        vitalReadings = conta.guardados;
+        vitaisNaoAtribuidos = conta.soPassivo + conta.semJanela + conta.ambiguo;
+        if (vitals.length) {
+          console.log(
+            `[withings-ingest] vitais da clinica: ${conta.guardados} atribuidos, ` +
+              `${conta.repetidos} repetidos, ${conta.soPassivo} so passivos, ` +
+              `${conta.semJanela} sem janela, ${conta.ambiguo} com duas janelas`
+          );
+        }
+      } else {
+        const meus = vitals.filter((v: any) => !medidaNoutraPessoa(v.measuredAt));
+        const deOutros = vitals.length - meus.length;
+        if (deOutros > 0) {
+          console.log(
+            `[withings-ingest] ${deOutros} medicao(oes) dentro de janela da clinica — nao entram no dono`
+          );
+        }
+
+        for (const day of vitalsByDay(meus)) {
+          const fields: Record<string, unknown> = { rawPayload: JSON.stringify({ samples: day.samples }) };
+          if (day.spo2 !== undefined) fields.spo2 = day.spo2;
+          if (day.bodyTemperature !== undefined) fields.bodyTemperature = day.bodyTemperature;
+          // Não há coluna para temperatura de pele, e ela não é temperatura
+          // corporal — vai para o payload em vez de ser pedida e jogada fora.
+          if (day.skinTemperature !== undefined) {
+            fields.rawPayload = JSON.stringify({ samples: day.samples, skinTemperature: day.skinTemperature });
+          }
+          if (day.restingHr !== undefined) fields.restingHr = day.restingHr;
+          await upsertPoint(userId, connection.id, "VITALS", day.dataDate, fields);
+          vitalsDays++;
+        }
       }
     } catch (e: any) {
       /*
@@ -1218,6 +1267,8 @@ export async function ingestWithings(
     ecgRecords,
     ecgRead,
     ecgNaoAtribuidos,
+    vitalReadings,
+    vitaisNaoAtribuidos,
     /*
      * O que falhou, por nome, **sem repetir**. Vazio quer dizer *"leu-se
      * tudo"* — e é isso que dá sentido aos zeros ao lado: um `ecgRecords: 0`

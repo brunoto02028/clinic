@@ -966,6 +966,8 @@ model User {
   patientInvoicesPaidBy          PatientInvoice[]           @relation("PatientInvoicesPaidBy")
   bloodPressureReadings          BloodPressureReading[]     @relation("PatientBPReadings")
   bloodPressureReadingsRecorded  BloodPressureReading[]     @relation("StaffBPReadings")
+  vitalReadings                  VitalReading[]             @relation("PatientVitalReadings")
+  vitalReadingsRecorded          VitalReading[]             @relation("StaffVitalReadings")
   // Clinic-device measurement (activity 074, T-14)
   measurementSessions            ClinicMeasurementSession[] @relation("PatientMeasurementSessions")
   measurementSessionsOpened      ClinicMeasurementSession[] @relation("StaffOpenedMeasurementSessions")
@@ -7606,6 +7608,67 @@ model ClinicMeasurementSession {
  * It exists because the alternative is guessing. The therapist assigns it from
  * an inbox, or discards it with a reason; until then it is in nobody's record.
  */
+/**
+ * Uma medição de sinais vitais **num instante** (122 T-3).
+ *
+ * ## Porque não é um `WearableDataPoint`
+ *
+ * Porque a chave daquele é `(utilizador, dia, tipo, provedor)` — a chave de um
+ * **total do dia**. Escrever ali o SpO₂ que o terapeuta mediu às 09:01 apagaria,
+ * em silêncio, a média do dia que o aparelho do próprio paciente guardou. É a
+ * mesma forma de defeito que a 119 T-2 tirou do ECG, onde duas gravações no
+ * mesmo dia colapsavam numa.
+ *
+ * Uma medição feita num instante tem a forma de um **evento**, e o modelo a
+ * copiar é o `BloodPressureReading`, que já a tem.
+ */
+model VitalReading {
+  id        String @id @default(cuid())
+  patientId String
+  patient   User   @relation("PatientVitalReadings", fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId  String?
+
+  /// Quem abriu a janela de medição. `null` quando ninguém o disse.
+  recordedById String?
+  recordedBy   User?   @relation("StaffVitalReadings", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  /// Saturação de oxigénio, em %.
+  spo2 Float?
+  /// Temperatura corporal, em °C.
+  temperature Float?
+  /// A frequência que veio **no mesmo grupo** de medidas — a da mesma medição.
+  heartRate Int?
+
+  /// O instante da medição, e o fuso em que foi feita (como em 120 T-3).
+  measuredAt DateTime
+  timezone   String?
+
+  /// O id do grupo na Withings (`grpid`). É por ele que a mesma medição não
+  /// entra duas vezes quando o webhook e a varredura a trazem ambos.
+  withingsMeasureId String?
+
+  source  VitalSource        @default(CLINIC_DEVICE)
+  context MeasurementContext @default(PRE_SESSION)
+  notes   String?            @db.Text
+
+  /// A janela que a atribuiu, para o rasto poder ser seguido ao contrário.
+  sessionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([patientId, withingsMeasureId])
+  @@index([patientId, measuredAt])
+  @@index([clinicId])
+}
+
+enum VitalSource {
+  /// Medido com o aparelho da clínica, atribuído por uma janela de medição.
+  CLINIC_DEVICE
+  /// Digitado por uma pessoa.
+  MANUAL
+}
+
 model UnassignedMeasurement {
   id       String @id @default(cuid())
   clinicId String

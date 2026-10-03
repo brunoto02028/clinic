@@ -111,6 +111,19 @@ interface Dados {
   ecgUnreadable?: boolean;
   /** Houve mais registos do que o tecto — dito, em vez de cortado em silêncio. */
   ecgsCortados?: boolean;
+  /** As medições feitas **na clínica**, neste paciente (122 T-3). */
+  vitalReadings?: Array<{
+    id: string;
+    measuredAt: string;
+    spo2: number | null;
+    temperature: number | null;
+    heartRate: number | null;
+    context: string;
+    /** Quem abriu a janela de medição. */
+    por: string | null;
+  }>;
+  /** "Não conseguimos ler" não é o mesmo que "não mediu". */
+  vitalsUnreadable?: boolean;
 }
 
 const JANELAS = [7, 30, 90];
@@ -284,6 +297,57 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
             <p className="text-sm text-muted-foreground">
               Could not read the recordings this time — this is not the patient having none.
               Try again; if it persists, the table may be missing on the server.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/*
+        **O que foi medido na clínica** (122 T-3).
+
+        Temperatura e SpO₂ que o terapeuta mediu neste paciente, com o aparelho
+        da clínica. Não são o total do dia de um wearable: são um acto, com hora
+        e com quem o fez — e até esta tarefa não entravam em lado nenhum, porque
+        a tabela dos vitais tem a chave de um total do dia e escrever lá apagaria
+        a média do aparelho do próprio paciente.
+
+        Os valores saem como foram medidos. Nenhuma faixa, nenhuma cor: uma cor
+        é uma afirmação, e a leitura clínica é de quem lê.
+      */}
+      {(dados.vitalReadings?.length ?? 0) > 0 && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+              Measured at the clinic
+            </p>
+            <div className="space-y-1.5">
+              {dados.vitalReadings!.map((v) => {
+                const partes: string[] = [];
+                if (v.spo2 != null) partes.push(`SpO₂ ${v.spo2}%`);
+                if (v.temperature != null) partes.push(`${v.temperature} °C`);
+                if (v.heartRate != null) partes.push(`${v.heartRate} bpm`);
+                return (
+                  <div key={v.id} className="text-sm">
+                    <span>{partes.join(" · ")}</span>
+                    <span className="text-muted-foreground">
+                      {" — "}
+                      {new Date(v.measuredAt).toLocaleString()}
+                      {v.por ? ` · ${v.por}` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {dados.vitalsUnreadable && (
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-sm text-muted-foreground">
+              Clinic measurements could not be read. This is not the same as none
+              having been taken.
             </p>
           </CardContent>
         </Card>

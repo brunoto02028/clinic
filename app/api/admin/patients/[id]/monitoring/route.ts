@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { serieDaMetrica } from "@/lib/onde-mora-a-metrica";
-import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite } from "@/lib/ecg-limite";
+import { MAXIMO_DE_ECGS, cortouRegistos, ateAoLimite, MAXIMO_DE_VITAIS } from "@/lib/ecg-limite";
 import {
   getActor,
   getSessionStaffActor,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     desde.setDate(desde.getDate() - days);
     const desdeStr = desde.toISOString().split("T")[0];
 
-    const [monitoring, pontos, checkins, pressao, metas, ecgs] = await Promise.all([
+    const [monitoring, pontos, checkins, pressao, metas, ecgs, vitais] = await Promise.all([
       getMonitoringData(paciente.id, { days }),
       (prisma as any).wearableDataPoint.findMany({
         where: { userId: paciente.id, dataDate: { gte: desdeStr } },
@@ -128,6 +128,29 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           take: MAXIMO_DE_ECGS + 1,
         })
         .catch(() => ILEGIVEL),
+      /*
+       * **As medições feitas na clínica** (122 T-3).
+       *
+       * Temperatura e SpO₂ que o terapeuta mediu neste paciente, com o aparelho
+       * da clínica. Não são o total do dia de um wearable: são um acto, com
+       * hora e com quem o fez. Até esta tarefa não entravam em lado nenhum.
+       */
+      (prisma as any).vitalReading
+        .findMany({
+          where: { patientId: paciente.id, measuredAt: { gte: desde } },
+          orderBy: { measuredAt: "desc" },
+          select: {
+            id: true,
+            measuredAt: true,
+            spo2: true,
+            temperature: true,
+            heartRate: true,
+            context: true,
+            recordedBy: { select: { firstName: true, lastName: true } },
+          },
+          take: MAXIMO_DE_VITAIS,
+        })
+        .catch(() => ILEGIVEL),
     ]);
 
     /**
@@ -162,6 +185,23 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       /** O mesmo tecto do app — senão as duas telas contavam diferente. */
       ecgsCortados: ecgs !== ILEGIVEL && cortouRegistos((ecgs as any[]).length),
       ecgUnreadable: ecgs === ILEGIVEL,
+      /** As medições feitas na clínica neste paciente (122 T-3). */
+      vitalReadings:
+        vitais === ILEGIVEL
+          ? []
+          : (vitais as any[]).map((v) => ({
+              id: v.id,
+              measuredAt: v.measuredAt.toISOString(),
+              spo2: v.spo2,
+              temperature: v.temperature,
+              heartRate: v.heartRate,
+              context: v.context,
+              por: v.recordedBy
+                ? `${v.recordedBy.firstName ?? ""} ${v.recordedBy.lastName ?? ""}`.trim()
+                : null,
+            })),
+      /** E a diferença entre "não mediu" e "não conseguimos ler". */
+      vitalsUnreadable: vitais === ILEGIVEL,
       // Os desvios do próprio paciente, para a ficha dele repetir o que a fila
       // da clínica já mostra — sem obrigar quem abriu a ficha a ir até lá.
       /*
