@@ -9,6 +9,7 @@ import {
   BookOpen,
   User,
   MessageCircleQuestion,
+  HeartPulse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -100,6 +101,28 @@ export const PATIENT_SECTIONS: PatientSection[] = [
       "/dashboard/outcome-measures",
       "/dashboard/follow-up",
     ],
+  },
+  {
+    /**
+     * A pressão arterial tinha tela e **não tinha porta** no portal web.
+     *
+     * `app/dashboard/blood-pressure` existe desde a atividade 074, em
+     * inglês e português, com o preparo escrito (descansar 5 min, braço na
+     * altura do coração) — mas nenhum link apontava para ela. Só abria
+     * digitando o endereço, o que para uma paciente de 78 anos é o mesmo
+     * que não existir. No app ela já tinha porta, em Perfil.
+     *
+     * Entra como item próprio, e não dentro de "Minha Saúde", porque para
+     * quem mede antes de cada sessão isto é uma tarefa diária, não um
+     * arquivo que se consulta.
+     */
+    key: "blood-pressure",
+    label: "Blood Pressure",
+    labelPt: "Pressão Arterial",
+    icon: HeartPulse,
+    href: "/dashboard/blood-pressure",
+    clinicalOnly: true,
+    matchRoutes: ["/dashboard/blood-pressure"],
   },
   {
     key: "exercises",
