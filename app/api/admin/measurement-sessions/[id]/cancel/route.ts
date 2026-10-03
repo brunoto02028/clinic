@@ -17,9 +17,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!session || !actor.clinicId || session.clinicId !== actor.clinicId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (session.status !== "OPEN") {
-    // Cancelling a window that already took a reading would orphan that
-    // reading's explanation; and "nothing to cancel" is not an error.
+  /**
+   * **`EXPIRED` também se cancela** (achado do QA, 03/10).
+   *
+   * Uma janela expirada **continua a reclamar medições**: está em
+   * `MATCHABLE_SESSION_STATUSES` de propósito, desde 24/09, para a leitura que
+   * sobe horas depois — visita domiciliar, manguito sem rede — não se perder.
+   *
+   * O efeito colateral é a janela abandonada: o terapeuta abre-a num paciente,
+   * acaba por não medir, e **qualquer medição carimbada naqueles três minutos**
+   * entra na ficha daquele paciente. Inclusive uma que o dono do aparelho faça
+   * em si mesmo logo a seguir. E, até agora, não havia como desdizer: o botão
+   * de cancelar só existia enquanto a contagem corria.
+   *
+   * `COMPLETED` continua de fora — essa já recebeu a sua leitura, e cancelá-la
+   * deixaria a leitura sem a explicação de como foi atribuída.
+   */
+  if (session.status !== "OPEN" && session.status !== "EXPIRED") {
+    // "Nothing to cancel" is not an error.
     return NextResponse.json({ session, alreadyClosed: true });
   }
 

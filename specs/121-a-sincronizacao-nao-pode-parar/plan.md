@@ -93,7 +93,9 @@ quem carrega no botão de reconectar é ele.
 | T-6 | [A rede nunca esteve pendurada](t-6-a-rede-nunca-esteve-pendurada.md) | — | **feita** (03/10) — **o cron não era disparado por nada** |
 | T-7 | [Uma ligação doente não cala a irmã sã](t-7-uma-ligacao-doente-nao-cala-a-irma.md) | 122 T-1/T-2 | **feita** (03/10) — **o webhook descartava os empurrões da conta inteira** |
 | T-8 | [O estado que nunca mais saía](t-8-o-estado-que-nunca-mais-saia.md) | T-3 | **feita** (03/10) — o `ERROR` da T-3 desligava o tempo real de vez |
-| T-9 | Subscrever o ECG (`appli` 54/55) e a VFC (`62`) | T-7 | **pendente** — hoje o ECG só chega pela rede de 15 min |
+| T-9 | [Subscrever o ECG (`appli` 54/55), a VFC (`62`) e a temperatura (`2`)](t-9-o-ecg-chega-em-segundos.md) | T-7 | **feita** (03/10) — o ECG esperava sempre 15 min |
+| T-10 | [O botão que some sem dizer porquê](t-10-o-botao-que-some.md) | T-3 | **feita** (03/10) — com o aparelho em `ERROR` a ficha do paciente ficava **sem botão nenhum** |
+| T-11 | Os achados do QA do fluxo: token morto a parecer são, a caixa a negar o aparelho, a janela abandonada, o reconectar que não apaga o aviso | T-10 | **feita** (03/10) — ver [report-fluxo](../122-o-beamo-e-o-que-deitamos-fora/qa/report-fluxo.md) |
 
 ## Suposições
 

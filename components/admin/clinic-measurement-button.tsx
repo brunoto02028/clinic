@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Activity, Loader2, X, CheckCircle2, Inbox, AlertCircle } from "lucide-react";
+import { Activity, Loader2, X, CheckCircle2, Inbox, AlertCircle, AlertTriangle } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ const UI = {
     cancel: "Cancel",
     saved: (name: string) => `Saved to ${name}'s record`,
     expired: "No reading arrived",
+    naoMedi: "I did not measure",
     expiredHint: "If you did measure, it is in the inbox.",
     inbox: "Open the inbox",
     again: "Open again",
@@ -46,6 +47,10 @@ const UI = {
     fetching: "Fetching…",
     fetchedNone: "Nothing from the device yet. Give it a moment and try again.",
     fetchedElsewhere: "A reading arrived but matched no window — it is in the inbox.",
+    aparelhoPrecisaReconectar:
+      "The clinic device needs to be reconnected before you can measure a patient.",
+    aparelhoParado: "The clinic device is not delivering right now — measurements cannot be attributed.",
+    abrirAparelhos: "Reconnect the device",
     fetchedEcg: (n: number) =>
       n === 1
         ? "No blood pressure yet — one ECG was saved to this record."
@@ -62,6 +67,7 @@ const UI = {
     cancel: "Cancelar",
     saved: (name: string) => `Salvo no histórico de ${name}`,
     expired: "Nenhuma medição chegou",
+    naoMedi: "Não medi",
     expiredHint: "Se você mediu, ela está na caixa de entrada.",
     inbox: "Abrir a caixa de entrada",
     again: "Abrir de novo",
@@ -72,6 +78,10 @@ const UI = {
     fetching: "Buscando…",
     fetchedNone: "Nada veio do aparelho ainda. Espere um instante e tente de novo.",
     fetchedElsewhere: "Chegou uma leitura, mas fora desta janela — está na caixa de entrada.",
+    aparelhoPrecisaReconectar:
+      "O aparelho da clínica precisa ser reconectado antes de medir um paciente.",
+    aparelhoParado: "O aparelho da clínica não está entregando — a medição não seria atribuída.",
+    abrirAparelhos: "Reconectar o aparelho",
     fetchedEcg: (n: number) =>
       n === 1
         ? "Nenhuma pressão ainda — um ECG foi salvo neste histórico."
@@ -94,7 +104,11 @@ export default function ClinicMeasurementButton({
   const isPt = locale === "pt-BR";
   const ui = UI[isPt ? "pt-BR" : "en-GB"];
 
-  const [device, setDevice] = useState<{ id: string; label: string | null } | null>(null);
+  const [device, setDevice] = useState<{
+    id: string;
+    label: string | null;
+    precisaReconectar?: boolean;
+  } | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [session, setSession] = useState<any | null>(null);
   const [reading, setReading] = useState<any | null>(null);
@@ -103,6 +117,10 @@ export default function ClinicMeasurementButton({
   const [aviso, setAviso] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  /** Há aparelho da clínica, mas não está a servir — ver a rota (121 T-10). */
+  const [parado, setParado] = useState<{ label: string | null; precisaReconectar: boolean } | null>(
+    null
+  );
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Does this clinic even have a device? Without one the button must not
@@ -112,7 +130,9 @@ export default function ClinicMeasurementButton({
     fetch("/api/admin/measurement-sessions")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (alive && d?.device) setDevice(d.device);
+        if (!alive) return;
+        if (d?.device) setDevice(d.device);
+        else if (d?.deviceParado) setParado(d.deviceParado);
       })
       .catch(() => {});
     return () => {
@@ -257,7 +277,40 @@ export default function ClinicMeasurementButton({
     await fetch(`/api/admin/measurement-sessions/${session.id}/cancel`, { method: "POST" }).catch(() => {});
   };
 
-  if (!device) return null;
+  /*
+   * **Um aparelho que a rota devolve, mas cuja autorização morreu.**
+   *
+   * `clinicDevice` só filtra por `status`, e uma cadeia de tokens que morreu
+   * antes de 03/10 deixou a ligação `CONNECTED`. Medir com ela produz uma
+   * janela que nunca recebe leitura nenhuma — e o terapeuta só descobre três
+   * minutos depois, com o paciente à frente.
+   */
+  const paradoOuMorto =
+    parado ?? (device?.precisaReconectar ? { label: device.label, precisaReconectar: true } : null);
+
+  if (!device || device.precisaReconectar) {
+    /*
+     * **Sem aparelho, nada** — oferecer uma acção que não pode funcionar é pior
+     * do que não a oferecer. Mas **com aparelho parado, a razão**: a tela ficava
+     * exactamente igual nos dois casos, e o terapeuta com o aparelho na mão
+     * lia "esta clínica não tem aparelho", que é falso.
+     */
+    if (!paradoOuMorto) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-1.5 min-w-0 max-w-full">
+        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+        <span className="text-sm">
+          {paradoOuMorto.precisaReconectar ? ui.aparelhoPrecisaReconectar : ui.aparelhoParado}
+          {paradoOuMorto.label ? ` (${paradoOuMorto.label})` : ""}
+        </span>
+        {/* A caixa de entrada é "o único sítio que o liga" — é lá que está o
+            botão de reconectar e o texto que explica o token morto. */}
+        <Link href="/admin/measurements/inbox" className="text-xs underline underline-offset-2">
+          {ui.abrirAparelhos}
+        </Link>
+      </div>
+    );
+  }
 
   if (phase === "waiting" && session) {
     const mm = String(Math.floor(secondsLeft / 60)).padStart(1, "0");
@@ -316,6 +369,17 @@ export default function ClinicMeasurementButton({
         </Link>
         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPhase("choosing")}>
           {ui.again}
+        </Button>
+        {/*
+          **"Não medi"** (achado do QA, 03/10). Uma janela expirada continua a
+          reclamar medições — é de propósito, para a leitura que sobe horas
+          depois não se perder. O efeito colateral é a janela abandonada: o
+          terapeuta abre-a, não mede, e a medição seguinte **de quem quer que
+          seja**, carimbada naqueles três minutos, entra nesta ficha. Até agora
+          não havia como desdizer.
+        */}
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={cancel}>
+          {ui.naoMedi}
         </Button>
       </div>
     );

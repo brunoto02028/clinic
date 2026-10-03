@@ -50,7 +50,15 @@ export async function POST() {
   }
 
   const connection = await (prisma as any).wearableConnection.findFirst({
-    where: { userId: eff.userId, provider: 'WITHINGS', status: 'CONNECTED' },
+    /*
+     * **`not DISCONNECTED`, e não `CONNECTED`.** Esta rota é o botão
+     * *"Corrigir"* do cartão partido — ou seja, é feita para ser usada
+     * **quando** a ligação está em `ERROR`. A exigir `CONNECTED`, o único botão
+     * accionável do cartão respondia 404 *"No connected Withings device"* num
+     * alerta intitulado "Erro". O `/sync` e o `/connections` já tinham sido
+     * alargados; esta ficou para trás.
+     */
+    where: { userId: eff.userId, provider: 'WITHINGS', status: { not: 'DISCONNECTED' } },
     select: { id: true, accessToken: true, refreshToken: true, tokenExpiresAt: true },
   });
   if (!connection) {

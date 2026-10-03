@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/system-logger";
 import { clinicDevice, expireStaleSessions, SESSION_WINDOW_MS } from "@/lib/clinic-device";
 import { deliveryState, ensureCheckedSoon } from "@/lib/withings-subscriptions";
 import { daysSilent, isSilent, silenceThreshold } from "@/lib/wearable-silence";
+import { ehFatal } from "@/lib/withings-estado-da-ligacao";
 
 /**
  * Opening the window in which the clinic's cuff measures one named patient
@@ -28,7 +29,38 @@ export async function GET(req: NextRequest) {
   if (!actor.clinicId) return NextResponse.json({ device: null, open: null });
 
   const device = await clinicDevice(actor.clinicId);
-  if (!device) return NextResponse.json({ device: null, open: null });
+  if (!device) {
+    /**
+     * **Há aparelho, mas não está a servir** — e isso tem de se ver (121 T-10).
+     *
+     * `clinicDevice` só devolve ligações `CONNECTED`. Com a ligação em `ERROR`
+     * — token morto à espera de reautorização — a tela do paciente ficava
+     * **sem botão nenhum**, sem uma palavra a dizer porquê. O terapeuta chega
+     * ao pé do paciente com o aparelho na mão e não tem onde carregar, e a
+     * única leitura possível é *"esta clínica não tem aparelho"*, que é falso.
+     *
+     * É o mesmo defeito que a 120 e a 121 inteiras combateram, do lado da
+     * interface: uma falha nossa com a cara de uma ausência.
+     */
+    const parado = await (prisma as any).wearableConnection.findFirst({
+      where: { clinicId: actor.clinicId, isClinicDevice: true, status: { not: "DISCONNECTED" } },
+      select: { id: true, deviceLabel: true, status: true, needsReauthAt: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    return NextResponse.json({
+      device: null,
+      open: null,
+      ...(parado
+        ? {
+            deviceParado: {
+              label: parado.deviceLabel,
+              status: parado.status,
+              precisaReconectar: !!parado.needsReauthAt,
+            },
+          }
+        : {}),
+    });
+  }
 
   await expireStaleSessions(device.id);
   const open = await (prisma as any).clinicMeasurementSession.findFirst({
@@ -59,6 +91,22 @@ export async function GET(req: NextRequest) {
       delivery: deliveryState(device, { soPressao: true }),
       daysSilent: daysSilent(device),
       silent: isSilent(device, limite),
+      /**
+       * **A autorização morreu, mas o estado ainda não o sabe** (achado do QA,
+       * 03/10).
+       *
+       * `status: "ERROR"` só passou a ser escrito em 03/10. Uma ligação cuja
+       * cadeia de tokens morreu **antes disso** continua `CONNECTED` — e é
+       * exactamente o estado em que o Bruno esteve 27 dias. Aí `clinicDevice`
+       * devolve-a, a tela desenha o botão de medir como se nada fosse, e o
+       * `lastSyncError` que diz `invalid_grant: refresh_token expired` vai na
+       * resposta sem ninguém o ler.
+       *
+       * A pergunta é feita à mensagem, com a mesma régua que o resto do
+       * sistema usa para decidir o que é fatal — e não ao `status`, que é a
+       * coisa que pode estar velha.
+       */
+      precisaReconectar: !!device.needsReauthAt || ehFatal(device.lastSyncError),
       /**
        * Os três dados que respondem "por que nada chega?" (092 T-3).
        *

@@ -567,7 +567,26 @@ export async function withingsSleep(
  * as for a new one, so subscribing twice is safe and there is no need to list
  * first — which matters, because the connect flow must not fail over this.
  */
-export const WITHINGS_APPLI = { WEIGHT: 1, BLOOD_PRESSURE: 4, ACTIVITY: 16, SLEEP: 44 } as const;
+export const WITHINGS_APPLI = {
+  WEIGHT: 1,
+  /** Temperatura — o BeamO mede-a, e ela vem por um `appli` só dela. */
+  TEMPERATURA: 2,
+  BLOOD_PRESSURE: 4,
+  ACTIVITY: 16,
+  SLEEP: 44,
+  /** *"A new ECG recording was completed."* → `v2/heart list`. */
+  ECG_FEITO: 54,
+  /**
+   * *"An ECG recording was attempted but failed."*
+   *
+   * Não há nada para ir buscar: é **só** a notificação. E é a única forma de
+   * saber que o paciente **tentou** — nenhuma consulta de dados revela uma
+   * tentativa falhada.
+   */
+  ECG_FALHOU: 55,
+  /** *"New HRV data is available."* → `measure getmeas`. */
+  VFC: 62,
+} as const;
 
 export async function withingsSubscribe(
   accessToken: string,
@@ -605,8 +624,39 @@ export async function withingsListSubscriptions(accessToken: string, appli: numb
   return body?.profiles ?? [];
 }
 
-/** The four kinds we ask for, in one place so the check and the subscribe agree. */
+/**
+ * O que **pedimos** à Withings que nos empurre, num sítio só para a subscrição
+ * e a confirmação concordarem.
+ *
+ * Cresceu de quatro para oito em 121 T-9. O ECG e a VFC não tinham subscrição
+ * nenhuma: chegavam só pela rede de quinze minutos, enquanto a pressão e os
+ * passos chegavam em segundos. O Bruno: *"o mais importante é estar
+ * sincronizado com o dia atual e hora atual."*
+ */
 export const WITHINGS_APPLI_WE_WANT: number[] = [
+  WITHINGS_APPLI.BLOOD_PRESSURE,
+  WITHINGS_APPLI.WEIGHT,
+  WITHINGS_APPLI.TEMPERATURA,
+  WITHINGS_APPLI.ACTIVITY,
+  WITHINGS_APPLI.SLEEP,
+  WITHINGS_APPLI.ECG_FEITO,
+  WITHINGS_APPLI.ECG_FALHOU,
+  WITHINGS_APPLI.VFC,
+];
+
+/**
+ * **O que conta para o alarme de entrega** — e não é a mesma lista.
+ *
+ * Dois motivos, e o segundo já mordeu esta base. Primeiro: subscrever é
+ * *best-effort*, e entre o deploy e a próxima reconfirmação **ninguém** teria os
+ * quatro novos na lista — toda a gente apareceria como `partial`, com um aviso
+ * a dizer que a Withings não vai entregar. Segundo: é a mesma forma do defeito
+ * que o manguito da clínica teve durante semanas — pedir passos e sono a um
+ * aparelho que só mede pressão fazia dele um alarme permanente (092).
+ *
+ * O alarme é sobre o que a clínica depende de receber. O resto é ganho.
+ */
+export const WITHINGS_APPLI_ESSENCIAIS: number[] = [
   WITHINGS_APPLI.BLOOD_PRESSURE,
   WITHINGS_APPLI.WEIGHT,
   WITHINGS_APPLI.ACTIVITY,

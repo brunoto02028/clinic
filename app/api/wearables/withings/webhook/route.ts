@@ -32,12 +32,32 @@ import { WITHINGS_APPLI } from "@/lib/withings";
  */
 
 /** Which kinds of data each `appli` maps to, for a narrow fetch. */
-const KINDS_BY_APPLI: Record<number, Array<"bp" | "activity" | "sleep">> = {
+const KINDS_BY_APPLI: Record<number, Array<"bp" | "activity" | "sleep" | "vitals" | "ecg">> = {
   [WITHINGS_APPLI.BLOOD_PRESSURE]: ["bp"],
   [WITHINGS_APPLI.WEIGHT]: ["bp"], // the BPM reports through the same measure feed
+  [WITHINGS_APPLI.TEMPERATURA]: ["vitals"],
   [WITHINGS_APPLI.ACTIVITY]: ["activity"],
   [WITHINGS_APPLI.SLEEP]: ["sleep"],
+  /*
+   * **O ECG passa a chegar em segundos** (121 T-9). Até aqui não havia
+   * subscrição nenhuma para ele: uma gravação esperava pela rede de quinze
+   * minutos, enquanto a pressão e os passos chegavam no instante.
+   */
+  [WITHINGS_APPLI.ECG_FEITO]: ["ecg"],
+  [WITHINGS_APPLI.VFC]: ["vitals"],
 };
+
+/**
+ * **Uma gravação de ECG que falhou** (`appli` 55).
+ *
+ * Não há nada para ir buscar — é só a notificação, e é a **única** forma de
+ * saber que o paciente tentou e não conseguiu: nenhuma consulta de dados revela
+ * uma tentativa falhada.
+ *
+ * Fica registada e mais nada. Mandar seja o que for ao paciente por causa disto
+ * seria um envio automático, que esta base não faz.
+ */
+const SO_NOTIFICACAO = new Set<number>([WITHINGS_APPLI.ECG_FALHOU]);
 
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ status: 0 });
@@ -162,6 +182,27 @@ export async function POST(req: NextRequest) {
     // wait for the next scheduled sync.
     const since = startdate ? new Date((startdate - 60) * 1000) : new Date(Date.now() - 24 * 3600_000);
     const until = enddate ? new Date((enddate + 60) * 1000) : new Date();
+
+    if (SO_NOTIFICACAO.has(appli)) {
+      /*
+       * Não há dado para ir buscar. Vale a linha, porque *"tentou e falhou"* é
+       * uma coisa que nenhuma consulta nossa descobre.
+       */
+      console.log(
+        `[withings/webhook] ECG falhado userid=${userid} ligacoes=${servem.length}/${(ligacoes ?? []).length}`
+      );
+      await logSystem({
+        level: "INFO",
+        category: "API",
+        message: "Withings: gravação de ECG falhada no aparelho",
+        source: "api/wearables/withings/webhook",
+        path: "/api/wearables/withings/webhook",
+        method: "POST",
+        userId: servem[0]?.userId,
+        details: { providerUserId: String(userid), appli, startdate, enddate },
+      }).catch((e) => console.error("[withings/webhook] log falhou:", e?.message));
+      return ok();
+    }
 
     /*
      * **Uma falha de uma não pode parar a outra** (121 T-7). O `try` de fora
