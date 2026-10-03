@@ -47,6 +47,7 @@ Coolify e a T-3 uma coluna; nenhuma das duas se resolve com um palpite.
 | T-8 | [Dois toques no botão, dois relatórios](t-8-dois-toques-dois-relatorios.md) | — | **feita** (02/10) — o Bruno respondeu: coexistem, só não podem ser iguais. `contentHash` + a colisão deixa de dar 500 |
 | T-9 | [A VFC caduca com o Withings+ e ninguém avisa](t-9-a-vfc-caduca.md) | T-1 | **pendente** — mede-se depois de ~16/10 |
 | T-10 | [A resposta guardada, em vez de recalculada](t-10-a-resposta-guardada.md) | T-5 | **pendente** — a régua em SQL custa 3,5× o `select` que substitui |
+| T-11 | [O dia sem aparelho não é dia sem leitura](t-11-o-dia-sem-aparelho.md) | — | **feita** (03/10) — a tela dizia "29 dias sem leitura" a quem ligou o aparelho ontem |
 
 ## As duas rodadas de QA e review
 

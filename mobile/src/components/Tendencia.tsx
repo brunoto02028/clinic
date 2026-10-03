@@ -31,19 +31,39 @@ import { useLang, t as tr } from "@/lib/i18n";
 
 export { variacaoDoPeriodo } from "@/lib/tendencia-calculo";
 export type { PontoDaSerie } from "@/lib/tendencia-calculo";
-import { variacaoDoPeriodo, PontoDaSerie } from "@/lib/tendencia-calculo";
+import { variacaoDoPeriodo, diasSemLeitura, PontoDaSerie } from "@/lib/tendencia-calculo";
 
+/**
+ * **Um dia antes de o aparelho existir não é um dia sem leitura** (120 T-11).
+ *
+ * O Bruno, 03/10/2026, sobre os *"27 dias sem leitura"* que a tela lhe mostrava:
+ *
+ * > *"é irrelevante, porque faz dois dias que chegou o relógio e eu comecei a
+ * > fazer as medições. O mais importante é estar sincronizado com o dia atual e
+ * > hora atual."*
+ *
+ * Ele tinha razão, e para um paciente novo é pior: no dia em que liga o
+ * aparelho, a janela de trinta dias tem vinte e nove buracos, e a tela abre com
+ * uma frase que se lê como avaria. **Os dias anteriores à ligação não são
+ * ausência de dado — são ausência de aparelho.**
+ *
+ * `desde` é o dia em que a ligação passou a existir. Sem ele conta-se tudo, que
+ * é o que havia antes.
+ */
 export function Tendencia({
   pontos,
   unidade,
   casas = 0,
   /** Quando `true`, o eixo começa no zero. Para passos faz sentido; para FC não. */
   deZero = false,
+  desde,
 }: {
   pontos: PontoDaSerie[];
   unidade: string;
   casas?: number;
   deZero?: boolean;
+  /** `YYYY-MM-DD` do dia em que o aparelho foi ligado, quando se sabe. */
+  desde?: string | null;
 }) {
   const t = useTheme();
   const lang = useLang();
@@ -80,7 +100,7 @@ export function Tendencia({
         pt: "Ainda não há dias suficientes para comparar.",
       });
 
-  const semLeitura = pontos.filter((p) => p.valor === null).length;
+  const semLeitura = diasSemLeitura(pontos, desde);
 
   return (
     <View style={{ gap: 7 }}>
