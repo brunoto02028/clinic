@@ -20,7 +20,8 @@ import { linkDoPdfDoEcg } from "@/api/wearables";
 import {
   agruparPorDia,
   horaLocalDe,
-  FRASE_DA_CONCLUSAO,
+  fraseDaConclusao,
+  origemDoRegisto,
   ehAchado,
   RegistoDeEcg,
 } from "@/lib/ecg-lista";
@@ -77,8 +78,14 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
         </Text>
         <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 13, lineHeight: 19 }}>
           {tr(lang, {
-            en: "No recordings yet. They arrive from your watch as it syncs.",
-            pt: "Ainda sem registros. Chegam do seu relógio conforme ele sincroniza.",
+            /*
+             * Dizia *"do seu relógio"*, e depois *"do seu aparelho"* — a
+             * primeira assume que a pessoa tem relógio, a segunda, em pt-BR,
+             * lê-se como o **telemóvel**. E quem só mediu na clínica não tem
+             * aparelho nenhum.
+             */
+            en: "No recordings yet. They arrive from a connected device, or after a measurement at the clinic.",
+            pt: "Ainda sem registros. Chegam de um aparelho conectado, ou depois de uma medição na clínica.",
           })}
         </Text>
       </View>
@@ -117,15 +124,23 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
                   color={achado ? t.colors.bad : t.colors.text}
                   style={{ fontWeight: achado ? "700" : "400" }}
                 >
-                  {tr(lang, FRASE_DA_CONCLUSAO[r.conclusao])}
+                  {fraseDaConclusao(r, lang === "pt" ? "pt" : "en")}
                 </Text>
                 <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
                   {horaLocalDe(r.recordedAt) ?? ""}
+                  {/*
+                    * **Onde foi medido**, quando se sabe (122 T-9). `null` é
+                    * "não sei" e não diz nada — um binário instalado antes
+                    * deste campo não passa a mentir sobre a origem.
+                    */}
+                  {origemDoRegisto(r, lang === "pt" ? "pt" : "en")
+                    ? ` · ${origemDoRegisto(r, lang === "pt" ? "pt" : "en")}`
+                    : ""}
                   {r.heartRate != null ? ` · ${Math.round(r.heartRate)} bpm` : ""}
                   {/*
                     * **Dito antes do toque, não depois de abrir.**
                     *
-                    * O papel sai de qualquer forma — com a conclusão do relógio e
+                    * O papel sai de qualquer forma — com a conclusão do aparelho e
                     * a data —, mas sem o desenho. Quem toca à espera de um
                     * traçado para levar ao médico tem direito a saber antes.
                     *
@@ -176,8 +191,8 @@ export function ListaDeEcg({ registos }: { registos: RegistoDeEcg[] }) {
 
       <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11, lineHeight: 16 }}>
         {tr(lang, {
-          en: "This is what the watch concluded. Talk to your therapist about it — we do not read the trace.",
-          pt: "Isto foi o que o relógio concluiu. Fale com seu terapeuta — nós não lemos o traçado.",
+          en: "This is what the device concluded. Talk to your therapist about it — we do not read the trace.",
+          pt: "Isto foi o que o aparelho concluiu. Fale com seu terapeuta — nós não lemos o traçado.",
         })}
       </Text>
     </View>

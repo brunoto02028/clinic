@@ -109,10 +109,10 @@ describe("a hora, que é o que distingue as duas", () => {
 });
 
 describe("o que a tela diz de cada registo", () => {
-  it("**nunca chama 'normal' ao que o relógio não assinalou**", () => {
+  it("**nunca chama 'normal' ao que o aparelho não assinalou**", () => {
     // Regra da tela do paciente desde o QA da 099 T-8: nem "normal", nem
-    // "alterado". Dizer o que o relógio não assinalou é relato.
-    expect(FRASE_DA_CONCLUSAO.normal.en).toBe("The watch flagged nothing");
+    // "alterado". Dizer o que o aparelho não assinalou é relato.
+    expect(FRASE_DA_CONCLUSAO.normal.en).toBe("flagged nothing");
     expect(FRASE_DA_CONCLUSAO.normal.en.toLowerCase()).not.toContain("normal");
     expect(FRASE_DA_CONCLUSAO.normal.pt.toLowerCase()).not.toContain("normal");
   });
@@ -122,10 +122,21 @@ describe("o que a tela diz de cada registo", () => {
     expect(FRASE_DA_CONCLUSAO.fibrilacao.pt).toMatch(/fibrilh?ação atrial/i);
   });
 
-  it("as três frases dizem que quem concluiu foi o relógio", () => {
+  it("**as três frases deixam o sujeito de fora** — quem concluiu decide-se por registo", () => {
+    /*
+     * Isto exigia o contrário: que as três dissessem *"o relógio"*. Deixou de
+     * poder ser, e a razão está na 122 T-9 — desde que a clínica atribui ECG a
+     * pacientes, o mesmo texto aparecia a quem pode nem ter relógio.
+     *
+     * A conclusão continua a ser **do aparelho** e não nossa, que era o ponto
+     * desta asserção; o que mudou foi que o sujeito passou a ser escolhido em
+     * `fraseDaConclusao`, por quem mediu.
+     */
     for (const k of ["normal", "fibrilacao", "inconclusivo"] as const) {
-      expect(FRASE_DA_CONCLUSAO[k].en.toLowerCase()).toContain("watch");
-      expect(FRASE_DA_CONCLUSAO[k].pt.toLowerCase()).toContain("relógio");
+      expect(FRASE_DA_CONCLUSAO[k].en.toLowerCase()).not.toContain("watch");
+      expect(FRASE_DA_CONCLUSAO[k].pt.toLowerCase()).not.toContain("relógio");
+      /* E continuam a ser relato: começam por um verbo, sem sujeito nenhum. */
+      expect(FRASE_DA_CONCLUSAO[k].en).toMatch(/^[a-z]/);
     }
   });
 

@@ -131,6 +131,17 @@ export interface RegistoDeEcg {
   conclusao: "normal" | "fibrilacao" | "inconclusivo";
   /** O caminho até ao sinal na Withings, não o sinal. */
   signalId: string | null;
+  /**
+   * **Os campos que a tela lê, declarados onde o pedido é feito** (122 T-9).
+   *
+   * Este tipo tinha ficado para trás duas vezes: o `temTracado` da 119 e, agora,
+   * o nome do aparelho e a origem. Os campos **chegam** — `apiFetch` é um
+   * `res.json()` com cast, sem validação de forma — mas o tipo dizia que não, e
+   * quem lesse isto com a autoridade do tipo "limpava" a tela.
+   */
+  temTracado?: boolean;
+  deviceName?: string | null;
+  naClinica?: boolean;
 }
 
 /**

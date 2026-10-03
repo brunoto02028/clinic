@@ -260,7 +260,7 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
         * Os ECG, um por gravação, com a hora.
         *
         * A conclusão é **do aparelho**, e a frase diz isso. A fibrilhação é a
-        * única que muda de cor: o inconclusivo é um registo que o relógio não
+        * única que muda de cor: o inconclusivo é um registo que o aparelho não
         * conseguiu classificar, e pintá-lo de vermelho seria alarmar por nada.
         */}
       {/*
@@ -279,7 +279,7 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
         <Card>
           <CardContent className="p-3 space-y-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
-              ECG — what the watch concluded
+              ECG — what the device concluded
             </p>
             <p className="text-sm text-muted-foreground">
               Could not read the recordings this time — this is not the patient having none.
@@ -293,17 +293,23 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
         <Card>
           <CardContent className="p-3 space-y-2">
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
-              ECG — what the watch concluded
+              ECG — what the device concluded
             </p>
             <div className="space-y-1.5">
               {dados.ecgRecordings!.map((e) => {
                 const achado = e.conclusao === "fibrilacao";
+                /*
+                 * **"O aparelho", e não "o relógio"** (122 T-9). O título em
+                 * cima já tinha sido corrigido e estas três linhas não — o
+                 * cartão contradizia-se, e repetia a afirmação falsa sobre um
+                 * ECG que o terapeuta pode ter gravado com o BeamO da clínica.
+                 */
                 const frase =
                   e.conclusao === "fibrilacao"
-                    ? "The watch found signs of atrial fibrillation"
+                    ? "The device found signs of atrial fibrillation"
                     : e.conclusao === "normal"
-                      ? "The watch flagged nothing"
-                      : "The watch could not classify this recording";
+                      ? "The device flagged nothing"
+                      : "The device could not classify this recording";
                 return (
                   <div key={e.id} className="text-sm">
                     <span className={achado ? "font-semibold text-destructive" : ""}>{frase}</span>
@@ -345,7 +351,7 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
                 <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
                 <span>
                   {d.tipo === "ecg" ? (
-                    <strong>Atrial fibrillation detected by the watch on {d.dia}</strong>
+                    <strong>Atrial fibrillation detected by the device on {d.dia}</strong>
                   ) : (
                     <>
                       <strong>{d.metrica}</strong> {d.valor} on {d.dia} — their own average was{" "}

@@ -40,6 +40,16 @@ export interface RegistoDeEcg {
    * que nós o fomos buscar.
    */
   temTracado?: boolean;
+  /**
+   * O nome do aparelho, **como a Withings o escreve** (`"ScanWatch 2"`).
+   *
+   * Opcional pela mesma razão do `temTracado`: um binário instalado antes de a
+   * rota o mandar recebe `undefined`, e `undefined` não é "não tem nome" — é
+   * "não sei". Aí a frase diz só *"o aparelho"*, que nunca é falso.
+   */
+  deviceName?: string | null;
+  /** A gravação entrou pela ligação **da clínica**, ou seja: foi medida lá. */
+  naClinica?: boolean;
 }
 
 export interface DiaDeEcg {
@@ -109,30 +119,74 @@ export function agruparPorDia(registos: RegistoDeEcg[], hoje: string): DiaDeEcg[
 }
 
 /**
- * A frase da conclusão, na língua do aparelho de quem lê.
+ * O que o aparelho concluiu — **sem o sujeito** (122 T-9).
  *
  * **Sem a palavra "normal"**, que foi o que o QA da T-8 reprovou: a conclusão é
- * do relógio, mas a regra da tela do paciente é categórica sobre vocabulário.
- * Dizer o que o relógio **não assinalou** é relato; dizer que está "normal" é
- * uma nota nossa sobre o coração de alguém.
+ * do aparelho, mas a regra da tela do paciente é categórica sobre vocabulário.
+ * Dizer o que ele **não assinalou** é relato; dizer que está "normal" é uma nota
+ * nossa sobre o coração de alguém.
+ *
+ * E **sem "o relógio"**, que era o sujeito cravado aqui. Desde a 122 T-2 o ECG
+ * que o terapeuta grava num paciente com o aparelho da clínica entra na ficha
+ * dele — e o paciente lia que *o relógio dele* tinha encontrado sinais de
+ * fibrilhação auricular. Pode nem ter relógio.
  */
 export const FRASE_DA_CONCLUSAO: Record<
   RegistoDeEcg["conclusao"],
   { en: string; pt: string }
 > = {
   normal: {
-    en: "The watch flagged nothing",
-    pt: "O relógio não assinalou nada",
+    en: "flagged nothing",
+    pt: "não assinalou nada",
   },
   fibrilacao: {
-    en: "The watch found signs of atrial fibrillation",
-    pt: "O relógio encontrou sinais de fibrilação atrial",
+    en: "found signs of atrial fibrillation",
+    pt: "encontrou sinais de fibrilação atrial",
   },
   inconclusivo: {
-    en: "The watch could not classify this recording",
-    pt: "O relógio não conseguiu classificar este registro",
+    en: "could not classify this recording",
+    pt: "não conseguiu classificar este registro",
   },
 };
+
+/**
+ * **Quem concluiu.** Nomear o que se sabe, nunca adivinhar — e **nunca nós**.
+ *
+ * A primeira versão desta função punha *"O aparelho da clínica"* como sujeito, e
+ * o code review derrubou com o argumento certo: a conclusão é do aparelho e
+ * nunca nossa, e *"o aparelho da clínica encontrou sinais de fibrilhação"*
+ * lê-se como **a clínica encontrou**. É precisamente a linha que mantém este
+ * produto fora de dispositivo médico.
+ *
+ * O sujeito é o aparelho — pelo nome que a Withings lhe dá, ou genérico. Que a
+ * medição foi feita na clínica é **lugar**, e vai noutra linha
+ * (`origemDoRegisto`). As duas verdades, sem nos pôr a concluir.
+ *
+ * O `trim` existe porque a ingestão guarda o nome como ele vem: um nome só com
+ * espaços é truthy e produzia *"O    não assinalou nada"*.
+ */
+function sujeitoDaFrase(r: RegistoDeEcg, lang: "en" | "pt"): string {
+  const nome = r.deviceName?.trim();
+  if (nome) return lang === "pt" ? `O ${nome}` : `The ${nome}`;
+  return lang === "pt" ? "O aparelho" : "The device";
+}
+
+/** A frase inteira, na língua de quem lê. */
+export function fraseDaConclusao(r: RegistoDeEcg, lang: "en" | "pt"): string {
+  const corpo = FRASE_DA_CONCLUSAO[r.conclusao];
+  return `${sujeitoDaFrase(r, lang)} ${lang === "pt" ? corpo.pt : corpo.en}`;
+}
+
+/**
+ * Onde foi medida — ou `null` quando não se sabe.
+ *
+ * `undefined` não é *"não foi na clínica"*: é *"não sei"*, e aí não se diz nada,
+ * que é o que a tela fazia antes de este campo existir.
+ */
+export function origemDoRegisto(r: RegistoDeEcg, lang: "en" | "pt"): string | null {
+  if (!r.naClinica) return null;
+  return lang === "pt" ? "Medido na clínica" : "Measured at the clinic";
+}
 
 /** Só a fibrilhação muda a cor. As outras duas são relato, não achado. */
 export function ehAchado(c: RegistoDeEcg["conclusao"]): boolean {

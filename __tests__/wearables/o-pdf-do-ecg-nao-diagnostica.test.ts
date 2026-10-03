@@ -108,10 +108,16 @@ describe("o que o papel diz", () => {
     expect(texto).toContain("Left wrist");
   });
 
-  it("**diz que a conclusão é do relógio**", () => {
-    expect(texto).toMatch(/watch concluded/i);
+  it("**diz que a conclusão é do aparelho**", () => {
+    /*
+     * Dizia "do relógio", e o papel contradizia-se: três linhas acima imprime
+     * `Recorded with: BeamO` e logo abaixo dizia que o relógio tinha concluído.
+     * É o único documento que sai do edifício — ver 122 T-9.
+     */
+    expect(texto).toMatch(/device concluded/i);
     expect(texto).toMatch(/Sinus rhythm/i);
-    expect(texto).toMatch(/the watch found no signs/i);
+    expect(texto).toMatch(/the device found no signs/i);
+    expect(texto).not.toMatch(/the watch/i);
   });
 });
 
