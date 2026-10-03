@@ -83,3 +83,65 @@ nunca para a conversa. E com um limite escrito: **só para ler** — catálogo,
 códigos, nomes de campos, o desenho do fluxo. Não criar paciente, não criar
 marcação, não tocar em dado de pessoa real. Um portal de laboratório tem dados
 clínicos de gente de verdade, e um clique errado ali não é um teste.
+
+
+---
+
+# Adenda — o que se viu lá dentro (03/10/2026, 23h30)
+
+O Bruno entrou no portal e eu olhei, **só a ler**. A conclusão de cima muda numa
+parte importante.
+
+## O catálogo não depende do token
+
+`/{location}/products` — **507 exames** (50 páginas de 10 + 7). A lista traz,
+por exame:
+
+| coluna | o que é |
+|---|---|
+| Product Name | com uma descrição curta |
+| **SKU** | o código (`ALT`, `D3`, `17H`, `5HI`, `ML8`…) |
+| **List Price** | **o nosso custo real**, da nossa conta — não o PDF de 2024 |
+| **RRP** | o preço sugerido |
+| **Turnaround** | em texto: *"Results available 4 hours after arrival in lab…"* |
+
+E o detalhe (`/products/{uuid}`) acrescenta:
+
+- **Sample Collection Instructions** — *"SST Gold Top Vacutainer"*. **É este o
+  campo que decide kit de casa × colheita venosa**, que é a pergunta que a 081
+  não conseguia responder sem o `appointment_only` da API;
+- **Individual Biomarkers (n)** — com os nomes;
+- **Description** — texto virado ao paciente.
+
+Temos **443** carregados da planilha. Faltam **64**, e os preços que temos são de
+um PDF de 2024.
+
+## As secções do portal
+
+`Appointments` · `External appointments` · `Patients` · **`Test registrations`** ·
+`Products` · `Admin` (`/brand/info`) · `Guide`.
+
+**`Test registrations` existe como secção própria** — é a entidade que a 081 T-1
+disse que faltava no nosso modelo, e aqui ela é de primeira classe.
+
+E na barra das marcações há dois caminhos que a 081 não tratava: **`Diff.
+location`** (marcar noutro ponto) e **`Home Phlebotomy`** (profissional em casa)
+— o terceiro caminho que o mapa da API chamou `home_visit_phlebotomist`.
+
+## O que isto muda no plano
+
+**O token continua a ser preciso** para pedir, para os resultados e para os
+webhooks. Mas **o catálogo deixa de estar bloqueado**: dá para corrigir os
+preços de custo, acrescentar os 64 que faltam, e — o que mais vale — passar a
+saber, por exame, se ele precisa de tubo venoso ou não.
+
+Proposta, por ordem de custo:
+
+1. **As 51 páginas da lista** (51 pedidos, uma leitura): corrige `costPrice`,
+   acrescenta os que faltam, guarda o prazo. Barato e resolve o preço.
+2. **O detalhe, só dos que formos activar**: traz o tipo de amostra e os
+   biomarcadores. 507 pedidos para o catálogo todo é desproporcionado; para os
+   22 kits e os que vendermos de facto, não é.
+
+O que **não** muda: pedir, acompanhar e receber resultado continuam a ser pela
+API. Automatizar o portal para isso seria um robô a clicar num site que tem API.

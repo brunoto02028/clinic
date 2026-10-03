@@ -169,6 +169,41 @@ describe("a ligação da clínica lê vitais e atribui-os", () => {
     );
 
     expect(criados).toHaveLength(0);
+  });
+
+  it("**e também não conta como perda** — perda é o que trazia medição e não entrou", async () => {
+    /*
+     * Esta asserção dizia `vitaisNaoAtribuidos === 1`, e o review mostrou
+     * porque isso tornava o número inútil: o `getmeas` devolve **também** os
+     * grupos de pressão (FC mais os tipos 9 e 10), e a varredura relê trinta
+     * dias a cada quinze minutos. Sessenta leituras de pressão imprimiam
+     * "60 não atribuídos" sem nada se ter perdido — e o número existe
+     * precisamente para responder *"perdeu-se alguma coisa?"*.
+     */
+    janelasNoBanco.rows = [janelaDaAna];
+    vitaisDoProvedor.rows = [
+      { measuredAt: QUANDO, measureId: "g1", heartRate: 58 },
+      { measuredAt: QUANDO, measureId: "g2", heartRate: 61 },
+    ];
+
+    const r = await ingestWithings(
+      "staff1",
+      ligacao({ isClinicDevice: true, clinicId: "c1" }),
+      { kinds: ["vitals"] }
+    );
+
+    expect(r.vitaisNaoAtribuidos).toBe(0);
+  });
+
+  it("**mas um SpO₂ sem janela conta**, porque esse trazia medição", async () => {
+    vitaisDoProvedor.rows = [{ measuredAt: QUANDO, measureId: "g1", spo2: 96 }];
+
+    const r = await ingestWithings(
+      "staff1",
+      ligacao({ isClinicDevice: true, clinicId: "c1" }),
+      { kinds: ["vitals"] }
+    );
+
     expect(r.vitaisNaoAtribuidos).toBe(1);
   });
 });

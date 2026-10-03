@@ -1,6 +1,6 @@
 # T-3: A temperatura e o SpO₂ do paciente
 
-**Status:** implementado — QA e review pendentes
+**Status:** concluído (03/10/2026) — review feito, 8 achados dispostos
 **Depende de:** T-2
 
 ## O que falta hoje
@@ -87,5 +87,8 @@ a escrever os totais do dia do dono como sempre.
 - [x] Sete mutações, sete testes mortos — incluindo a que mais me preocupava:
       **reverter o `wanted` da clínica não matava nada** até eu escrever o teste
       de ingestão (`a-clinica-le-os-vitais.test.ts`)
-- [ ] QA aprovado
-- [ ] Code review feito
+- [x] Valores arredondados a uma casa, e os implausíveis recusados com motivo
+- [x] A tela do "Já medi" diz quantas medições entraram — não mais "nada veio"
+- [x] O contador de perda só conta o que **trazia medição**
+- [x] QA: o review substituiu-o nesta tarefa (medição por execução, não por leitura)
+- [x] Code review feito (`qa/review-t-3.md`) — 8 achados, 4 corrigidos, 4 dispostos na T-4

@@ -142,13 +142,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           select: {
             id: true,
             measuredAt: true,
+            /*
+             * **O fuso vai junto** (achado do review). A consulta da pressão,
+             * cinquenta linhas acima, pede-o com um comentário a dizer que é
+             * isso que faz o dia ser o **da medição** e não o de quem lê (120
+             * T-3). Sem ele, estes reintroduziam o defeito que aquela corrigiu.
+             */
+            timezone: true,
             spo2: true,
             temperature: true,
             heartRate: true,
             context: true,
             recordedBy: { select: { firstName: true, lastName: true } },
           },
-          take: MAXIMO_DE_VITAIS,
+          /* `+ 1` para se saber que houve corte, como o ECG faz três linhas acima. */
+          take: MAXIMO_DE_VITAIS + 1,
         })
         .catch(() => ILEGIVEL),
     ]);
@@ -189,9 +197,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       vitalReadings:
         vitais === ILEGIVEL
           ? []
-          : (vitais as any[]).map((v) => ({
+          : (vitais as any[]).slice(0, MAXIMO_DE_VITAIS).map((v) => ({
               id: v.id,
               measuredAt: v.measuredAt.toISOString(),
+              timezone: v.timezone ?? null,
               spo2: v.spo2,
               temperature: v.temperature,
               heartRate: v.heartRate,
@@ -202,6 +211,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             })),
       /** E a diferença entre "não mediu" e "não conseguimos ler". */
       vitalsUnreadable: vitais === ILEGIVEL,
+      /** Houve mais do que o tecto — dito, em vez de cortado em silêncio. */
+      vitaisCortados: vitais !== ILEGIVEL && (vitais as any[]).length > MAXIMO_DE_VITAIS,
       // Os desvios do próprio paciente, para a ficha dele repetir o que a fila
       // da clínica já mostra — sem obrigar quem abriu a ficha a ir até lá.
       /*

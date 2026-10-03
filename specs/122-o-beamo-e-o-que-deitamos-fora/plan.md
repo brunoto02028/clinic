@@ -58,8 +58,8 @@ prontuário de outra**. Nada no código de hoje distingue perfis da Withings.
 |---|---|---|---|
 | T-1 | [A janela decide de quem é cada medição](t-1-a-janela-decide-de-quem-e.md) | — | **feita** (03/10) — QA e review feitos, 8 achados corrigidos |
 | T-2 | [O ECG do paciente entra na ficha do paciente](t-2-o-ecg-do-paciente-entra-na-ficha-do-paciente.md) | T-1 | **feita** (03/10) — o review apanhou **dois críticos**, ver [review](qa/review-t-1-e-t-2.md) |
-| T-3 | Temperatura e SpO₂ da clínica: tabela de evento **e** o mapa `deviceid → model` | T-2 | pendente — ver G4 no review |
-| T-4 | Caixa de entrada para o que não é pressão | T-3 | pendente |
+| T-3 | [A temperatura e o SpO₂ do paciente](t-3-a-temperatura-e-o-spo2-do-paciente.md) | T-2 | **feita** (03/10) — `VitalReading`, e a regra que dispensa saber o modelo do aparelho |
+| T-4 | Caixa de entrada para o que não é pressão, **e poder mover** | T-3 | pendente — precisa de schema (a `UnassignedMeasurement` exige pressão) |
 | T-5 | O `130` deixa de ser deitado fora — a fibrilhação por PPG | decisão 1 | pendente |
 | T-6 | Os intervalos do ECG: QRS, PR, QT, QTc (`135`–`138`) | T-5 | pendente |
 | T-7 | Medir o que o BeamO manda, biomarcador a biomarcador | chegada | pendente |

@@ -70,7 +70,38 @@ export interface JanelaParaVitais {
 export type AtribuicaoDeVital =
   | { kind: "assigned"; patientId: string; readingId: string; sessionId: string }
   | { kind: "duplicate" }
-  | { kind: "skipped"; reason: "so-passivo" | "sem-janela" | "ambiguo" };
+  | { kind: "skipped"; reason: "so-passivo" | "sem-janela" | "ambiguo" | "implausivel" };
+
+/**
+ * **Uma casa decimal, como o outro caminho faz** (achado do review).
+ *
+ * A Withings manda a temperatura como `value: 368, unit: -1`, e
+ * `368 * 10^-1` em vírgula flutuante dá **36.800000000000004**. O caminho
+ * pessoal arredonda em `vitalsByDay`; este guardava o double cru, e a tela
+ * imprimia os dezassete dígitos na ficha de um paciente.
+ */
+const umaCasa = (n: number): number => Math.round(n * 10) / 10;
+
+/**
+ * **O que não pode ser uma medição de uma pessoa viva.**
+ *
+ * O cabeçalho de `withings-vitals.ts` diz que *"uma tela a mostrar SpO₂ 0% seria
+ * uma medição que nunca aconteceu"* — e tinha razão para a ausência, mas nada
+ * recusava um zero que a API mandasse de facto, de uma oximetria abortada.
+ *
+ * Não é inventar um número: é recusar escrever num prontuário algo que não pode
+ * ser uma medição. E não é silencioso — é contado e dito no log.
+ *
+ * As faixas são largas de propósito. Não são faixa de referência clínica (isso
+ * é leitura de médico): são o limite do que um aparelho pode ter medido numa
+ * pessoa.
+ */
+export function valorPlausivel(v: MedidasDoGrupo): boolean {
+  if (v.spo2 !== undefined && !(v.spo2 > 0 && v.spo2 <= 100)) return false;
+  const t = v.bodyTemperature ?? v.temperature;
+  if (t !== undefined && !(t >= 25 && t <= 45)) return false;
+  return true;
+}
 
 /**
  * Grava uma medição de vitais no prontuário que a janela nomear.
@@ -88,6 +119,7 @@ export async function atribuirVitalDaClinica(
   }
 ): Promise<AtribuicaoDeVital> {
   if (!grupoEAtribuivel(v)) return { kind: "skipped", reason: "so-passivo" };
+  if (!valorPlausivel(v)) return { kind: "skipped", reason: "implausivel" };
 
   const escolha = pickSession(janelas, v.measuredAt, ESTADOS_QUE_RECEBEM_EVENTO);
   if (escolha.kind === "none") return { kind: "skipped", reason: "sem-janela" };
@@ -111,7 +143,8 @@ export async function atribuirVitalDaClinica(
   if (jaLa) return { kind: "duplicate" };
 
   /** A corporal ganha à da pele: é a que alguém mediu. */
-  const temperatura = v.bodyTemperature ?? v.temperature;
+  const temperaturaCrua = v.bodyTemperature ?? v.temperature;
+  const temperatura = temperaturaCrua !== undefined ? umaCasa(temperaturaCrua) : undefined;
 
   let criada: { id: string };
   try {
@@ -120,7 +153,7 @@ export async function atribuirVitalDaClinica(
         patientId: janela.patientId,
         clinicId,
         recordedById: janela.openedById,
-        spo2: v.spo2 ?? null,
+        spo2: v.spo2 !== undefined ? umaCasa(v.spo2) : null,
         temperature: temperatura ?? null,
         heartRate: v.heartRate != null ? Math.round(v.heartRate) : null,
         measuredAt: new Date(v.measuredAt),

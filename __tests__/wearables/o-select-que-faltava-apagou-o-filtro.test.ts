@@ -92,6 +92,8 @@ jest.mock("@/lib/withings-ingest", () => ({
     ecgRecords: 1,
     ecgRead: 1,
     ecgNaoAtribuidos: 0,
+    vitalReadings: 2,
+    vitaisNaoAtribuidos: 0,
     intradayDays: 0,
     hypnogramNights: 0,
     workouts: 0,
@@ -143,6 +145,31 @@ describe("a contagem de ECG é de um paciente, não da tabela", () => {
     const r: any = await chamar();
     const body = await r.json();
     expect(body.ecg).toBe(1);
+  });
+
+  it("**a resposta diz também quantos vitais entraram** — e a tela soma as frases", async () => {
+    /*
+     * Sem isto, medir **só a temperatura** guardava o `VitalReading` na ficha e
+     * a tela respondia *"nada veio do aparelho"*: `found` só olha a pressão e
+     * `ecg` só olha o ECG. O terapeuta mede outra vez, ou anota à mão.
+     *
+     * É a **terceira** vez que este defeito aparece nesta tela — `lidas` em
+     * 27/09, `ecg` na 122 T-2, vitais agora. Daí a asserção sobre a tela ao
+     * lado da asserção sobre a rota.
+     */
+    const r: any = await chamar();
+    const body = await r.json();
+    expect(body.vitais).toBe(2);
+
+    const { readFileSync } = require("node:fs");
+    const { join } = require("node:path");
+    const tela = readFileSync(
+      join(__dirname, "..", "..", "components", "admin", "clinic-measurement-button.tsx"),
+      "utf8"
+    );
+    expect(tela).toMatch(/if \(data\?\.vitais > 0\) partes\.push\(ui\.fetchedVitais\(data\.vitais\)\)/);
+    expect(tela).toMatch(/fetchedVitais: \(n: number\) =>/);
+    expect(tela).toMatch(/medições \(temperatura \/ SpO₂\) foram salvas neste histórico/);
   });
 
   it("**e a contagem é limitada à janela**, não ao histórico todo", async () => {

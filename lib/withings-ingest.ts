@@ -725,7 +725,14 @@ export async function ingestWithings(
        */
       if (forClinic) {
         const { atribuirVitalDaClinica } = await import("@/lib/clinic-vitals");
-        const conta = { guardados: 0, repetidos: 0, soPassivo: 0, semJanela: 0, ambiguo: 0 };
+        const conta = {
+          guardados: 0,
+          repetidos: 0,
+          soPassivo: 0,
+          semJanela: 0,
+          ambiguo: 0,
+          implausivel: 0,
+        };
         for (const v of vitals as any[]) {
           if (janelasPorLer) {
             /* Sem saber de quem é, não se escreve em ninguém. Ver `janelasPorLer`. */
@@ -741,16 +748,34 @@ export async function ingestWithings(
           if (r.kind === "assigned") conta.guardados++;
           else if (r.kind === "duplicate") conta.repetidos++;
           else if (r.reason === "so-passivo") conta.soPassivo++;
+          else if (r.reason === "implausivel") conta.implausivel++;
           else if (r.reason === "ambiguo") conta.ambiguo++;
           else conta.semJanela++;
         }
         vitalReadings = conta.guardados;
-        vitaisNaoAtribuidos = conta.soPassivo + conta.semJanela + conta.ambiguo;
+        /**
+         * **O que conta como perda, e o que é só o aparelho a trabalhar**
+         * (achado do review).
+         *
+         * Isto somava os `soPassivo`, e com eles o número deixava de responder
+         * à pergunta que existe para responder. O `getmeas` devolve **também**
+         * os grupos de pressão — frequência cardíaca mais os tipos 9 e 10 —, e
+         * cada um deles é um `soPassivo`. Como a varredura relê trinta dias a
+         * cada quinze minutos, sessenta leituras de pressão imprimiam
+         * `vitaisNaoAtribuidos=60` sem **nada** se ter perdido, e um SpO₂
+         * realmente perdido movia o número para 61.
+         *
+         * Perda é um grupo que **trazia uma medição** e não foi escrito: sem
+         * janela, com duas, ou com um valor que não pode ser de uma pessoa. O
+         * resto vai no log, separado, onde se lê sem se confundir.
+         */
+        vitaisNaoAtribuidos = conta.semJanela + conta.ambiguo + conta.implausivel;
         if (vitals.length) {
           console.log(
             `[withings-ingest] vitais da clinica: ${conta.guardados} atribuidos, ` +
-              `${conta.repetidos} repetidos, ${conta.soPassivo} so passivos, ` +
-              `${conta.semJanela} sem janela, ${conta.ambiguo} com duas janelas`
+              `${conta.repetidos} repetidos, ${conta.semJanela} sem janela, ` +
+              `${conta.ambiguo} com duas janelas, ${conta.implausivel} implausiveis ` +
+              `| ${conta.soPassivo} grupos sem medicao nossa (pressao, FC solta) — nao e perda`
           );
         }
       } else {

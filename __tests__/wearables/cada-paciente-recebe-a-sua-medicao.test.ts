@@ -37,7 +37,11 @@ jest.mock("@/lib/db", () => ({
 }));
 jest.mock("@/lib/system-logger", () => ({ logAudit: jest.fn(async () => undefined) }));
 
-import { atribuirVitalDaClinica, type JanelaParaVitais } from "@/lib/clinic-vitals";
+import {
+  atribuirVitalDaClinica,
+  valorPlausivel,
+  type JanelaParaVitais,
+} from "@/lib/clinic-vitals";
 
 /** Uma janela de três minutos, como a tela a abre. */
 const janela = (
@@ -140,6 +144,69 @@ describe("três pessoas, um aparelho, uma manhã", () => {
 
     expect(r).toEqual({ kind: "skipped", reason: "so-passivo" });
     expect(criadas).toHaveLength(0);
+  });
+});
+
+describe("os achados do review (03/10)", () => {
+  it("**a temperatura não entra no prontuário com dezassete dígitos**", async () => {
+    /*
+     * A Withings manda `value: 368, unit: -1`, e `368 * 10^-1` em vírgula
+     * flutuante dá **36.800000000000004**. O caminho pessoal arredonda em
+     * `vitalsByDay`; este guardava o double cru e a tela imprimia-o inteiro na
+     * ficha de um paciente. Provado a correr, pelo review.
+     */
+    await atribuirVitalDaClinica("c1", [ANA], {
+      measuredAt: new Date("2026-10-04T09:01:00.000Z"),
+      measureId: "g-float",
+      bodyTemperature: 368 * Math.pow(10, -1),
+      spo2: 966 * Math.pow(10, -1),
+    });
+
+    expect(criadas[0].temperature).toBe(36.8);
+    expect(criadas[0].spo2).toBe(96.6);
+  });
+
+  it("**um SpO₂ de 0% não é escrito num prontuário**", async () => {
+    /*
+     * O cabeçalho de `withings-vitals.ts` diz que *"uma tela a mostrar SpO₂ 0%
+     * seria uma medição que nunca aconteceu"* — e nada recusava um zero que a
+     * API mandasse de facto, de uma oximetria abortada.
+     *
+     * Não é inventar: é recusar escrever o que não pode ser uma medição de uma
+     * pessoa viva. E não é silencioso — tem motivo próprio.
+     */
+    const r = await atribuirVitalDaClinica("c1", [ANA], {
+      measuredAt: new Date("2026-10-04T09:01:00.000Z"),
+      measureId: "g-zero",
+      spo2: 0,
+    });
+
+    expect(r).toEqual({ kind: "skipped", reason: "implausivel" });
+    expect(criadas).toHaveLength(0);
+  });
+
+  it("**e uma temperatura de 3 °C também não**", async () => {
+    const r = await atribuirVitalDaClinica("c1", [ANA], {
+      measuredAt: new Date("2026-10-04T09:01:00.000Z"),
+      measureId: "g-fria",
+      bodyTemperature: 3,
+    });
+    expect(r).toEqual({ kind: "skipped", reason: "implausivel" });
+  });
+
+  it("**mas a febre entra** — a faixa é o que um corpo pode ter, não faixa clínica", () => {
+    /*
+     * 41,5 °C é grave e é exactamente o que não pode ser descartado. A faixa é
+     * larga de propósito: faixa de referência é leitura de médico, não nossa.
+     */
+    expect(valorPlausivel({ bodyTemperature: 41.5 })).toBe(true);
+    expect(valorPlausivel({ spo2: 82 })).toBe(true);
+    expect(valorPlausivel({ spo2: 100 })).toBe(true);
+    expect(valorPlausivel({ spo2: 101 })).toBe(false);
+  });
+
+  it("e um grupo sem medição nenhuma nem chega a ser perguntado", () => {
+    expect(valorPlausivel({ heartRate: 58 })).toBe(true);
   });
 });
 

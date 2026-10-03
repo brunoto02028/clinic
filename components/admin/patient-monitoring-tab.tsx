@@ -115,6 +115,8 @@ interface Dados {
   vitalReadings?: Array<{
     id: string;
     measuredAt: string;
+    /** O fuso em que foi medida — a hora é a de quem mediu, não a de quem lê. */
+    timezone?: string | null;
     spo2: number | null;
     temperature: number | null;
     heartRate: number | null;
@@ -124,6 +126,8 @@ interface Dados {
   }>;
   /** "Não conseguimos ler" não é o mesmo que "não mediu". */
   vitalsUnreadable?: boolean;
+  /** Houve mais medições do que o tecto — dito, em vez de cortado em silêncio. */
+  vitaisCortados?: boolean;
 }
 
 const JANELAS = [7, 30, 90];
@@ -331,13 +335,28 @@ export function PatientMonitoringTab({ patientId }: { patientId: string }) {
                     <span>{partes.join(" · ")}</span>
                     <span className="text-muted-foreground">
                       {" — "}
-                      {new Date(v.measuredAt).toLocaleString()}
+                      {/*
+                        **No fuso em que foi medida**, quando se sabe (120 T-3).
+                        Sem isto a hora é a de quem abre a ficha: a mesma medição
+                        lida de outro fuso muda de hora, e ao lado da série de
+                        pressão — que já está certa — ficam duas horas
+                        diferentes para o mesmo instante.
+                      */}
+                      {new Date(v.measuredAt).toLocaleString(
+                        undefined,
+                        v.timezone ? { timeZone: v.timezone } : undefined
+                      )}
                       {v.por ? ` · ${v.por}` : ""}
                     </span>
                   </div>
                 );
               })}
             </div>
+            {dados.vitaisCortados && (
+              <p className="text-[11px] text-muted-foreground">
+                More measurements exist in this window than are shown here.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
