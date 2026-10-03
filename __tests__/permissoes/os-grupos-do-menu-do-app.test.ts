@@ -270,7 +270,7 @@ describe("a grafia do grupo declarado a mao", () => {
         if (fs.statSync(p).isDirectory()) { anda(p); continue; }
         if (!/\.tsx?$/.test(nome)) continue;
         const fonte = fs.readFileSync(p, "utf8");
-        for (const m of fonte.matchAll(/grupo:\s*"([a-z_]+)"/g)) {
+        for (const m of fonte.matchAll(/grupo:\s*"([a-z_]+)"/g)) {
           if (!chaves.has(m[1])) errados.push(`${nome}: ${m[1]}`);
         }
       }

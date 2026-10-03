@@ -420,7 +420,7 @@ describe("o papel em português não fica meio traduzido", () => {
      * a pessoa.
      */
     const pt = html("pt");
-    expect(pt).not.toMatch(/(Sept|Aug|Oct|Jan|Feb|Mar|Apr|Jun|Jul|Nov|Dec)/);
+    expect(pt).not.toMatch(/(Sept|Aug|Oct|Jan|Feb|Mar|Apr|Jun|Jul|Nov|Dec)/);
   });
 
   it("**e o estado não sai cru da base**", () => {

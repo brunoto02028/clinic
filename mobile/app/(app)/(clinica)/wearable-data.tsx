@@ -66,6 +66,7 @@ function CartaoDeTendencia({
   unidade,
   casas = 0,
   deZero = false,
+  desde,
 }: {
   titulo: string;
   valorAtual: string;
@@ -73,6 +74,7 @@ function CartaoDeTendencia({
   unidade: string;
   casas?: number;
   deZero?: boolean;
+  desde?: string | null;
 }) {
   const t = useTheme();
   return (
@@ -98,7 +100,7 @@ function CartaoDeTendencia({
           {valorAtual}
         </Text>
       </View>
-      <Tendencia pontos={pontos} unidade={unidade} casas={casas} deZero={deZero} />
+      <Tendencia pontos={pontos} unidade={unidade} casas={casas} deZero={deZero} desde={desde} />
     </View>
   );
 }
@@ -146,6 +148,23 @@ function WearableDataScreen() {
     queryFn: fetchConnections,
   });
   const temLigacao = (ligacoes?.length ?? 0) > 0;
+
+  /**
+   * **Desde quando é que há aparelho** (120 T-11).
+   *
+   * A mais antiga das ligações: é a partir daí que um dia sem leitura é um dia
+   * sem leitura. Antes disso é um dia sem aparelho, e contá-lo fazia a tela de
+   * um paciente novo abrir com *"29 dias sem leitura"* — uma frase que se lê
+   * como avaria e descreve uma conta acabada de ligar.
+   */
+  const desde = React.useMemo(() => {
+    const datas = (ligacoes ?? [])
+      .map((c: any) => c.createdAt)
+      .filter((d: any): d is string => typeof d === "string" && d.length > 0)
+      .map((d: string) => diaLocal(new Date(d)))
+      .filter((d: string) => d >= "2000-01-01");
+    return datas.length ? datas.sort()[0] : null;
+  }, [ligacoes]);
 
   const latest = (type: string) => data?.find((d) => d.dataType === type);
   const sleep = latest("SLEEP");
@@ -452,6 +471,7 @@ function WearableDataScreen() {
 
                 {sleep?.sleepDuration != null && (
                   <CartaoDeTendencia
+                    desde={desde}
                     titulo={tr(lang, { en: "Sleep", pt: "Sono" })}
                     valorAtual={fmtDuration(sleep.sleepDuration)}
                     pontos={serie("SLEEP", (d) => (d.sleepDuration != null ? d.sleepDuration / 60 : null))}
@@ -462,6 +482,7 @@ function WearableDataScreen() {
 
                 {body?.restingHr != null && (
                   <CartaoDeTendencia
+                    desde={desde}
                     titulo={tr(lang, { en: "Resting heart rate", pt: "FC de repouso" })}
                     valorAtual={`${Math.round(body.restingHr)} bpm`}
                     pontos={serie("BODY", (d) => d.restingHr)}
@@ -471,6 +492,7 @@ function WearableDataScreen() {
 
                 {body?.hrv != null && (
                   <CartaoDeTendencia
+                    desde={desde}
                     titulo="HRV"
                     valorAtual={`${Math.round(body.hrv)} ms`}
                     pontos={serie("BODY", (d) => d.hrv)}
@@ -480,6 +502,7 @@ function WearableDataScreen() {
 
                 {body?.spo2 != null && (
                   <CartaoDeTendencia
+                    desde={desde}
                     titulo="SpO2"
                     valorAtual={`${Math.round(body.spo2)}%`}
                     pontos={serie("BODY", (d) => d.spo2)}
@@ -489,6 +512,7 @@ function WearableDataScreen() {
 
                 {activity?.steps != null && (
                   <CartaoDeTendencia
+                    desde={desde}
                     titulo={tr(lang, { en: "Steps", pt: "Passos" })}
                     valorAtual={activity.steps.toLocaleString()}
                     pontos={serie("ACTIVITY", (d) => d.steps)}

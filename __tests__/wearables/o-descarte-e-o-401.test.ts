@@ -32,10 +32,16 @@ describe("o descarte do webhook deixou de ser silencioso", () => {
 
   it("e diz **qual** dos dois motivos foi", () => {
     // "Conta desconhecida" é assinatura órfã de paciente desconectado, e é
-    // esperado. "Conexão DISCONNECTED" no aparelho da clínica é o defeito.
+    // esperado. Uma ligação que existe e não serve é o defeito.
     // Quem lê o log precisa separar os dois sem abrir o banco.
-    expect(webhook).toMatch(/const motivo = !connection \? "conta desconhecida" : `conexão \$\{connection\.status\}`/);
-    expect(webhook).toMatch(/esperado: !connection,/);
+    //
+    // A 121 T-7 trocou "a primeira ligação" por "todas": o motivo passou a
+    // nomear quantas há e em que estado estão, porque era isso que faltava
+    // para se ver uma ligação sã a ser calada por uma doente. A asserção mede
+    // a distinção, não a grafia da linha.
+    expect(webhook).toMatch(/"conta desconhecida"/);
+    expect(webhook).toMatch(/nenhuma ligacao servivel/);
+    expect(webhook).toMatch(/esperado: \(ligacoes \?\? \[\]\)\.length === 0,/);
   });
 
   it("carrega o que identifica a conexão", () => {

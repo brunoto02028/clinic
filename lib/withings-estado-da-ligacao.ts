@@ -69,15 +69,37 @@ export async function registarFalhaDaLigacao(
  *
  * Sem isto, quem reconecta continua a ver *"precisa reconectar"* — e um aviso
  * que fica depois de resolvido mente tanto quanto um que nunca aparece.
+ *
+ * **E devolve o `status` a `CONNECTED`** (121 T-8).
+ *
+ * A T-3 passou a marcar `status: "ERROR"` numa falha fatal, e esta função
+ * limpava tudo **menos isso**. O estado ficava `ERROR` para sempre — e o
+ * webhook só aceita `CONNECTED`. Ou seja: uma falha fatal transitória desligava
+ * o tempo real **de vez**, e a ligação continuava a receber dados de quinze em
+ * quinze minutos pela rede, com a tela sem pendência nenhuma a explicar o
+ * atraso. É a ausência silenciosa outra vez, só que mais lenta.
+ *
+ * Só sobe de `ERROR`: uma ligação `DISCONNECTED` ou revogada não ressuscita
+ * porque uma chamada correu bem.
  */
 export async function limparEstadoDaLigacao(connectionId: string): Promise<void> {
   await (prisma as any).wearableConnection
     .updateMany({
       where: {
         id: connectionId,
-        OR: [{ needsReauthAt: { not: null } }, { lastSyncError: { not: null } }],
+        status: { in: ["CONNECTED", "ERROR"] },
+        OR: [
+          { needsReauthAt: { not: null } },
+          { lastSyncError: { not: null } },
+          { status: "ERROR" },
+        ],
       },
-      data: { needsReauthAt: null, lastSyncError: null, lastSyncErrorAt: null },
+      data: {
+        needsReauthAt: null,
+        lastSyncError: null,
+        lastSyncErrorAt: null,
+        status: "CONNECTED",
+      },
     })
     .catch(() => {});
 }

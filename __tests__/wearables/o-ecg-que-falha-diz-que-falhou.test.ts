@@ -110,9 +110,17 @@ afterEach(() => {
   (console.log as any).mockRestore?.();
 });
 
-/** Só os `kinds` que interessam, para o teste não depender do resto. */
+/**
+ * Só os `kinds` que interessam, para o teste não depender do resto.
+ *
+ * O `"ecg"` é um deles desde a 122 T-2: a gravação deixou de viajar dentro do
+ * `"vitals"` porque a ligação da clínica precisa de pedir uma sem a outra — os
+ * vitais do dia são de quem traz o aparelho no corpo, e numa conta de clínica
+ * isso é o funcionário. A separação das **falhas**, que é o que este arquivo
+ * mede, continua a mesma.
+ */
 const correr = () =>
-  ingestWithings("u1", ligacao, { kinds: ["activity", "sleep", "vitals"] });
+  ingestWithings("u1", ligacao, { kinds: ["activity", "sleep", "vitals", "ecg"] });
 
 describe("as duas falhas têm dois nomes", () => {
   it("**tudo bem → nada em `falhas`**", async () => {

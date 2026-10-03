@@ -6,7 +6,18 @@ import {
   withingsSleep,
   type WithingsBpReading,
 } from "@/lib/withings";
-import { ignoraPressao } from "@/lib/withings-routing";
+import {
+  ignoraPressao,
+  ehDeQuemFoiMedido,
+  entraPelaAtribuicao,
+  ehDePulso,
+} from "@/lib/withings-routing";
+import {
+  sessionCovers,
+  pickSession,
+  MATCHABLE_SESSION_STATUSES,
+  ESTADOS_QUE_RECEBEM_EVENTO,
+} from "@/lib/clinic-session-match";
 import { temTracadoPorGravacao } from "@/lib/ecg-tem-sinal";
 
 /**
@@ -259,8 +270,23 @@ export interface IngestCounts {
   activityDays: number;
   sleepNights: number;
   vitalsDays: number;
-  /** Gravações de ECG — a conclusão, uma linha por gravação. */
+  /** Gravações de ECG **guardadas** — a conclusão, uma linha por gravação. */
   ecgRecords: number;
+  /**
+   * Gravações que a Withings **devolveu** nesta janela, guardadas ou não.
+   *
+   * Pelo mesmo motivo que a pressão tem `bloodPressureRead`: *"veio uma e não
+   * foi guardada"* e *"não veio nada"* são notícias opostas, e sem este número
+   * a tela diz a segunda nos dois casos. Foi o defeito que o review de 27/09
+   * apanhou na pressão, e que eu repeti no ECG uma semana depois.
+   */
+  ecgRead: number;
+  /**
+   * Gravações que **ninguém reclamou**: sem janela, com duas, de pulso, ou com
+   * as janelas por ler. Uma medição que não entra em prontuário nenhum não pode
+   * existir só numa linha de log.
+   */
+  ecgNaoAtribuidos: number;
   intradayDays: number;
   hypnogramNights: number;
   workouts: number;
@@ -336,7 +362,7 @@ export async function ingestWithings(
   opts: {
     since?: Date;
     until?: Date;
-    kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series">;
+    kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series" | "ecg">;
     /**
      * Quem está a sincronizar (121 T-5): `cron`, `webhook` ou `manual`.
      *
@@ -349,7 +375,7 @@ export async function ingestWithings(
 ): Promise<IngestCounts> {
   const token = await withingsAccessToken(connection, opts.origem ?? "?");
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals", "series"];
+  const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals", "series", "ecg"];
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
 
   // A clinic device measures patients, not its owner: steps and sleep from it
@@ -382,8 +408,125 @@ export async function ingestWithings(
     contaTambemEhDaClinica: await contaTambemEhDaClinica(connection),
   });
 
-  const wanted: Array<"bp" | "activity" | "sleep" | "vitals" | "series"> = forClinic
-    ? ["bp"]
+  /**
+   * O que **não conseguimos ler** nesta passagem (120 T-4).
+   *
+   * Não é o mesmo que "não havia". Sem esta lista, uma falha de rede a buscar o
+   * ECG produz uma sincronização que se declara bem sucedida e um paciente que
+   * parece não ter gravado nada — e quem olha não tem como saber a diferença.
+   */
+  const falhas: string[] = [];
+
+  /**
+   * **As janelas de medição da clínica, para esta conta** (122 T-1).
+   *
+   * O Bruno usa o BeamO nos dois papéis, na **conta dele**:
+   *
+   * > *"quero que esse equipamento sirva para mim e sirva também para os
+   * > pacientes. Quando eu for usar para o paciente eu tenho que ter algum tipo
+   * > de ação, mas ele vai estar sincronizado com a minha conta."*
+   *
+   * A **ação** já existe: a janela de medição que a clínica abre na ficha do
+   * paciente antes de medir. O que faltava era ela valer para mais do que
+   * pressão — o BeamO mede ECG, temperatura e SpO₂, e esses entravam na ligação
+   * pessoal sem passar por atribuição nenhuma.
+   *
+   * Sem janela, a medição é dele e entra como sempre. É o que ele pediu, e é o
+   * que faz o aparelho continuar útil para ele sem um toque a cada uso.
+   *
+   * ## Uma lista, lida pelos dois lados (review de 03/10)
+   *
+   * As janelas são da **conta**, e não desta ligação: é assim que a ligação
+   * pessoal e a da clínica veem exactamente o mesmo conjunto. Enquanto a da
+   * clínica olhava só para `connection.id`, duas ligações de clínica da mesma
+   * conta podiam escrever a mesma gravação em dois pacientes.
+   */
+  const precisaDasJanelas = forClinic || pulaPressaoDaClinica;
+  let janelasDaClinica: Array<{
+    id: string;
+    status: string;
+    openedAt: Date;
+    expiresAt: Date;
+    patientId: string;
+    openedById: string;
+    context: string;
+  }> = [];
+  /**
+   * **Não consegui ler as janelas** — e isso não pode parecer *"não há janela"*.
+   *
+   * Isto era `.catch(() => [])`. Lista vazia é indistinguível de *"ninguém
+   * estava a ser medido"*, e sem janela a regra diz **"é do dono"**: qualquer
+   * erro transitório do banco — um timeout do pool, uma coluna em falta depois
+   * de um `db push` que engole a falha — escrevia a medição de um paciente no
+   * prontuário do dono, **sem uma linha em lado nenhum**. Era o único caminho
+   * de escrita-na-pessoa-errada que o review encontrou, e é exactamente a forma
+   * de defeito que as atividades 120 e 121 inteiras combateram.
+   *
+   * Agora a dúvida trava a escrita: sem saber de quem é, não é de ninguém. A
+   * medição fica na Withings e a passagem seguinte alcança-a.
+   */
+  let janelasPorLer = false;
+  if (precisaDasJanelas) {
+    try {
+      janelasDaClinica = await (prisma as any).clinicMeasurementSession.findMany({
+        where: {
+          connection: {
+            provider: PROVEDOR,
+            providerUserId: connection.providerUserId ?? "",
+            isClinicDevice: true,
+          },
+          status: { in: [...ESTADOS_QUE_RECEBEM_EVENTO] },
+          expiresAt: { gte: since },
+        },
+        select: {
+          id: true,
+          status: true,
+          openedAt: true,
+          expiresAt: true,
+          patientId: true,
+          openedById: true,
+          context: true,
+        },
+      });
+    } catch (e: any) {
+      janelasPorLer = true;
+      falhas.push("janelas-da-clinica");
+      console.error(
+        "[withings-ingest] nao consegui ler as janelas da clinica — nada vai para o dono:",
+        e?.message ?? e
+      );
+    }
+  }
+
+  /** Quantas janelas cobrem este instante. Zero, uma, ou ambiguidade. */
+  const quantasCobrem = (quando: Date | string): number =>
+    janelasDaClinica.filter((j) => sessionCovers(j, quando, ESTADOS_QUE_RECEBEM_EVENTO)).length;
+
+  /**
+   * Esta medição foi feita noutra pessoa? Então não é do dono do aparelho.
+   *
+   * O `modelo` entra quando a resposta o traz: o que se usa no **pulso** é
+   * sempre do dono — ver `APARELHOS_DE_PULSO`.
+   */
+  const medidaNoutraPessoa = (quando: Date | string, modelo?: number | null): boolean => {
+    /*
+     * A da clínica não filtra aqui: ela decide **por gravação**, em
+     * `donoDaGravacao`, onde há a quem atribuir. Filtrar aqui tirava-lhe a
+     * gravação antes de ela chegar lá.
+     */
+    if (forClinic) return false;
+    /* Sem saber de quem é, não se escreve no dono. Ver `janelasPorLer`. */
+    if (janelasPorLer) return true;
+    return ehDeQuemFoiMedido({
+      ehDaClinica: forClinic,
+      contaTambemEhDaClinica: pulaPressaoDaClinica,
+      janelasQueCobrem: quantasCobrem(quando),
+      modeloDoAparelho: modelo ?? null,
+    });
+  };
+
+  const wanted: Array<"bp" | "activity" | "sleep" | "vitals" | "series" | "ecg"> = forClinic
+    ? ["bp", "ecg"]
     : pulaPressaoDaClinica
       ? kinds.filter((k) => k !== "bp")
       : kinds;
@@ -432,14 +575,8 @@ export async function ingestWithings(
   // with SpO2 and no temperature does not overwrite anything with a zero.
   let vitalsDays = 0;
   let ecgRecords = 0;
-  /**
-   * O que **não conseguimos ler** nesta passagem (120 T-4).
-   *
-   * Não é o mesmo que "não havia". Sem esta lista, uma falha de rede a buscar o
-   * ECG produz uma sincronização que se declara bem sucedida e um paciente que
-   * parece não ter gravado nada — e quem olha não tem como saber a diferença.
-   */
-  const falhas: string[] = [];
+  let ecgRead = 0;
+  let ecgNaoAtribuidos = 0;
   /**
    * As séries do dia e da noite (099 T-7).
    *
@@ -518,7 +655,7 @@ export async function ingestWithings(
   }
 
   if (wanted.includes("vitals")) {
-    const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
+    const { withingsVitals, vitalsByDay } = await import("@/lib/withings-vitals");
 
     /**
      * **Os vitais e o ECG falham separados** (120 T-4).
@@ -562,7 +699,22 @@ export async function ingestWithings(
             .join(", ")}`
         );
       }
-      for (const day of vitalsByDay(vitals)) {
+      /*
+       * **O que foi medido noutra pessoa não entra aqui** (122 T-1).
+       *
+       * Temperatura e SpO₂ de um paciente, medidos com o aparelho partilhado
+       * dentro de uma janela da clínica, cairiam no prontuário do dono. Fora de
+       * janela nada muda: é dele.
+       */
+      const meus = vitals.filter((v: any) => !medidaNoutraPessoa(v.measuredAt));
+      const deOutros = vitals.length - meus.length;
+      if (deOutros > 0) {
+        console.log(
+          `[withings-ingest] ${deOutros} medicao(oes) dentro de janela da clinica — nao entram no dono`
+        );
+      }
+
+      for (const day of vitalsByDay(meus)) {
         const fields: Record<string, unknown> = { rawPayload: JSON.stringify({ samples: day.samples }) };
         if (day.spo2 !== undefined) fields.spo2 = day.spo2;
         if (day.bodyTemperature !== undefined) fields.bodyTemperature = day.bodyTemperature;
@@ -583,6 +735,17 @@ export async function ingestWithings(
       falhas.push("vitais");
       console.error("[withings-ingest] vitais falharam:", e?.message);
     }
+  }
+
+  if (wanted.includes("ecg")) {
+    const { withingsEcg } = await import("@/lib/withings-vitals");
+
+    /*
+     * **Fora do `try`**: uma escrita que rebente a meio do laço não pode levar
+     * atrás a contagem do que ficou sem dono. Era o que acontecia — a linha do
+     * log vivia depois do laço, dentro do mesmo `try`, e morria com a excepção.
+     */
+    const naoAtribuidos = { dePulso: 0, semJanela: 0, ambiguos: 0, porLer: 0 };
 
     try {
       /*
@@ -599,10 +762,86 @@ export async function ingestWithings(
        * 00:30 em Londres no verão era guardado como do dia anterior. Agora
        * guarda-se o instante, e quem mostra agrupa no seu próprio fuso.
        */
-      const ecg = await withingsEcg(token, since, opts.until);
+      const todosOsEcg = await withingsEcg(token, since, opts.until);
+      ecgRead = todosOsEcg.length;
+      /*
+       * **O ECG de um paciente não é do dono do aparelho** (122 T-1). Mesma
+       * regra dos vitais: a janela da clínica decide, e sem janela é dele.
+       */
+      const ecg = todosOsEcg.filter(
+        (r: any) => !medidaNoutraPessoa(r.recordedAt, r.deviceModel)
+      );
+      if (ecg.length < todosOsEcg.length) {
+        console.log(
+          `[withings-ingest] ${todosOsEcg.length - ecg.length} ECG dentro de janela da clinica — nao entram no dono`
+        );
+      }
+      /**
+       * **De quem é esta gravação, do lado da clínica** (122 T-2).
+       *
+       * Na ligação pessoal a resposta é sempre a mesma pessoa, e o filtro acima
+       * já tirou o que não era dela. Na da clínica é por gravação: quem a janela
+       * nomear, e **ninguém** se não houver janela ou se houver duas.
+       *
+       * Lê a **mesma lista** que o filtro de cima, carregada uma vez por
+       * passagem. Antes era uma consulta por gravação, e a uma ligação só — o
+       * que, com duas ligações de clínica da mesma conta, podia escrever a
+       * mesma gravação em dois pacientes.
+       *
+       * Os motivos de não guardar contam-se separados porque são notícias
+       * diferentes. Um ECG do relógio do dono é o esperado — ele é do dono, e é
+       * a ligação pessoal que o guarda. Um ECG **sem janela** é uma medição que
+       * ninguém reclamou, e enquanto não houver caixa de entrada (122 T-4) este
+       * contador é o que a torna visível.
+       */
+      const donoDaGravacao = (
+        rec: any
+      ): { userId: string; sessionId?: string; openedById?: string } | null => {
+        if (!forClinic) return { userId };
+        /*
+         * Sem saber quem estava a ser medido, não se escreve em ninguém — nem
+         * sequer no dono da ligação, que numa conta de clínica é o funcionário.
+         */
+        if (janelasPorLer) {
+          naoAtribuidos.porLer++;
+          return null;
+        }
+        const escolha = pickSession(janelasDaClinica, rec.recordedAt, ESTADOS_QUE_RECEBEM_EVENTO);
+        const fica = entraPelaAtribuicao({
+          ehDaClinica: true,
+          janelasQueCobrem:
+            escolha.kind === "assigned" ? 1 : escolha.kind === "ambiguous" ? escolha.count : 0,
+          modeloDoAparelho: rec.deviceModel ?? null,
+        });
+        if (!fica) {
+          /*
+           * **O motivo é a causa, e não o que sobrou.** A condição antiga
+           * (`modelo != null && a janela cobria`) rotulava de "sem janela" todo
+           * o ECG do relógio do dono fora de janela — que é o caso **normal**
+           * numa conta de clínica. O contador que existe para gritar "ninguém
+           * reclamou esta medição" ficava cheio do caso benigno.
+           */
+          if (ehDePulso(rec.deviceModel)) naoAtribuidos.dePulso++;
+          else if (escolha.kind === "ambiguous") naoAtribuidos.ambiguos++;
+          else naoAtribuidos.semJanela++;
+          return null;
+        }
+        if (escolha.kind !== "assigned") return null;
+        const janela = escolha.session as any;
+        return { userId: janela.patientId, sessionId: janela.id, openedById: janela.openedById };
+      };
+
       let sinaisBuscados = 0;
       let avisouDoTecto = false;
       for (const rec of ecg) {
+        const dono = donoDaGravacao(rec);
+        if (!dono) continue;
+        /*
+         * **Daqui para baixo, o dono da gravação** — e não o dono da ligação.
+         * Numa ligação de clínica são pessoas diferentes, e era essa a troca
+         * que punha o ECG de um paciente na ficha de quem autorizou a conta.
+         */
+        const donoId = dono.userId;
         const dataDate = rec.recordedAt.toISOString().split("T")[0];
         const { traduzirClassificacao } = await import("@/lib/ecg-record");
         const afibRaw =
@@ -612,16 +851,33 @@ export async function ingestWithings(
               ? null
               : Number(rec.afibClassification);
 
-        await prisma.ecgRecording.upsert({
+        /*
+         * **Já estava guardada?** Só para a auditoria (achado do review).
+         *
+         * O `upsert` é idempotente, mas o `logAudit` não: sem isto, cada
+         * passagem do cron escrevia outra linha `CLINIC_MEASUREMENT_ASSIGN`
+         * para a mesma gravação, enquanto o `since` a alcançasse — trinta dias
+         * de rasto repetido. Um rasto que acontece N vezes responde pior a
+         * "por que caminho isto chegou" do que um que acontece uma.
+         */
+        const jaGravada =
+          forClinic && dono.sessionId
+            ? await prisma.ecgRecording.findFirst({
+                where: { userId: donoId, provider: PROVEDOR, recordedAt: rec.recordedAt },
+                select: { id: true },
+              })
+            : null;
+
+        const gravada = await prisma.ecgRecording.upsert({
           where: {
             userId_provider_recordedAt: {
-              userId,
+              userId: donoId,
               provider: PROVEDOR,
               recordedAt: rec.recordedAt,
             },
           },
           create: {
-            userId,
+            userId: donoId,
             connectionId: connection.id,
             provider: PROVEDOR,
             recordedAt: rec.recordedAt,
@@ -646,6 +902,39 @@ export async function ingestWithings(
           select: { id: true },
         });
         ecgRecords++;
+
+        /*
+         * **Uma medição atribuída por regra deixa rasto** — o mesmo que a
+         * pressão deixa em `clinic-device.ts`. Sem isto, um ECG aparecia no
+         * prontuário de um paciente sem ninguém poder dizer *por que caminho*,
+         * e a resposta "a janela que o terapeuta abriu" tem de estar escrita em
+         * algum lado.
+         *
+         * A janela **não** é fechada aqui. O `readingId` dela é uma chave
+         * estrangeira para uma leitura de pressão, e o terapeuta que mediu o ECG
+         * com o BeamO mede a pressão nos mesmos três minutos: marcá-la como
+         * `COMPLETED` tirava-lhe a pressão a seguir.
+         */
+        if (forClinic && dono.sessionId && !jaGravada) {
+          const { logAudit } = await import("@/lib/system-logger");
+          await logAudit({
+            userId: dono.openedById ?? "",
+            userEmail: "",
+            userRole: "STAFF",
+            action: "CLINIC_MEASUREMENT_ASSIGN",
+            entity: "EcgRecording",
+            entityId: gravada.id,
+            description: `Clinic device ECG attributed automatically (${traduzirClassificacao(rec.afibClassification)})`,
+            metadata: {
+              sessionId: dono.sessionId,
+              patientId: donoId,
+              recordedAt: rec.recordedAt,
+              automatic: true,
+            },
+          }).catch((e: any) =>
+            console.error("[withings-ingest] auditoria do ECG falhou:", e?.message ?? e)
+          );
+        }
         /*
          * Já temos as amostras desta gravação? Então não se pedem outra vez.
          *
@@ -654,7 +943,7 @@ export async function ingestWithings(
          * passagem, só para os comparar com `null` — numa passagem que existe
          * para evitar trabalho. Ver `lib/ecg-tem-sinal.ts`.
          */
-        const jaTemSinal = await temTracadoPorGravacao(userId, PROVEDOR, rec.recordedAt);
+        const jaTemSinal = await temTracadoPorGravacao(donoId, PROVEDOR, rec.recordedAt);
 
         /*
          * **O traçado, na linha da gravação a que pertence** (099 T-9).
@@ -714,7 +1003,7 @@ export async function ingestWithings(
               await prisma.ecgRecording.update({
                 where: {
                   userId_provider_recordedAt: {
-                    userId,
+                    userId: donoId,
                     provider: PROVEDOR,
                     recordedAt: rec.recordedAt,
                   },
@@ -777,7 +1066,7 @@ export async function ingestWithings(
               await prisma.ecgRecording
                 .update({
                   where: {
-                    userId_provider_recordedAt: { userId, provider: PROVEDOR, recordedAt: rec.recordedAt },
+                    userId_provider_recordedAt: { userId: donoId, provider: PROVEDOR, recordedAt: rec.recordedAt },
                   },
                   data: {
                     /**
@@ -855,6 +1144,30 @@ export async function ingestWithings(
        */
       falhas.push("ecg");
       console.error("[withings-ingest] ECG falhou:", e?.message);
+    } finally {
+      /*
+       * **No `finally`**: se a escrita rebentou a meio do laço, o que já se
+       * tinha contado continua a ser dito. A contagem do que ficou sem dono é a
+       * única coisa que torna visível uma medição que ninguém guardou.
+       */
+      ecgNaoAtribuidos =
+        naoAtribuidos.semJanela +
+        naoAtribuidos.ambiguos +
+        naoAtribuidos.dePulso +
+        naoAtribuidos.porLer;
+      if (ecgNaoAtribuidos) {
+        console.log(
+          `[withings-ingest] ECG nao atribuidos: ${naoAtribuidos.semJanela} sem janela, ` +
+            `${naoAtribuidos.ambiguos} com duas janelas, ${naoAtribuidos.dePulso} de pulso (do dono)` +
+            `, ${naoAtribuidos.porLer} sem conseguir ler as janelas`
+        );
+      }
+      /*
+       * **Uma perda tem de caber nos números que a tela lê** (achado do QA e do
+       * review). Este contador vivia só na consola do contentor — que é,
+       * literalmente, o sítio onde esta base já documentou que ninguém olha.
+       */
+      if (naoAtribuidos.porLer) falhas.push("janelas-da-clinica");
     }
   }
 
@@ -903,6 +1216,8 @@ export async function ingestWithings(
     hypnogramNights,
     workouts,
     ecgRecords,
+    ecgRead,
+    ecgNaoAtribuidos,
     /*
      * O que falhou, por nome, **sem repetir**. Vazio quer dizer *"leu-se
      * tudo"* — e é isso que dá sentido aos zeros ao lado: um `ecgRecords: 0`

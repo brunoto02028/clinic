@@ -31,7 +31,12 @@ describe("a tela deixou de só escutar", () => {
   it("existe um caminho que **puxa** da Withings", () => {
     expect(rota).toMatch(/export async function POST/);
     expect(rota).toMatch(/ingestWithings\(/);
-    expect(rota).toMatch(/kinds: \["bp"\]/);
+    /*
+     * Pressão **e** ECG (122 T-2), sem fixar a ordem nem o espaçamento da
+     * lista: o que importa é que os dois são pedidos.
+     */
+    expect(rota).toMatch(/kinds: \[[^\]]*"bp"[^\]]*\]/);
+    expect(rota).toMatch(/kinds: \[[^\]]*"ecg"[^\]]*\]/);
   });
 
   it("e a tela o oferece enquanto espera", () => {
@@ -47,10 +52,16 @@ describe("a tela deixou de só escutar", () => {
     expect(rota).toMatch(/openedAt\.getTime\(\) - FOLGA_MS/);
   });
 
-  it("**e os três desfechos têm frases diferentes**", () => {
+  it("**e os desfechos têm frases diferentes, que se somam**", () => {
     // "Veio leitura mas fora da janela" e "não veio nada" são notícias
     // opostas: uma manda procurar na caixa de entrada, a outra manda esperar.
-    expect(tela).toMatch(/data\?\.lidas > 0 \? ui\.fetchedElsewhere : ui\.fetchedNone/);
+    //
+    // Desde a 122 T-2 há uma terceira — o ECG — e o review de 03/10 apanhou-a
+    // a **esconder** a da caixa de entrada, que é a única das três que pede uma
+    // acção humana. Agora juntam-se em vez de competirem.
+    expect(tela).toMatch(/if \(data\?\.ecg > 0\) partes\.push\(ui\.fetchedEcg\(data\.ecg\)\)/);
+    expect(tela).toMatch(/if \(data\?\.lidas > 0\) partes\.push\(ui\.fetchedElsewhere\)/);
+    expect(tela).toMatch(/partes\.length \? partes\.join\(" "\) : ui\.fetchedNone/);
     expect(tela).toMatch(/fetchedElsewhere: "Chegou uma leitura, mas fora desta janela/);
     expect(tela).toMatch(/fetchedNone: "Nada veio do aparelho ainda/);
   });
