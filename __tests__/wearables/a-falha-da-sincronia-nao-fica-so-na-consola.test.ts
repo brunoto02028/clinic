@@ -47,7 +47,7 @@ function codigo(...partes: string[]): string {
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
-const CRON = ["app", "api", "cron", "wearables-sync", "route.ts"];
+const CRON = ["lib", "wearables-sync-run.ts"];
 const CAIXA = ["app", "admin", "measurements", "inbox", "page.tsx"];
 
 describe("o erro é gravado, e não só impresso", () => {

@@ -279,6 +279,38 @@ describe("o log diz quem pediu (121 T-5)", () => {
     expect(tudo).toMatch(/(cron|webhook) renova/);
   });
 
+  it("**os cinco caminhos têm nome** — nenhum fica a `?`", () => {
+    /*
+     * O log de produção de 03/10 apanhou o que faltava:
+     *
+     * ```
+     * [withings/token] ? renova cmufr3e...
+     * [withings/token] cron renova cmufr3e...
+     * ```
+     *
+     * Duas renovações da mesma passagem, e a primeira sem nome — era o caminho
+     * das assinaturas, que ficou de fora quando os outros se identificaram.
+     */
+    const { readFileSync } = require("node:fs");
+    const { join } = require("node:path");
+    const ler = (...p: string[]) =>
+      readFileSync(join(__dirname, "..", "..", ...p), "utf8");
+
+    const chamadores: Array<[string[], string]> = [
+      [["lib", "withings-subscriptions.ts"], "assinatura"],
+      [["app", "api", "cron", "wearables-probe", "route.ts"], "sondagem"],
+      [["app", "api", "wearables", "disconnect", "route.ts"], "desligar"],
+    ];
+    for (const [caminho, nome] of chamadores) {
+      expect(ler(...caminho)).toContain(`withingsAccessToken(`);
+      expect(ler(...caminho)).toContain(`"${nome}"`);
+    }
+    /* E os que passam pela ingestão declaram-se nela. */
+    expect(ler("lib", "wearables-sync-run.ts")).toContain('origem: "cron"');
+    expect(ler("app", "api", "wearables", "sync", "route.ts")).toContain('origem: "manual"');
+    expect(ler("app", "api", "wearables", "withings", "webhook", "route.ts")).toContain('origem: "webhook"');
+  });
+
   it("sem origem declarada, diz `?` em vez de mentir", async () => {
     await withingsAccessToken(retrato());
     expect(linhas.join(String.fromCharCode(10))).toMatch(/\? renova conn1/);

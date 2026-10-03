@@ -41,7 +41,7 @@ const semComentarios = (src: string) =>
 describe("os contadores da ingestão chegam ao resultado do cron", () => {
   const ingest = semComentarios(lerCodigo("lib", "withings-ingest.ts"));
   const cron = semComentarios(
-    lerCodigo("app", "api", "cron", "wearables-sync", "route.ts")
+    lerCodigo("lib", "wearables-sync-run.ts")
   );
 
   /**

@@ -32,7 +32,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const ROTA = path.join(
-  __dirname, "..", "..", "app", "api", "cron", "wearables-sync", "route.ts"
+  __dirname, "..", "..", "lib", "wearables-sync-run.ts"
 );
 
 /** O código sem comentários — eles explicam o defeito e citam os números. */

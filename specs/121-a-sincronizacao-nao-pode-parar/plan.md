@@ -1,6 +1,6 @@
 # 121 — A sincronização não pode parar
 
-**Estado:** **o código está todo feito** (03/10). Falta reconectar, o deploy, e uma semana de medição (T-5)
+**Estado:** T-1 a T-4 e T-6 feitas e **em produção**; a T-6 nasceu de uma pergunta do Bruno e é a raiz de tudo. Falta reconectar e uma semana de medição (T-5)
 **Aberta em:** 03/10/2026
 **Pedido do Bruno:** *"Nao pode parar de sincronizar jamais"* — com três telas: a
 aba Saúde a mostrar o sono de ontem como se fosse normal, e a Activity a dizer
@@ -89,7 +89,8 @@ quem carrega no botão de reconectar é ele.
 | T-2 | [O webhook não engole a falha](t-2-o-webhook-nao-engole.md) | — | **feita** (03/10) |
 | T-3 | [Uma ligação morta grita](t-3-uma-ligacao-morta-grita.md) | T-2 | **feita** (03/10) — falta medir a tela |
 | T-4 | [O relógio parado aparece na clínica](t-4-o-relogio-parado-na-clinica.md) | T-3 | **feita** (03/10) — e apanhou um defeito que a T-3 criou: o monitor escondia a ligação em `ERROR` |
-| T-5 | [Medir quanto tempo esteve parada, e porquê](t-5-medir-a-parada.md) | T-1..T-3 | **instrumentada** (03/10) — a medição espera o deploy |
+| T-5 | [Medir quanto tempo esteve parada, e porquê](t-5-medir-a-parada.md) | T-1..T-3 | **instrumentada** (03/10) — a medição espera uma semana |
+| T-6 | [A rede nunca esteve pendurada](t-6-a-rede-nunca-esteve-pendurada.md) | — | **feita** (03/10) — **o cron não era disparado por nada** |
 
 ## Suposições
 

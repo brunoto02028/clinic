@@ -30,6 +30,26 @@ const AMBIENT_TRANSCRIPTION_INTERVAL_MS = 30 * 1000; // every 30 seconds
 const ATLAS_TREATMENT_PLAN_INTERVAL_MS = 15 * 1000; // every 15 seconds
 const OUTBOX_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes (activity 072, T-4)
 const PATIENT_REPORTS_INTERVAL_MS = 60 * 60 * 1000; // every hour (099 T-5)
+/**
+ * **A sincronização dos wearables — de 15 em 15 minutos** (121 T-6).
+ *
+ * O webhook da Withings é o caminho de tempo real: ela empurra no instante da
+ * medição. Isto é a **rede por baixo dele**, escrita na 075 T-11 com essas
+ * palavras — e que **nunca esteve pendurada**: zero tarefas agendadas no
+ * Coolify, e nenhum dos nove jobs acima era este.
+ *
+ * O resultado foi 27 dias sem dado na conta do Bruno. O webhook parou de
+ * conseguir ler quando a cadeia de tokens morreu, e não havia mais nada a
+ * tentar: só ele puxar a tela.
+ *
+ * **Quinze minutos**, e não cinco: a passagem fala com a Withings por cada
+ * ligação, e o plano gratuito deles vai até 5.000 chamadas por dia. A quinze
+ * minutos são 96 rodadas diárias, e a própria passagem espera 11 segundos entre
+ * ligações da mesma conta (o `601` deles). Em tempo real quem manda é o
+ * webhook; isto é a rede, e uma rede não precisa de ser rápida — precisa de
+ * estar lá.
+ */
+const WEARABLES_SYNC_INTERVAL_MS = 15 * 60 * 1000;
 
 async function refreshExpiringTokens() {
   try {
@@ -286,6 +306,22 @@ async function deliverApprovedOutbox() {
  * **Não envia nada**, e não faz nada enquanto `Clinic.autoReportsEnabled`
  * estiver desligada.
  */
+/**
+ * A rede de segurança por baixo do webhook (121 T-6).
+ *
+ * Chama a **mesma** função que a rota `/api/cron/wearables-sync` — um laço
+ * copiado seria dois laços a divergir. Nunca lança: o agendador tem mais oito
+ * jobs, e um erro aqui não pode levá-los junto.
+ */
+async function sincronizarWearables() {
+  try {
+    const { correrSincronizacaoDeWearables } = await import('./wearables-sync-run');
+    await correrSincronizacaoDeWearables();
+  } catch (e: any) {
+    console.error('[background-jobs] wearables sync failed:', e?.message ?? e);
+  }
+}
+
 async function generateDuePatientReports() {
   try {
     const { gerarRelatoriosVencidos } = await import('@/lib/patient-report-schedule');
@@ -302,7 +338,7 @@ export function startBackgroundJobs() {
   if (global.__bprBackgroundJobsStarted) return;
   global.__bprBackgroundJobsStarted = true;
 
-  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min, email campaigns every 1min, article publish every 15min)');
+  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min, email campaigns every 1min, article publish every 15min, wearables sync every 15min)');
 
   setInterval(refreshExpiringTokens, TOKEN_REFRESH_INTERVAL_MS);
   setInterval(publishDuePosts, POST_PUBLISH_INTERVAL_MS);
@@ -313,6 +349,7 @@ export function startBackgroundJobs() {
   setInterval(generatePendingAtlasTreatmentPlans, ATLAS_TREATMENT_PLAN_INTERVAL_MS);
   setInterval(deliverApprovedOutbox, OUTBOX_INTERVAL_MS);
   setInterval(generateDuePatientReports, PATIENT_REPORTS_INTERVAL_MS);
+  setInterval(sincronizarWearables, WEARABLES_SYNC_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
@@ -323,4 +360,9 @@ export function startBackgroundJobs() {
   setTimeout(ambientTranscriptionsJob, 20_000);
   setTimeout(generatePendingAtlasTreatmentPlans, 10_000);
   setTimeout(generateDuePatientReports, 90_000);
+  /*
+   * E uma logo depois do arranque: um contentor que reinicia a meio da noite
+   * não pode deixar a rede desligada até ao quarto de hora seguinte.
+   */
+  setTimeout(sincronizarWearables, 120_000);
 }
