@@ -1,5 +1,6 @@
 "use client";
 
+import { jaFoiAvaliada } from "@/lib/ja-foi-avaliada";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -96,14 +97,10 @@ export default function AppointmentsList() {
       const appts = data?.appointments ?? [];
       setAppointments(appts);
 
-      // Check if initial assessment exists (any status except CANCELLED)
-      if (!isTherapist) {
-        const hasInitial = appts.some((a: Appointment) =>
-          (a.treatmentType === "Initial Assessment" || a.treatmentType === "Avalia\u00e7\u00e3o Inicial") &&
-          a.status !== "CANCELLED"
-        );
-        setInitialAssessmentDone(hasInitial);
-      }
+
+      // A regra mora em lib/ja-foi-avaliada.ts, fora do desenho: assim o
+      // teste exercita a mesma funcao que a tela usa, e nao uma copia.
+      if (!isTherapist) setInitialAssessmentDone(jaFoiAvaliada(appts));
     } catch (error) {
       console.error("Error fetching appointments:", error);
     } finally {
