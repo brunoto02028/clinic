@@ -68,6 +68,23 @@ export function ultimaLeitura(
 }
 
 /**
+ * Quantas meia-noites há entre dois instantes, **no fuso do telefone**.
+ *
+ * `Math.round` e não `floor` de uma divisão de milissegundos: um dia de mudança
+ * de hora tem 23 ou 25 horas, e é o número de meia-noites que decide se se diz
+ * "ontem".
+ *
+ * `-1` quando a data não se lê — e aí a frase cai nas horas, que não afirmam
+ * dia nenhum.
+ */
+function diasDeCalendario(de: Date, ate: Date): number {
+  if (Number.isNaN(de.getTime()) || Number.isNaN(ate.getTime())) return -1;
+  const meiaNoite = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((meiaNoite(ate) - meiaNoite(de)) / 86_400_000);
+}
+
+/**
  * A frase, nas duas línguas — ou `null` quando não há nada para dizer.
  *
  * **Abaixo de dois minutos não se diz nada.** "Atualizado há 0 minutos" é ruído
@@ -75,7 +92,15 @@ export function ultimaLeitura(
  */
 export function fraseDaUltimaLeitura(
   lido: QuandoFoiLido | null,
-  horaLocal: (iso: string) => string | null
+  horaLocal: (iso: string) => string | null,
+  /**
+   * O instante de referência. Existe para o teste poder fixar o dia; em
+   * produção é sempre agora.
+   *
+   * É preciso, e não dá para derivar de `lido.minutos`, porque a fronteira que
+   * interessa é a da **meia-noite** e não a de um número de horas — ver abaixo.
+   */
+  agora: Date = new Date()
 ): { en: string; pt: string } | null {
   if (!lido || lido.minutos < 2) return null;
 
@@ -100,14 +125,30 @@ export function fraseDaUltimaLeitura(
    * número sem hora apresenta-se como agora"* → uma hora sem dia apresenta-se
    * como hoje.
    */
-  if (lido.minutos < 24 * 60) {
+  /**
+   * **A fronteira é a meia-noite, não 24 horas** (segundo achado do review, no
+   * mesmo sítio).
+   *
+   * O código dizia `minutos < 24 * 60`, e o comentário acima dizia *"só no
+   * próprio dia"*. Não é a mesma coisa, e a diferença é visível:
+   *
+   * ```
+   * sincronizou 02/10 às 23:00  ·  agora 03/10 às 00:30  →  "Atualizado às 23:00"
+   * ```
+   *
+   * Uma hora e meia depois, o paciente lia uma hora **22,5 h no futuro**. É o
+   * defeito deste ficheiro outra vez, uma casa à frente: uma hora sem dia
+   * apresenta-se como hoje — e às 00:30 "hoje" já é outro dia.
+   */
+  const dias = diasDeCalendario(new Date(lido.quando), agora);
+
+  if (dias === 0) {
     const hora = horaLocal(lido.quando);
     if (hora) {
       return { en: `Updated at ${hora}`, pt: `Atualizado às ${hora}` };
     }
   }
 
-  const dias = Math.floor(lido.minutos / (24 * 60));
   if (dias >= 1) {
     return dias === 1
       ? { en: "Updated yesterday", pt: "Atualizado ontem" }

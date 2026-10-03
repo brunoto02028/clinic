@@ -160,6 +160,15 @@ export async function POST(req: NextRequest) {
   let synced = 0;
   let withData = 0;
   let failed = 0;
+  /**
+   * Quantas ligações tiveram **algo não lido** — nem sucesso limpo, nem falha
+   * total (achado do code review, 120 T-4).
+   *
+   * Uma conta cujo ECG falhou mas cujo sono entrou não é `failed` (a passagem
+   * não lançou) nem é notícia boa. Sem este número ela desaparecia entre os
+   * dois.
+   */
+  let comFalha = 0;
   let checked = 0;
   /*
    * **Os contadores das séries entram aqui também.**
@@ -186,6 +195,14 @@ export async function POST(req: NextRequest) {
     intradayDays: 0,
     hypnogramNights: 0,
     workouts: 0,
+    /**
+     * O que **não se conseguiu ler** — `"vitais"`, `"ecg"` (120 T-4).
+     *
+     * Um conjunto e não um contador: a pergunta é *"o quê"*. Vazio dá sentido
+     * aos zeros ao lado; com algo dentro, um zero ao lado não é notícia sobre o
+     * paciente.
+     */
+    falhas: new Set<string>(),
     /**
      * Quantas gravações de ECG entraram.
      *
@@ -260,7 +277,7 @@ export async function POST(req: NextRequest) {
       // de dez segundos — ver `INTERVALO_MINIMO_POR_CONTA_MS`.
       esperaTotalMs += await esperarAVezDaConta(ultimaChamadaPorConta, (c as any).providerUserId);
 
-      const counts = await ingestWithings(c.userId, c, { since });
+      const counts = await ingestWithings(c.userId, c, { since, origem: "cron" });
       synced++;
       totals.bloodPressure += counts.bloodPressure;
       totals.bloodPressureRead += counts.bloodPressureRead ?? 0;
@@ -271,6 +288,18 @@ export async function POST(req: NextRequest) {
       totals.hypnogramNights += counts.hypnogramNights ?? 0;
       totals.workouts += counts.workouts ?? 0;
       totals.ecgRecords += counts.ecgRecords ?? 0;
+      /**
+       * **O que não se conseguiu ler, por nome** (120 T-4).
+       *
+       * Não é um contador: é a diferença entre *"este paciente não gravou"* e
+       * *"nós não conseguimos ler"*. Sem isto, um `ecg=0` nos totais é as duas
+       * coisas, e já foi — o `throw` do ECG subia para o `catch` dos vitais e
+       * o log dizia *"vitals failed"*.
+       *
+       * Junta-se em conjunto porque o que interessa é **o quê**, não quantas
+       * ligações: dez contas com o ECG a falhar é um problema, não dez.
+       */
+      for (const f of counts.falhas ?? []) totals.falhas.add(f);
 
       const arrived =
         counts.bloodPressure +
@@ -280,20 +309,59 @@ export async function POST(req: NextRequest) {
           counts.ecgRecords >
         0;
       if (arrived) withData++;
+      /*
+       * **E conta-se à parte quantas ligações tiveram algo não lido.**
+       *
+       * Sem isto, uma conta cujo ECG e vitais falharam e que não trouxe
+       * pressão, actividade nem sono nova contava como `withData` falso — *"não
+       * chegou nada"* — e o `failed` não subia. Duas notícias opostas com o
+       * mesmo número.
+       */
+      if ((counts.falhas ?? []).length > 0) comFalha++;
 
       // `lastSyncedAt` e `lastReadingAt` são escritos dentro de
       // `ingestWithings`, com a data da leitura mais nova — aqui só contamos.
       /**
-       * O sucesso **apaga** o erro anterior.
+       * O sucesso **apaga** o erro anterior — e uma passagem com `falhas`
+       * **não é sucesso** (achado do code review).
        *
        * Um erro que fica depois de resolvido mente tanto quanto um que nunca
-       * aparece — e seria pior, porque manda procurar o que ja nao existe.
+       * aparece. Mas apagá-lo quando o ECG ou os vitais falharam é apagar a
+       * única prova durável de que falharam: a lista nova vivia só numa linha
+       * de consola e no JSON da resposta, e este ficheiro tem, vinte linhas
+       * abaixo, um comentário a explicar que a consola do contentor não é lida
+       * por ninguém — foi o que custou o manguito do Bruno.
        */
-      if (c.lastSyncError) {
-        await (prisma as any).wearableConnection
-          .update({ where: { id: c.id }, data: { lastSyncError: null, lastSyncErrorAt: null } })
-          .catch(() => {});
-      }
+      /**
+       * **A falha parcial tem coluna própria** (corrigido na 2ª rodada).
+       *
+       * Eu tinha escrito isto no `lastSyncError`, e o `lastSyncError` quer dizer
+       * *"a sincronização falhou"*. Numa passagem em que o sono e a pressão
+       * entraram e só o ECG falhou, a tela do paciente passava a dizer *"The
+       * last sync failed: não lido: tracado-do-ecg"* — e essa pendência
+       * **suprimia** o aviso de "o relógio está calado há N dias", que é o
+       * único que o paciente pode resolver.
+       *
+       * `lastPartialRead` é para a clínica. O `lastSyncError` continua a ser só
+       * para quando a passagem **falhou**.
+       */
+      const naoLidos = [...(counts.falhas ?? [])];
+      await (prisma as any).wearableConnection
+        .update({
+          where: { id: c.id },
+          data: {
+            lastPartialRead: naoLidos.length ? naoLidos.join(",") : null,
+            lastPartialReadAt: naoLidos.length ? new Date() : null,
+            /*
+             * O sucesso apaga o erro anterior. Um erro que fica depois de
+             * resolvido mente tanto quanto um que nunca aparece.
+             */
+            ...(c.lastSyncError
+              ? { lastSyncError: null, lastSyncErrorAt: null, needsReauthAt: null }
+              : {}),
+          },
+        })
+        .catch(() => {});
     } catch (err: any) {
       failed++;
       // One patient's expired token must not stop the other patients' sync.
@@ -368,7 +436,9 @@ export async function POST(req: NextRequest) {
       `atividade=${totals.activityDays} sono=${totals.sleepNights} ` +
       `vitais=${totals.vitalsDays} intraday=${totals.intradayDays} ` +
       `hipnograma=${totals.hypnogramNights} treinos=${totals.workouts} ` +
-      `ecg=${totals.ecgRecords}`
+      `ecg=${totals.ecgRecords} ` +
+      /* Vazio é notícia boa, e é por isso que se escreve sempre. */
+      `naoLidos=${[...totals.falhas].join(",") || "-"} comFalha=${comFalha}`
   );
 
   return NextResponse.json({
@@ -376,8 +446,15 @@ export async function POST(req: NextRequest) {
     ranOut,
     synced,
     withData,
+    /* Ver `comFalha`: ligações com algo não lido, nem `withData` nem `failed`. */
+    comFalha,
     failed,
     subscriptionsChecked: checked,
-    totals,
+    /*
+     * O `Set` virava `{}` no JSON — ou seja, invisível para quem chama a rota,
+     * que é o caso de uso que fez este ficheiro ganhar um teste. Vai como
+     * lista.
+     */
+    totals: { ...totals, falhas: [...totals.falhas] },
   });
 }

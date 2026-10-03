@@ -518,9 +518,25 @@ export default function SaudeScreen() {
                           ? tr(lang, { en: "not enough days yet", pt: "ainda sem dias para comparar" })
                           : Math.abs(d.delta) < 0.5
                             ? tr(lang, { en: "about the same", pt: "praticamente igual" })
-                            : tr(lang, {
-                                en: `${d.delta > 0 ? "+" : "−"}${Math.abs(Math.round(d.delta))} vs ${d.diasComparados}d ago`,
-                                pt: `${d.delta > 0 ? "+" : "−"}${Math.abs(Math.round(d.delta))} vs há ${d.diasComparados}d`,
+                            : /*
+                               * **"vs o início", e não "vs há 10 dias"**
+                               * (achado do review).
+                               *
+                               * `diasComparados` é quantos dias entram em
+                               * **cada lado** da média — não há quanto tempo. O
+                               * cartão lia-o como tempo decorrido: com 30 dias
+                               * medidos dizia *"vs há 10d"* quando a base era a
+                               * média dos dias 1 a 10, ou seja 20 a 30 dias
+                               * atrás. E como a série só conta dias **com**
+                               * dado, com buracos afastava-se ainda mais.
+                               *
+                               * É a mesma frase que o `Tendencia.tsx` já diz
+                               * certa: médias de N dias contra o início do
+                               * período.
+                               */
+                              tr(lang, {
+                                en: `${d.delta > 0 ? "+" : "−"}${Math.abs(Math.round(d.delta))} vs start (${d.diasComparados}-day avg)`,
+                                pt: `${d.delta > 0 ? "+" : "−"}${Math.abs(Math.round(d.delta))} vs o início (médias de ${d.diasComparados}d)`,
                               })}
                       </Text>
                     </Pressable>

@@ -46,11 +46,67 @@ import { prisma } from "@/lib/db";
 import { withingsAccessToken } from "@/lib/withings";
 import { sondarTudo, tabelaDaSondagem } from "@/lib/withings-sondagem";
 
+/**
+ * **O segredo desta rota, e porque não é o do cron** (120 T-2).
+ *
+ * Isto validava contra `CRON_SECRET || NEXTAUTH_SECRET`, que é o padrão de 19
+ * rotas de cron. Mas as outras **disparam trabalho**; esta devolve fases do
+ * sono, VFC, FC de repouso, SpO₂ e passos de **qualquer** `?email=`, sem
+ * recorte de clínica.
+ *
+ * Sem `CRON_SECRET` definido, a chave válida era o **segredo de assinatura de
+ * sessão** — a viajar num URL: log do Coolify, log do proxy, histórico de
+ * shell, e a conversa onde o `curl` foi colado.
+ *
+ * Agora: `WEARABLES_PROBE_SECRET`, de preferência em **header**. O
+ * `NEXTAUTH_SECRET` nunca é chave válida, nem como recurso.
+ */
+const SEGREDO_DA_SONDAGEM = () => process.env.WEARABLES_PROBE_SECRET || null;
+
+/**
+ * Quem pode ser sondado, por e-mail (`WEARABLES_PROBE_EMAILS`, vírgulas).
+ *
+ * **Vazia fecha a porta**, e é de propósito: esta rota lê o prontuário de uma
+ * pessoa nomeada, e o estado por omissão de uma porta assim é fechada. A
+ * pergunta a que ela serve — *"o número passou a chegar?"* — nunca precisa de
+ * mais do que as contas de teste.
+ */
+const EMAILS_PERMITIDOS = (): string[] =>
+  (process.env.WEARABLES_PROBE_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+const PODE_SONDAR = (email: string) =>
+  EMAILS_PERMITIDOS().includes(email.trim().toLowerCase());
+
 export async function POST(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get("key");
-  const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!cronSecret || key !== cronSecret) {
+  const segredo = SEGREDO_DA_SONDAGEM();
+  if (!segredo) {
+    return NextResponse.json(
+      {
+        error: "esta rota precisa de WEARABLES_PROBE_SECRET",
+        porque:
+          "ela lê dados de saúde de uma pessoa nomeada; o segredo do cron é o " +
+          "mesmo que assina as sessões, e não serve para isto",
+      },
+      { status: 503 }
+    );
+  }
+
+  const noHeader = req.headers.get("x-probe-secret");
+  const naQuery = req.nextUrl.searchParams.get("key");
+  if (noHeader !== segredo && naQuery !== segredo) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (noHeader !== segredo && naQuery === segredo) {
+    /*
+     * Funciona, e avisa. Um segredo em query string fica no log de acesso do
+     * proxy e no histórico de quem o colou; o header não.
+     */
+    console.warn(
+      "[sondagem] segredo recebido em query string — preferir o header x-probe-secret"
+    );
   }
 
   /**
@@ -66,6 +122,29 @@ export async function POST(req: NextRequest) {
    * um despejo de contactos.
    */
   if (req.nextUrl.searchParams.get("listar") === "1") {
+    /**
+     * **A lista também é só de quem pode ser sondado** (achado F2 do QA).
+     *
+     * Eu declarei esta rota fechada por omissão e ela não estava: o guarda da
+     * lista de e-mails ficou **depois** deste ramo, logo `?listar=1` devolvia 50
+     * ligações de **todos** os inquilinos — domínio inteiro, primeiro nome,
+     * estado e quantos ECG cada um tem. Com a `WEARABLES_PROBE_EMAILS` vazia, o
+     * `?pontos=1` dava 403 e isto dava 200.
+     *
+     * `nome: "Bruno T."` mais `ecgsGuardados: 4` já identifica um paciente de
+     * outra clínica. A porta tinha de fechar do mesmo lado.
+     */
+    const permitidos = EMAILS_PERMITIDOS();
+    if (permitidos.length === 0) {
+      return NextResponse.json(
+        {
+          error: "a lista de sondagem está vazia",
+          comoPermitir: "definir WEARABLES_PROBE_EMAILS (vírgulas) no ambiente",
+        },
+        { status: 403 }
+      );
+    }
+
     /*
      * **Uma consulta só, cruzada por `userId`.**
      *
@@ -75,7 +154,20 @@ export async function POST(req: NextRequest) {
      * hipótese teórica. O `userId` é a chave, e já vem na mesma consulta.
      */
     const ligacoes = await prisma.wearableConnection.findMany({
-      where: { provider: "WITHINGS" },
+      /*
+       * **E só de quem está na lista.**
+       *
+       * `equals` + `mode: "insensitive"` por e-mail, e não um `in`: o `in` do
+       * Prisma compara byte a byte, e o e-mail guardado pode ter maiúsculas que
+       * a lista do env não tem. Um recorte que falhasse por uma maiúscula
+       * devolveria lista vazia, e eu leria isso como "não há ninguém".
+       */
+      where: {
+        provider: "WITHINGS",
+        user: {
+          OR: permitidos.map((e) => ({ email: { equals: e, mode: "insensitive" as const } })),
+        },
+      },
       select: {
         userId: true,
         status: true,
@@ -90,6 +182,8 @@ export async function POST(req: NextRequest) {
     /* Quantos ECG cada um tem — é o que diz se o relógio sequer faz ECG. */
     const contagens = await prisma.ecgRecording.groupBy({
       by: ["userId"],
+      /* Recortada pelos mesmos utilizadores: era **global**, sobre todo o banco. */
+      where: { userId: { in: ligacoes.map((l) => l.userId) } },
       _count: { _all: true },
     });
     const ecgsPorUser = new Map(contagens.map((c) => [c.userId, c._count._all]));
@@ -125,10 +219,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findFirst({
-    where: { email },
-    select: { id: true, email: true },
+  /**
+   * **Quantas pessoas têm este e-mail, e qual delas é esta.**
+   *
+   * Era um `findFirst` sem ordem nenhuma. O mesmo e-mail pode ter linha em mais
+   * de uma clínica — a do Bruno tem uma de teste e uma real —, e sem `orderBy`
+   * o banco pode devolver uma ou outra entre duas chamadas. Aconteceu em
+   * 02/10/2026: a mesma sondagem trouxe 4 ECG e, minutos depois, zero.
+   *
+   * Duas coisas mudam: a ordem passa a ser determinística, e a resposta diz
+   * **quantas** linhas partilham o e-mail e qual o `userId` escolhido. Uma
+   * ferramenta de prova que não diz de quem está a falar prova o quê?
+   */
+  /*
+   * **A lista de quem pode ser sondado** (120 T-2). Antes era *qualquer*
+   * e-mail, de qualquer clínica — o segredo do cron funcionava como
+   * chave-mestra do prontuário de todos os inquilinos.
+   */
+  if (!PODE_SONDAR(email)) {
+    return NextResponse.json(
+      {
+        error: "este e-mail não está na lista de sondagem",
+        comoPermitir: "acrescentar o e-mail a WEARABLES_PROBE_EMAILS (vírgulas)",
+      },
+      { status: 403 }
+    );
+  }
+
+  const candidatos = await prisma.user.findMany({
+    /* Sem depender de maiúsculas, pelo mesmo motivo do `?listar=1`. */
+    where: { email: { equals: email, mode: "insensitive" } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, email: true, createdAt: true, clinicId: true },
   });
+  const user = candidatos[0];
   if (!user) return NextResponse.json({ error: "não achei essa pessoa" }, { status: 404 });
 
   /**
@@ -182,29 +306,80 @@ export async function POST(req: NextRequest) {
         deviceModel: true,
         deviceName: true,
         signalId: true,
+        id: true,
       },
     });
 
-    /* Quantos dias têm cada métrica — a resposta directa a "chegou ou não". */
-    const quantosTem = (campo: string) =>
-      pontos.filter((p: any) => typeof p[campo] === "number").length;
+    /*
+     * Quais têm traçado, **sem trazer o traçado**: uma consulta só, por `id`.
+     * Selecionar `signal` aqui eram 9.000 números × 10 gravações para
+     * responder a um booleano — o mesmo desperdício que o `jaTemSinal` da
+     * ingestão existe para evitar.
+     */
+    const { quaisTemTracado } = await import("@/lib/ecg-tem-sinal");
+    const comTracado = await quaisTemTracado(
+      user.id,
+      ecgs.map((e: any) => e.id)
+    );
+
+    /**
+     * **Quantos dias**, e não quantas linhas.
+     *
+     * Era `pontos.filter(...).length` sobre as 40 linhas mais recentes. A
+     * ingestão escreve até três baldes por dia (`SLEEP`, `ACTIVITY`,
+     * `VITALS`), logo o número dizia linhas e chamava-se dias — e 40 linhas são
+     * ~13 dias, não 40.
+     */
+    const quantosDias = (campo: string) =>
+      new Set(
+        pontos
+          .filter((p: any) => typeof p[campo] === "number")
+          .map((p: any) => String(p.dataDate).slice(0, 10))
+      ).size;
 
     return NextResponse.json({
       quem: user.email,
+      /* Qual das linhas com este e-mail, e quantas há — ver a nota acima. */
+      userId: user.id,
+      clinicId: user.clinicId ?? null,
+      quantasPessoasComEsteEmail: candidatos.length,
       quando: new Date().toISOString(),
       quantosDias: {
-        sono: quantosTem("sleepDuration"),
-        fasesDoSono: pontos.filter((p: any) => typeof p.deepMinutes === "number").length,
-        hrv: quantosTem("hrv"),
-        fcRepouso: quantosTem("restingHr"),
-        spo2: quantosTem("spo2"),
-        passos: quantosTem("steps"),
+        sono: quantosDias("sleepDuration"),
+        fasesDoSono: quantosDias("deepMinutes"),
+        hrv: quantosDias("hrv"),
+        fcRepouso: quantosDias("restingHr"),
+        spo2: quantosDias("spo2"),
+        passos: quantosDias("steps"),
       },
+      linhas: pontos.length,
       pontos,
-      ecgs: ecgs.map((e: any) => ({
+      /*
+       * **A conclusão não sai desta rota, e a trava é aqui.**
+       *
+       * `"fibrilacao"` de uma pessoa nomeada por e-mail é o dado mais sensível
+       * que este produto tem. A pergunta a que a rota existe para responder é
+       * *"o ECG chegou?"*, e o `temTracado` responde-a.
+       *
+       * O comentário que dizia isto estava **dentro do `select`**, onde a
+       * `conclusao` já não é pedida — e quem o lesse concluiria que a trava
+       * estava ali, e podia tirar este destructuring. Apanhado pelo code review.
+       *
+       * Com ela apenas fora do `select`, uma mutação que a acrescentasse de
+       * volta passava verde — o teste não vê o pedido, vê a resposta. A trava
+       * fica na **saída**, que é o sítio onde a regra vale: nenhuma conclusão
+       * clínica de uma pessoa nomeada sai desta rota, independentemente do que
+       * a consulta trouxer.
+       */
+      ecgs: ecgs.map(({ id, conclusao, ...e }: any) => ({
         ...e,
-        /* O sinal não sai daqui: são 9.000 números. Só se ele existe. */
-        temTracado: undefined,
+        /*
+         * **`temTracado`, a sério.** Esta linha era `temTracado: undefined` —
+         * uma chave que o `JSON.stringify` descarta —, e o comentário ao lado
+         * dizia *"só se ele existe"*. A rota cuja única função é dizer
+         * "chegou?" não dizia nada sobre o traçado.
+         */
+        temTracado: comTracado.has(id),
       })),
     });
   }
@@ -237,7 +412,7 @@ export async function POST(req: NextRequest) {
 
   let token: string;
   try {
-    token = await withingsAccessToken(ligacao);
+    token = await withingsAccessToken(ligacao, "sondagem");
   } catch (e: any) {
     /* Não dá para perguntar nada — e isso é uma resposta, não um 500. */
     return NextResponse.json(
@@ -335,7 +510,12 @@ export async function POST(req: NextRequest) {
    * Para o log do contentor, que é como isto se lê sem sessão nenhuma — e fica
    * registado com a data, porque a resposta muda no dia em que o plano mudar.
    */
-  console.log(`[sondagem] === ${user.email} — ${new Date().toISOString()} ===`);
+  /*
+   * **O `userId`, e não o e-mail** (achado do code review). O log do contentor
+   * não é o sítio de um e-mail de paciente, e o `userId` identifica melhor:
+   * dois utilizadores podem partilhar o e-mail e só um é o que foi sondado.
+   */
+  console.log(`[sondagem] === user ${user.id} — ${new Date().toISOString()} ===`);
   console.log(`[sondagem] ligação: ${ligacao.status ?? "?"}, precisou renovar: ${expirado}`);
   console.log(tabelaDaSondagem(linhas));
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { diaNoFuso } from "@/lib/dia-da-medicao";
 import { serieDaMetrica, comoSeEscreve } from "@/lib/onde-mora-a-metrica";
 import { lerEcg, type RegistroDeEcg } from "@/lib/ecg-record";
 
@@ -26,11 +27,29 @@ import { lerEcg, type RegistroDeEcg } from "@/lib/ecg-record";
  */
 
 export interface ResumoDaMetrica {
-  /** A média da metade mais recente do período. */
+  /**
+   * A média de **todos** os dias com dado no período.
+   *
+   * Dizia *"a média da metade mais recente"*, e era isso que fazia — mas a
+   * legenda impressa ao lado dele diz *"média dos N dias com dados"*, e os dois
+   * números não eram o mesmo. Quem lê o papel mede o que a legenda promete.
+   */
   atual: number | null;
-  /** A média da metade anterior — a base da comparação. */
+  /**
+   * A média da metade **antiga** do período.
+   *
+   * Existe para a comparação, e **não** é o par de `atual`: subtrair um do
+   * outro não dá `variacao`. Está aqui por ser o que se compara contra, não
+   * para ser impresso ao lado de `atual` como "antes" e "agora" — quem o
+   * fizesse imprimiria dois números que não fecham com a variação ao lado.
+   */
   anterior: number | null;
-  /** `atual - anterior`, quando as duas existem. */
+  /**
+   * `média da metade recente − média da metade antiga`, quando as duas existem.
+   *
+   * **Não é `atual - anterior`**, e o comentário dizia que era. É a direcção do
+   * período: o que a segunda metade tem a mais, ou a menos, do que a primeira.
+   */
   variacao: number | null;
   /** Quantos dias do período têm dado. A ausência é informação. */
   dias: number;
@@ -117,16 +136,33 @@ export function resumirSerie(
  * pessoa mediu de hora a hora desenha um pico que é só diligência dela, e a
  * linha diz que a pressão subiu quando o que subiu foi o cuidado.
  *
- * O dia é em UTC, como o resto deste ficheiro. Para quem mede às 23h num fuso a
- * leste isso cai no dia seguinte — é uma imprecisão conhecida e **partilhada com
- * as outras séries**; corrigi-la só aqui faria a pressão contar dias diferentes
- * das restantes, o que é pior do que o erro.
+ * **O dia é o do fuso da medição** (120 T-3), como no `VITALS` e como no `date`
+ * que a Withings manda para o sono e a actividade. A conta é a mesma função —
+ * `diaNoFuso` —, e não uma segunda cópia dela.
+ *
+ * Isto esteve em UTC enquanto as outras séries já não estavam, e o resultado era
+ * uma leitura às 00:30 de Londres no verão a arquivar no dia anterior, com o
+ * sono da mesma noite no dia certo: dois gráficos no mesmo papel com a mesma
+ * noite em dias diferentes.
+ *
+ * **Sem fuso guardado continua a ser UTC** — as leituras antigas e as digitadas
+ * à mão. É o que elas sempre foram, e reinterpretá-las moveria dados existentes
+ * de dia.
  *
  * Vive fora do `getMonitoringData` porque é a parte verificável: lá dentro
  * precisaria do banco, e duas mutações sobreviveram enquanto ela esteve lá.
  */
 export function pressaoPorDia(
-  leituras: Array<{ systolic?: unknown; diastolic?: unknown; measuredAt?: unknown }> | null | undefined,
+  leituras:
+    | Array<{
+        systolic?: unknown;
+        diastolic?: unknown;
+        measuredAt?: unknown;
+        /** O fuso da medição, quando a Withings o mandou — ver 120 T-3. */
+        timezone?: string | null;
+      }>
+    | null
+    | undefined,
   campo: "systolic" | "diastolic"
 ): Array<{ dia: string; valor: number }> {
   if (!Array.isArray(leituras)) return [];
@@ -142,9 +178,55 @@ export function pressaoPorDia(
     if (bruto === null || bruto === undefined || bruto === "") continue;
     const v = Number(bruto);
     if (!Number.isFinite(v)) continue;
-    const d = new Date((r as any)?.measuredAt);
-    if (Number.isNaN(d.getTime())) continue;
-    const dia = d.toISOString().split("T")[0];
+    /*
+     * **O dia é o do fuso da medição** (120 T-3). Era `toISOString()`, e a
+     * pressão ficou a única série em UTC depois de 02/10. Sem fuso guardado —
+     * leituras antigas e digitadas à mão — continua a ser UTC, para nenhum dado
+     * existente mudar de dia.
+     */
+    const dia = diaNoFuso((r as any)?.measuredAt, (r as any)?.timezone);
+    if (!dia) continue;
+    const a = soma.get(dia) ?? { total: 0, n: 0 };
+    a.total += v;
+    a.n += 1;
+    soma.set(dia, a);
+  }
+
+  return [...soma.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dia, a]) => ({ dia, valor: Math.round((a.total / a.n) * 10) / 10 }));
+}
+
+/**
+ * **Um valor por dia, a partir de entradas que podem repetir o dia** (120, 2ª
+ * rodada do review).
+ *
+ * O `DailyCheckIn` tem chave `(patientId, checkinDate, period)` e `period` é
+ * manhã/tarde/noite — **até três linhas por dia, de propósito**. A dor e o humor
+ * entravam no `resumirSerie` **uma entrada por linha**, logo:
+ *
+ * - dez dias com registo de manhã e de noite davam `dias = 20`, e o papel
+ *   escrevia *"média dos 20 dias com dados"* numa janela de 30;
+ * - a variação partia ao meio por **linha**, não por dia;
+ * - um dia com três registos pesava 3× na média.
+ *
+ * É literalmente o defeito que o comentário do `pressaoPorDia`, onze linhas
+ * acima, descreve como a razão de a pressão ter sido consertada — e que ficou
+ * nestas duas.
+ */
+export function mediaPorDia(
+  entradas: Array<{ dia: unknown; valor: unknown }> | null | undefined
+): Array<{ dia: string; valor: number }> {
+  if (!Array.isArray(entradas)) return [];
+
+  const soma = new Map<string, { total: number; n: number }>();
+  for (const e of entradas) {
+    const dia = typeof e?.dia === "string" ? e.dia.slice(0, 10) : null;
+    if (!dia) continue;
+    /* `Number(null)` é `0`, e uma dor em falta não é uma dor de zero. */
+    if (e?.valor === null || e?.valor === undefined || e?.valor === "") continue;
+    const v = Number(e.valor);
+    if (!Number.isFinite(v)) continue;
     const a = soma.get(dia) ?? { total: 0, n: 0 };
     a.total += v;
     a.n += 1;
@@ -158,6 +240,17 @@ export function pressaoPorDia(
 
 export interface DadosDeMonitoramento {
   periodo: { de: string; ate: string; dias: number };
+  /**
+   * **O que não se conseguiu ler** nesta geração (120 T-1).
+   *
+   * Vazio quer dizer *"leu-se tudo"*. Com nomes dentro, as secções
+   * correspondentes estão vazias **por falha nossa** — e quem imprime tem de o
+   * dizer, senão o papel afirma que o paciente não mediu nada.
+   *
+   * Os nomes são os das leituras: `wearables`, `pressao`, `exercicio`,
+   * `checkins`, `consultas`, `ecg`.
+   */
+  naoLidos: string[];
   /**
    * A série diária de cada sinal, com os buracos onde eles estão (118 T-8).
    *
@@ -232,30 +325,94 @@ export async function getMonitoringData(
   desde.setDate(desde.getDate() - dias);
   const desdeStr = desde.toISOString().split("T")[0];
 
+  /**
+   * **O que não se conseguiu ler** — e não é o mesmo que não haver (120 T-1).
+   *
+   * Havia seis `.catch(() => [])` neste ficheiro. Um `connection refused` de
+   * meio segundo produzia um relatório clínico sem ECG, sem pressão, sem
+   * adesão — **idêntico** ao de um paciente que nunca mediu nada. O papel vai à
+   * mão de um médico e não tinha como dizer a diferença.
+   *
+   * O pior: cinco eram anteriores, e o sexto entrei eu em 02/10, na correcção
+   * que fez o ECG voltar ao papel. A correcção **adoptou o padrão** em vez de o
+   * questionar.
+   */
+  const naoLidos: string[] = [];
+
+  /**
+   * Lê, e se falhar **diz o nome** em vez de devolver uma lista vazia.
+   *
+   * O vazio continua a ser devolvido — a geração do papel não pode morrer por
+   * causa de uma secção —, mas deixa de ser indistinguível. Quem imprime sabe
+   * que aquela secção não é "não há".
+   */
+  const lerOuFalhar = async <T>(
+    nome: string,
+    /**
+     * A leitura, **como função** e não como promessa (achado da 2ª rodada).
+     *
+     * Uma promessa é um argumento: avaliada antes de o corpo desta função
+     * correr. Com `(prisma as any).<modelo>` a apontar para `undefined` — um
+     * `prisma generate` esquecido, um modelo renomeado — o `TypeError` sobe do
+     * literal do array, o `Promise.all` nunca nasce, e `naoLidos` fica vazio.
+     * Coluna em falta era apanhada; **modelo** em falta escapava.
+     */
+    ler: () => Promise<T[]>
+  ): Promise<T[]> => {
+    try {
+      return await ler();
+    } catch (e: any) {
+      naoLidos.push(nome);
+      console.error(`[patient-monitoring] ${nome} não pôde ser lido:`, e?.message ?? e);
+      return [];
+    }
+  };
+
   const [pontos, pressao, exercicio, checkins, consultas] = await Promise.all([
-    (prisma as any).wearableDataPoint.findMany({
-      where: { userId: patientId, dataDate: { gte: desdeStr } },
-      orderBy: { dataDate: "asc" },
-    }).catch(() => []),
-    (prisma as any).bloodPressureReading.findMany({
-      where: { patientId, measuredAt: { gte: desde } },
-      orderBy: { measuredAt: "asc" },
-      select: { systolic: true, diastolic: true, measuredAt: true },
-    }).catch(() => []),
-    (prisma as any).exerciseCompletionLog.findMany({
-      where: { patientId, completedDate: { gte: desde } },
-      select: { completedDate: true },
-    }).catch(() => []),
-    (prisma as any).dailyCheckIn.findMany({
-      where: { patientId, checkinDate: { gte: desdeStr } },
-      orderBy: { checkinDate: "asc" },
-      select: { checkinDate: true, painLevel: true, moodLevel: true },
-    }).catch(() => []),
-    (prisma as any).appointment.findMany({
-      where: { patientId, dateTime: { gte: desde } },
-      orderBy: { dateTime: "asc" },
-      select: { dateTime: true, treatmentType: true, status: true, mode: true },
-    }).catch(() => []),
+    lerOuFalhar(
+      "wearables",
+      () =>
+        (prisma as any).wearableDataPoint.findMany({
+        where: { userId: patientId, dataDate: { gte: desdeStr } },
+        orderBy: { dataDate: "asc" },
+      })
+    ),
+    lerOuFalhar(
+      "pressao",
+      () =>
+        (prisma as any).bloodPressureReading.findMany({
+        where: { patientId, measuredAt: { gte: desde } },
+        orderBy: { measuredAt: "asc" },
+        /* `timezone` é o que faz o dia da pressão ser o da medição (120 T-3). */
+        select: { systolic: true, diastolic: true, measuredAt: true, timezone: true },
+      })
+    ),
+    lerOuFalhar(
+      "exercicio",
+      () =>
+        (prisma as any).exerciseCompletionLog.findMany({
+        where: { patientId, completedDate: { gte: desde } },
+        select: { completedDate: true },
+      })
+    ),
+    lerOuFalhar(
+      "checkins",
+      () =>
+        (prisma as any).dailyCheckIn.findMany({
+        where: { patientId, checkinDate: { gte: desdeStr } },
+        orderBy: { checkinDate: "asc" },
+        select: { checkinDate: true, painLevel: true, moodLevel: true },
+      })
+    ),
+    lerOuFalhar(
+      "consultas",
+      () =>
+        (prisma as any).appointment.findMany({
+        where: { patientId, dateTime: { gte: desde } },
+        orderBy: { dateTime: "asc" },
+        select: { dateTime: true, treatmentType: true, status: true, mode: true },
+      })
+    ),
   ]);
 
   /**
@@ -296,10 +453,7 @@ export async function getMonitoringData(
    * senão uma manhã em que a pessoa mediu de hora a hora desenharia um pico que
    * é só diligência dela.
    *
-   * O dia é em UTC, como o resto deste ficheiro (`periodo`). Para quem mede às
-   * 23h num fuso a leste isso cai no dia seguinte — é uma imprecisão conhecida e
-   * partilhada por toda a série; corrigi-la aqui sozinha faria a pressão contar
-   * dias diferentes das outras métricas.
+   * O dia vem do fuso da medição, como nas outras séries — ver `pressaoPorDia`.
    */
   const series = {
     sistolica: pressaoPorDia(pressao as any[], "systolic"),
@@ -355,13 +509,15 @@ export async function getMonitoringData(
    * coisa ao lado hoje — na rota do painel, com um comentário a explicar
    * exactamente isto — e não ter corrigido aqui.
    */
-  const gravacoes = await (prisma as any).ecgRecording
-    .findMany({
+  const gravacoes = await lerOuFalhar(
+    "ecg",
+    () =>
+        (prisma as any).ecgRecording.findMany({
       where: { userId: patientId, recordedAt: { gte: desde } },
       orderBy: { recordedAt: "desc" },
       select: { recordedAt: true, conclusao: true, heartRate: true },
     })
-    .catch(() => []);
+  );
 
   const ecg = (gravacoes as any[]).map((g) => ({
     recordedAt: g.recordedAt instanceof Date ? g.recordedAt.toISOString() : String(g.recordedAt),
@@ -375,6 +531,8 @@ export async function getMonitoringData(
 
   return {
     periodo: { de: desdeStr, ate: new Date().toISOString().split("T")[0], dias },
+    /* Ver `lerOuFalhar`: a diferença entre "não há" e "não conseguimos ler". */
+    naoLidos,
     series,
     fasesDoSono,
     sinais,
@@ -414,11 +572,15 @@ export async function getMonitoringData(
     exercicio: { diasComExercicio, registros: (exercicio as any[]).length },
     comoSeSentiu: {
       registros: (checkins as any[]).length,
+      /*
+       * **Um ponto por dia, como na pressão** — ver `mediaPorDia`. Entravam
+       * três linhas do mesmo dia como três dias.
+       */
       dor: resumirSerie(
-        (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.painLevel }))
+        mediaPorDia((checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.painLevel })))
       ),
       humor: resumirSerie(
-        (checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.moodLevel }))
+        mediaPorDia((checkins as any[]).map((c) => ({ dia: c.checkinDate, valor: c.moodLevel })))
       ),
       ultimos: (checkins as any[])
         .slice(-10)

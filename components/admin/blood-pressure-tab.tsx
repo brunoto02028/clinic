@@ -340,11 +340,24 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
          * Era esta que nao as tinha copiado — e e o mesmo defeito que esta
          * atividade abriu para consertar, do lado da clinica.
          */
-        const quebrada = c.status === "ERROR";
+        /**
+         * **"Precisa reconectar" é um estado, e vem do banco** (121 T-4).
+         *
+         * Era inferido de `status === "ERROR"` — e **nada punha a ligação em
+         * `ERROR`** nesse caminho: a do Bruno ficou `CONNECTED` e morta 27
+         * dias, com esta tela a ler `CONNECTED`. Agora o `needsReauthAt` diz-o
+         * directamente, e diz **desde quando**.
+         */
+        const precisaReconectar = Boolean(c.needsReauthAt);
+        const quebrada = precisaReconectar || c.status === "ERROR";
         const naoConfirmada = c.delivery === "unchecked";
         const naoEntrega = c.delivery === "silent";
         const mal = c.silent || naoEntrega || naoConfirmada || quebrada;
         const parcial = c.delivery === "partial";
+        /* Desde quando é que ela precisa da pessoa — "parou" sem data não ajuda. */
+        const desde = c.needsReauthAt
+          ? new Intl.DateTimeFormat(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }).format(new Date(c.needsReauthAt))
+          : null;
         const quando = c.lastReadingAt
           ? new Intl.DateTimeFormat(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(c.lastReadingAt))
           : isPt ? "nunca" : "never";
@@ -365,7 +378,9 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
               {c.isClinicDevice ? (isPt ? " (aparelho da clínica)" : " (clinic device)") : ""}
               {" · "}
               {quebrada
-                ? isPt ? "a conexão parou — precisa reconectar" : "the connection stopped — needs reconnecting"
+                ? isPt
+                  ? `a conexão parou${desde ? ` em ${desde}` : ""} — precisa reconectar`
+                  : `the connection stopped${desde ? ` on ${desde}` : ""} — needs reconnecting`
                 : naoEntrega
                 ? isPt ? "autorizado, mas não está enviando" : "authorised, but not sending"
                 : naoConfirmada
@@ -379,6 +394,23 @@ export function BloodPressureTab({ patientId }: { patientId: string }) {
                   : isPt ? "a receber" : "receiving"}
               {" · "}
               {isPt ? "última leitura: " : "last reading: "}{quando}
+              {/*
+                * **O que a última passagem não conseguiu ler** (120 T-4 / 121 T-4).
+                *
+                * Não é falha de sincronização — o sono entrou e o ECG não — e
+                * por isso não se mistura com o estado acima. Mas é a clínica
+                * que precisa de o ver: um `ecgRecords: 0` sem isto é as duas
+                * coisas ao mesmo tempo.
+                */}
+              {Array.isArray(c.partialRead) && c.partialRead.length > 0 ? (
+                <>
+                  {" · "}
+                  <span className="text-ba1-warn">
+                    {isPt ? "não lido: " : "not read: "}
+                    {c.partialRead.join(", ")}
+                  </span>
+                </>
+              ) : null}
             </span>
           </div>
         );

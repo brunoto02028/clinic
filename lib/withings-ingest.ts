@@ -113,9 +113,17 @@ export async function saveBloodPressure(
         source: "PATIENT_DEVICE",
         context: "HOME",
         measuredAt: r.measuredAt,
+        /*
+         * O fuso da medição (120 T-3). Vinha na resposta do `getmeas` e era
+         * jogado fora, e por isso o dia da pressão era o dia UTC — a única
+         * série deste produto ainda assim.
+         */
+        timezone: r.timezone ?? null,
         notes: "Withings",
         withingsMeasureId: r.measureId,
       },
+      /* Ver a nota do ECG: um `create` sem `select` relê todas as colunas. */
+      select: { id: true },
       });
     } catch (e: any) {
       // Webhook and scheduled sync can deliver the same measurement at the
@@ -256,6 +264,14 @@ export interface IngestCounts {
   intradayDays: number;
   hypnogramNights: number;
   workouts: number;
+  /**
+   * O que **não conseguimos ler** nesta passagem — `"vitais"`, `"ecg"` (120 T-4).
+   *
+   * Vazio quer dizer *"leu-se tudo"*, e é isso que dá sentido aos zeros ao lado:
+   * um `ecgRecords: 0` com `falhas: []` é um paciente que não gravou; com
+   * `falhas: ["ecg"]` é uma falha nossa a parecer-se com isso.
+   */
+  falhas: string[];
 }
 
 const PROVEDOR = "WITHINGS";
@@ -317,9 +333,21 @@ function newestMoment(
 export async function ingestWithings(
   userId: string,
   connection: WithingsConnection,
-  opts: { since?: Date; until?: Date; kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series"> } = {}
+  opts: {
+    since?: Date;
+    until?: Date;
+    kinds?: Array<"bp" | "activity" | "sleep" | "vitals" | "series">;
+    /**
+     * Quem está a sincronizar (121 T-5): `cron`, `webhook` ou `manual`.
+     *
+     * Só serve para o log da renovação dizer qual caminho pediu o token. Se a
+     * ligação voltar a parar, é esta linha que diz qual era — a última vez não
+     * havia nenhuma, e ficou um mês sem se saber.
+     */
+    origem?: "cron" | "webhook" | "manual";
+  } = {}
 ): Promise<IngestCounts> {
-  const token = await withingsAccessToken(connection);
+  const token = await withingsAccessToken(connection, opts.origem ?? "?");
   const since = opts.since ?? new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const kinds = opts.kinds ?? ["bp", "activity", "sleep", "vitals", "series"];
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
@@ -405,6 +433,14 @@ export async function ingestWithings(
   let vitalsDays = 0;
   let ecgRecords = 0;
   /**
+   * O que **não conseguimos ler** nesta passagem (120 T-4).
+   *
+   * Não é o mesmo que "não havia". Sem esta lista, uma falha de rede a buscar o
+   * ECG produz uma sincronização que se declara bem sucedida e um paciente que
+   * parece não ter gravado nada — e quem olha não tem como saber a diferença.
+   */
+  const falhas: string[] = [];
+  /**
    * As séries do dia e da noite (099 T-7).
    *
    * **A janela do intraday é curta de propósito.** A API devolve 24 horas por
@@ -482,8 +518,21 @@ export async function ingestWithings(
   }
 
   if (wanted.includes("vitals")) {
+    const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
+
+    /**
+     * **Os vitais e o ECG falham separados** (120 T-4).
+     *
+     * Eram um `try` só, com um `catch` que escrevia *"vitals failed"*. Em 02/10
+     * o `withingsEcg` passou a **relançar** em vez de devolver `[]` — correcto
+     * —, mas o `throw` subia para este `catch`: o ECG falhava, o log falava de
+     * sinais vitais, e a sincronização contava-se como bem sucedida.
+     *
+     * Agravante: a condição de pedir o sinal é *"ainda não tenho o sinal"*. Uma
+     * falha engolida faz a ingestão pedir outra vez, a cada passagem, para
+     * sempre, calada.
+     */
     try {
-      const { withingsVitals, vitalsByDay, withingsEcg } = await import("@/lib/withings-vitals");
       const vitals = await withingsVitals(token, since, opts.until);
 
       /*
@@ -526,7 +575,16 @@ export async function ingestWithings(
         await upsertPoint(userId, connection.id, "VITALS", day.dataDate, fields);
         vitalsDays++;
       }
+    } catch (e: any) {
+      /*
+       * Uma conta sem estas medidas não pode custar ao paciente a pressão, o
+       * sono e a actividade, que já estão guardados a esta altura.
+       */
+      falhas.push("vitais");
+      console.error("[withings-ingest] vitais falharam:", e?.message);
+    }
 
+    try {
       /*
        * The fact that an ECG happened and what the device concluded — never the
        * trace, and never our reading of it.
@@ -679,6 +737,22 @@ export async function ingestWithings(
                   samplingHz: inteiroOuNulo(sinal.frequencia),
                   wearPosition: inteiroOuNulo(sinal.posicao),
                 },
+                /**
+                 * **`select: { id: true }`, e é isto que protege o traçado.**
+                 *
+                 * Separar as duas escritas não protegia nada, e eu afirmei que
+                 * protegia. O `update` do Prisma **relê a linha com todas as
+                 * colunas do modelo**: uma coluna que falte no banco derruba a
+                 * operação inteira, não importa o que se escreveu. Medido pelo
+                 * QA, com a coluna `deviceName` removida à mão — a escrita das
+                 * 9.000 amostras falhava igual, e a condição de pedir é *"ainda
+                 * não tenho o sinal"*: pedia outra vez, a cada sincronização,
+                 * calado.
+                 *
+                 * Com `select` só o `id` volta, e a escrita passa. O `upsert`
+                 * de cima já o tinha; estas duas não.
+                 */
+                select: { id: true },
               });
               /**
                * **O aparelho vai num `update` à parte, e de propósito.**
@@ -690,10 +764,15 @@ export async function ingestWithings(
                * guardado, e a condição de pedir é *"ainda não tenho o sinal"* —
                * logo pede outra vez, para sempre, calado.
                *
-               * `deviceName` é uma coluna que nasceu hoje, e o deploy aplica o
-               * schema com `db push`, **que engole a falha**. Se ela não existir
-               * em produção, isto falha — e aqui falha sozinho, sem levar o
-               * traçado atrás.
+               * `deviceModel` e `deviceName` nasceram as duas em 02/10, e o
+               * deploy aplica o schema com `db push`, **que engole a falha**. Se
+               * uma delas não existir em produção, isto falha — e aqui falha
+               * sozinho, sem levar o traçado atrás.
+               *
+               * **Separar as duas escritas, por si, não bastava** — e eu escrevi
+               * aqui que bastava. O `select: { id: true }` do `update` de cima é
+               * que protege o traçado da releitura; esta separação protege-o do
+               * `SET`, que o `select` não cobre.
                */
               await prisma.ecgRecording
                 .update({
@@ -701,12 +780,35 @@ export async function ingestWithings(
                     userId_provider_recordedAt: { userId, provider: PROVEDOR, recordedAt: rec.recordedAt },
                   },
                   data: {
+                    /**
+                     * **As duas colunas do aparelho ficam aqui, juntas.**
+                     *
+                     * Eu tinha trazido o `deviceModel` para o `update` do
+                     * traçado com a justificação de que era *"uma coluna
+                     * antiga"*. **Não é:** `git log -S` diz que nasceu em
+                     * 02/10 às 16:23 e a `deviceName` às 17:49 — as duas no
+                     * mesmo dia, as duas dependentes do mesmo `db push` que
+                     * engole a falha no deploy.
+                     *
+                     * E o `select: { id: true }` não as protege: ele cobre o
+                     * `RETURNING`, não o `SET`. Uma coluna em falta nomeada no
+                     * `data` faz a escrita falhar — e se ela estiver no
+                     * `update` do traçado, o traçado não é guardado, a condição
+                     * de pedir é *"ainda não tenho o sinal"*, e a ingestão pede
+                     * outra vez a cada passagem, para sempre, calada.
+                     *
+                     * Que é exactamente o defeito que a separação existe para
+                     * evitar, reintroduzido pela correcção dele. Apanhado pelo
+                     * code review.
+                     */
                     deviceModel: inteiroOuNulo((sinal as any).modelo),
                     deviceName:
                       typeof (sinal as any).nomeDoAparelho === "string"
                         ? (sinal as any).nomeDoAparelho.slice(0, 120)
                         : null,
                   },
+                  /* Idem: sem isto o `update` relê a coluna que pode faltar. */
+                  select: { id: true },
                 })
                 .catch((e: any) =>
                   console.log(`[withings-ingest] ECG ${rec.signalId}: aparelho nao guardado — ${e?.message ?? e}`)
@@ -717,20 +819,42 @@ export async function ingestWithings(
                   `${sinal.frequencia ?? "?"} Hz, posicao ${sinal.posicao ?? "?"} — GUARDADO`
               );
             } else {
+              /*
+               * O próprio texto diz *"tratar como NÃO LIDO"* — então entra na
+               * lista, e não só no log. É o caso em que a Withings devolve 200
+               * com o corpo sem `signal`: não é erro e não é dado.
+               */
+              falhas.push("tracado-do-ecg");
               console.log(
                 `[withings-ingest] ECG ${rec.signalId}: VAZIO SEM ERRO (ambiguo — tratar como NAO LIDO). ` +
                   `chaves do corpo: ${Object.keys(sinal.bruto).join(",") || "nenhuma"}`
               );
             }
           } catch (e: any) {
+            /**
+             * **A gravação que falhou também entra em `falhas`** (achado do
+             * code review).
+             *
+             * Este `catch` é o do traçado de **uma** gravação, e era o único
+             * caminho que ficava fora da lista: a listagem inteira a cair
+             * aparecia, a gravação individual não. E é o pior dos dois — a
+             * condição de pedir é *"ainda não tenho o sinal"*, logo uma falha
+             * aqui repete-se a cada passagem, para sempre, e só numa linha de
+             * consola que ninguém lê.
+             */
+            falhas.push("tracado-do-ecg");
             console.log(`[withings-ingest] ECG ${rec.signalId}: ERRO EXPLICITO — ${e?.message ?? e}`);
           }
         }
       }
     } catch (e: any) {
-      // An account without these metrics must not cost the patient their blood
-      // pressure, sleep and activity, which are already saved by this point.
-      console.error("[withings-ingest] vitals failed:", e?.message);
+      /*
+       * **A falha do ECG diz "ECG".** O `signalId` não está em escopo aqui — a
+       * gravação concreta que falhou já se nomeia no `catch` de dentro do laço;
+       * este é o que apanha a listagem inteira a cair.
+       */
+      falhas.push("ecg");
+      console.error("[withings-ingest] ECG falhou:", e?.message);
     }
   }
 
@@ -779,5 +903,15 @@ export async function ingestWithings(
     hypnogramNights,
     workouts,
     ecgRecords,
+    /*
+     * O que falhou, por nome, **sem repetir**. Vazio quer dizer *"leu-se
+     * tudo"* — e é isso que dá sentido aos zeros ao lado: um `ecgRecords: 0`
+     * com `falhas: []` é um paciente que não gravou; com `falhas: ["ecg"]` é
+     * outra coisa.
+     *
+     * Dez gravações com o traçado a falhar são **um** problema, não dez: o que
+     * interessa é *o quê*, e repetir o nome dez vezes só torna a lista ilegível.
+     */
+    falhas: [...new Set(falhas)],
   };
 }

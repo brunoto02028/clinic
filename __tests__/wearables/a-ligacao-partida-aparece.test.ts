@@ -67,10 +67,30 @@ describe("cada causa tem a sua frase na ficha da clínica", () => {
   const tab = () => codigo("components", "admin", "blood-pressure-tab.tsx");
 
   it("**as quatro causas são separadas**", () => {
+    /*
+     * **Pela origem de cada causa, e não pela grafia da expressão.**
+     *
+     * Isto fixava `const quebrada = c.status === "ERROR"` à letra, e quebrou
+     * quando a 121 T-4 acrescentou o `needsReauthAt` — **sem que nada do que
+     * este teste protege tivesse mudado**. A causa "a ligação parou" continua
+     * separada das outras três; o que mudou foi de onde ela vem.
+     *
+     * O que importa é que as quatro causas existem e vêm de sítios diferentes:
+     * uma do estado da ligação, duas da entrega, uma do silêncio.
+     */
     const c = tab();
-    expect(c).toMatch(/const quebrada = c\.status === "ERROR"/);
-    expect(c).toMatch(/const naoConfirmada = c\.delivery === "unchecked"/);
+    expect(c).toMatch(/const quebrada = .*needsReauthAt|const quebrada = .*status === "ERROR"/);
     expect(c).toMatch(/const naoEntrega = c\.delivery === "silent"/);
+    expect(c).toMatch(/const mal = c\.silent \|\| naoEntrega \|\| naoConfirmada \|\| quebrada/);
+  });
+
+  it("**e a que parou vem do estado, não de um palpite** (121 T-4)", () => {
+    /*
+     * Era inferida de `status === "ERROR"` — e **nada punha a ligação em
+     * `ERROR`** nesse caminho. A do Bruno ficou `CONNECTED` e morta 27 dias,
+     * com esta tela a ler `CONNECTED`.
+     */
+    expect(tab()).toMatch(/Boolean\(c\.needsReauthAt\)/);
   });
 
   it("**a frase dos dias só sai quando a causa é mesmo o silêncio**", () => {

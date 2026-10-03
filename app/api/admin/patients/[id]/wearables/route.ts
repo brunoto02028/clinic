@@ -47,6 +47,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       createdAt: true,
       notifyCheckedAt: true,
       notifyConfirmedAppli: true,
+      /*
+       * **Os dois estados que faltavam** (121 T-4).
+       *
+       * `needsReauthAt`: a cadeia de tokens foi invalidada e **só a pessoa**
+       * resolve. Enquanto isto não existia, a ligação do Bruno ficou
+       * `CONNECTED` e morta 27 dias, e esta mesma tela lia `CONNECTED`.
+       *
+       * `lastPartialRead`: a última passagem leu umas coisas e não outras — o
+       * ECG falhou e o sono entrou. Não é falha de sincronização, e por isso
+       * não vive no `lastSyncError`; mas é a clínica que precisa de o ver.
+       */
+      needsReauthAt: true,
+      lastPartialRead: true,
+      lastPartialReadAt: true,
     },
     orderBy: { createdAt: "asc" },
   });
@@ -71,6 +85,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         // exatamente o estado que precisa de aparecer. Repetir a conta aqui era
         // como as duas telas começariam a discordar.
         silent: isSilent(c, limite),
+        /*
+         * **Precisa da pessoa**, e desde quando. É o estado que o `silent` e o
+         * `delivery` não distinguem: uma ligação pode estar calada por o
+         * paciente não usar o relógio, ou porque a autorização morreu — e só a
+         * segunda tem uma acção do outro lado.
+         */
+        needsReauthAt: c.needsReauthAt ?? null,
+        /* O que a última passagem não conseguiu ler, por nome. */
+        partialRead: c.lastPartialRead ? String(c.lastPartialRead).split(",") : [],
+        partialReadAt: c.lastPartialReadAt ?? null,
         // O limiar é da clínica (`WEARABLE_SILENCE`) e vai junto, para a tela
         // não inventar um número próprio.
         silenceThreshold: limite,

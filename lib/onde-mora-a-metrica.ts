@@ -105,7 +105,129 @@ export const ONDE_MORA: Record<string, readonly string[]> = {
  * O que **é** fraccionado — mmHg, minutos de sono, ms de VFC — fica como está:
  * arredondar uma média de pressão perderia informação real.
  */
-export const SAO_CONTAGEM = new Set(["steps", "calories", "activeMinutes"]);
+export const SAO_CONTAGEM = new Set([
+  "steps",
+  "activeMinutes",
+  /*
+   * **`activeCalories` e `totalCalories`, e não `calories`.**
+   *
+   * Estava aqui `calories`, que é o nome que o `ONDE_MORA` catorze linhas acima
+   * acabou de corrigir — não existe no `WearableDataPoint`. Logo esta lista
+   * protegia um campo inexistente e deixava os dois reais de fora: o primeiro
+   * chamador a pedir uma média de calorias imprimiria `919,5 kcal`, que é
+   * exactamente o defeito que esta lista existe para impedir.
+   */
+  "activeCalories",
+  "totalCalories",
+]);
+
+/**
+ * **Como cada número foi feito**, nas duas línguas (120 T-6).
+ *
+ * ## Porquê
+ *
+ * Três métricas saem lado a lado no papel, na mesma coluna, com a mesma
+ * aparência — e são três contas diferentes:
+ *
+ * - `spo2` é a **média das medições do dia**, e depois a média dos dias. Média
+ *   de médias não ponderada: um dia com uma medição pesa igual a um dia com
+ *   oito;
+ * - `restingHr`, quando vem das medições, é o **mínimo** do dia (`Math.min`),
+ *   porque a média de um dia de frequências não é uma frequência de repouso;
+ * - `hrv` é a **média de duas janelas** da noite — `rmssd_start_avg` e
+ *   `rmssd_end_avg` —, e o tamanho das janelas não está documentado.
+ *
+ * Nada disto é inventar dado. O que falta é **dizê-lo**, que é a mesma regra
+ * pela qual o papel do ECG imprime *"25 mm/s, 10 mm/mV"*: um número sem a sua
+ * escala convida a medir com a régua errada.
+ *
+ * ## O que estas frases não fazem
+ *
+ * Não julgam, não interpretam e não dizem se o valor é bom. Descrevem a conta.
+ */
+export const COMO_FOI_CALCULADO: Record<string, { en: string; pt: string }> = {
+  sleepDuration: {
+    /*
+     * **"deep + light + REM", e não "as fases"**: o tempo acordado não entra na
+     * soma, e uma noite em que uma das três não veio imprime uma soma parcial.
+     * A frase anterior dizia *"as fases"*, que inclui o acordado — descrevia
+     * uma conta que o código não faz.
+     */
+    en: "deep, light and REM added up for the night — time awake is not counted",
+    pt: "sono profundo, leve e REM somados na noite — o tempo acordado não entra",
+  },
+  restingHr: {
+    en: "Withings' night average when there is a night; otherwise the lowest reading of the day",
+    pt: "média da noite, quando há noite registrada; senão, a menor leitura do dia",
+  },
+  hrv: {
+    /*
+     * **"ou o único que vier"**: o `mediaDeRmssd` usa um só quando a Withings
+     * manda um só, e a frase dizia sempre "média dos dois". Estava no comentário
+     * do código e não na frase que vai ao papel.
+     */
+    en: "average of the night's start and end rMSSD — or whichever of the two came",
+    pt: "média do rMSSD do início e do fim da noite — ou o único dos dois que vier",
+  },
+  spo2: {
+    en: "average of the day's readings, then averaged across days",
+    pt: "média das medições do dia, e depois a média dos dias",
+  },
+  steps: {
+    /*
+     * **"cada dia"**, e não *"o dia"*: o número impresso é a **média** dos dias,
+     * e a frase dizia *"o total do dia"* — descrevia o valor diário, ao lado de
+     * um número que é a média deles. Só não mentia porque a legenda está à
+     * esquerda a dizer "média dos N dias".
+     */
+    en: "each day is the device's own step total",
+    pt: "cada dia é o total de passos que o aparelho contou",
+  },
+  systolic: {
+    en: "average of the day's readings, then averaged across days",
+    pt: "média das leituras do dia, e depois a média dos dias",
+  },
+  diastolic: {
+    en: "average of the day's readings, then averaged across days",
+    pt: "média das leituras do dia, e depois a média dos dias",
+  },
+  /*
+   * **A dor e o humor também** (achado do QA): elas saem na mesma coluna, com a
+   * mesma aparência, e saíam sem frase. O teste afirmava cobrir *"cada métrica
+   * impressa"* a partir de uma lista escrita à mão de sete nomes — e eram nove.
+   */
+  /*
+   * **"cada dia é a média dos registos dele"**, e não *"a média dos dias"* seca.
+   *
+   * As duas frases diziam *"média dos dias em que você registrou"* — e o
+   * `DailyCheckIn` tem até **três** linhas por dia (manhã, tarde, noite). O
+   * número é a média dos dias **de** uma média dos registos de cada dia, e isso
+   * tem de estar dito: duas das nove frases descreviam uma conta que o código
+   * não fazia, apanhadas na 2ª rodada do review.
+   */
+  painLevel: {
+    en: "each day is the average of that day's entries; the number is the average of the days",
+    pt: "cada dia é a média dos registros daquele dia; o número é a média dos dias",
+  },
+  moodLevel: {
+    en: "each day is the average of that day's entries; the number is the average of the days",
+    pt: "cada dia é a média dos registros daquele dia; o número é a média dos dias",
+  },
+};
+
+/**
+ * A frase, ou `null` quando a métrica não tem uma.
+ *
+ * `null` é de propósito e não é um buraco a tapar: uma frase inventada para uma
+ * métrica nova seria pior do que nenhuma. O teste é que obriga a métrica nova a
+ * ganhar a sua.
+ */
+export function comoFoiCalculado(
+  campo: string,
+  idioma: "en" | "pt" = "en"
+): string | null {
+  return COMO_FOI_CALCULADO[campo]?.[idioma] ?? null;
+}
 
 /**
  * A série de uma métrica, juntando os baldes onde ela pode viver.

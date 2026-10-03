@@ -18,6 +18,7 @@
  * measurement that never happened.
  */
 
+import { diaNoFuso } from "@/lib/dia-da-medicao";
 import { withingsRawCall } from "@/lib/withings";
 
 /**
@@ -239,16 +240,13 @@ export interface VitalsDay {
  * ela usa para datar a actividade e o sono. Usar UTC aqui e o fuso deles ali faz
  * a mesma noite cair em dias diferentes conforme o balde.
  */
+/*
+ * A conta mudou de casa, para a pressão a alcançar: `lib/dia-da-medicao.ts`.
+ * Enquanto ela vivia aqui, o `patient-monitoring` não a podia usar — e a
+ * pressão ficou a única série em UTC (120 T-3).
+ */
 function diaDaMedicao(v: { measuredAt: Date; timezone?: string | null }): string {
-  const fuso = typeof v.timezone === "string" && v.timezone ? v.timezone : null;
-  if (!fuso) return v.measuredAt.toISOString().split("T")[0];
-  try {
-    /* `en-CA` dá `YYYY-MM-DD`, que é a forma que o resto do ficheiro usa. */
-    return new Intl.DateTimeFormat("en-CA", { timeZone: fuso }).format(v.measuredAt);
-  } catch {
-    /* Um fuso que o runtime não conhece não pode derrubar a ingestão. */
-    return v.measuredAt.toISOString().split("T")[0];
-  }
+  return diaNoFuso(v.measuredAt, v.timezone) ?? v.measuredAt.toISOString().split("T")[0];
 }
 
 export function vitalsByDay(vitals: WithingsVital[]): VitalsDay[] {
