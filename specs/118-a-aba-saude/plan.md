@@ -149,6 +149,7 @@ some ensina à pessoa que o produto está estragado.
 | T-7 | **As metas são do paciente** | T-2 | **feito** (02/10) — QA 0 reprovados, 9 achados do review fechados |
 | T-8 | [**O relatório ganha gráfico**](t-8-o-relatorio-ganha-grafico.md) | T-5 | **concluído** (02/10) — linha por métrica que **não atravessa buracos**, fases do sono, triagem em grupos; 10 mutações |
 | T-9 | [**A aba Saúde com a cara nova**](t-9-a-aba-com-a-cara-nova.md) | T-8 | **concluído** (02/10) — tendência em barras, sem dependência nova; 8 mutações |
+| T-10 | [**A pegada da referência, dentro de um update**](t-10-o-vidro-que-cabe-num-update.md) | T-9 | **concluído** (04/10) — [QA](qa/report-t-10.md); anéis sem biblioteca de desenho; review achou 12, o maior era o anel a desenhar um quarto de volta com cinco testes verdes; 10 mutações |
 
 **Ordem pedida pelo Bruno:** *"vamos antes conectar tudo e ver esse
 layout/design"* — ou seja, T-1 a T-4 primeiro; a T-5 e a T-6 depois.

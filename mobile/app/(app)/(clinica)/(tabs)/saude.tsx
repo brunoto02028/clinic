@@ -49,6 +49,7 @@ import {
   Pendencia,
 } from "@/lib/resumo-de-saude";
 import { BarraDeMeta } from "@/components/BarraDeMeta";
+import { AnelDeMeta } from "@/components/AnelDeMeta";
 import { BarrasDaMetrica } from "@/components/BarrasDaMetrica";
 import { ultimaLeitura, fraseDaUltimaLeitura } from "@/lib/quando-foi-lido";
 import { horaLocalDe } from "@/lib/ecg-lista";
@@ -85,6 +86,22 @@ const ROTULO: Record<Destaque["chave"], { en: string; pt: string; unidade: strin
   hrv: { en: "HRV", pt: "HRV", unidade: "ms" },
   spo2: { en: "SpO2", pt: "SpO2", unidade: "%" },
   passos: { en: "Steps", pt: "Passos", unidade: "" },
+};
+
+/**
+ * O ícone e o pilar de cada métrica (118 T-10).
+ *
+ * A ficha de ícone é o que separa um ladrilho do seguinte num relance — o
+ * rótulo em maiúsculas pequenas lê-se depois, não antes. A cor é a do **pilar**
+ * a que a métrica pertence, e não uma cor por valor: pintar o número de verde
+ * ou âmbar seria faixa de referência, que não é nossa para dar.
+ */
+const FICHA: Record<Destaque["chave"], { icone: string; pilar: "health" | "work" | "community" }> = {
+  sono: { icone: "moon-outline", pilar: "work" },
+  fcRepouso: { icone: "heart-outline", pilar: "health" },
+  hrv: { icone: "pulse-outline", pilar: "health" },
+  spo2: { icone: "ellipse-outline", pilar: "health" },
+  passos: { icone: "walk-outline", pilar: "community" },
 };
 
 function valorFormatado(d: Destaque): string {
@@ -243,6 +260,25 @@ export default function SaudeScreen() {
   };
 
   const lista = destaques((dados.data ?? []) as any);
+
+  /**
+   * As métricas que **têm meta guardada** — as únicas que podem ter anel.
+   *
+   * A guarda era `d.chave === "passos" || d.chave === "sono"`, que testa se a
+   * métrica **existe**, não se tem meta. Quem ligou a Withings e nunca abriu
+   * `/metas` — e as metas são opt-in (118 T-7), logo é o caso mais comum — via
+   * "METAS DE HOJE" com dois círculos vazios e dois travessões.
+   *
+   * E o `metas.data &&` não é zelo: enquanto o pedido carrega, e **para
+   * sempre** se ele falhar, `metas.data` é `undefined` e todas as metas leem
+   * como ausentes. O anel passava a afirmar "sem meta definida" a quem tem
+   * meta — uma falha nossa com a cara de uma escolha dela, que é a espécie de
+   * defeito que esta base já pagou caro. Sem metas carregadas, a fila não
+   * aparece; o número continua no ladrilho de baixo.
+   */
+  const comMeta = metas.data
+    ? lista.filter((d) => metaDoDestaque(d.chave, metas.data) != null)
+    : [];
   const faltas = pendencias((ligacoes.data ?? []) as any);
   const carregando = dados.isLoading || ligacoes.isLoading;
 
@@ -407,6 +443,66 @@ export default function SaudeScreen() {
           <LoadFailure error={dados.error} onRetry={() => dados.refetch()} />
         ) : (
           <>
+            {/*
+              * **Metas de hoje** (118 T-10).
+              *
+              * Um anel por métrica **com meta guardada**, e só essas: a fila só
+              * existe se houver pelo menos uma, senão é uma faixa de traços a
+              * ocupar o topo da tela sem dizer nada. Um toque leva a definir.
+              *
+              * O `dia` vai com cada anel pela mesma razão que vai com a barra:
+              * o valor é o **último medido**. A fila chama-se "Metas de hoje" —
+              * um anel cheio por 14.200 passos de sábado afirma, numa terça
+              * parada, que a meta de hoje está cumprida, e afirma-o em cima do
+              * ladrilho que diz "Leitura de outro dia". Quem decide é o
+              * `estadoDoAnel`.
+              */}
+            {comMeta.length > 0 && (
+              <View style={{ gap: 8 }} testID="metas-de-hoje">
+                <Text
+                  variant="caption"
+                  color={t.colors.textMuted}
+                  style={{ fontSize: 10, letterSpacing: 1.1, textTransform: "uppercase", fontWeight: "700" }}
+                >
+                  {tr(lang, { en: "Today's goals", pt: "Metas de hoje" })}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 9 }}>
+                  {comMeta.map((d) => (
+                      <Pressable
+                        key={`anel-${d.chave}`}
+                        onPress={() => router.push(DESTINO.metas as any)}
+                        accessibilityRole="button"
+                        testID={`anel-${d.chave}`}
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          gap: 7,
+                          paddingVertical: 12,
+                          borderRadius: t.radius.lg,
+                          borderWidth: 1,
+                          borderColor: t.colors.border,
+                          backgroundColor: t.colors.surface,
+                        }}
+                      >
+                        <AnelDeMeta
+                          valor={d.valor}
+                          meta={metaDoDestaque(d.chave, metas.data ?? null)}
+                          dia={d.dia}
+                          cor={t.colors[FICHA[d.chave].pilar] as string}
+                        />
+                        <Text
+                          variant="caption"
+                          color={t.colors.textMuted}
+                          style={{ fontSize: 9.5, letterSpacing: 0.6, textTransform: "uppercase" }}
+                        >
+                          {tr(lang, ROTULO[d.chave])}
+                        </Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </View>
+            )}
+
             {lista.length > 0 && (
               <View style={{ gap: 10 }} testID="destaques">
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
@@ -427,9 +523,32 @@ export default function SaudeScreen() {
                         gap: 4,
                       }}
                     >
-                      <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
-                        {tr(lang, ROTULO[d.chave])}
-                      </Text>
+                      {/*
+                        * **A ficha de ícone** (118 T-10). Num relance, é ela
+                        * que distingue um ladrilho do seguinte; o rótulo em
+                        * maiúsculas pequenas lê-se a seguir, não antes.
+                        */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 13,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: t.colors[`${FICHA[d.chave].pilar}Soft` as keyof typeof t.colors] as string,
+                          }}
+                        >
+                          <Ionicons
+                            name={FICHA[d.chave].icone as any}
+                            size={14}
+                            color={t.colors[FICHA[d.chave].pilar] as string}
+                          />
+                        </View>
+                        <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
+                          {tr(lang, ROTULO[d.chave])}
+                        </Text>
+                      </View>
                       <Text
                         variant="subtitle"
                         style={{ fontWeight: "700", fontSize: 24, letterSpacing: -0.5, marginTop: 2 }}

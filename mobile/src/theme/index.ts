@@ -103,7 +103,36 @@ export interface ThemeColors {
 }
 
 const light: ThemeColors = {
-  background: palette.bone,
+  /**
+   * **O fundo recua um degrau para o cartão flutuar** (118 T-10).
+   *
+   * Era `bone` (#F5F4F1), com o cartão branco por cima: 1,10 de separação —
+   * quase nenhuma. Eu tinha dito que o claro não dava tratamento de vidro, e
+   * medi: branco translúcido sobre bege **aproxima** o cartão do fundo (1,05).
+   * O contrário do que se quer.
+   *
+   * O que faz um cartão claro ler como vidro é flutuar. Com o cartão branco
+   * puro, um fundo mais escuro separa-o melhor — mas o fundo é onde o app
+   * escreve, e cada degrau que ele desce **puxa toda a tinta para baixo do
+   * piso**.
+   *
+   * Eu escolhi `#EBE9E3` por medir uma cor só, o cinzento apagado. O review
+   * mediu as onze e achou **cinco** reprovadas: `health` 4,37, `community`
+   * 4,19, `labWarm` 4,31, `ok` 4,47, `warn` 4,43 — e `community`, `warn` e
+   * `bad` já tinham sido escurecidos em 26/09 precisamente para raspar o 4,5.
+   * A paleta inteira está construída sobre o bege; mexer no fundo é mexer no
+   * chão dela.
+   *
+   * `#F0EEE8` é o degrau que serve os dois: separação de **1,16** contra o
+   * cartão branco (o piso que o teste exige é 1,15) e tinta toda acima de 4,5
+   * — `health` 4,57, `labWarm` 4,51, `ok` 4,68, `warn` 4,64, apagado 5,37.
+   * Sobrou **uma**, o `community`, a 4,38; essa resolveu-se no token, com o
+   * número escrito lá.
+   *
+   * O teste do contraste passou a medir as onze tintas sobre as quatro
+   * superfícies dos dois temas, que é o que teria apanhado isto na hora.
+   */
+  background: "#F0EEE8",
   surface: palette.card,
   surfaceElevated: palette.card,
   surfaceMuted: "#EBEAE6",
@@ -127,8 +156,8 @@ const light: ThemeColors = {
   greigeFg: palette.greigeFg,
   greigePress: palette.greigePress,
   accent: palette.ink,
-  border: palette.line,
-  borderSubtle: "#EEEDE9",
+  border: "#E0DDD5",
+  borderSubtle: "#EAE7E0",
 
   work: palette.work,
   workSoft: palette.workSoft,
@@ -140,7 +169,14 @@ const light: ThemeColors = {
   accentFg: palette.white,
   accentFgSoft: "rgba(255, 255, 255, 0.75)",
 
-  segmentTrack: "#EBEAE6",
+  /*
+   * O trilho tem de ser um **rebaixo visível** no fundo da tela, e o
+   * `#EBEAE6` que estava aqui dava 1,01 contra o fundo novo: o controle
+   * deixava de existir e ficavam duas palavras soltas. `#E0DDD5` dá 1,17
+   * contra o fundo, 1,36 contra o polegar branco, e o apagado sobre ele
+   * continua em 4,59. É o mesmo tom da aresta do cartão, de propósito.
+   */
+  segmentTrack: "#E0DDD5",
   segmentThumb: palette.card,
 
   // Escurecidos em 26/09/2026 mantendo o matiz. Os valores anteriores — sage
@@ -214,10 +250,25 @@ const light: ThemeColors = {
  * mais claro que o fundo; no escuro, mais claro também.
  */
 const dark: ThemeColors = {
-  background: "#191C23",
-  surface: palette.ink,
-  surfaceElevated: "#262A33",
-  surfaceMuted: "#2A2E38",
+  /**
+   * **Quase preto, e isso melhora tudo ao mesmo tempo** (118 T-10).
+   *
+   * Era `#191C23`, um azul-escuro, com o cartão em `#20242D` — 14,13 de
+   * contraste no texto, 5,92 no apagado, e 1,10 de separação entre cartão e
+   * fundo. Medido antes de mexer, não depois.
+   *
+   * Com o fundo em `#0E0F13` e o cartão em `#1F2024` (o branco a 7 % composto
+   * sobre ele): **14,80 no texto, 6,20 no apagado, 1,18 de separação**. Mais
+   * legível *e* mais separado — não é troca, é ganho dos dois lados.
+   *
+   * O cartão é **opaco**, com a cor já composta, e não uma camada translúcida:
+   * dá o mesmo pixel sobre este fundo e não tem surpresa nenhuma por cima de
+   * um overlay ou de um modal.
+   */
+  background: "#0E0F13",
+  surface: "#1F2024",
+  surfaceElevated: "#272A2F",
+  surfaceMuted: "#17181C",
   text: palette.bone,
   textSecondary: "#C9CBD1",
   textMuted: "#9BA0AA",
@@ -227,8 +278,9 @@ const dark: ThemeColors = {
   greigeFg: "#EDE9E2",
   greigePress: "#474139",
   accent: palette.bone,
-  border: "#343945",
-  borderSubtle: "#2A2E38",
+  /* A aresta que faz o cartão ler como uma lâmina, e não como uma mancha. */
+  border: "#2E3036",
+  borderSubtle: "#26282D",
 
   work: "#8FA3C4",
   workSoft: "#1E2430",
@@ -241,8 +293,15 @@ const dark: ThemeColors = {
   accentFg: palette.ink,
   accentFgSoft: "rgba(32, 36, 45, 0.72)",
 
-  segmentTrack: palette.ink,
-  segmentThumb: "#333845",
+  /*
+   * `palette.ink` (#20242D) era **a cor do cartão antigo**. Com o cartão a ir
+   * para `#1F2024`, o trilho passou a dar 1,05 contra ele: o controle
+   * desaparecia dentro de qualquer cartão. O par novo levanta os dois —
+   * trilho 1,18 contra o cartão, polegar 1,35 contra o trilho — e o rótulo
+   * inactivo sobre o trilho fica em 5,25, o activo sobre o polegar em 9,25.
+   */
+  segmentTrack: "#2A2D34",
+  segmentThumb: "#3C4150",
 
   // O sage e o âmbar do laboratório, clareados para o escuro. O `Soft` de cada
   // um deixa de ser fundo pálido e vira fundo escuro tingido do mesmo tom — é o

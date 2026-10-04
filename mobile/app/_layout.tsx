@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from "react";
+import { themes } from "@/theme";
 import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -51,7 +52,26 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const esquema = useThemeStore((s) => s.modo);
-  const fundoDoTema = esquema === "dark" ? "#191C23" : FUNDO_DO_SPLASH;
+  /*
+   * **A cor vem do tema, não de um literal** (118 T-10).
+   *
+   * Era `"#191C23"` cravado aqui, e a paleta escura mudou para quase preto: a
+   * vista raiz ficaria num azul-escuro com todas as telas por cima num preto
+   * diferente — uma costura visível em cada transição, do tipo que o próprio
+   * comentário acima existe para evitar.
+   *
+   * **Os dois ramos**, não um. Na primeira versão corrigi o escuro e deixei o
+   * claro no `FUNDO_DO_SPLASH`: a vista raiz atrás de todo o app ficava em
+   * #F5F4F1 com cada tela por cima em #F0EEE8 — exactamente a costura que o
+   * comentário acima existe para evitar, eliminada de um lado só. Vê-se no
+   * overscroll, nas transições do `Stack` e nas faixas de safe-area.
+   *
+   * O `FUNDO_DO_SPLASH` fica para o vão **antes** das fontes, que é o único
+   * sítio onde a tela tem de ser a cor do splash. Que essa cor já não é
+   * nenhum dos dois fundos é dívida assumida e está escrita na 118 T-10: muda
+   * no `app.json`, e o `app.json` não muda sem build.
+   */
+  const fundoDoTema = esquema === "dark" ? themes.dark.background : themes.light.background;
   const bootstrap = useAuth((s) => s.bootstrap);
 
   const [fontsLoaded] = useFonts({
