@@ -16,9 +16,16 @@ export const palette = {
   healthSoft: "#EDF3EF",
   // Escurecido 13% para passar 4,5:1 sobre o próprio `communitySoft` — antes
   // dava 3,58:1. O matiz é o mesmo; lado a lado com o original não se nota a
-  // diferença. Única mudança de token da revisão de cor, e proposta como
-  // exceção justificada por número, não por gosto.
-  community: "#926531",
+  // diferença. Exceção justificada por número, não por gosto.
+  //
+  // Mais 4% em 04/10/2026 (118 T-10), pela mesma régua. O fundo claro desceu
+  // de #F5F4F1 para #F0EEE8 — o cartão branco tinha de se separar dele — e
+  // este era o único dos onze tons que não acompanhava: 4,38:1 sobre o fundo
+  // novo, com o piso em 4,5. Agora dá 4,68 sobre o fundo, 4,83 sobre o próprio
+  // `Soft` e 5,43 sobre o cartão branco. 96% do brilho de ontem, o mesmo
+  // matiz. **É mudança de cor de marca e está aqui para ser contestada** — o
+  // outro caminho era devolver o fundo ao bege e perder a separação do cartão.
+  community: "#8C612F",
   communitySoft: "#F7F1E7",
 
   ok: "#55705F",

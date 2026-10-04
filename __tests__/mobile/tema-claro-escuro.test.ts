@@ -119,7 +119,22 @@ describe("nada crava cor onde o tema deveria mandar", () => {
     // Cravado, ele deixava uma faixa clara de tela inteira atrás de todo o app
     // no modo escuro.
     expect(raizLayout).toMatch(/backgroundColor: fundoDoTema/);
-    expect(raizLayout).toMatch(/esquema === "dark" \? "#191C23"/);
+    //
+    // Esta asserção exigia o literal `"#191C23"` — num teste chamado "segue o
+    // tema". Cravar a cor é o contrário de a seguir, e provou-se quando a
+    // paleta escura mudou para quase preto (118 T-10): a vista raiz teria
+    // ficado num azul-escuro com todas as telas por cima num preto diferente,
+    // e o teste passaria a dizer que estava certo.
+    //
+    // Agora exige **o token**, que é o que o nome do teste sempre quis dizer.
+    //
+    // E exige-o nos **dois ramos**. A primeira correcção arrumou o escuro e
+    // deixou o claro no literal do splash: a vista raiz em #F5F4F1 com cada
+    // tela por cima no fundo claro do tema — a mesma costura, do outro lado.
+    // Um teste que só olha para um ramo não é um teste do tema.
+    expect(raizLayout).toMatch(/esquema === "dark" \? themes\.dark\.background/);
+    expect(raizLayout).toMatch(/: themes\.light\.background;/);
+    expect(raizLayout).not.toMatch(/const fundoDoTema = [^;]*"#/);
   });
 
   it("mas o vão antes das fontes continua da cor do splash", () => {
@@ -267,10 +282,20 @@ describe("o controle segmentado mostra qual está selecionado", () => {
   const segmented = ler("src", "components", "ui", "SegmentedControl.tsx");
 
   it("trilho e botão são tokens — a relação entre eles se inverte no escuro", () => {
-    expect(tema).toMatch(/segmentTrack: "#EBEAE6"/);
-    expect(tema).toMatch(/segmentThumb: palette\.card/);
-    expect(tema).toMatch(/segmentTrack: palette\.ink/);
-    expect(tema).toMatch(/segmentThumb: "#333845"/);
+    // Esta asserção fixava os quatro valores (`#EBEAE6`, `palette.card`,
+    // `palette.ink`, `#333845`) e por isso provava só que ninguém lhes tinha
+    // mexido. Não era disso que ela precisava: `palette.ink` era **a cor do
+    // cartão antigo**, e quando o cartão escuro mudou em 118 T-10 o trilho
+    // passou a dar 1,05 contra ele — o controle desaparecia dentro de qualquer
+    // cartão, com este teste verde.
+    //
+    // Os números passaram para `o-contraste-dos-dois-temas`, que os **mede**
+    // contra o fundo e o cartão de cada tema. Aqui fica o que é desta tela: os
+    // dois tons existem como tokens e o componente consome-os.
+    for (const chave of ["segmentTrack", "segmentThumb"]) {
+      /* O `(?!string;)` deixa de fora a declaração do tipo — só conta valores. */
+      expect(tema.match(new RegExp(`${chave}: (?!string;)`, "g"))?.length).toBe(2);
+    }
     expect(segmented).toMatch(/backgroundColor: t\.colors\.segmentTrack/);
     expect(segmented).toMatch(/isActive \? t\.colors\.segmentThumb : "transparent"/);
   });

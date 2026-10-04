@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { themes } from "@/theme";
 import { AppState, View } from "react-native";
 import { Logo } from "@/components/ui";
 import { lockIsActive, biometriaEmAndamento } from "@/lib/biometrics";
@@ -72,7 +73,14 @@ export function PrivacyCover() {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "#20242D",
+        /*
+         * O escuro **cravado**, não o tema de quem está a usar: a capa é a
+         * mesma nos dois tons, porque o que ela faz é apagar a tela no
+         * alternador de apps. Sai do token em vez de um literal só para
+         * acompanhar a paleta — em 118 T-10 ela foi para quase preto. O
+         * `tone="bone"` do logo é escolhido para este fundo, não para o tema.
+         */
+        backgroundColor: themes.dark.background,
         alignItems: "center",
         justifyContent: "center",
       }}
